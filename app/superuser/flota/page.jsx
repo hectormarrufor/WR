@@ -1,106 +1,101 @@
-"use client"
-import { Button, Card, CloseButton, Flex, Table, Title, Modal, Text } from '@mantine/core'
-import { useRouter } from 'next/navigation'
-import React, { useEffect, useState } from 'react'
-import { eliminarUsuario, obtenerUsuarios } from '../../ApiFunctions/userServices'
-import EditButton from '../../components/EditButton'
-import BackButton from '../../components/BackButton'
-import DeleteModal from '../DeleteModal'
+'use client';
 
-const flota = () => {
-    const router = useRouter();
-    const [deleteModalOpened, setDeleteModalOpened] = useState(false);
-    const [clientToDelete, setClientToDelete] = useState(null);
-    const [clients, setClients] = useState([]);
-    const [rows, setRows] = useState(null)
-    useEffect(() => {
-        async function fetchData() {
-            const fetchdata = await obtenerUsuarios();
-            setClients(fetchdata)
-        }
-        fetchData();
-    }, []);
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { Paper, Flex, Title, Button, Group, rem } from '@mantine/core';
+import { MantineReactTable } from 'mantine-react-table';
+import { IconEdit, IconTrash } from '@tabler/icons-react';
 
-    useEffect(() => {
-        setRows(clients.map(client => (
-            <Table.Tr key={client.name}>
-                <Table.Td>{client.id}</Table.Td>
-                <Table.Td>{client.name} {client.lastname}</Table.Td>
-                <Table.Td>{client.email}</Table.Td>
-                <Table.Td>{client.phone}</Table.Td>
-                <Table.Td>{client.city}</Table.Td>
-                <Table.Td>{client.state}</Table.Td>
-                <Table.Td>{client.address}</Table.Td>
-                <Table.Td>{client.type}</Table.Td>
-                <Table.Td>{client.createdAt.split("T")[0]}</Table.Td>
-                <Table.Td><EditButton onclick={handleEdit}/></Table.Td>
-                <Table.Td><CloseButton onClick={() => handleDelete(client)}/></Table.Td>
-            </Table.Tr>
-        )))
+export default function flota() {
+  const router = useRouter();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    }, [clients])
+  // Carga de datos
+  const fetchVehiculos = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch('/api/vehiculos');
+    setData(await res.json());
+    setLoading(false);
+  }, []);
 
+  useEffect(() => {
+    fetchVehiculos();
+  }, [fetchVehiculos]);
 
-    const handleEdit = () => {
-        console.log("entre al modal de edit")
-    }
-    const handleDelete = (client) => {
-        setClientToDelete(client);
-        setDeleteModalOpened(true)
-    }
-    const handleDeleteConfirm = async () => {
-        await eliminarUsuario(clientToDelete.id)
-        setClientToDelete(null)
-        setDeleteModalOpened(false);
-        setClients(await obtenerUsuarios())
-    }
+  // Eliminación
+  const handleDelete = async (id) => {
+    if (!confirm('¿Eliminar vehículo?')) return;
+    await fetch(`/api/vehiculos/${id}`, { method: 'DELETE' });
+    fetchVehiculos();
+  };
 
+  // Definición de columnas con sorting y filtering habilitados
+  const columns = useMemo(
+    () => [
+      { accessorKey: 'id', header: 'ID', enableSorting: true, enableColumnFilter: true, size: 60 },
+      { accessorKey: 'modelo', header: 'Modelo', enableSorting: true, enableColumnFilter: true },
+      { accessorKey: 'placa', header: 'Placa', enableSorting: true, enableColumnFilter: true },
+      { accessorKey: 'color', header: 'Color', enableSorting: true, enableColumnFilter: true },
+      { accessorKey: 'año',   header: 'Año',   enableSorting: true, enableColumnFilter: true, size: 80 },
+      {
+        id: 'actions',
+        header: 'Acciones',
+        size: 100,
+        enableSorting: false,
+        enableColumnFilter: false,
+        Cell: ({ row }) => (
+          <Group position="right" spacing="xs">
+            <IconEdit
+              size={18}
+              style={{ cursor: 'pointer' }}
+              onClick={() => router.push(`/superuser/flota/${row.original.id}/editar`)}
+            />
+            <IconTrash
+              size={18}
+              style={{ cursor: 'pointer' }}
+              onClick={() => handleDelete(row.original.id)}
+            />
+          </Group>
+        ),
+      },
+    ],
+    [handleDelete, router]
+  );
 
-    return (<>
-        <DeleteModal
-            opened={deleteModalOpened}
-            onclose={() => setDeleteModalOpened(false)}
-            onConfirm={handleDeleteConfirm}
-            clientName={clientToDelete?.name}
-        />
-        <Card
-            style={{
-                height: "50vh",
-                backgroundColor: "white"
-            }}
-
-            m={100}
-
-
+  return (
+    <Paper
+      withBorder
+      radius="md"
+      p="md"
+      sx={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
+      mt={120}
+    >
+      {/* Cabecera con botón “Añadir” */}
+      <Flex justify="space-between" align="center" mb="md">
+        <Title order={2}>Mi flota de vehículos</Title>
+        <Button
+          size="sm"
+          onClick={() => router.push('/superuser/flota/crear')}
         >
-            {!rows ? <Title>Loading</Title> :
+          Añadir nuevo vehículo
+        </Button>
+      </Flex>
 
-                <>
-                    <Flex justify="space-between" align="start">
-                        <BackButton onClick={() => router.push('/superuser')}/>
-                        <Button onClick={() => router.push('/superuser/flota/crear')}>Añadir nuevo vehiculo</Button>
-                    </Flex>
-                    <Table>
-                        <Table.Thead>
-                            <Table.Tr>
-                                <Table.Th>ID</Table.Th>
-                                <Table.Th>Name</Table.Th>
-                                <Table.Th>Email</Table.Th>
-                                <Table.Th>Phone</Table.Th>
-                                <Table.Th>City</Table.Th>
-                                <Table.Th>State</Table.Th>
-                                <Table.Th>Address</Table.Th>
-                                <Table.Th>Type</Table.Th>
-                                <Table.Th>Date of creation</Table.Th>
-                                <Table.Th>Edit</Table.Th>
-                                <Table.Th>Delete</Table.Th>
-                            </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>{rows}</Table.Tbody>
-                    </Table>
-                </>}
-        </Card>
-    </>)
+      {/* Tabla con filtros y orden */}
+      <MantineReactTable
+        columns={columns}
+        data={data}
+        initialState={{
+          pagination: { pageSize: 10, pageIndex: 0 },
+          sorting: [{ id: 'id', desc: false }],
+        }}
+        enableRowSelection={false}
+        enableColumnActions={false}
+        enableGlobalFilter={false}
+        muiTablePaperProps={{ elevation: 0 }}
+        state={{ isLoading: loading }}
+      />
+    </Paper>
+  );
 }
-
-export default flota

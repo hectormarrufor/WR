@@ -10,6 +10,10 @@ const Vehiculo = sequelize.define('Vehiculo', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  placa: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   ano: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -23,34 +27,48 @@ const Vehiculo = sequelize.define('Vehiculo', {
     allowNull: false,
   },
   peso: {
-    type: DataTypes.ENUM('liviano', 'mediano', 'pesado'),
+    type: DataTypes.ENUM('liviana', 'pesada'),
     allowNull: false,
   },
-  Modelo: {
+  ejes: {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  priceSlab: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-  },
-  priceSqft: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-  },
-  imgURL: {
+  neumatico: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
   },
-  width: {
-    type: DataTypes.FLOAT,
-    allowNull: false
+  kilometraje: {
+    type: DataTypes.STRING,
+    allowNull: false,
   },
-  height: {
-    type: DataTypes.FLOAT,
-    allowNull: true
-  }
-
+  horometro: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  status: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  correa: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  combustible: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+  },
+  transmision: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+  },
+  motor: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+  },
+  
+  
+  
 
 })
 

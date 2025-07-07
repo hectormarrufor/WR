@@ -1,32 +1,27 @@
-// app/api/clientes/route.js
-import Stone from '../../../models/vehiculoPesado';
+// app/api/vehiculos/route.js
+import Vehiculo from '../../../models/vehiculo';
 
-// GET /api/clientes - Obtener todos los clientes
+// GET /api/vehiculos - Obtener todos los vehiculos
 export async function GET() {
   try {
-    const stones = await Stone.findAll();
-    return Response.json(stones);
+    const vehiculos = await Vehiculo.findAll();
+    return Response.json(vehiculos);
   } catch (error) {
-    console.error('Error al obtener clientes:', error);
-    return Response.json({ error: 'Error al obtener clientes' }, { status: 500 });
+    console.error('Error al obtener vehiculos:', error);
+    throw new Error('Error al crear vehiculo: ', error);
   }
 }
 
-// POST /api/clientes - Crear un nuevo cliente
+// POST /api/vehiculos - Crear un nuevo vehiculo
 export async function POST(request) {
   
   try {
-    const stone = await request.json();
-    console.log(stone)
-    // Validación básica
-    if (!stone.name || !stone.width) {
-      return Response.json({ error: 'campos son requeridos son requeridos' }, { status: 400 });
-    }
+    const vehiculo = await request.json();
 
-    const newStone = await Stone.create(stone);
-    return Response.json(newStone, { status: 201 });
+    const newVehiculo = await Vehiculo.create(vehiculo);
+    return Response.json(newVehiculo, { status: 201 });
   } catch (error) {
-    console.error('Error al crear piedra:', error);
-    return Response.json({ error: 'Error al crear piedra' }, { status: 500 });
+    console.error('Error al crear vehiculo:', error);
+    throw new Error('Erro al crear vehiculo: ', error)
   }
 }

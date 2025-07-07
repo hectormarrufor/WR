@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react'
 import { useForm } from '@mantine/form';
 import { TextInput, PasswordInput, Paper, Title, Container, Button, Group, Image } from '@mantine/core'
 import { useRouter } from 'next/navigation';
-import { cerrarSesion, checkSession, iniciarSesion } from '../ApiFunctions/userServices';
+import { cerrarSesion, checkSession, crearUsuario, iniciarSesion } from '../ApiFunctions/userServices';
 import useAuth from '../../hooks/useAuth';
 import { notifications } from '@mantine/notifications';
+import defaultUser from '../../objects/defaultUser';
 
 const page = () => {
   const router = useRouter();
@@ -76,7 +77,15 @@ const page = () => {
               <Button type="submit" fullWidth>
                 Iniciar Sesion
               </Button>
-              <Button fullWidth onClick={() => router.push('/register')}>
+              <Button fullWidth onClick={async () => {
+                try {
+                  await crearUsuario(defaultUser)
+                  notifications.show({title:"usuario creado"})
+                  router.push('/');
+                } catch (error) {
+                  notifications.show({title: error})
+                }
+              }}>
                 Registrar
               </Button>
               {/* {isAuthenticated && <Button fullWidth onClick={() => cerrarSesion(router.push, checkAuth)}>

@@ -1,129 +1,126 @@
+'use client';
 import { useEffect, useState } from 'react';
 import {
-    Combobox,
-    useCombobox,
-    ComboboxTarget,
-    ComboboxOptions,
-    ComboboxOption,
-    TextInput,
-    InputBase,
-    Modal,
-    Title,
-    Button,
+  Combobox,
+  useCombobox,
+  InputBase,
+  Modal,
+  Title,
+  Button,
 } from '@mantine/core';
 import { httpGet, httpPost } from '../../../ApiFunctions/httpServices';
+import { notifications } from '@mantine/notifications';
 
+export function TipoVehiculoSelect({ form }) {
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption(),
+  });
 
-export function TipoVehiculoSelect({ form, peso }) {
+  const [data, setData] = useState([]);
+  const [search, setSearch] = useState(form.values.tipo || '');
+  const [createConfirmModal, setCreateConfirmModal] = useState(false);
 
-    const selected = form.values.tipo;
-    const combobox = useCombobox({
-        onDropdownClose: () => combobox.resetSelectedOption(),
+  // 1) Carga opciones al montar o cambiar peso
+  useEffect(() => {
+    (async () => {
+      const tipos = await httpGet('/api/vehiculos/tipo');
+      const labels = tipos
+        .filter((t) => t.peso === form.values.tipoPeso)
+        .map((t) => t.label);
+      setData(labels);
+    })();
+  }, [form.values.tipoPeso]);
+
+  // 2) Cuando form.values.tipo cambie desde afuera, sincronizamos
+  useEffect(() => {
+    if (form.values.tipo !== search) {
+      setSearch(form.values.tipo || '');
+    }
+  }, [form.values.tipo]);
+
+  // 3) Filtrado de opciones
+  const exactMatch = data.includes(search);
+  const filtered = exactMatch
+    ? data
+    : data.filter((item) =>
+        item.toLowerCase().includes(search.toLowerCase().trim())
+      );
+
+  // 4) Función para crear un nuevo tipo
+  const crearTipo = async () => {
+    await httpPost('/api/vehiculos/tipo', {
+      label: search,
+      peso: form.values.tipoPeso,
     });
-    const [createConfirmModal, setCreateConfirmModal] = useState(false)
-    const [data, setData] = useState([]);
-    const [value, setValue] = useState(null);
-    const [search, setSearch] = useState('');
+    notifications.show({ title: 'Tipo de vehículo creado' });
+    setData((current) => [...current, search]);
+    form.setFieldValue('tipo', search);
+    setCreateConfirmModal(false);
+  };
 
-    const exactOptionMatch = data.some((item) => item === search);
-    const filteredOptions = exactOptionMatch
-        ? data
-        : data?.filter((item) => item?.toLowerCase().includes(search?.toLowerCase().trim()));
+  return (
+    <>
+      <Modal
+        opened={createConfirmModal}
+        onClose={() => setCreateConfirmModal(false)}
+        centered
+      >
+        <Title order={4} mb="md">
+          ¿Crear el tipo de vehículo “{search}”?
+        </Title>
+        <Button onClick={crearTipo}>Confirmar</Button>
+      </Modal>
 
-    const options = filteredOptions.map((item) => (
-        <Combobox.Option value={item} key={item}>
-            {item}
-        </Combobox.Option>
-    ));
+      <Combobox
+        store={combobox}
+        label="Tipo"
+        required
+        size="xs"
+        withinPortal={false}
+        onOptionSubmit={(val) => {
+          combobox.closeDropdown();
 
-    useEffect(() => {
-        const fetch = async () => {
-            const tipos = await httpGet('/api/vehiculos/tipo')
-            console.log(tipos);
-            setData(tipos.map(tipo => tipo.label));
-        }
-        fetch();
-    }, []);
+          if (val === '$create') {
+            // Abrimos modal y usamos el valor actual de `search`
+            setCreateConfirmModal(true);
+          } else {
+            // Seleccion normal: actualizamos input y form
+            setSearch(val);
+            form.setFieldValue('tipo', val);
+          }
+        }}
+      >
+        <Combobox.Target>
+          <InputBase
+            value={search}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              combobox.openDropdown();
+            }}
+            onFocus={() => combobox.openDropdown()}
+            onBlur={() => combobox.closeDropdown()}  // <-- Ya NO reseteamos search aquí
+            placeholder="Elige o crea el tipo de vehículo"
+            rightSection={<Combobox.Chevron />}
+            rightSectionPointerEvents="none"
+            size="xs"
+          />
+        </Combobox.Target>
 
-    const crearTipo = async (label, peso) => {
-        console.log(label, value, peso);
-
-        const res = await httpPost('/api/vehiculos/tipo', { label: label, peso: peso });
-        console.log(res);
-
-    };
-
-
-    //   const handleCreate = (label) => {
-    //     const value = label.toLowerCase().replace(/\s+/g, '-');
-    //     const nuevo = { label, value };
-    //     setOptions((prev) => [...prev, nuevo]);
-    //     form.setFieldValue('tipo', value);
-    //   };
-
-
-
-    return (
-        <>
-            <Modal
-                opened={createConfirmModal}
-                centered
-                onClose={() => setCreateConfirmModal(false)}
-                align="center"
-            >
-                <Title order={2} centered>Esta seguro que desea crear el tipo de vehiculo "{search}"? </Title>
-                <Button>Confirmar</Button>
-            </Modal>
-            <Combobox
-                store={combobox}
-                label="Tipo"
-                required
-                size='xs'
-                withinPortal={false}
-                onOptionSubmit={(val) => {
-                    if (val === '$create') {
-                        setCreateConfirmModal(true)
-                        setData((current) => [...current, search]);
-                        crearTipo(search, 'pesado')
-                        setValue(search);
-                    } else {
-                        setValue(val);
-                        setSearch(val);
-                    }
-
-                    combobox.closeDropdown();
-                }}
-            >
-                <Combobox.Target>
-                    <InputBase
-                        rightSection={<Combobox.Chevron />}
-                        size='xs'
-                        value={search}
-                        onChange={(event) => {
-                            combobox.openDropdown();
-                            combobox.updateSelectedOptionIndex();
-                            setSearch(event.currentTarget.value);
-                        }}
-                        onClick={() => combobox.openDropdown()}
-                        onFocus={() => combobox.openDropdown()}
-                        onBlur={() => {
-                            combobox.closeDropdown();
-                            setSearch(value || '');
-                        }}
-                        placeholder="Elige o crea el tipo de vehiculo"
-                        rightSectionPointerEvents="none"
-                    />
-                </Combobox.Target>
-
-                <Combobox.Dropdown>
-                    <Combobox.Options>
-                        {options}
-                        {!exactOptionMatch && search.trim().length > 0 && (
-                            <Combobox.Option value="$create">+ Create {search}</Combobox.Option>
-                        )}
-                    </Combobox.Options>
-                </Combobox.Dropdown>
-            </Combobox>
-        </>
-    );
+        <Combobox.Dropdown>
+          <Combobox.Options>
+            {filtered.map((item) => (
+              <Combobox.Option key={item} value={item}>
+                {item}
+              </Combobox.Option>
+            ))}
+            {!exactMatch && search.trim().length > 0 && (
+              <Combobox.Option value="$create">
+                + Crear “{search}”
+              </Combobox.Option>
+            )}
+          </Combobox.Options>
+        </Combobox.Dropdown>
+      </Combobox>
+    </>
+  );
 }

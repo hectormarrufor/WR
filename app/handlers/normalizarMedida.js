@@ -1,8 +1,10 @@
-export function normalizarMedida(medida) {
-  return medida
-    .toUpperCase()
-    .replace(/\s+/g, '')
-    .replace(/[^0-9A-Z/]/g, '')
-    .replace(/\/R?/, '/R')
-    .replace(/\/{2,}/g, '/');
+export function normalizarMedida(input) {
+ 
+    const parts = input.trim().split(/[^\d.]+/);
+    if (parts.length >= 3) {
+      return `${parts[0]}/${parts[1]}R${parts[2]}`;
+    }
+    return input;
+
 }
+
