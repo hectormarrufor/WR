@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Box, Button, Image, Stack, rem } from '@mantine/core';
 import { IconPhotoUp } from '@tabler/icons-react';
 import imageCompression from 'browser-image-compression';
+import { notifications } from '@mantine/notifications';
 
 export function ImagenVehiculoUploader({ onUpload, form }) {
     const [preview, setPreview] = useState(null);
@@ -26,23 +27,26 @@ export function ImagenVehiculoUploader({ onUpload, form }) {
 
         const data = await res.json();
         form.setFieldValue('imagen', data.url); // guardar URL en el modelo
-        setPreview(data.url + `?t=${Date.now()}`); // mostrar imagen
+        setPreview(data.url); // mostrar imagen
     };
 
     const handleDelete = async () => {
         if (!preview) return;
         const cleanUrl = preview.split('?')[0]; // eliminar ?t=timestamp
         const filename = cleanUrl.split('/').pop(); // extraer nombre.jpg
-        console.log(filename)
-
-        await fetch('/api/vehiculos/imagen/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename }),
-        });
-
-        setPreview(null);
-        form.setFieldValue("imagen", "")
+        console.log(cleanUrl)
+        try {
+            await fetch('/api/vehiculos/imagen/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: cleanUrl }),
+            });
+            setPreview(null);
+            form.setFieldValue("imagen", "")
+        } catch (error) {
+            console.log("error al eliminar la imagen: ", error.message)
+            notifications.show({title: `error al eliminar la imagen:  ${error.message}`})
+        }
         // onUpload?.(null); // limpiar también en form si aplica
     };
 

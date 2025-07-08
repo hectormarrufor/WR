@@ -12,6 +12,7 @@ export async function POST(request) {
 
   const blob = await put(filename, file, {
     access: 'public', // archivo público
+    allowOverwrite: true,
   });
 
   return NextResponse.json({

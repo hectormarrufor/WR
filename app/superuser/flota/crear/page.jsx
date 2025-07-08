@@ -153,7 +153,7 @@ const page = () => {
                     "tipoLuzIntermitenteLateral": "h7",
                     "tipoLuzTrasera": "h7"
                 },
-                "imagen": "T8003HB43J.jpg"
+                "imagen": "https://zfdhcaitqdnowkxr.public.blob.vercel-storage.com/T8003HB43J.jpg"
             }
         )
 
