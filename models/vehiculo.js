@@ -10,6 +10,10 @@ const Vehiculo = sequelize.define('Vehiculo', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  imagen: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   placa: {
     type: DataTypes.STRING,
     allowNull: false,

@@ -1,49 +1,49 @@
-import Stone from '../../../../models/vehiculoPesado';
+import Vehiculo from '../../../../models/vehiculo';
 import sequelize from '../../../../sequelize';
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const piedra = await Stone.findByPk(id);
-    if (!piedra) {
-      return Response.json({ error: 'piedra no encontrado' }, { status: 404 });
+    const vehiculo = await Vehiculo.findByPk(id);
+    if (!vehiculo) {
+      return Response.json({ error: 'vehiculo no encontrado' }, { status: 404 });
     }
-    return Response.json(piedra);
+    return Response.json(vehiculo);
   } catch (error) {
-    console.error(`Error al obtener piedra ${id}:`, error);
-    return Response.json({ error: 'Error al obtener piedra' }, { status: 500 });
+    console.error(`Error al obtener vehiculo ${id}:`, error);
+    return Response.json({ error: 'Error al obtener vehiculo' }, { status: 500 });
   }
 }
 
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const piedraActualizado = await request.json();
-    console.log(id, piedraActualizado)
-    const piedra = await Stone.findByPk(id);
-    if (!piedra) {
-      return Response.json({ error: 'piedra no encontrado' }, { status: 404 });
+    const vehiculoActualizado = await request.json();
+    console.log(id, vehiculoActualizado)
+    const vehiculo = await Vehiculo.findByPk(id);
+    if (!vehiculo) {
+      return Response.json({ error: 'vehiculo no encontrado' }, { status: 404 });
     }
-    await piedra.update(piedraActualizado);
-    const piedraActualizadoBD = await Stone.findByPk(id);
-    return Response.json(piedraActualizadoBD);
+    await vehiculo.update(vehiculoActualizado);
+    const vehiculoActualizadoBD = await Vehiculo.findByPk(id);
+    return Response.json(vehiculoActualizadoBD);
   } catch (error) {
-    console.error(`Error al actualizar piedra ${id}:`, error);
-    return Response.json({ error: 'Error al actualizar piedra' }, { status: 500 });
+    console.error(`Error al actualizar vehiculo ${id}:`, error);
+    return Response.json({ error: 'Error al actualizar vehiculo' }, { status: 500 });
   }
 }
   
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
-    const piedra = await Stone.findByPk(id);
-    if (!piedra) {
-      return Response.json({ error: 'piedra no encontrado' }, { status: 404 });
+    const vehiculo = await Vehiculo.findByPk(id);
+    if (!vehiculo) {
+      return Response.json({ error: 'vehiculo no encontrado' }, { status: 404 });
     }
-    await piedra.destroy();
-    return Response.json({ message: 'piedra eliminado' });
+    await vehiculo.destroy();
+    return Response.json({ message: 'vehiculo eliminado' });
   } catch (error) {
-    console.error(`Error al eliminar piedra ${id}:`, error);
-    return Response.json({ error: 'Error al eliminar piedra' }, { status: 500 });
+    console.error(`Error al eliminar vehiculo ${id}:`, error);
+    return Response.json({ error: 'Error al eliminar vehiculo' }, { status: 500 });
   }
 }

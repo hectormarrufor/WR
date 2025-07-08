@@ -2,6 +2,8 @@ require('dotenv').config();
 
 
 export async function httpGet(url) {
+    console.log(url);
+    
     try {
         const response = await fetch(url)
         return response.json();

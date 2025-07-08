@@ -1,0 +1,20 @@
+.mrt-table {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mrt-table thead {
+  background-color: #f0f0f0;
+  font-weight: 600;
+}
+
+.mrt-table tbody tr:hover {
+  background-color: #eef2f6;
+}
+
+.mrt-table td {
+  padding: 8px 12px;
+}
