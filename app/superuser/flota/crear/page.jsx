@@ -163,7 +163,7 @@ const page = () => {
 
     const handleSubmit = async (values) => {
         setLoading(true);
-        const {marca, modelo, placa, ano, imagen, color, tipo, tipoPeso, ejes, neumatico, kilometraje, horometro, correa, combustible, transmision, motor} = form.values
+        const {marca, modelo, placa, ano, imagen, color, tipo, tipoPeso, ejes, neumatico, kilometraje, horometro, correa, combustible, transmision, motor, carroceria} = form.values
         const vehiculoOrdenado = {
             marca,
             modelo,
@@ -181,7 +181,8 @@ const page = () => {
             transmision,
             motor,
             status: "ok",
-            imagen
+            imagen,
+            carroceria
         }
         // Simulación de envío
         try {

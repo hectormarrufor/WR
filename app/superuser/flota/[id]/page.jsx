@@ -55,7 +55,7 @@ export default function VehiculoPage({ params }) {
             <Text><strong>Filtro Aire:</strong> {v?.filtroAire}</Text>
             <Text><strong>Correa:</strong> {v?.correa}</Text>
           </SimpleGrid>
-          {v && <Image src={`/uploads/${v.imagen}`} h={200} fit='contain'/>}
+          {v && <Image src={v.imagen} h={200} fit='contain'/>}
       </Flex>
 
       <Divider my="md" />

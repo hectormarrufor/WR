@@ -11,36 +11,22 @@ export function ImagenVehiculoUploader({ onUpload, form }) {
 
     const handleDrop = async (files) => {
         const original = files[0];
-
-        const compressed = await imageCompression(original, {
-            maxWidthOrHeight: 2000,
-            maxSizeMB: 0.2,
-            useWebWorker: true,
-        });
-
-
-
-        const renamed = new File([compressed], `${form.values.modelo}${form.values.placa}.jpg`, {
-            type: compressed.type,
+        const renamed = new File([original], `${form.values.modelo}${form.values.placa}.jpg`, {
+            type: original.type,
         });
 
         const formData = new FormData();
-        formData.append('imagen', renamed);
-        
-        const res = await fetch('/api/vehiculos/imagen', {
+        formData.append('file', renamed);
+        formData.append('filename', renamed.name);
+
+        const res = await fetch('/api/vehiculos/imagen/upload', {
             method: 'POST',
             body: formData,
         });
-        
-        if (res.ok) {
-            const data = await res.json();
-            form.setFieldValue('imagen',  `${form.values.modelo}${form.values.placa}.jpg`); // ← asignas el nombre al formulario 👈
-            const timestamp = Date.now();
-            setPreview(`${data.url}?t=${timestamp}`);
 
-            // setPreview(data.url);
-            onUpload?.(data.url);
-        }
+        const data = await res.json();
+        form.setFieldValue('imagen', data.url); // guardar URL en el modelo
+        setPreview(data.url + `?t=${Date.now()}`); // mostrar imagen
     };
 
     const handleDelete = async () => {
