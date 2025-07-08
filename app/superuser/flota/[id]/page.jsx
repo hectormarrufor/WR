@@ -16,7 +16,7 @@ export default function VehiculoPage({ params }) {
         
         const vehiculo = await httpGet(`/api/vehiculos/${id}`);
         if (!vehiculo) throw notFound();
-        console.log(vehiculo.imagen);
+        console.log(vehiculo);
         
         setV(vehiculo);
     }

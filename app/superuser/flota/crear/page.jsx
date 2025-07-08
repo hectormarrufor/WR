@@ -95,12 +95,12 @@ const page = () => {
         },
     });
 
-    useEffect(() => {
-        console.log(form.values);
+    // useEffect(() => {
+    //     console.log(form.values);
 
 
 
-    }, [form])
+    // }, [form])
     useEffect(() => {
         form.setValues(
             {

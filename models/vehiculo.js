@@ -70,6 +70,10 @@ const Vehiculo = sequelize.define('Vehiculo', {
     type: DataTypes.JSONB,
     allowNull: false,
   },
+  carroceria: {
+    type: DataTypes.JSONB,
+    allowNull: false,
+  },
   
   
   
