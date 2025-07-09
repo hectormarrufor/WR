@@ -171,7 +171,7 @@ const page = () => {
             ano,
             color,
             tipo,
-            peso: tipoPeso,
+            tipoPeso,
             ejes,
             neumatico,
             kilometraje,

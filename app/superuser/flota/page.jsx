@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { MantineReactTable } from 'mantine-react-table';
-import { Paper, Flex, Title, Button } from '@mantine/core';
+import { Paper, Flex, Title, Button, Badge, MantineProvider } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 
 export default function FlotaPage() {
@@ -10,7 +10,6 @@ export default function FlotaPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Carga de datos
   useEffect(() => {
     (async () => {
       const res = await fetch('/api/vehiculos');
@@ -19,7 +18,6 @@ export default function FlotaPage() {
     })();
   }, []);
 
-  // Columnas personalizadas
   const columns = useMemo(
     () => [
       { accessorKey: 'marca', header: 'Marca' },
@@ -31,9 +29,19 @@ export default function FlotaPage() {
       { accessorKey: 'ejes', header: 'Ejes' },
       { accessorKey: 'kilometraje', header: 'Kilometraje' },
       {
-        accessorFn: (row) => row.motor?.aceite?.status ?? '',
-        id: 'estadoAceite',
-        header: 'Estado aceite',
+        accessorKey: 'estado',
+        header: 'Estado',
+        Cell: ({ cell }) => {
+          const val = cell.getValue();
+          const color =
+            val === 'OK'
+              ? 'green'
+              : val === 'Próximo a mantenimiento'
+                ? 'orange'
+                : 'red';
+
+          return <Badge color={color}>{val}</Badge>;
+        },
       },
     ],
     []
@@ -41,7 +49,6 @@ export default function FlotaPage() {
 
   return (
     <Paper
-      withBorder
       radius="md"
       p="md"
       mt={90}
@@ -54,25 +61,34 @@ export default function FlotaPage() {
         </Button>
       </Flex>
 
-      <MantineReactTable
-        columns={columns}
-        data={data}
-        state={{ isLoading: loading }}
-        enableColumnFilters
-        enableSorting
-        enablePagination
-        mantineTableProps={{
-          striped: true,
-          highlightOnHover: true,
-          withBorder: false,
-          sx: { fontSize: '14px' },
-        }}
-        // Cada fila es clicable y navega al detalle
-        mantineTableBodyRowProps={({ row }) => ({
-          onClick: () => router.push(`/superuser/flota/${row.original.id}`),
-          style: { cursor: 'pointer' },
-        })}
-      />
+      <MantineProvider theme={{
+        "components": {
+          "ActionIcon": {
+            "styles": {
+              "root": {
+                "backgroundColor": "rgba(178,34,34,0)",
+                "color": "black",
+                "textTransform": "uppercase",
+                "fontWeight": 700
+              }
+            }
+          }
+        },
+      }}>
+        <MantineReactTable
+          columns={columns}
+          data={data}
+          state={{ isLoading: loading }}
+          enableColumnFilters
+          enableSorting
+          enablePagination
+
+          mantineTableBodyRowProps={({ row }) => ({
+            onClick: () => router.push(`/superuser/flota/${row.original.id}`),
+            style: { cursor: 'pointer' },
+          })}
+        />
+      </MantineProvider>
     </Paper>
   );
 }
