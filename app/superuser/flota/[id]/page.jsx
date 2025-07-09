@@ -1,6 +1,5 @@
 'use client';
 
-import { notFound, useRouter } from 'next/navigation';
 import {
   Paper,
   Title,
@@ -15,13 +14,16 @@ import {
   Box,
 } from '@mantine/core';
 import { use, useEffect, useRef, useState } from 'react';
-import { httpGet } from '../../../ApiFunctions/httpServices';
+import { useRouter, notFound } from 'next/navigation';
 import * as html2pdf from 'html2pdf.js';
 import BackButton from '../../../components/BackButton';
+import { useMediaQuery } from '@mantine/hooks';
+import { httpGet } from '../../../ApiFunctions/httpServices';
 
 export default function VehiculoPage({ params }) {
   const router = useRouter();
   const pdfRef = useRef(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const { id } = use(params);
   const [v, setV] = useState({});
@@ -40,7 +42,7 @@ export default function VehiculoPage({ params }) {
     const fetchChecklist = async () => {
       const res = await httpGet(`/api/checklists?vehiculoId=${id}`);
       if (Array.isArray(res) && res.length > 0) {
-        setChecklist(res[0]); // más reciente
+        setChecklist(res[0]);
       }
     };
     fetchChecklist();
@@ -54,42 +56,37 @@ export default function VehiculoPage({ params }) {
       html2canvas: { scale: 1.5, useCORS: true },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
     };
-
     html2pdf().set(opt).from(pdfRef.current).save();
   };
 
-
   if (!v.imagen) {
-    return (
-      <Paper withBorder radius="md" p="md" mt={90} mx={20}>
-        Cargando…
-      </Paper>
-    );
+    return <Paper p="md" mt={90} mx={20}>Cargando…</Paper>;
   }
 
   return (
-    <Paper withBorder radius="md" p="md" mt={90} mx={20} >
-        <Group position="right" mb="sm" w="100%">
-          <Flex w="100%" justify="space-between">
-            <BackButton onClick={() => router.push('/superuser/flota')}/>
-            <Button color="blue" onClick={() => router.push(`/superuser/flota/${id}/nuevoChecklist`)}>
-              Realizar revision diaria
-            </Button>
-            <Button color="blue" onClick={exportToPDF}>
-              Generar reporte PDF
-            </Button>
-          </Flex>
-        </Group>
+    <Paper p="md" mt={90} mx={isMobile ? 10 : 20}>
+      <Group position="right" mb="sm">
+        <Flex justify="space-between" wrap="wrap" w="100%" gap="sm">
+          <BackButton onClick={() => router.push('/superuser/flota')} />
+          <Button color="blue" onClick={() => router.push(`/superuser/flota/${id}/nuevoChecklist`)}>
+            Realizar revisión diaria
+          </Button>
+          {!isMobile && <Button color="blue" onClick={exportToPDF}>Generar reporte PDF</Button>}
+        </Flex>
+      </Group>
+
       <Box ref={pdfRef}>
-        <Title order={2} mb="md">
-          Ficha técnica: {v.marca} {v.modelo}
-        </Title>
-        {/* Datos generales */}
-        <Title order={3} mt="md" align="center" mb={30}>
-          Datos Generales
-        </Title>
-        <Flex justify="center">
-          <SimpleGrid cols={6} spacing="sm">
+        <Title order={2} mb="md">Ficha técnica: {v.marca} {v.modelo}</Title>
+
+        {/* Datos Generales */}
+        <Title order={3} align="center" mb="md">Datos Generales</Title>
+        <Flex direction={isMobile ? 'column' : 'row'} gap="lg" align="center">
+          <SimpleGrid
+            cols={isMobile ? 2 : 3}
+            spacing="sm"
+            breakpoints={[{ maxWidth: 'sm', cols: 1 }]}
+            style={{ flex: 1 }}
+          >
             <Text><strong>Marca:</strong> {v.marca}</Text>
             <Text><strong>Modelo:</strong> {v.modelo}</Text>
             <Text><strong>Placa:</strong> {v.placa}</Text>
@@ -103,64 +100,59 @@ export default function VehiculoPage({ params }) {
             <Text><strong>Horómetro:</strong> {v.horometro}</Text>
             <Text><strong>Correa:</strong> {v.correa}</Text>
           </SimpleGrid>
+
           <Image
             src={v.imagen}
-            h={200}
             fit="contain"
             alt={`Imagen del vehículo ${v.modelo}`}
-            className="vehiculo-foto"
+            height={isMobile ? 200 : 250}
+            w={isMobile ? '100%' : 250}
+            mt={isMobile ? 'md' : 0}
             crossOrigin="anonymous"
-
           />
         </Flex>
+
         {/* Combustible */}
         <Divider my="md" />
-        <Title order={3} mt="md" align="center" mb={30}>
-          Combustible
-        </Title>
-        <SimpleGrid cols={4} spacing="sm" mb="md">
+        <Title order={3} align="center" mb="md">Combustible</Title>
+        <SimpleGrid cols={isMobile ? 2 : 3} spacing="sm">
           <Text><strong>Tipo:</strong> {v.combustible?.tipo}</Text>
-          <Text><strong>Capacidad (L):</strong> {v.combustible?.capacidadCombustible}</Text>
+          <Text><strong>Capacidad:</strong> {v.combustible?.capacidadCombustible} L</Text>
           <Text><strong>Inyectores:</strong> {v.combustible?.inyectores}</Text>
-          <Text><strong>Filtro combustible:</strong> {v.combustible?.filtroCombustible}</Text>
+          <Text><strong>Filtro:</strong> {v.combustible?.filtroCombustible}</Text>
         </SimpleGrid>
+
         {/* Transmisión */}
         <Divider my="md" />
-        <Title order={3} mt="md" align="center" mb={30}>
-          Transmisión
-        </Title>
-        <SimpleGrid cols={6} spacing="sm" mb="md">
+        <Title order={3} align="center" mb="md">Transmisión</Title>
+        <SimpleGrid cols={isMobile ? 2 : 3} spacing="sm">
           <Text><strong># Velocidades:</strong> {v.transmision?.nroVelocidades}</Text>
-          <Text><strong>Tipo aceite:</strong> {v.transmision?.tipoAceite}</Text>
-          <Text><strong>Cantidad (L):</strong> {v.transmision?.cantidad}</Text>
-          <Text><strong>Intervalo cambio (km):</strong> {v.transmision?.intervaloCambioKm}</Text>
-          <Text><strong>Último cambio (km):</strong> {v.transmision?.ultimoCambioKm}</Text>
+          <Text><strong>Aceite:</strong> {v.transmision?.tipoAceite}</Text>
+          <Text><strong>Cantidad:</strong> {v.transmision?.cantidad} L</Text>
+          <Text><strong>Intervalo cambio:</strong> {v.transmision?.intervaloCambioKm} km</Text>
+          <Text><strong>Último cambio:</strong> {v.transmision?.ultimoCambioKm} km</Text>
           <Text><strong>Status:</strong> {v.transmision?.status}</Text>
         </SimpleGrid>
+
         {/* Motor */}
         <Divider my="md" />
-        <Title order={3} mt="md" align="center" mb={30}>
-          Motor
-        </Title>
-        <SimpleGrid cols={5} spacing="sm" mb="md">
+        <Title order={3} align="center" mb="md">Motor</Title>
+        <SimpleGrid cols={isMobile ? 2 : 3} spacing="sm">
           <Text><strong>Serial:</strong> {v.motor?.serialMotor}</Text>
           <Text><strong>Potencia:</strong> {v.motor?.potencia}</Text>
-          <Text><strong># Cilindros:</strong> {v.motor?.nroCilindros}</Text>
+          <Text><strong>Cilindros:</strong> {v.motor?.nroCilindros}</Text>
           <Text><strong>Filtro aceite:</strong> {v.motor?.filtroAceite}</Text>
           <Text><strong>Filtro aire:</strong> {v.motor?.filtroAire}</Text>
-        </SimpleGrid>
-        <SimpleGrid cols={5} spacing="sm">
           <Text><strong>Viscosidad:</strong> {v.motor?.aceite?.viscosidad}</Text>
           <Text><strong>Litros:</strong> {v.motor?.aceite?.litros}</Text>
-          <Text><strong>Intervalo cambio (km):</strong> {v.motor?.aceite?.intervaloCambioKm}</Text>
-          <Text><strong>Último cambio (km):</strong> {v.motor?.aceite?.ultimoCambioKm}</Text>
+          <Text><strong>Intervalo cambio:</strong> {v.motor?.aceite?.intervaloCambioKm} km</Text>
+          <Text><strong>Último cambio:</strong> {v.motor?.aceite?.ultimoCambioKm} km</Text>
         </SimpleGrid>
+
         {/* Carrocería */}
         <Divider my="md" />
-        <Title order={3} mt="md" align="center" mb={30}>
-          Carrocería
-        </Title>
-        <SimpleGrid cols={6} spacing="sm">
+        <Title order={3} align="center" mb="md">Carrocería</Title>
+        <SimpleGrid cols={isMobile ? 2 : 3} spacing="sm">
           <Text><strong>Serial:</strong> {v.carroceria?.serialCarroceria}</Text>
           <Text><strong>Luz baja:</strong> {v.carroceria?.tipoLuzDelanteraBaja}</Text>
           <Text><strong>Luz alta:</strong> {v.carroceria?.tipoLuzDelanteraAlta}</Text>
@@ -168,14 +160,13 @@ export default function VehiculoPage({ params }) {
           <Text><strong>Intermitente lateral:</strong> {v.carroceria?.tipoLuzIntermitenteLateral}</Text>
           <Text><strong>Luz trasera:</strong> {v.carroceria?.tipoLuzTrasera}</Text>
         </SimpleGrid>
+
         {/* Estado operativo */}
         {checklist && (
           <>
             <Divider my="xl" />
-            <Title order={3} mt="md" align="center" mb={30}>
-              Estado operativo
-            </Title>
-            <SimpleGrid cols={2} spacing="md">
+            <Title order={3} align="center" mb="md">Estado operativo</Title>
+            <SimpleGrid cols={isMobile ? 2 : 2} spacing="md">
               <Text><strong>Kilometraje:</strong> {checklist.kilometraje}</Text>
               <Text><strong>Horómetro:</strong> {checklist.horometro}</Text>
               <Text>
@@ -194,8 +185,9 @@ export default function VehiculoPage({ params }) {
                 </span>
               </Text>
             </SimpleGrid>
+
             <Title order={4} mt="md" mb="sm">Bombillos rotos</Title>
-            <Group spacing="xs" mb="lg">
+            <Group spacing="xs" mb="lg" wrap="wrap">
               {[
                 ['Luz baja', 'bombilloDelBaja'],
                 ['Luz alta', 'bombilloDelAlta'],
@@ -219,8 +211,9 @@ export default function VehiculoPage({ params }) {
                   <Text>Todas las luces están operativas</Text>
                 )}
             </Group>
+
             <Title order={4} mt="md" mb="sm">Componentes críticos</Title>
-            <Group spacing="xs">
+            <Group spacing="xs" wrap="wrap">
               {[
                 ['Filtro de aire', 'filtroAireOk'],
                 ['Filtro de aceite', 'filtroAceiteOk'],
@@ -246,9 +239,7 @@ export default function VehiculoPage({ params }) {
             </Group>
           </>
         )}
-        
       </Box>
-
     </Paper>
   );
 }

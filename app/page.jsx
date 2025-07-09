@@ -90,6 +90,9 @@ export default function LandingPage() {
                             <Button variant="outline" size="md" onClick={() => router.push('/servicios')}>
                                 Ver servicios
                             </Button>
+                            <Button color='red'size="md" onClick={() => router.push('/superuser')}>
+                                Ingresar a la Administracion
+                            </Button>
                         </Flex>
                     </Grid.Col>
                     <Grid.Col span={isMobile ? 12 : 4}>

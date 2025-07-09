@@ -25,6 +25,8 @@ import { useMantineTheme } from '@mantine/core';
 
 
 export default function RootLayout({ children }) {
+  const [showHeader, setShowHeader] = useState(true);
+
   const theme = createTheme(Theme)
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   // const { userType, isLoading } = useUserType();
@@ -36,6 +38,17 @@ export default function RootLayout({ children }) {
 
   useEffect(() => {
     console.log("isAuthenticated: ", isAuthenticated)
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      setShowHeader(currentY < lastScrollY || currentY < 50);
+      lastScrollY = currentY;
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+
   }, [])
   useEffect(() => {
     console.log("isAuthenticated: ", isAuthenticated)
@@ -70,14 +83,27 @@ export default function RootLayout({ children }) {
 
         <MantineProvider theme={theme} forceColorScheme='light'>
           <Notifications />
-          
+
           <AppShell
             header={{}}
             navbar={{ width: 300, breakpoint: 'sm', collapsed: { desktop: true, mobile: !opened } }}
             padding="md"
           >
-            <AppShell.Header zIndex={1001}>
-              <Group justify="space-between" px={isMobile? 0 : 100}>
+            <AppShell.Header
+              zIndex={1001}
+              height={60}
+              withBorder={false}
+              style={{
+                position: 'fixed',
+                top: showHeader ? 0 : -80, // se oculta hacia arriba
+                left: 0,
+                right: 0,
+                transition: 'top 0.3s ease-in-out',
+                zIndex: 1000,
+              }}
+
+            >
+              <Group justify="space-between" px={isMobile ? 0 : 100}>
                 <Image src="/logo.jpg" height={90} alt="logo" p={10} />
                 <Group h="100%" px="md">
                   <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
@@ -92,7 +118,7 @@ export default function RootLayout({ children }) {
                       }
                       {/* {userType === 'admin' &&  */}
                       <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}>Panel de administrador</UnstyledButton>
-                       {/* } */}
+                      {/* } */}
                       {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
                     </Group>
                   </Group>
@@ -103,13 +129,16 @@ export default function RootLayout({ children }) {
             <AppShell.Navbar py="md" px={4} mt={80}>
               <UnstyledButton className={classes.control} onClick={() => {
                 toggle();
-                router.push('/')}}>Inicio</UnstyledButton>
+                router.push('/')
+              }}>Inicio</UnstyledButton>
               <UnstyledButton className={classes.control} onClick={() => {
                 toggle();
-                router.push('/superuser')}}> Panel de administracion</UnstyledButton>
+                router.push('/superuser')
+              }}> Panel de administracion</UnstyledButton>
               <UnstyledButton className={classes.control} onClick={() => {
                 toggle();
-                router.push('/login')}}>Iniciar Sesion</UnstyledButton>
+                router.push('/login')
+              }}>Iniciar Sesion</UnstyledButton>
             </AppShell.Navbar>
 
             <AppShell.Main

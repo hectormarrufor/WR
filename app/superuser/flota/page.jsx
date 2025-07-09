@@ -35,38 +35,45 @@ export default function FlotaPage() {
     })();
   }, []);
 
-  const columns = useMemo(() => [
-    { accessorKey: 'marca', header: 'Marca' },
-    { accessorKey: 'modelo', header: 'Modelo' },
-    { accessorKey: 'placa', header: 'Placa' },
-    { accessorKey: 'ano', header: 'Año' },
-    { accessorKey: 'tipo', header: 'Tipo' },
-    { accessorKey: 'tipoPeso', header: 'Peso' },
-    { accessorKey: 'ejes', header: 'Ejes' },
-    { accessorKey: 'kilometraje', header: 'Kilometraje' },
-    {
-      accessorKey: 'estado',
-      header: 'Estado',
-      Cell: ({ cell }) => {
-        const val = cell.getValue();
-        const color =
-          val === 'OK'
-            ? 'green'
-            : val === 'Próximo a mantenimiento'
-            ? 'orange'
-            : 'red';
-        return <Badge color={color}>{val}</Badge>;
+  const columns = useMemo(() => {
+    const baseColumns = [
+      { accessorKey: 'marca', header: 'Marca' },
+      { accessorKey: 'modelo', header: 'Modelo' },
+      { accessorKey: 'placa', header: 'Placa' },
+      {
+        accessorKey: 'estado',
+        header: 'Estado',
+        Cell: ({ cell }) => {
+          const val = cell.getValue();
+          const color =
+            val === 'OK'
+              ? 'green'
+              : val === 'Próximo a mantenimiento'
+                ? 'orange'
+                : 'red';
+          return <Badge color={color}>{val}</Badge>;
+        },
       },
-    },
-  ], []);
+    ];
+
+    const extraColumns = [
+      { accessorKey: 'ano', header: 'Año' },
+      { accessorKey: 'tipo', header: 'Tipo' },
+      { accessorKey: 'tipoPeso', header: 'Peso' },
+      { accessorKey: 'ejes', header: 'Ejes' },
+      { accessorKey: 'kilometraje', header: 'Kilometraje' },
+    ];
+
+    return isMobile ? baseColumns : [...baseColumns, ...extraColumns];
+  }, [isMobile]);
 
   return (
     <Container size="100%" py="md" mx={0} px={0} >
       <Paper
-        radius="md"
-        p="xs"
+        radius={isMobile ? 0 : "md"}
+        p={isMobile ? 0 : "xs"}
         mt={80}
-        mx={20}
+        mx={isMobile ? 0 : 20}
         withBorder
         style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
       >
@@ -96,17 +103,27 @@ export default function FlotaPage() {
             },
           }}
         >
-          <ScrollArea offsetScrollbars>
+          <ScrollArea w="100%" p={0}>
             <MantineReactTable
               columns={columns}
+              w="100%"
               data={data}
               state={{ isLoading: loading }}
               enableColumnFilters
-              enableSorting
+              enableDensityToggle={false}
+              enableFullScreenToggle={false}
+              enableHiding={false}
+              enableSorting={false}
               enablePagination
               mantineTableProps={{
                 striped: true,
                 highlightOnHover: true,
+              }}
+
+              mantineTableHeadCellProps={{
+                style: {
+                  backgroundColor: "lightblue"
+                }
               }}
               mantineTableBodyRowProps={({ row }) => ({
                 onClick: () => router.push(`/superuser/flota/${row.original.id}`),
