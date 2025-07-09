@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function notfound() {
     return (
-        <Card centered>
+        <Card   align="center" mt="40vh">
             <h1>
                 Error 404: la pagina no se consigue
             </h1>

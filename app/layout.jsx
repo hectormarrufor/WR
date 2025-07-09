@@ -80,9 +80,9 @@ export default function RootLayout({ children }) {
               <Group justify="space-between" px={isMobile? 0 : 100}>
                 <Image src="/logo.jpg" height={90} alt="logo" p={10} />
                 <Group h="100%" px="md">
-                  <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+                  <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                   <Group justify="space-evenly" style={{ flex: 1 }}>
-                    <Group ml="xl" gap={0} visibleFrom="sm">
+                    <Group ml="xl" gap={0} visibleFrom="md">
                       <UnstyledButton className={classes.control} onClick={() => router.push('/')}>Inicio</UnstyledButton>
                       {/* <UnstyledButton className={classes.control} onClick={() => router.push('/stones')}>Nuestros Productos</UnstyledButton> */}
                       {!isAuthenticated ?
@@ -90,7 +90,9 @@ export default function RootLayout({ children }) {
                         :
                         <UnstyledButton className={classes.control} onClick={() => cerrarSesion(router.push, checkAuth)}>Cerrar Sesion</UnstyledButton>
                       }
-                      {userType === 'admin' && <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}>Panel de administrador</UnstyledButton>}
+                      {/* {userType === 'admin' &&  */}
+                      <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}>Panel de administrador</UnstyledButton>
+                       {/* } */}
                       {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
                     </Group>
                   </Group>
@@ -98,18 +100,23 @@ export default function RootLayout({ children }) {
               </Group>
             </AppShell.Header>
 
-            <AppShell.Navbar py="md" px={4}>
-              <UnstyledButton className={classes.control}>Home</UnstyledButton>
-              <UnstyledButton className={classes.control}>Blog</UnstyledButton>
-              <UnstyledButton className={classes.control}>Contacts</UnstyledButton>
-              <UnstyledButton className={classes.control}>Support</UnstyledButton>
+            <AppShell.Navbar py="md" px={4} mt={80}>
+              <UnstyledButton className={classes.control} onClick={() => {
+                toggle();
+                router.push('/')}}>Inicio</UnstyledButton>
+              <UnstyledButton className={classes.control} onClick={() => {
+                toggle();
+                router.push('/superuser')}}> Panel de administracion</UnstyledButton>
+              <UnstyledButton className={classes.control} onClick={() => {
+                toggle();
+                router.push('/login')}}>Iniciar Sesion</UnstyledButton>
             </AppShell.Navbar>
 
             <AppShell.Main
               px={0}
             >
               {children}
-              {(path == "/") || (path.includes(`/drawings/`)) ? null : <Image
+              <Image
                 style={{
                   height: 1000,
                   opacity: 0.5,
@@ -120,7 +127,7 @@ export default function RootLayout({ children }) {
                   zIndex: -1,
                 }}
                 src="https://dycowelldrilling.com/wp-content/uploads/2023/02/a-pumpjack-at-an-oil-drilling-site-at-sunset-2022-03-04-02-28-48-utc-scaled.jpg"
-              />}
+              />
             </AppShell.Main>
 
           </AppShell>
