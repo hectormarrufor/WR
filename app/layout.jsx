@@ -18,16 +18,20 @@ import { cerrarSesion } from './ApiFunctions/userServices';
 import useImage from 'use-image';
 import Head from 'next/head';
 import "./global.css"
+import { useMediaQuery } from '@mantine/hooks';
+import { useMantineTheme } from '@mantine/core';
+
 
 
 
 export default function RootLayout({ children }) {
+  const theme = createTheme(Theme)
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   // const { userType, isLoading } = useUserType();
   const { isAuthenticated, checkAuth, userType, isLoading } = useAuth();
 
   const [opened, { toggle }] = useDisclosure();
   const router = useRouter();
-  const theme = createTheme(Theme)
   const path = (usePathname());
 
   useEffect(() => {
@@ -73,7 +77,7 @@ export default function RootLayout({ children }) {
             padding="md"
           >
             <AppShell.Header zIndex={1001}>
-              <Group justify="space-between" px={100}>
+              <Group justify="space-between" px={isMobile? 0 : 100}>
                 <Image src="/logo.jpg" height={90} alt="logo" p={10} />
                 <Group h="100%" px="md">
                   <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />

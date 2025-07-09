@@ -1,30 +1,57 @@
-"use client"
-import { Button, Card, Flex, Title } from '@mantine/core'
-import React from 'react'
-import styles from './superuser.css'
+'use client';
+
+import { Button, Card, Title, Stack, Grid } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 
-const superuser = () => {
-    const router = useRouter();
-    return (
-        <Card
-            style={{
-                height: "50vh",
-                backgroundColor: "white"
-            }}
-          
-            m={100}
-            
+export default function SuperUserHome() {
+  const router = useRouter();
 
-        >
-            <Title justify="center" align="center">Administracion</Title>
-            <Flex justify="space-around" align="center">
-                <Button m={120} className={styles.superuserbtn} onClick={() => router.push('/superuser/flota')}>Flota</Button>
-                <Button m={120} className={styles.superuserbtn} onClick={() => router.push('/superuser/usuarios')}>Usuarios</Button>
-                <Button m={120} className={styles.superuserbtn} onClick={() => router.push('/superuser/orders')}>Orders</Button>
-            </Flex>
-        </Card>
-    )
+  return (
+    <Stack justify="center" align="center" h="100vh">
+      <Card
+        shadow="md"
+        padding="xl"
+        radius="md"
+        withBorder
+        style={{ width: '100%', maxWidth: 600, backgroundColor: 'white' }}
+      >
+        <Title order={2} align="center" mb="lg">
+          Administración
+        </Title>
+
+        <Grid grow>
+          <Grid.Col span={4}>
+            <Button
+              fullWidth
+              variant="outline"
+              color="dark"
+              onClick={() => router.push('/superuser/flota')}
+            >
+              Flota
+            </Button>
+          </Grid.Col>
+          <Grid.Col span={4}>
+            <Button
+              fullWidth
+              variant="outline"
+              color="dark"
+              onClick={() => router.push('/superuser/usuarios')}
+            >
+              Usuarios
+            </Button>
+          </Grid.Col>
+          <Grid.Col span={4}>
+            <Button
+              fullWidth
+              variant="outline"
+              color="dark"
+              onClick={() => router.push('/superuser/orders')}
+            >
+              Orders
+            </Button>
+          </Grid.Col>
+        </Grid>
+      </Card>
+    </Stack>
+  );
 }
-
-export default superuser

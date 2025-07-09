@@ -1,6 +1,8 @@
 'use client'
 import React, { useEffect, useState } from 'react';
 import { useForm } from '@mantine/form';
+import { useMediaQuery } from '@mantine/hooks';
+import { useMantineTheme } from '@mantine/core'
 import {
     TextInput,
     PasswordInput,
@@ -36,6 +38,8 @@ import { TipoBombilloSelect } from './TipoBombilloSelect';
 import { ImagenVehiculoUploader } from './ImageVehiculoUploader';
 
 const page = () => {
+    const theme = useMantineTheme();
+    const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const form = useForm({
@@ -157,13 +161,13 @@ const page = () => {
             }
         )
 
-       
+
     }, [])
 
 
     const handleSubmit = async (values) => {
         setLoading(true);
-        const {marca, modelo, placa, ano, imagen, color, tipo, tipoPeso, ejes, neumatico, kilometraje, horometro, correa, combustible, transmision, motor, carroceria} = form.values
+        const { marca, modelo, placa, ano, imagen, color, tipo, tipoPeso, ejes, neumatico, kilometraje, horometro, correa, combustible, transmision, motor, carroceria } = form.values
         const vehiculoOrdenado = {
             marca,
             modelo,
@@ -198,14 +202,23 @@ const page = () => {
 
     return (
         <>
-            <Box sx={{ maxWidth: 200 }} >
-                <Card mx={30} mt={100} p={0} h="80vh" >
-
-                    {/* ENCABEZADO DE REGISTRO CON BOTON ATRAS */}
-                    <Grid align="center">
-                        {/* Columna izquierda: botón */}
-                        <Grid.Col span={4}>
-                            <Box style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Box sx={{ maxWidth: "100%", padding: "1rem" }}>
+                <Card
+                    mx="auto"
+                    mt={100}
+                    p="md"
+                    radius="md"
+                    shadow="sm"
+                    style={{
+                        width: "100%",
+                        maxWidth: 1100,
+                        height: "auto",
+                        backgroundColor: "white",
+                    }}
+                >
+                    <Grid align="center" gutter="md" breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
+                        <Grid.Col span={4} xs={12} sm={4}>
+                            <Box style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start' }}>
                                 <BackButton
                                     onClick={() =>
                                         form.values.tipoPeso !== ''
@@ -215,47 +228,53 @@ const page = () => {
                                 />
                             </Box>
                         </Grid.Col>
-                        <Grid.Col span={4}>
+
+                        <Grid.Col span={4} xs={12} sm={4}>
                             <Box style={{ textAlign: 'center' }}>
-                                <Title order={2}>Registro de vehículo</Title>
+                                <Title order={2} size={isMobile ? 'h4' : 'h2'}>
+                                    Registro de vehículo
+                                </Title>
                             </Box>
                         </Grid.Col>
 
-                        {/* Columna derecha: vacío o futuro contenido */}
-                        <Grid.Col span={4}>
+                        <Grid.Col span={4} xs={12} sm={4}>
                             <Box />
                         </Grid.Col>
-
                     </Grid>
 
-                    {form.values.tipoPeso === '' ?
-                        // MENU EN CASO DE QUE NO HAYA UN TIPO DE PESO SELECCIONADO
-                        <>
-                            <Flex direction="column" align="center" p="15vh">
-                                <Title order={3} align="center" p="xl">Que tipo de flota desea registrar?</Title>
-                                <Flex direction="row" justify="center">
-                                    <Button m="lg" onClick={() => form.setValues({ ...form.values, tipoPeso: "liviana" })}>Liviana</Button>
-                                    <Button m="lg" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>Pesada</Button>
-                                </Flex>
+                    {form.values.tipoPeso === '' ? (
+                        <Flex direction="column" align="center" p={isMobile ? "5vh" : "15vh"}>
+                            <Title order={3} align="center" p="xl">
+                                ¿Qué tipo de flota desea registrar?
+                            </Title>
+                            <Flex
+                                direction={isMobile ? "column" : "row"}
+                                gap="md"
+                                justify="center"
+                                wrap="wrap"
+                            >
+                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "liviana" })}>
+                                    Liviana
+                                </Button>
+                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
+                                    Pesada
+                                </Button>
                             </Flex>
-                        </>
-
-                        :
-
-                        // MENU EN CASO DE QUE HAY UN TIPO DE PESO SELECCIONADO
+                        </Flex>
+                    ) : (
                         <ScrollArea
+                            type="always"
                             styles={{
                                 viewport: {
-                                    backgroundColor: '#f1f3f5', // esto solo afecta el área donde se hace scroll
+                                    backgroundColor: '#f1f3f5',
                                     margin: 0,
-                                    padding: 20
-                                }
+                                    padding: 20,
+                                },
                             }}
                         >
-
                             <form onSubmit={form.onSubmit(handleSubmit)}>
                                 <SimpleGrid
-                                    cols={2}
+                                    cols={isMobile ? 1 : 2}
                                     spacing="xs"
                                     verticalSpacing="xs"
                                     breakpoints={[{ maxWidth: 'sm', cols: 1 }]}
@@ -293,11 +312,11 @@ const page = () => {
 
                                         <SectionBox section="transmision" title="⚙️ Carroceria" cols={3}>
                                             <TextInput size='xs' label="Serial de Carrocería" required {...form.getInputProps('carroceria.serialCarroceria')} />
-                                            <TipoBombilloSelect form={form} posicion = "tipoLuzDelanteraBaja" label="Bombillo delantero baja" {...form.getInputProps('carroceria.tipoLuzDelanteraBaja')} />
-                                            <TipoBombilloSelect form={form} posicion = "tipoLuzDelanteraAlta" label="Bombillo delantero alta" {...form.getInputProps('carroceria.tipoLuzDelanteraAlta')} />
-                                            <TipoBombilloSelect form={form} posicion = "tipoLuzIntermitenteDelantera" label="Bombillo delantero intermitente" {...form.getInputProps('carroceria.tipoLuzIntermitenteDelantera')} />
-                                            <TipoBombilloSelect form={form} posicion = "tipoLuzIntermitenteLateral" label="Bombillo lateral intermitente" {...form.getInputProps('carroceria.tipoLuzIntermitenteLateral')} />
-                                            <TipoBombilloSelect form={form} posicion = "tipoLuzTrasera" label="Bombillo trasero" {...form.getInputProps('carroceria.tipoLuzTrasera')} />
+                                            <TipoBombilloSelect form={form} posicion="tipoLuzDelanteraBaja" label="Bombillo delantero baja" {...form.getInputProps('carroceria.tipoLuzDelanteraBaja')} />
+                                            <TipoBombilloSelect form={form} posicion="tipoLuzDelanteraAlta" label="Bombillo delantero alta" {...form.getInputProps('carroceria.tipoLuzDelanteraAlta')} />
+                                            <TipoBombilloSelect form={form} posicion="tipoLuzIntermitenteDelantera" label="Bombillo delantero intermitente" {...form.getInputProps('carroceria.tipoLuzIntermitenteDelantera')} />
+                                            <TipoBombilloSelect form={form} posicion="tipoLuzIntermitenteLateral" label="Bombillo lateral intermitente" {...form.getInputProps('carroceria.tipoLuzIntermitenteLateral')} />
+                                            <TipoBombilloSelect form={form} posicion="tipoLuzTrasera" label="Bombillo trasero" {...form.getInputProps('carroceria.tipoLuzTrasera')} />
 
                                         </SectionBox>
 
@@ -375,14 +394,14 @@ const page = () => {
                                     </Stack>
                                 </SimpleGrid>
                             </form>
-
-
                         </ScrollArea>
-                    }
+                    )}
                 </Card>
             </Box>
-
         </>
+
+
+
     );
 }
 export default page
