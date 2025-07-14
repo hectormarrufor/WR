@@ -1,6 +1,6 @@
 // app/api/vehiculos/route.js
 import { NextResponse } from 'next/server';
-import  { Vehiculo , FichaTecnica } from '../../../models';
+import { Vehiculo, FichaTecnica, Kilometraje, Horometro } from '../../../models';
 
 export async function GET() {
   try {
@@ -10,6 +10,21 @@ export async function GET() {
         {
           model: FichaTecnica,
           as: 'fichaTecnica', // Asegúrate de que 'as' coincide con tu asociación en Vehiculo.associate
+        },
+        {
+          model: Kilometraje,
+          as: 'kilometrajes', // Asegúrate que 'as' coincide con tu asociación en Vehiculo
+          order: [['fechaRegistro', 'DESC']], // Ordenar para obtener el más reciente primero
+          limit: 1, // Limitar a 1 para obtener solo el más reciente
+          required: false, // No requiere que haya kilometrajes para traer el vehículo
+        },
+        // Incluir la última entrada de Horometro
+        {
+          model: Horometro,
+          as: 'horometros', // Asegúrate que 'as' coincide con tu asociación en Vehiculo
+          order: [['fecha', 'DESC']], // Ordenar para obtener el más reciente primero
+          limit: 1, // Limitar a 1 para obtener solo el más reciente
+          required: false,
         },
       ],
     });
@@ -43,7 +58,7 @@ export async function POST(request) {
       estadoOperativoGeneral: body.estadoOperativoGeneral,
     };
     const nuevoVehiculo = await Vehiculo.create(vehiculoData);
-  
+
 
     // 2. Crear la Ficha Técnica asociada
     const fichaTecnicaData = {
@@ -68,11 +83,11 @@ export async function POST(request) {
         fechaRegistro: new Date(), // O body.fechaInicialKilometraje si la envías
         vehiculoId: nuevoVehiculo.id,
       };
-      await Kilometraje.create(kilometrajeData);
-
+      const kilometraj = await Kilometraje.create(kilometrajeData);
+      console.log(kilometraj)
     } else {
-        console.warn(`Advertencia: No se proporcionó 'kilometraje' para el vehículo ${nuevoVehiculo.id}.`);
-        // Considera si quieres lanzar un error o hacer el campo obligatorio.
+      console.warn(`Advertencia: No se proporcionó 'kilometraje' para el vehículo ${nuevoVehiculo.id}.`);
+      // Considera si quieres lanzar un error o hacer el campo obligatorio.
     }
 
     // 4. Crear el registro de Horómetro inicial
@@ -84,8 +99,8 @@ export async function POST(request) {
       };
       await Horometro.create(horometroData);
     } else {
-        console.warn(`Advertencia: No se proporcionó 'horometroInicial' para el vehículo ${nuevoVehiculo.id}.`);
-        // Considera si quieres lanzar un error o hacer el campo obligatorio.
+      console.warn(`Advertencia: No se proporcionó 'horometroInicial' para el vehículo ${nuevoVehiculo.id}.`);
+      // Considera si quieres lanzar un error o hacer el campo obligatorio.
     }
 
     // Si todo fue exitoso, responde con el vehículo creado (o un mensaje de éxito)

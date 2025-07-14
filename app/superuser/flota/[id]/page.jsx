@@ -124,7 +124,24 @@ export default function VehiculoPage({ params }) {
         if (!data) {
           throw new Error('Vehículo no encontrado');
         }
-        setVehiculo(data);
+        console.log(data);
+        const v = {
+          ano: data.ano,
+          color: data.color,
+          createdAt: data.createdAt,
+          fichaTecnica: data.fichaTecnica,
+          horometro: data.horometros[0]?.horas,
+          imagen: data.imagen,
+          inspecciones: data.inspecciones,
+          kilometraje: data.kilometrajes[0]?.kilometrajeActual,
+          mantenimientos: data.mantenimientos,
+          marca: data.marca,
+          modelo: data.modelo,
+          placa: data.placa,
+          updatedAt: data.updatedAt,
+          vin: data.vin,
+        }
+        setVehiculo(v);
       } catch (err) {
         setError(err.message);
         console.error('Error fetching vehicle data:', err);

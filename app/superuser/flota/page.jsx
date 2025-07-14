@@ -32,8 +32,29 @@ export default function FlotaPage() {
     (async () => {
       const res = await fetch('/api/vehiculos');
       const data = await res.json();
-      console.log(data)
-      setData(data);
+      let vs = data.map(v => {return {
+        ano: v.ano,
+        color: v.color,
+        createdAt: v.createdAt,
+        tipo: v.fichaTecnica.tipo,
+        tipoPeso: v.fichaTecnica.tipoPeso,
+        // fichaTecnica: v.fichaTecnica,
+        horometro: v.horometros?.length > 0 ? v.horometros[0].horas  : 0,
+        imagen: v.imagen,
+        ejes: v.fichaTecnica.ejes,
+        inspecciones: v.inspecciones,
+        kilometraje: v.kilometrajes?.length > 0 ? v.kilometrajes[0].kilometrajeActual : 0,
+        mantenimientos: v.mantenimientos,
+        marca: v.marca,
+        modelo: v.modelo,
+        placa: v.placa,
+        updatedAt: v.updatedAt,
+        vin: v.vin,
+        estado: v.estadoOperativoGeneral
+
+      }})
+      console.log(vs)
+      setData(vs);
       setLoading(false);
     })();
   }, []);
@@ -48,7 +69,6 @@ export default function FlotaPage() {
         header: 'Estado',
         Cell: ({ cell }) => {
           const val = cell.getValue();
-          notifications.show({title: val})
           const color =
             val === 'OK'
               ? 'green'

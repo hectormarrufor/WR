@@ -1,6 +1,6 @@
 // app/api/vehiculos/[id]/route.js
 import { NextResponse } from 'next/server';
-import {Vehiculo, FichaTecnica, EstadoSistemaVehiculo, Inspeccion, HallazgoInspeccion, Kilometraje, Horometro, Mantenimiento, TareaMantenimiento, ConsumibleUsado, Consumible} from '../../../../models';
+import { Vehiculo, FichaTecnica, EstadoSistemaVehiculo, Inspeccion, HallazgoInspeccion, Kilometraje, Horometro, Mantenimiento, TareaMantenimiento, ConsumibleUsado, Consumible } from '../../../../models';
 
 // GET un vehículo por ID
 export async function GET(request, { params }) {
@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
           model: FichaTecnica,
           as: 'fichaTecnica',
         },
-         {
+        {
           model: Kilometraje,
           as: 'kilometrajes', // Asegúrate que 'as' coincide con tu asociación en Vehiculo
           order: [['fechaRegistro', 'DESC']], // Ordenar para obtener el más reciente primero
