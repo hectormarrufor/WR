@@ -53,7 +53,19 @@ export default function SuperUserHome() {
                         Mudanzas (en construcción)
                     </Button>
                     <Button fullWidth variant="outline" color="dark" disabled>
-                        Recursos Humanos (en construcción)
+                        Tesoreria (en construcción)
+                    </Button>
+                    <Button fullWidth variant="outline" color="dark" disabled>
+                        Compras (en construcción)
+                    </Button>
+                    <Button fullWidth variant="outline" color="dark" disabled>
+                        Ventas (en construcción)
+                    </Button>
+                    <Button fullWidth variant="outline" color="dark" disabled>
+                        Inventario (en construcción)
+                    </Button>
+                    <Button fullWidth variant="outline" color="dark" onClick={() => router.push('./superuser/rrhh')}>
+                        Recursos Humanos
                     </Button>
 
                     {/* Puedes seguir agregando más botones aquí */}

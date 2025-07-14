@@ -10,8 +10,6 @@ const TipoAceiteCaja = require('./flota/tipoAceiteCaja');
 const TipoAceiteMotor = require('./flota/tipoAceiteMotor');
 const TipoBombillo = require('./flota/tipoBombillo');
 const Vehiculo = require('./flota/vehiculo');
-const Consumible = require('./flota/consumible');
-const ConsumibleUsado = require('./flota/consumibleUsado');
 const EstadoSistemaVehiculo = require('./flota/estadoSistemaVehiculo');
 const FichaTecnica = require('./flota/fichaTecnica');
 const HallazgoInspeccion = require('./flota/hallazgoInspeccion');
@@ -19,9 +17,40 @@ const Inspeccion = require('./flota/inspeccion');
 const Kilometraje = require('./flota/kilometraje');
 const Horometro = require('./flota/horometro');
 const Mantenimiento = require('./flota/mantenimiento');
-const Parte = require('./flota/parte');
-const ParteUsada = require('./flota/parteUsada');
 const TareaMantenimiento = require('./flota/tareaMantenimiento');
+
+// NUEVOS MODELOS DE RECURSOS HUMANOS
+const Empleado = require('./recursosHumanos/Empleado');
+const Puesto = require('./recursosHumanos/Puesto');
+const EmpleadoPuesto = require('./recursosHumanos/EmpleadoPuesto');
+
+
+// NUEVOS MODELOS DE OPERACIONES
+const ContratoServicio = require('./operaciones/ContratoServicio');
+const RenglonContrato = require('./operaciones/RenglonContrato');
+const Mudanza = require('./operaciones/Mudanza');
+const AsignacionPersonalMudanza = require('./operaciones/AsignacionMudanza');
+const AsignacionVehiculoMudanza = require('./operaciones/AsignacionVehiculoMudanza');
+const OperacionCampo = require('./operaciones/OperacionCampo');
+const AsignacionVehiculoOperacion = require('./operaciones/AsignacionVehiculoOperacion');
+const TrabajoExtra = require('./operaciones/TrabajoExtra');
+const ConsumoAlimento = require('./operaciones/ConsumoAlimento');
+
+
+// INVENTARIO (Ahora más completo)
+const Consumible = require('./inventario/Consumible');
+const ConsumibleUsado = require('./inventario/ConsumibleUsado');
+const Proveedor = require('./inventario/Proveedor');
+const OrdenCompra = require('./inventario/OrdenCompra');
+const DetalleOrdenCompra = require('./inventario/DetalleOrdenCompra');
+const EntradaInventario = require('./inventario/EntradaInventario');
+const SalidaInventario = require('./inventario/SalidaInventario');
+
+// TESORERIA (¡NUEVOS!)
+const CuentaBancaria = require('./tesoreria/CuentaBancaria');
+const MovimientoTesoreria = require('./tesoreria/MovimientoTesoreria');
+
+
 
 
 // --- Crear un objeto 'db' (o ') para agruparlos ---
@@ -43,9 +72,26 @@ const db = {
     Kilometraje,
     Horometro,
     Mantenimiento,
-    Parte,
-    ParteUsada,
     TareaMantenimiento,
+    AsignacionPersonalMudanza,
+    AsignacionVehiculoMudanza,
+    AsignacionVehiculoOperacion,
+    ConsumoAlimento,
+    ContratoServicio,
+    Mudanza,
+    OperacionCampo,
+    RenglonContrato,
+    TrabajoExtra,
+    Empleado,
+    EmpleadoPuesto,
+    Puesto,
+    Proveedor,
+    OrdenCompra,
+    EntradaInventario,
+    SalidaInventario,
+    DetalleOrdenCompra,
+    CuentaBancaria,
+    MovimientoTesoreria
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

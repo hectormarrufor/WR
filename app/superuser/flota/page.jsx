@@ -33,6 +33,7 @@ export default function FlotaPage() {
       const res = await fetch('/api/vehiculos');
       const data = await res.json();
       let vs = data.map(v => {return {
+        id: v.id,
         ano: v.ano,
         color: v.color,
         createdAt: v.createdAt,
@@ -70,11 +71,14 @@ export default function FlotaPage() {
         Cell: ({ cell }) => {
           const val = cell.getValue();
           const color =
-            val === 'OK'
+            val === 'Operativo'
               ? 'green'
-              : val === 'atencion'
+              : val === 'Operativo con Advertencias'
                 ? 'orange'
-                : val === 'Mantenimiento urgente' && 'red';
+                : val === 'No operativo' ? 'red' :
+                val === 'En Taller' ? 'blue':
+                val === 'Desconocido' && 'gray';
+                ;
           return <Badge color={color}>{val}</Badge>;
         },
       },
