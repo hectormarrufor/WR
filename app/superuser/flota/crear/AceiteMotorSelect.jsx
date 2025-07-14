@@ -35,8 +35,12 @@ export function AceiteMotorSelect({ form }) {
   const [data, setData] = useState([]);
   useEffect(() => {
     (async () => {
-      const tipos = await httpGet('/api/vehiculos/aceiteMotor');
-      setData(tipos.map((t) => t.tipo));
+      try {
+        const tipos = await httpGet('/api/vehiculos/aceiteMotor');
+        setData(tipos.map((t) => t.tipo));
+      } catch (error) {
+        notifications.show({title: `No se pudo obtener los datos del aceite: ${error.message}`})
+      }
     })();
   }, []);
 

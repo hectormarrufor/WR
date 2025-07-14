@@ -68,47 +68,90 @@ export default function NuevoChecklistPage() {
             fecha: new Date(),
             kilometraje: 0,
             horometro: 0,
-            aceiteUltimoCambioKm: 0,
-
             luces: {
                 necesitaReemplazo: false,
-                bombilloDelBaja: false,
-                bombilloDelAlta: false,
-                intermitenteDelFrizq: false,
-                intermitenteDelFder: false,
-                intermitenteLateral: false,
+                necesitaReemplazoDelantero: false,
+                necesitaReemplazoTrasero: false,
+                bombilloBajaDerecho: false,
+                bombilloBajaIzquierdo: false,
+                bombilloAltaDerecho: false,
+                bombilloAltaIzquierdo: false,
+                intermitenteDelanteroDerecho: false,
+                intermitenteDelanteroIzquierdo: false,
+                intermitenteLateralIzquierdo: false,
+                intermitenteLateralDerecho: false,
+                intermitenteTraseroDerecho: false,
+                intermitenteTraseroIzquierdo: false,
                 bombilloTrasero: false,
                 reemplazoProgramado: 'futuro', // 'hoy' o 'futuro'
             },
 
+            filtros: {
+                necesitaReemplazo: false,
+                filtroCombustible1: false,
+                filtroCombustible2: false,
+                filtroCombustible3: false,
+                filtroAceite1: false,
+                filtroAceite2: false,
+                filtroAceite3: false,
+                filtroAire1: false,
+                filtroAire2: false,
+                filtroAire3: false,
+            },
+            correas: {
+                necesitaReemplazo: false,
+                correa1: false,
+                correa2: false,
+                correa3: false,
+            },
+            neumaticos: {
+                necesitaReemplazo: false,
+                delanteroDerecho: false,
+                delanteroIzquierdo: false,
+                traseroDerecho: false,
+                traseroIzquierdo: false,
+            },
+            liquidos: {
+                requiereCompletar: false,
+                nivelMotor: '',
+                nivelTransmision: '',
+                nivelDireccion: '',
+                nivelFrenos: '',
+                nivelRefrigerante: '',
+            },
+            motor: {
+                necesitaReparacion: false,
+                observacion: "",
+            },
+            transmision: {
+                necesitaReparacion: false,
+                observacion: "",
+            },
+            sistemaDireccion: {
+                necesitaReparacion: false,
+                observacion: "",
+            },
+            frenos: {
+                necesitaReparacion: false,
+                observacion: "",
+            },
 
+            //Por eliminar
             filtroAireOk: true,
             filtroAceiteOk: true,
             filtroCombustibleOk: true,
             correaOk: true,
             neumaticoOk: true,
             inyectoresOk: true,
-            aceite: {
-                cambio: false,
-                fechaCambio: new Date(),
-                realizadoPor: '',
-                autorizadoPor: '',
-
-            },
         }
     }
     );
 
     useEffect(() => {
-        console.log("entre en useffect")
-        console.log(vehiculo, ultimoChecklist);
-        if (vehiculo && ultimoChecklist) {
+        if (vehiculo ) {
             form.setValues({
-                fecha: new Date(),
-                kilometraje: ultimoChecklist.kilometraje,
-                horometro: ultimoChecklist.horometro,
-                aceiteUltimoCambioKm: ultimoChecklist.aceiteUltimoCambioKm,
-                // ...otros valores si quieres precargar más
+                kilometraje: ultimoChecklist ? ultimoChecklist.kilometraje : vehiculo.kilometraje,
+                horometro: ultimoChecklist ? ultimoChecklist.horometro : vehiculo.horometro,
             });
         }
     }, [vehiculo, ultimoChecklist]);
@@ -118,6 +161,13 @@ export default function NuevoChecklistPage() {
             form.setFieldValue('fecha', new Date());
         }
     }, [form.values.fechaModo]);
+
+    useEffect(() => {
+      console.log(form.values);
+      
+    
+    }, [form])
+    
 
     const handleSubmit = async (vals) => {
         await fetch('/api/checklists', {
@@ -133,7 +183,7 @@ export default function NuevoChecklistPage() {
     return (
         <Paper withBorder p="md" radius="md" mt={90} mx={20}>
             <SimpleGrid cols={3} spacing="xs" mb="md">
-                <BackButton onClick={() => router.push('/superuser/flota')}/>
+                <BackButton onClick={() => router.push(`/superuser/flota/${id}`)} />
                 <Title order={2} mb="md">
                     Revisión {vehiculo.marca} {vehiculo.modelo}
                 </Title>
@@ -209,37 +259,32 @@ export default function NuevoChecklistPage() {
                 </SimpleGrid>
 
                 <GrupoCondicional
-                    label="Aceite"
-                    pregunta="¿Se hará cambio de aceite?"
-                    instruccion="Complete los siguientes campos:"
-                    clave="aceite"
-                    tipo="especialAceite"
-                    campos={[
-                        ['Fecha del cambio', 'aceite.fechaCambio', 'date'],
-                        ['Realizado por', 'aceite.realizadoPor', 'text'],
-                        ['Autorizado por', 'aceite.autorizadoPor', 'text'],
-                    ]}
+                    tipo="liquidos"
+                    clave="liquidos"
                     form={form}
+                    label="Revisión de niveles de líquidos"
                 />
-
-
                 <GrupoCondicional
                     label="Luces / Bombillos"
                     pregunta="¿Algún bombillo necesita reemplazo?"
-                    instruccion="Marca los bombillos afectados y si serán reemplazados hoy o después:"
+                    instruccion="Marca los bombillos afectados"
                     clave="luces"
                     tipo="especialLuces"
                     campos={[
-                        ['Luz baja', 'luces.bombilloDelBaja'],
-                        ['Luz alta', 'luces.bombilloDelAlta'],
-                        ['Intermitente izq.', 'luces.intermitenteDelFrizq'],
-                        ['Intermitente der.', 'luces.intermitenteDelFder'],
-                        ['Intermitente lateral', 'luces.intermitenteLateral'],
+                        ['Luz baja derecha', 'luces.bombilloBajaDerecho'],
+                        ['Luz baja izquierda', 'luces.bombilloBajaIzquierdo'],
+                        ['Luz alta derecha', 'luces.bombilloAltaDerecho'],
+                        ['Luz alta izquierda', 'luces.bombilloAltaIzquierdo'],
+                        ['Intermitente Delantero Derecho.', 'luces.intermitenteDelanteroDerecho'],
+                        ['Intermitente Delantero Izquierdo.', 'luces.intermitenteDelanteroIzquierdo'],
+                        ['Intermitente Lateral Derecho.', 'luces.intermitenteLateralDerecho'],
+                        ['Intermitente Lateral Izquierdo.', 'luces.intermitenteLateralIzquierdo'],
+                        ['Intermitente Trasero Derecho.', 'luces.intermitenteTraseroDerecho'],
+                        ['Intermitente Trasero Izquierdo.', 'luces.intermitenteTraseroIzquierdo'],
                         ['Luz trasera', 'luces.bombilloTrasero'],
                     ]}
                     form={form}
                 />
-
 
                 <Divider label="Componentes mecánicos" labelPosition="center" my="md" />
                 <SimpleGrid cols={3} spacing="xs">

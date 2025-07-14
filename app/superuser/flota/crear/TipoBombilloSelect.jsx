@@ -15,9 +15,8 @@ export function TipoBombilloSelect({ form, posicion, label }) {
   const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
 
   // 1) Estados locales
-  const getNested = () => form.values.carroceria?.[posicion] || '';
   const [data, setData] = useState([]);
-  const [search, setSearch] = useState(getNested());
+  const [search, setSearch] = useState(form.values.posicion || '');
   const [createModal, setCreateModal] = useState(false);
 
   // 2) Carga inicial de opciones
@@ -28,9 +27,9 @@ export function TipoBombilloSelect({ form, posicion, label }) {
     })();
   }, []);
 
-  // 3) Sincronizar cuando cambie form.values.carroceria[posicion]
+  // 3) Sincronizar cuando cambie form.values.carroceria.posicion
   useEffect(() => {
-    const external = getNested();
+    const external = form.values.posicion || '';
     if (external !== search) {
       setSearch(external);
     }
@@ -50,8 +49,8 @@ export function TipoBombilloSelect({ form, posicion, label }) {
     notifications.show({ title: `Bombillo creado: ${normalized}` });
     setData((cur) => [...cur, normalized]);
 
-    // escribimos en form.values.carroceria[posicion]
-    form.setFieldValue(`carroceria.${posicion}`, normalized);
+    // escribimos en form.values.carroceria.posicion
+    form.setFieldValue(posicion, normalized);
     setSearch(normalized);
     setCreateModal(false);
   };
@@ -83,7 +82,7 @@ export function TipoBombilloSelect({ form, posicion, label }) {
             setCreateModal(true);
           } else {
             setSearch(val);
-            form.setFieldValue(`carroceria.${posicion}`, val);
+            form.setFieldValue(posicion, val);
           }
         }}
       >

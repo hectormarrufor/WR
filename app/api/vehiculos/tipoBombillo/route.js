@@ -1,4 +1,4 @@
-import TipoBombillo from "../../../../models/tipoBombillo";
+import {TipoBombillo} from "../../../../models";
 
 export async function GET() {
     try {

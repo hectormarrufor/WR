@@ -91,7 +91,7 @@ export default function RootLayout({ children }) {
           >
             <AppShell.Header
               zIndex={1001}
-              height={60}
+              height={40}
               withBorder={false}
               style={{
                 position: 'fixed',
@@ -104,7 +104,7 @@ export default function RootLayout({ children }) {
 
             >
               <Group justify="space-between" px={isMobile ? 0 : 100}>
-                <Image src="/logo.jpg" height={90} alt="logo" p={10} />
+                <Image src="/logo.jpg" height={45} alt="logo" p={0} py={10} m={5} />
                 <Group h="100%" px="md">
                   <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                   <Group justify="space-evenly" style={{ flex: 1 }}>

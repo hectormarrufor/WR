@@ -1,6 +1,6 @@
 // models/tipoBombillo.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
+const sequelize = require('../../sequelize');
 const bcrypt = require('bcryptjs');
 
 const TipoBombillo = sequelize.define('TipoBombillo', {

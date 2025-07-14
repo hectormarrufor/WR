@@ -5,26 +5,19 @@ import { useMediaQuery } from '@mantine/hooks';
 import { useMantineTheme } from '@mantine/core'
 import {
     TextInput,
-    PasswordInput,
     Button,
     Group,
     Box,
     Select,
     Card,
-    Image,
     Title,
-    ButtonGroupSection,
     Flex,
-    Text,
     ScrollArea,
     Grid,
     SimpleGrid,
     Stack,
-    Paper,
-    Container,
+    Text, // Added Text for displaying status
 } from '@mantine/core';
-import { crearUsuario } from '../../../ApiFunctions/userServices';
-import defaultUser from '../../../../objects/defaultUser';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import BackButton from '../../../components/BackButton';
@@ -37,41 +30,57 @@ import { AceiteMotorSelect } from './AceiteMotorSelect';
 import { TipoBombilloSelect } from './TipoBombilloSelect';
 import { ImagenVehiculoUploader } from './ImageVehiculoUploader';
 
-const page = () => {
+const VehicleRegistrationPage = () => {
     const theme = useMantineTheme();
     const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+
     const form = useForm({
         initialValues: {
+            // Campos para el modelo Vehiculo
             marca: '',
             modelo: '',
+            imagen: '', // URL de la imagen
             placa: '',
+            vin: '', // ¡Nuevo campo VIN!
             ano: '',
             color: '',
-            tipo: '',
-            tipoPeso: '',
-            ejes: '',
-            neumatico: '',
+            estadoOperativoGeneral: 'Desconocido', // Nuevo campo con valor por defecto
+            
+            // Campos para el modelo FichaTecnica, incluyendo los que irán en JSONB
+            ejes: '', // Ahora en FichaTecnica
+            tipo: '', // Ahora en FichaTecnica (tipo de vehículo: chuto, camion, etc.)
+            tipoPeso: '', // Ahora en FichaTecnica (liviana/pesada)
             kilometraje: '',
             horometro: '',
-            filtroAire: '',
-            correa: '',
-            combustible: {
-                tipo: '',
+            correas: { // Objeto para el JSONB 'correas'
+                tipoCorreaMotor: '',
+                ultimaRevisionKm: '',
+                estado: 'ok',
+            },
+            neumaticos: { // Objeto para el JSONB 'neumaticos'
+                medida: '',
+                marca: '',
+                vidaUtilKm: '',
+                estado: 'ok',
+            },
+            combustible: { // Objeto para el JSONB 'combustible'
+                tipoCombustible: '', // Renombrado de 'combustible.tipo'
                 capacidadCombustible: '',
                 inyectores: '',
                 filtroCombustible: '',
             },
-            transmision: {
+            transmision: { // Objeto para el JSONB 'transmision'
+                tipo: '',
                 nroVelocidades: '',
                 tipoAceite: '',
                 cantidad: '',
                 intervaloCambioKm: '',
                 ultimoCambioKm: '',
-                status: '',
+                status: 'ok',
             },
-            motor: {
+            motor: { // Objeto para el JSONB 'motor'
                 serialMotor: '',
                 potencia: '',
                 nroCilindros: '',
@@ -82,10 +91,10 @@ const page = () => {
                     litros: '',
                     intervaloCambioKm: '',
                     ultimoCambioKm: '',
-                    status: '',
+                    status: 'ok',
                 }
             },
-            carroceria: {
+            carroceria: { // Objeto para el JSONB 'carroceria'
                 serialCarroceria: '',
                 tipoLuzDelanteraBaja: '',
                 tipoLuzDelanteraAlta: '',
@@ -95,109 +104,217 @@ const page = () => {
             }
         },
         validate: {
+            // Validaciones para Vehiculo
+            marca: (value) => (value ? null : 'La marca es requerida'),
+            modelo: (value) => (value ? null : 'El modelo es requerido'),
+            placa: (value) => (value ? null : 'La placa es requerida'),
+            vin: (value) => (value ? null : 'El VIN es requerido'), // Validación para VIN
+            ano: (value) => (value ? null : 'El año es requerido'),
+            color: (value) => (value ? null : 'El color es requerido'),
+            kilometraje: (value) => (value ? null : 'El kilometraje es requerido'),
+            horometro: (value) => (value ? null : 'El horómetro es requerido'),
 
+            // Validaciones para FichaTecnica (incluyendo los campos JSONB)
+            ejes: (value) => (value ? null : 'El número de ejes es requerido'),
+            tipo: (value) => (value ? null : 'El tipo de vehículo es requerido'),
+            tipoPeso: (value) => (value ? null : 'El tipo de peso es requerido'),
+            tipoCombustible: (value) => (value ? null : 'El tipo de combustible es requerido'),
+            'correas.tipoCorreaMotor': (value) => (value ? null : 'El tipo de correa del motor es requerido'),
+            'correas.ultimaRevisionKm': (value) => (value ? null : 'El último km de revisión de correas es requerido'),
+            'neumaticos.medida': (value) => (value ? null : 'La medida del neumático es requerida'),
+            'neumaticos.marca': (value) => (value ? null : 'La marca del neumático es requerida'),
+            'neumaticos.vidaUtilKm': (value) => (value ? null : 'La vida útil de los neumáticos es requerida'),
+            'combustible.capacidadCombustible': (value) => (value ? null : 'La capacidad de combustible es requerida'),
+            'combustible.inyectores': (value) => (value ? null : 'El modelo de inyectores es requerido'),
+            'combustible.filtroCombustible': (value) => (value ? null : 'El filtro de combustible es requerido'),
+            'transmision.tipo': (value) => (value ? null : 'El tipo de transmisión es requerido'),
+            'transmision.nroVelocidades': (value) => (value ? null : 'El número de velocidades es requerido'),
+            'transmision.tipoAceite': (value) => (value ? null : 'El tipo de aceite de transmisión es requerido'),
+            'transmision.cantidad': (value) => (value ? null : 'La cantidad de aceite de transmisión es requerida'),
+            'transmision.intervaloCambioKm': (value) => (value ? null : 'El intervalo de cambio de aceite de transmisión es requerido'),
+            'transmision.ultimoCambioKm': (value) => (value ? null : 'El último cambio de aceite de transmisión es requerido'),
+            'motor.serialMotor': (value) => (value ? null : 'El serial del motor es requerido'),
+            'motor.potencia': (value) => (value ? null : 'La potencia del motor es requerida'),
+            'motor.nroCilindros': (value) => (value ? null : 'El número de cilindros es requerido'),
+            'motor.filtroAceite': (value) => (value ? null : 'El filtro de aceite del motor es requerido'),
+            'motor.filtroAire': (value) => (value ? null : 'El filtro de aire del motor es requerido'),
+            'motor.aceite.viscosidad': (value) => (value ? null : 'La viscosidad del aceite del motor es requerida'),
+            'motor.aceite.litros': (value) => (value ? null : 'La cantidad de litros de aceite del motor es requerida'),
+            'motor.aceite.intervaloCambioKm': (value) => (value ? null : 'El intervalo de cambio de aceite del motor es requerido'),
+            'motor.aceite.ultimoCambioKm': (value) => (value ? null : 'El último cambio de aceite del motor es requerido'),
+            'carroceria.serialCarroceria': (value) => (value ? null : 'El serial de carrocería es requerido'),
+            'carroceria.tipoLuzDelanteraBaja': (value) => (value ? null : 'El tipo de bombillo delantero bajo es requerido'),
+            'carroceria.tipoLuzDelanteraAlta': (value) => (value ? null : 'El tipo de bombillo delantero alto es requerido'),
+            'carroceria.tipoLuzIntermitenteDelantera': (value) => (value ? null : 'El tipo de bombillo intermitente delantero es requerido'),
+            'carroceria.tipoLuzIntermitenteLateral': (value) => (value ? null : 'El tipo de bombillo intermitente lateral es requerido'),
+            'carroceria.tipoLuzTrasera': (value) => (value ? null : 'El tipo de bombillo trasero es requerido'),
         },
     });
 
-    // useEffect(() => {
-    //     console.log(form.values);
-
-
-
-    // }, [form])
     useEffect(() => {
-        form.setValues(
-            {
-                "marca": "Kenworth",
-                "modelo": "T800",
-                "placa": "3HB43J",
-                "ano": "2020",
-                "color": "blanco",
-                "tipo": "Chuto",
-                "tipoPeso": "pesada",
-                "ejes": "3",
-                "neumatico": "205/70R17",
-                "kilometraje": "500039",
-                "horometro": "200",
-                "filtroAire": "alguno",
-                "correa": "alguna",
-                "combustible": {
-                    "tipo": "gasoil",
-                    "capacidadCombustible": "90",
-                    "inyectores": "no aplica",
-                    "filtroCombustible": "45ht"
-                },
-                "transmision": {
-                    "nroVelocidades": "11",
-                    "tipoAceite": "DEXRON III",
-                    "cantidad": "40",
-                    "intervaloCambioKm": "5000",
-                    "ultimoCambioKm": "500000",
+        console.log("Form values updated:", form.values);
+        // Lógica para actualizar estadoOperativoGeneral basada en los sub-estados
+        let generalStatus = 'Operativo'; // Asumimos operativo por defecto
+
+        // Evaluar estado del motor
+        if (form.values.motor.aceite.status === 'mantenimiento urgente') {
+            generalStatus = 'No Operativo';
+        } else if (form.values.motor.aceite.status === 'atencion' && generalStatus === 'Operativo') {
+            generalStatus = 'Operativo con Advertencias';
+        }
+
+        // Evaluar estado de la transmisión
+        if (form.values.transmision.status === 'mantenimiento urgente' && generalStatus !== 'No Operativo') {
+            generalStatus = 'No Operativo';
+        } else if (form.values.transmision.status === 'atencion' && generalStatus === 'Operativo') {
+            generalStatus = 'Operativo con Advertencias';
+        }
+
+        // Puedes añadir más lógica para otros estados si los tuvieras (ej. neumáticos, correas)
+        // Ejemplo simple para neumáticos (si tuvieran un status similar)
+        // if (form.values.neumaticos.estado === 'critico' && generalStatus !== 'No Operativo') {
+        //     generalStatus = 'No Operativo';
+        // } else if (form.values.neumaticos.estado === 'atencion' && generalStatus === 'Operativo') {
+        //     generalStatus = 'Operativo con Advertencias';
+        // }
+
+
+        if (form.values.estadoOperativoGeneral !== generalStatus) {
+            form.setFieldValue('estadoOperativoGeneral', generalStatus);
+        }
+
+    }, [form.values.motor.aceite.status, form.values.transmision.status, form.values.estadoOperativoGeneral, form.values]);
+
+
+    // Opcional: Rellenar con valores por defecto para pruebas
+    useEffect(() => {
+        form.setValues({
+            "marca": "Kenworth",
+            "modelo": "T800",
+            "placa": "3HB43J",
+            "vin": "1KPCT800L1234567", // Ejemplo de VIN
+            "ano": "2020",
+            "color": "blanco",
+            "kilometraje": "500039",
+            "horometro": "200",
+            "imagen": "https://zfdhcaitqdnowkxr.public.blob.vercel-storage.com/T8003HB43J.jpg",
+            "tipo": "Chuto",
+            "tipoPeso": "pesada",
+            "ejes": "3",
+            "correas": {
+                "tipoCorreaMotor": "Correa V",
+                "ultimaRevisionKm": "490000",
+                "estado": "ok",
+            },
+            "neumaticos": {
+                "medida": "205/70R17",
+                "marca": "Michelin",
+                "vidaUtilKm": "100000",
+                "estado": "ok",
+            },
+            "combustible": {
+                "tipoCombustible": "gasoil",
+                "capacidadCombustible": "90",
+                "inyectores": "No aplica",
+                "filtroCombustible": "45ht"
+            },
+            "transmision": {
+                "tipo": "manual",
+                "nroVelocidades": "11",
+                "tipoAceite": "DEXRON III",
+                "cantidad": "40",
+                "intervaloCambioKm": "50000", // Intervalo de 50.000 km
+                "ultimoCambioKm": "500000", // Último cambio en 500.000 km
+                "status": "ok"
+            },
+            "motor": {
+                "serialMotor": "4234t234thoisd8234h",
+                "potencia": "800",
+                "nroCilindros": "12",
+                "filtroAceite": "wix",
+                "filtroAire": "48",
+                "aceite": {
+                    "viscosidad": "15W40",
+                    "litros": "40",
+                    "intervaloCambioKm": "5000", // Intervalo de 5.000 km
+                    "ultimoCambioKm": "500000", // Último cambio en 500.000 km
                     "status": "ok"
-                },
-                "motor": {
-                    "serialMotor": "4234t234thoisd8234h",
-                    "potencia": "800",
-                    "nroCilindros": "12",
-                    "filtroAceite": "wix",
-                    "filtroAire": "48",
-                    "aceite": {
-                        "viscosidad": "15W40",
-                        "litros": "40",
-                        "intervaloCambioKm": "5000",
-                        "ultimoCambioKm": "500000",
-                        "status": "ok"
-                    }
-                },
-                "carroceria": {
-                    "serialCarroceria": "dsfgoh23523uhte",
-                    "tipoLuzDelanteraBaja": "h7",
-                    "tipoLuzDelanteraAlta": "h7",
-                    "tipoLuzIntermitenteDelantera": "h7",
-                    "tipoLuzIntermitenteLateral": "h7",
-                    "tipoLuzTrasera": "h7"
-                },
-                "imagen": "https://zfdhcaitqdnowkxr.public.blob.vercel-storage.com/T8003HB43J.jpg"
-            }
-        )
+                }
+            },
+            "carroceria": {
+                "serialCarroceria": "dsfgoh23523uhte",
+                "tipoLuzDelanteraBaja": "H7",
+                "tipoLuzDelanteraAlta": "H7",
+                "tipoLuzIntermitenteDelantera": "H7",
+                "tipoLuzIntermitenteLateral": "H7",
+                "tipoLuzTrasera": "H7"
+            },
+        });
+    }, []);
 
-
-    }, [])
-
+    useEffect(() => {
+      console.log(form.values);
+    }, [form])
+    
 
     const handleSubmit = async (values) => {
         setLoading(true);
-        const { marca, modelo, placa, ano, imagen, color, tipo, tipoPeso, ejes, neumatico, kilometraje, horometro, correa, combustible, transmision, motor, carroceria } = form.values
-        const vehiculoOrdenado = {
-            marca,
-            modelo,
-            placa,
-            ano,
-            color,
-            tipo,
-            tipoPeso,
-            ejes,
-            neumatico,
-            kilometraje,
-            horometro,
-            correa,
-            combustible,
-            transmision,
-            motor,
-            status: "ok",
-            imagen,
-            carroceria
-        }
-        // Simulación de envío
         try {
-            const vehiculo = await httpPost('/api/vehiculos', vehiculoOrdenado);
-            notifications.show({ title: "Vehiculo registrado exitosamente" })
-            router.push('/superuser/flota')
+            // 1. Preparar los datos para el modelo Vehiculo
+            const vehiculoData = {
+                marca: values.marca,
+                modelo: values.modelo,
+                placa: values.placa,
+                vin: values.vin, // Incluir VIN
+                ano: parseInt(values.ano),
+                color: values.color,
+                kilometraje: parseInt(values.kilometraje),
+                horometro: parseInt(values.horometro),
+                imagen: values.imagen,
+                estadoOperativoGeneral: values.estadoOperativoGeneral, // Usar el estado calculado
+                ejes: parseInt(values.ejes),
+                tipo: values.tipo,
+                tipoPeso: values.tipoPeso,
+                correas: JSON.stringify(values.correas), // Convertir a string JSON
+                neumaticos: JSON.stringify(values.neumaticos), // Convertir a string JSON
+                combustible: JSON.stringify(values.combustible), // Convertir a string JSON
+                transmision: JSON.stringify(values.transmision), // Convertir a string JSON
+                motor: JSON.stringify(values.motor), // Convertir a string JSON
+                carroceria: JSON.stringify(values.carroceria), // Convertir a string JSON
+            };
+            console.log(vehiculoData);
+            
+
+            // 2. Enviar los datos del vehículo
+            const createdVehiculo = await httpPost('/api/vehiculos', values);
+            notifications.show({ title: "Vehículo registrado exitosamente", message: `Placa: ${createdVehiculo.placa}`, color: 'green' });
+
+            // 3. Preparar los datos para la Ficha Técnica, consolidando en JSONB
+            // const fichaTecnicaData = {
+            //     vehiculoId: createdVehiculo.id, // Sequelize usa 'id' por defecto
+            //     ejes: parseInt(values.ejes),
+            //     tipo: values.tipo,
+            //     tipoPeso: values.tipoPeso,
+            //     tipoCombustible: values.tipoCombustible,
+            //     correas: JSON.stringify(values.correas), // Convertir a string JSON
+            //     neumaticos: JSON.stringify(values.neumaticos), // Convertir a string JSON
+            //     combustible: JSON.stringify(values.combustible), // Convertir a string JSON
+            //     transmision: JSON.stringify(values.transmision), // Convertir a string JSON
+            //     motor: JSON.stringify(values.motor), // Convertir a string JSON
+            //     carroceria: JSON.stringify(values.carroceria), // Convertir a string JSON
+            // };
+
+            // // 4. Enviar los datos de la ficha técnica
+            // await httpPost('/api/vehiculos/fichastecnicas', fichaTecnicaData);
+            // notifications.show({ title: "Ficha Técnica registrada exitosamente", message: `Asociada al vehículo ${createdVehiculo.placa}`, color: 'green' });
+
+            router.push('/superuser/flota');
+        } catch (error) {
+            console.error("Error al registrar vehículo o ficha técnica:", error);
+            notifications.show({ title: 'Error en el registro', message: error.message || 'Ocurrió un error al registrar el vehículo o la ficha técnica.', color: 'red' });
+        } finally {
+            setLoading(false);
         }
-        catch (error) {
-            notifications.show({ title: 'Vehiculo no registrado: ', message: error.message })
-        }
-        setLoading(false);
     };
 
     return (
@@ -232,7 +349,7 @@ const page = () => {
                         <Grid.Col span={4} xs={12} sm={4}>
                             <Box style={{ textAlign: 'center' }}>
                                 <Title order={2} size={isMobile ? 'h4' : 'h2'}>
-                                    Registro de vehículo
+                                    Registro de Vehículo y Ficha Técnica
                                 </Title>
                             </Box>
                         </Grid.Col>
@@ -281,115 +398,151 @@ const page = () => {
                                 >
 
                                     {/* COLUMNA IZQUIERDA */}
-
                                     <Stack spacing="sm">
-
-                                        {/* DATOS GENERALES */}
-
-                                        <SectionBox section="datosGenerales" title="🔧 Datos Generales" cols={3}>
+                                        {/* DATOS GENERALES DEL VEHÍCULO */}
+                                        <SectionBox section="datosGeneralesVehiculo" title="🔧 Datos Generales del Vehículo" cols={3}>
                                             <TextInput size='xs' label="Marca" required {...form.getInputProps('marca')} />
                                             <TextInput size='xs' label="Modelo" required {...form.getInputProps('modelo')} />
                                             <TextInput size='xs' label="Placa" required {...form.getInputProps('placa')} />
+                                            <TextInput size='xs' label="VIN" required {...form.getInputProps('vin')} /> {/* Campo VIN */}
                                             <TextInput size='xs' label="Año" required {...form.getInputProps('ano')} />
                                             <TextInput size='xs' label="Color" required {...form.getInputProps('color')} />
-                                            <TextInput size='xs' label="kilometraje" required {...form.getInputProps('kilometraje')} />
-                                            <TextInput size='xs' label="horometro" required {...form.getInputProps('horometro')} />
-                                            <TipoVehiculoSelect form={form} />
-                                            <TextInput size='xs' label="Número de ejes" required {...form.getInputProps('ejes')} />
+                                            <TextInput size='xs' label="Kilometraje" type="number" required {...form.getInputProps('kilometraje')} />
+                                            <TextInput size='xs' label="Horómetro" type="number" required {...form.getInputProps('horometro')} />
+                                            <Text size="xs" label="Estado Operativo General">
+                                                <Text span fw={700}>Estado Operativo General:</Text> {form.values.estadoOperativoGeneral}
+                                            </Text>
                                         </SectionBox>
 
-                                        {/* TRANSMISION */}
+                                        {/* DATOS DE FICHA TÉCNICA - NEUMÁTICOS, CORREAS Y COMBUSTIBLE */}
+                                        <SectionBox section="fichaTecnicaBasica" title="📄 Ficha Técnica (Básicos)" cols={3}>
+                                            <TipoVehiculoSelect form={form} /> {/* Ahora `tipo` está en FichaTecnica */}
+                                            <TextInput size='xs' label="Número de Ejes" type="number" required {...form.getInputProps('ejes')} /> {/* Ahora `ejes` está en FichaTecnica */}
 
-                                        <SectionBox section="transmision" title="⚙️ Transmision" cols={3}>
-                                            <TextInput size='xs' label="Numero de velocidades" required {...form.getInputProps('transmision.nroVelocidades')} />
-                                            <AceiteCajaSelect form={form} />
-                                            <TextInput size='xs' label="Cantidad litros" required {...form.getInputProps('transmision.cantidad')} />
-                                            <TextInput size='xs' label="Intervalo aceite" required {...form.getInputProps('transmision.intervaloCambioKm')} />
-                                            <TextInput size='xs' label="kilometraje de ultimo cambio" required {...form.getInputProps('transmision.ultimoCambioKm')} />
+                                            {/* Sección de Neumáticos (JSONB) */}
+                                            <Title order={5} mt="md">🛞 Neumáticos</Title>
+                                            <MedidaNeumaticoSelect form={form} fieldName="neumaticos.medida" /> {/* Ajustado a subcampo */}
+                                            <TextInput size='xs' label="Marca Neumático" required {...form.getInputProps('neumaticos.marca')} />
+                                            <TextInput size='xs' label="Vida Útil Neumático (Km)" type="number" required {...form.getInputProps('neumaticos.vidaUtilKm')} />
+                                            <TextInput size='xs' label="Estado Neumáticos" readOnly {...form.getInputProps('neumaticos.estado')} />
+
+                                            {/* Sección de Correas (JSONB) */}
+                                            <Title order={5} mt="md">⛓️ Correas</Title>
+                                            <TextInput size='xs' label="Tipo de Correa de Motor" required {...form.getInputProps('correas.tipoCorreaMotor')} />
+                                            <TextInput size='xs' label="Última Revisión Correas (Km)" type="number" required {...form.getInputProps('correas.ultimaRevisionKm')} />
+                                            <TextInput size='xs' label="Estado Correas" readOnly {...form.getInputProps('correas.estado')} />
+
+                                            {/* Sección de Combustible (JSONB) */}
+                                            <Title order={5} mt="md">⛽ Combustible</Title>
+                                            <Select
+                                                size='xs' label="Tipo de combustible"
+                                                placeholder="Selecciona el tipo"
+                                                data={[
+                                                    { value: 'gasolina', label: 'Gasolina' },
+                                                    { value: 'gasoil', label: 'Gasoil' },
+                                                    { value: 'gnv', label: 'GNV' },
+                                                    { value: 'electrico', label: 'Eléctrico' },
+                                                ]}
+                                                searchable
+                                                clearable
+                                                {...form.getInputProps('tipoCombustible')} // Directamente en FichaTecnica
+                                            />
+                                            <TextInput size='xs' label="Capacidad Tanque (L)" type="number" {...form.getInputProps('combustible.capacidadCombustible')} />
+                                            <TextInput size='xs' label="Filtro de Combustible" required {...form.getInputProps('combustible.filtroCombustible')} />
+                                            <TextInput size='xs' label="Modelo de Inyectores" required {...form.getInputProps('combustible.inyectores')} />
                                         </SectionBox>
 
-                                        {/* CARROCERIA */}
-
-                                        <SectionBox section="transmision" title="⚙️ Carroceria" cols={3}>
+                                        {/* CARROCERÍA (JSONB) */}
+                                        <SectionBox section="carroceria" title="💡 Carrocería (Ficha Técnica)" cols={3}>
                                             <TextInput size='xs' label="Serial de Carrocería" required {...form.getInputProps('carroceria.serialCarroceria')} />
-                                            <TipoBombilloSelect form={form} posicion="tipoLuzDelanteraBaja" label="Bombillo delantero baja" {...form.getInputProps('carroceria.tipoLuzDelanteraBaja')} />
-                                            <TipoBombilloSelect form={form} posicion="tipoLuzDelanteraAlta" label="Bombillo delantero alta" {...form.getInputProps('carroceria.tipoLuzDelanteraAlta')} />
-                                            <TipoBombilloSelect form={form} posicion="tipoLuzIntermitenteDelantera" label="Bombillo delantero intermitente" {...form.getInputProps('carroceria.tipoLuzIntermitenteDelantera')} />
-                                            <TipoBombilloSelect form={form} posicion="tipoLuzIntermitenteLateral" label="Bombillo lateral intermitente" {...form.getInputProps('carroceria.tipoLuzIntermitenteLateral')} />
-                                            <TipoBombilloSelect form={form} posicion="tipoLuzTrasera" label="Bombillo trasero" {...form.getInputProps('carroceria.tipoLuzTrasera')} />
-
+                                            <TipoBombilloSelect form={form} fieldName="carroceria.tipoLuzDelanteraBaja"  posicion="carroceria.tipoLuzDelanteraBaja" label="Bombillo delantero baja" />
+                                            <TipoBombilloSelect form={form} fieldName="carroceria.tipoLuzDelanteraAlta"  posicion="carroceria.tipoLuzDelanteraAlta" label="Bombillo delantero alta" />
+                                            <TipoBombilloSelect form={form} fieldName="carroceria.tipoLuzIntermitenteDelantera"  posicion="carroceria.tipoLuzIntermitenteDelantera" label="Bombillo delantero intermitente" />
+                                            <TipoBombilloSelect form={form} fieldName="carroceria.tipoLuzIntermitenteLateral"  posicion="carroceria.tipoLuzIntermitenteLateral" label="Bombillo lateral intermitente" />
+                                            <TipoBombilloSelect form={form} fieldName="carroceria.tipoLuzTrasera"  posicion="carroceria.tipoLuzTrasera" label="Bombillo trasero" />
                                         </SectionBox>
-
-
-
-
                                     </Stack>
 
                                     {/* COLUMNA DERECHA */}
-
-
                                     <Stack spacing="sm">
-
-                                        {/* IMAGEN */}
-                                        <SectionBox section="imagen" title="Imagen del vehiculo">
+                                        {/* IMAGEN DEL VEHÍCULO */}
+                                        <SectionBox section="imagen" title="📸 Imagen del Vehículo">
                                             <ImagenVehiculoUploader form={form} />
-                                            {/* <Image
-                                                src="https://album.mediaset.es/eimg/2022/10/17/pago-vehiculos-pesados_9bc8.jpg?w=1024"
-                                                radius="md"
-                                                fit='contain'
-                                                height={200}
-                                                // withPlaceholder
-                                                alt="Foto del vehículo"
-                                            /> */}
                                         </SectionBox>
 
-                                        {/* MOTOR */}
-                                        <SectionBox section="motor" title="🔧 Motor" cols={3}>
+                                        {/* MOTOR (JSONB) */}
+                                        <SectionBox section="motor" title="⚙️ Motor (Ficha Técnica)" cols={3}>
                                             <TextInput size='xs' label="Serial de Motor" required {...form.getInputProps('motor.serialMotor')} />
-                                            <TextInput size='xs' label="Potencia" required {...form.getInputProps('motor.potencia')} />
-                                            <TextInput size='xs' label="Numero de Cilindros" required {...form.getInputProps('motor.nroCilindros')} />
+                                            <TextInput size='xs' label="Potencia" type="number" required {...form.getInputProps('motor.potencia')} />
+                                            <TextInput size='xs' label="Número de Cilindros" type="number" required {...form.getInputProps('motor.nroCilindros')} />
                                             <TextInput size='xs' label="Filtro de Aceite" required {...form.getInputProps('motor.filtroAceite')} />
                                             <TextInput size='xs' label="Filtro de Aire" required {...form.getInputProps('motor.filtroAire')} />
-                                            <AceiteMotorSelect form={form} {...form.getInputProps('motor.aceite.viscosidad')} />
-                                            <TextInput size='xs' label="Cantidad litros de Aceite" required {...form.getInputProps('motor.aceite.litros')} />
-                                            <TextInput size='xs' label="Intervalo de Cambio de Aceite" required {...form.getInputProps('motor.aceite.intervaloCambioKm')} />
-                                            <TextInput size='xs' label="Ultimo cambio de Aceite (en Km)" required {...form.getInputProps('motor.aceite.ultimoCambioKm')} />
+                                            <AceiteMotorSelect form={form} fieldName="motor.aceite.viscosidad" /> {/* Ajustado a subcampo */}
+                                            <TextInput size='xs' label="Cantidad litros de Aceite" type="number" required {...form.getInputProps('motor.aceite.litros')} />
+                                            <TextInput size='xs' label="Intervalo Cambio Aceite (Km)" type="number" required {...form.getInputProps('motor.aceite.intervaloCambioKm')} />
+                                            <TextInput size='xs' label="Último cambio Aceite (Km)" type="number" required {...form.getInputProps('motor.aceite.ultimoCambioKm')}
+                                                disabled={!form.values.motor.aceite.intervaloCambioKm}
+                                                onBlur={(e) => {
+                                                    const kmActual = parseFloat(form.values.kilometraje);
+                                                    const ultimoCambio = parseFloat(e.target.value);
+                                                    const intervalo = parseFloat(form.values.motor.aceite.intervaloCambioKm);
+
+                                                    if (!isNaN(kmActual) && !isNaN(ultimoCambio) && !isNaN(intervalo)) {
+                                                        let status = "ok";
+                                                        if (kmActual - ultimoCambio >= intervalo) {
+                                                            status = "mantenimiento urgente";
+                                                        } else if (kmActual - ultimoCambio >= (intervalo * 0.95)) { // Advertencia al 95% del intervalo
+                                                            status = "atencion";
+                                                        }
+                                                        form.setFieldValue("motor.aceite.status", status);
+                                                    }
+                                                }}
+                                            />
+                                            <TextInput size='xs' label="Estado Aceite Motor" readOnly {...form.getInputProps('motor.aceite.status')} />
                                         </SectionBox>
 
+                                        {/* TRANSMISIÓN (JSONB) */}
+                                        <SectionBox section="transmision" title="⚙️ Transmisión (Ficha Técnica)" cols={3}>
+                                            <Select
+                                                size='xs' label="Tipo de cambios"
+                                                placeholder="Selecciona el tipo"
+                                                data={[
+                                                    { value: 'manual', label: 'Manual / Sincrónico' },
+                                                    { value: 'automatico', label: 'Automático' },
+                                                ]}
+                                                searchable
+                                                clearable
+                                                {...form.getInputProps('transmision.tipo')}
+                                            />
+                                            <TextInput size='xs' label="Número de velocidades" type="number" required {...form.getInputProps('transmision.nroVelocidades')} />
+                                            <AceiteCajaSelect form={form} fieldName="transmision.tipoAceite" /> {/* Ajustado a subcampo */}
+                                            <TextInput size='xs' label="Cantidad litros" type="number" required {...form.getInputProps('transmision.cantidad')} />
+                                            <TextInput size='xs' label="Intervalo aceite (Km)" type="number" required {...form.getInputProps('transmision.intervaloCambioKm')} />
+                                            <TextInput size='xs' label="Kilometraje de último cambio" type="number" required {...form.getInputProps('transmision.ultimoCambioKm')}
+                                                disabled={!form.values.transmision.intervaloCambioKm}
+                                                onBlur={(e) => {
+                                                    const kmActual = parseFloat(form.values.kilometraje);
+                                                    const ultimoCambio = parseFloat(e.target.value);
+                                                    const intervalo = parseFloat(form.values.transmision.intervaloCambioKm);
 
-                                        <Flex gap="sm">
-                                            {/* NEUMATICOS */}
-                                            <SectionBox flex={10} section="neumaticos" title="🛞 Neumaticos">
-                                                <MedidaNeumaticoSelect form={form} {...form.getInputProps('neumatico')} />
-                                            </SectionBox>
-
-                                            {/* COMBUSTIBLE */}
-                                            <SectionBox flex={15} section="combustible" title="⛽ Combustible" cols={2}>
-                                                <Select
-                                                    size='xs' label="Tipo de combustible"
-                                                    placeholder="Selecciona el tipo"
-                                                    data={[
-                                                        { value: 'gasolina', label: 'Gasolina' },
-                                                        { value: 'gasoil', label: 'Gasoil' },
-                                                    ]}
-                                                    searchable
-                                                    clearable
-                                                    {...form.getInputProps('combustible.tipo')}
-                                                />
-                                                <TextInput size='xs' label="Capacidad del tanque (L)" {...form.getInputProps('combustible.capacidadCombustible')} />
-                                                <TextInput size='xs' label="filtro de combustible" required {...form.getInputProps('combustible.filtroCombustible')} />
-                                                <TextInput size='xs' label="modelo de inyectores" required {...form.getInputProps('combustible.inyectores')} />
-                                            </SectionBox>
-                                        </Flex>
-
+                                                    if (!isNaN(kmActual) && !isNaN(ultimoCambio) && !isNaN(intervalo)) {
+                                                        let status = "ok";
+                                                        if (kmActual - ultimoCambio >= intervalo) {
+                                                            status = "mantenimiento urgente";
+                                                        } else if (kmActual - ultimoCambio >= (intervalo * 0.95)) { // Advertencia al 95% del intervalo
+                                                            status = "atencion";
+                                                        }
+                                                        form.setFieldValue("transmision.status", status);
+                                                    }
+                                                }}
+                                            />
+                                            <TextInput size='xs' label="Estado Transmisión" readOnly {...form.getInputProps('transmision.status')} />
+                                        </SectionBox>
 
                                         <Group position="right" mt="md">
-                                            <Button type="submit" onClick={handleSubmit} loading={loading}>
-                                                Registrar
+                                            <Button type="submit" loading={loading}>
+                                                Registrar Vehículo y Ficha Técnica
                                             </Button>
-                                            {/* <Button type="button" onClick={() => crearUsuario(defaultUser)} loading={loading}>
-                                                Registrar con valores por defecto
-                                            </Button> */}
                                         </Group>
                                     </Stack>
                                 </SimpleGrid>
@@ -399,9 +552,7 @@ const page = () => {
                 </Card>
             </Box>
         </>
-
-
-
     );
 }
-export default page
+
+export default VehicleRegistrationPage;

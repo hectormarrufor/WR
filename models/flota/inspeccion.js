@@ -1,16 +1,30 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
+const sequelize = require('../../sequelize');
 
-const Checklist = sequelize.define(
-  'Checklist',
+const Inspeccion = sequelize.define(
+  'Inspeccion',
   {
-    fecha: {
-      type: DataTypes.DATEONLY,
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    fechaInspeccion: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
     },
-    kilometraje: {
+    kilometrajeInspeccion: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    inspector: { // Quién realizó la inspección
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    observacionesGenerales: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     horometro: {
       type: DataTypes.INTEGER,
@@ -53,9 +67,14 @@ const Checklist = sequelize.define(
     },
   },
   {
-    tableName: 'Checklists',
+    tableName: 'Inspecciones',
     timestamps: true,
   }
 );
 
-module.exports = Checklist;
+Inspeccion.associate = (models) => {
+  Inspeccion.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoId', as: 'vehiculo' });
+  Inspeccion.hasMany(models.HallazgoInspeccion, { foreignKey: 'inspeccionId', as: 'hallazgos' });
+};
+
+module.exports = Inspeccion;

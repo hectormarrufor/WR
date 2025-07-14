@@ -19,6 +19,7 @@ import {
 import { useMediaQuery } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { notifications } from '@mantine/notifications';
 
 export default function FlotaPage() {
   const router = useRouter();
@@ -30,7 +31,9 @@ export default function FlotaPage() {
   useEffect(() => {
     (async () => {
       const res = await fetch('/api/vehiculos');
-      setData(await res.json());
+      const data = await res.json();
+      console.log(data)
+      setData(data);
       setLoading(false);
     })();
   }, []);
@@ -45,12 +48,13 @@ export default function FlotaPage() {
         header: 'Estado',
         Cell: ({ cell }) => {
           const val = cell.getValue();
+          notifications.show({title: val})
           const color =
             val === 'OK'
               ? 'green'
-              : val === 'Próximo a mantenimiento'
+              : val === 'atencion'
                 ? 'orange'
-                : 'red';
+                : val === 'Mantenimiento urgente' && 'red';
           return <Badge color={color}>{val}</Badge>;
         },
       },
@@ -115,11 +119,6 @@ export default function FlotaPage() {
               enableHiding={false}
               enableSorting={false}
               enablePagination
-              mantineTableProps={{
-                striped: true,
-                highlightOnHover: true,
-              }}
-
               mantineTableHeadCellProps={{
                 style: {
                   backgroundColor: "lightblue"

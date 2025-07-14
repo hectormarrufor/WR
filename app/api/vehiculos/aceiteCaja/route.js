@@ -1,12 +1,12 @@
-import TipoAceiteCaja from "../../../../models/tipoAceiteCaja";
-
+import db from "../../../../models"
+const {TipoAceiteCaja } = db
 export async function GET() {
     try {
         const tipos = await TipoAceiteCaja.findAll();
         return Response.json(tipos);
     } catch (error) {
-        console.error("Error al obtener los tipos de aceite: ", error)
-        throw new Error ('error al obtener los tipos de aceite: ', error)
+        console.error("Error al obtener los tipos de aceite: ", error.message)
+        throw new Error ('error al obtener los tipos de aceite: ', error.message)
     }
 }
 
@@ -19,7 +19,7 @@ export async function POST(request) {
         const nuevo = await TipoAceiteCaja.create({ tipo });
         return Response.json(nuevo)
     } catch (err) {
-        console.error('error al crear tipo de aceite: ', err);
+        console.error('error al crear tipo de aceite: ', err.message);
         throw new Error ('error al crear tipo de aceite: ', err.message)
     }
 }

@@ -1,7 +1,6 @@
 // models/MedidaNeumatico.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../sequelize');
-const bcrypt = require('bcryptjs');
+const sequelize = require('../../sequelize');
 
 const MedidaNeumatico = sequelize.define('MedidaNeumatico', {
     medida: {
