@@ -10,7 +10,7 @@ import { IconEdit, IconCurrencyDollar, IconRefresh, IconPrinter, IconAlertCircle
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import { useDisclosure } from '@mantine/hooks';
-import { PagoFacturaForm } from '@/components/facturacion/PagoFacturaForm'; // Importa el formulario de pagos
+import { PagoFacturaForm } from '../componentes/PagoFacturaForm';
 
 export default function FacturaDetailPage({ params }) {
   const { id } = params;

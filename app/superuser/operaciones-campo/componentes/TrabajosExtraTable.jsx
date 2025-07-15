@@ -7,7 +7,7 @@ import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal, Badge } from
 import { IconEdit, IconTrash, IconEye, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
-import { TrabajoExtraForm } from './TrabajoExtraForm'; // Importa el formulario
+import { TrabajoExtraForm } from './TrabajosExtraForm';
 
 // Definición de las columnas de la tabla
 const getColumns = () => [

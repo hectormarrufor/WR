@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { OperacionCampoForm } from '@/components/operaciones-campo/OperacionCampoForm';
 import { Container, Text, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { OperacionCampoForm } from '../../componentes/OperacionCampoForm';
 
 export default function EditarOperacionCampoPage({ params }) {
   const { id } = params;
