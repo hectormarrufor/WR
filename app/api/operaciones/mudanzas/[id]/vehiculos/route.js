@@ -1,6 +1,6 @@
 // app/api/operaciones/mudanzas/[mudanzaId]/vehiculos/route.js
 import { NextResponse } from 'next/server';
-import db from '@/models';
+import db from '../../../../../../models';
 
 export async function GET(request, { params }) {
   const { mudanzaId } = params;

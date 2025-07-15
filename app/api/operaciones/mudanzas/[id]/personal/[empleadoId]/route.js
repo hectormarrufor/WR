@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db from '@/models';
+import db from '../../../../../../../models';
 
 export async function DELETE(request, { params }) {
   const { mudanzaId, empleadoId } = params;
