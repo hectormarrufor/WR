@@ -28,12 +28,10 @@ const sequelize = require('../../sequelize');
     fechaAsignacion: {
       type: DataTypes.DATEONLY,
       defaultValue: DataTypes.NOW,
-      comment: 'Fecha en que el empleado fue asignado a este puesto.',
     },
     fechaFin: {
       type: DataTypes.DATEONLY,
       allowNull: true,
-      comment: 'Fecha en que el empleado dejó de ocupar este puesto (si aplica).',
     },
   }, {
     tableName: 'EmpleadoPuestos',

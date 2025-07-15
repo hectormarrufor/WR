@@ -3,11 +3,29 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
-import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal } from '@mantine/core';
+import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal, MantineProvider } from '@mantine/core';
 import { IconEdit, IconTrash, IconEye, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation'; // o 'next/router'
+import BackButton from '../../../components/BackButton';
+
+function calcularEdad(fechaNacimiento) {
+  if (!fechaNacimiento) return null;
+
+  const nacimiento = new Date(fechaNacimiento); // Sequelize DATEONLY ya viene como string tipo "YYYY-MM-DD"
+  const hoy = new Date();
+
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const haCumplidoEsteAno = (
+    hoy.getMonth() > nacimiento.getMonth() ||
+    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() >= nacimiento.getDate())
+  );
+
+  if (!haCumplidoEsteAno) edad--;
+
+  return edad;
+}
 
 // Definición de las columnas de la tabla
 const getColumns = (openDeleteModal, router) => [
@@ -42,7 +60,12 @@ const getColumns = (openDeleteModal, router) => [
     size: 250,
   },
   {
-    accessorKey: 'fechaContratacion',
+    accessorKey: 'edad',
+    header: 'Edad',
+    size: 150,
+  },
+  {
+    accessorKey: 'fechaIngreso',
     header: 'Fecha Contratación',
     size: 150,
     Cell: ({ cell }) => new Date(cell.getValue()).toLocaleDateString(),
@@ -73,7 +96,7 @@ export default function EmpleadosTable() {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
       const result = await response.json();
-      setData(result);
+      setData(result.data.map(empleado => { return { ...empleado, edad: calcularEdad(empleado.fechaNacimiento) } }));
     } catch (err) {
       console.error('Failed to fetch employees:', err);
       setError(err);
@@ -122,6 +145,21 @@ export default function EmpleadosTable() {
   const columns = useMemo(() => getColumns(openDeleteModal, router), [openDeleteModal, router]);
 
   const table = useMantineReactTable({
+    w: "100%",
+    enableColumnFilters: true,
+    enableDensityToggle: false,
+    enableFullScreenToggle: false,
+    enableHiding: false,
+    enablePagination: true,
+    mantineTableHeadCellProps: {
+      style: {
+        backgroundColor: "lightblue"
+      }
+    },
+    // mantineTableBodyRowProps:({ row }) => ({
+    //   onClick: () => router.push(`/superuser/flota/${row.original.id}`),
+    //   style: { cursor: 'pointer' },
+    // }),
     columns,
     data,
     state: { isLoading: loading, showAlertBanner: !!error },
@@ -151,6 +189,7 @@ export default function EmpleadosTable() {
     ),
     renderTopToolbarCustomActions: () => (
       <Flex gap="md">
+        <BackButton onClick={() => router.back()} />
         <Button
           leftSection={<IconPlus size={20} />}
           onClick={() => router.push('/superuser/rrhh/empleados/nuevo')}
@@ -177,7 +216,25 @@ export default function EmpleadosTable() {
 
   return (
     <>
-      <MantineReactTable table={table} />
+      <MantineProvider
+        theme={{
+          components: {
+            ActionIcon: {
+              styles: {
+                root: {
+                  backgroundColor: 'transparent',
+                  color: 'black',
+                  '&:hover': {
+                    backgroundColor: '#f0f0f0',
+                  },
+                },
+              },
+            },
+          },
+        }}
+      >
+        <MantineReactTable table={table} />
+      </MantineProvider>
       <Modal opened={deleteModalOpened} onClose={closeDeleteModal} title="Confirmar Eliminación" centered>
         <Text>
           ¿Estás seguro de que quieres eliminar el empleado "

@@ -20,27 +20,22 @@ const sequelize = require('../../sequelize');
     fechaInicio: {
       type: DataTypes.DATE,
       allowNull: false,
-      comment: 'Fecha y hora de inicio de la mudanza.',
     },
     fechaFinEstimada: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Fecha y hora estimada de finalización.',
     },
     fechaFinReal: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Fecha y hora real de finalización.',
     },
     puntoOrigen: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Lugar de donde sale la maquinaria (ej. Base de Operaciones, Pozo anterior).',
     },
     puntoDestino: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Lugar al que se dirige la maquinaria (ej. Pozo X).',
     },
     estado: {
       type: DataTypes.ENUM('Planificada', 'En Progreso', 'Finalizada', 'Cancelada'),

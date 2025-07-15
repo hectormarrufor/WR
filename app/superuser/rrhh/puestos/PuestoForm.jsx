@@ -30,13 +30,13 @@ export function PuestoForm({ initialData = null }) {
 
   const handleSubmit = async (values) => {
     let response;
-    let url = '/api/superuser/rrhh/puestos';
+    let url = '/api/rrhh/puestos';
     let method = 'POST';
     let successMessage = 'Puesto registrado exitosamente';
     let errorMessage = 'Error al registrar puesto';
 
     if (initialData) {
-      url = `/api/superuser/rrhh/puestos/${initialData.id}`;
+      url = `/api/rrhh/puestos/${initialData.id}`;
       method = 'PUT';
       successMessage = 'Puesto actualizado exitosamente';
       errorMessage = 'Error al actualizar puesto';
@@ -101,7 +101,7 @@ export function PuestoForm({ initialData = null }) {
 
           <Group justify="flex-end" mt="xl">
             <Button variant="default" onClick={() => router.back()}>
-              Cancelar
+              Atras
             </Button>
             <Button type="submit">
               {initialData ? 'Actualizar Puesto' : 'Registrar Puesto'}

@@ -40,9 +40,6 @@ const ConsumoAlimento = require('./operaciones/ConsumoAlimento');
 // INVENTARIO (Ahora más completo)
 const Consumible = require('./inventario/Consumible');
 const ConsumibleUsado = require('./inventario/ConsumibleUsado');
-const Proveedor = require('./inventario/Proveedor');
-const OrdenCompra = require('./inventario/OrdenCompra');
-const DetalleOrdenCompra = require('./inventario/DetalleOrdenCompra');
 const EntradaInventario = require('./inventario/EntradaInventario');
 const SalidaInventario = require('./inventario/SalidaInventario');
 
@@ -50,6 +47,26 @@ const SalidaInventario = require('./inventario/SalidaInventario');
 const CuentaBancaria = require('./tesoreria/CuentaBancaria');
 const MovimientoTesoreria = require('./tesoreria/MovimientoTesoreria');
 
+//FACTURACION
+const Factura = require('./facturacion/Factura');
+const RenglonFactura = require('./facturacion/RenglonFactura');
+const PagoFactura = require('./facturacion/PagoFactura');
+const NotaCredito = require('./facturacion/NotaCredito');
+
+//COMPRAS
+const Proveedor = require('./compras/Proveedor');
+const OrdenCompra = require('./compras/OrdenCompra');
+const DetalleOrdenCompra = require('./compras/DetalleOrdenCompra');
+const FacturaProveedor = require('./compras/FacturaProveedor');
+const PagoProveedor = require('./compras/PagoProveedor');
+const RecepcionCompra = require('./compras/RecepcionCompra');
+const DetalleRecepcionCompra = require('./compras/DetalleRecepcionCompra');
+const DetalleFacturaProveedor = require('./compras/DetalleFacturaProveedor');
+
+
+
+//CONTRATOS
+const Cliente = require('./Cliente');
 
 
 
@@ -91,7 +108,17 @@ const db = {
     SalidaInventario,
     DetalleOrdenCompra,
     CuentaBancaria,
-    MovimientoTesoreria
+    MovimientoTesoreria,
+    Factura,
+    RenglonFactura,
+    PagoFactura,
+    NotaCredito,
+    Cliente,
+    FacturaProveedor,
+    DetalleFacturaProveedor,
+    PagoProveedor,
+    RecepcionCompra,
+    DetalleRecepcionCompra,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

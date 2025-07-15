@@ -20,7 +20,6 @@ const sequelize = require('../../sequelize');
     fechaConsumo: {
       type: DataTypes.DATEONLY,
       allowNull: false,
-      comment: 'Fecha del consumo de alimentos.',
     },
     tipoServicio: { // Ej: "Desayuno", "Almuerzo", "Cena", "Snack", "Agua Potable"
       type: DataTypes.ENUM('Desayuno', 'Almuerzo', 'Cena', 'Merienda', 'Agua Potable'),
@@ -29,12 +28,10 @@ const sequelize = require('../../sequelize');
     cantidadPersonas: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      comment: 'Número de personas para las que se proveyó alimento.',
     },
     notas: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Detalles adicionales sobre el consumo (ej. proveedor, menú).',
     },
     // Opcional: Si quieres registrar qué empleados específicos recibieron la comida ese día
     // Puedes usar una tabla intermedia ConsumoAlimentoEmpleado

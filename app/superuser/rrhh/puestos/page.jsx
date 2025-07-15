@@ -1,13 +1,9 @@
-// app/superuser/rrhh/puestos/nuevo/page.js
-'use client';
+import { Container, Paper, Title } from '@mantine/core';
+import { PuestosTable } from './PuestosTable';
 
-import { Container } from '@mantine/core';
-import { PuestoForm } from './PuestoForm';
-
-export default function NuevoPuestoPage() {
+export default function PuestosPage() {
   return (
-    <Container size="xl" py="xl">
-      <PuestoForm />
-    </Container>
+    
+      <PuestosTable />
   );
 }

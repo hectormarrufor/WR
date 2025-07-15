@@ -33,7 +33,6 @@ const sequelize = require('../../sequelize');
         key: 'id',
       },
       allowNull: true, // Puede ser null si el uso no es para una tarea específica (ej. para un trabajo extra)
-      comment: 'ID de la tarea de mantenimiento en la que se usó el consumible.',
     },
     trabajoExtraId: {
       type: DataTypes.INTEGER,
@@ -42,7 +41,6 @@ const sequelize = require('../../sequelize');
         key: 'id',
       },
       allowNull: true,
-      comment: 'ID del trabajo extra en el que se usó el consumible.',
     },
     empleadoId: {
       type: DataTypes.INTEGER,
@@ -55,7 +53,6 @@ const sequelize = require('../../sequelize');
     destinoUso: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Vehículo, equipo o lugar donde se utilizó el consumible.',
     },
     notas: {
       type: DataTypes.TEXT,

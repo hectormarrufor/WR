@@ -29,7 +29,6 @@ const sequelize = require('../../sequelize');
     rolEnMudanza: { // Ej: "Chofer", "Ayudante", "Supervisor de Carga"
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Rol específico del empleado en esta mudanza.',
     },
     // Puedes añadir fecha de inicio/fin de asignación si el personal no está toda la mudanza
   }, {

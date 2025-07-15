@@ -1,4 +1,3 @@
-// models/ContratoServicio.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
@@ -13,13 +12,19 @@ const ContratoServicio = sequelize.define('ContratoServicio', {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    comment: 'Número único del contrato de servicio.',
   },
-  cliente: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    comment: 'Nombre de la empresa cliente (Ej: PDVSA, Chevron).',
+  // --- CAMBIO AQUÍ: Reemplazamos 'cliente' por 'clienteId' ---
+  clienteId: { // Nueva clave foránea
+    type: DataTypes.INTEGER,
+    allowNull: false, // Un contrato siempre debe tener un cliente
+    references: {
+      model: 'Clientes', // Nombre de la tabla a la que hace referencia
+      key: 'id',
+    },
+    onUpdate: 'CASCADE', // Si el ID del cliente cambia, actualiza aquí
+    onDelete: 'RESTRICT', // No permitir borrar un cliente si tiene contratos
   },
+  // --- FIN DEL CAMBIO ---
   fechaInicio: {
     type: DataTypes.DATEONLY,
     allowNull: false,
@@ -36,12 +41,10 @@ const ContratoServicio = sequelize.define('ContratoServicio', {
   montoEstimado: {
     type: DataTypes.DECIMAL(18, 2),
     allowNull: true,
-    comment: 'Monto total estimado del contrato.',
   },
   descripcion: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Descripción general del alcance del contrato.',
   },
 }, {
   tableName: 'ContratosServicio',
@@ -49,9 +52,14 @@ const ContratoServicio = sequelize.define('ContratoServicio', {
 });
 
 ContratoServicio.associate = (models) => {
+  ContratoServicio.belongsTo(models.Cliente, {
+    foreignKey: 'clienteId',
+    as: 'cliente', // Alias para acceder al cliente desde el contrato (contrato.cliente)
+  });
   ContratoServicio.hasMany(models.RenglonContrato, { foreignKey: 'contratoId', as: 'renglones' });
-  ContratoServicio.hasMany(models.MovimientoTesoreria, { foreignKey: 'contratoServicioId', as: 'movimientosFinancieros' }); // NUEVO
-  ContratoServicio.hasMany(models.SalidaInventario, { foreignKey: 'contratoServicioId', as: 'salidasInventarioPorVenta' }); // NUEVO
+  ContratoServicio.hasMany(models.Factura, { foreignKey: 'contratoId' });
+  ContratoServicio.hasMany(models.MovimientoTesoreria, { foreignKey: 'contratoServicioId', as: 'movimientosFinancieros' });
+  ContratoServicio.hasMany(models.SalidaInventario, { foreignKey: 'contratoServicioId', as: 'salidasInventarioPorVenta' });
 };
 
-module.exports = ContratoServicio
+module.exports = ContratoServicio;

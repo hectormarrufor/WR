@@ -12,17 +12,14 @@ const RenglonContrato = sequelize.define('RenglonContrato', {
     nombreRenglon: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Nombre/Descripción del renglón (Ej: "Servicio de Perforación Pozo X", "Mantenimiento Rig Y").',
     },
     pozoNombre: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Nombre o identificador del pozo petrolero.',
     },
     ubicacionPozo: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Ubicación geográfica del pozo.',
     },
     fechaInicioEstimada: {
       type: DataTypes.DATEONLY,

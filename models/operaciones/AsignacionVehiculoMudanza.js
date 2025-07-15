@@ -28,7 +28,6 @@ const sequelize = require('../../sequelize');
     tipoVehiculoMudanza: { // Ej: "Camión Plataforma", "Grúa", "Pick-up de Apoyo"
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Tipo de vehículo asignado para esta mudanza.',
     },
     conductorId: { // El chofer específico de este vehículo en la mudanza
       type: DataTypes.INTEGER,

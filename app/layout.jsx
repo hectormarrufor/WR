@@ -50,13 +50,10 @@ export default function RootLayout({ children }) {
     return () => window.removeEventListener('scroll', handleScroll);
 
   }, [])
-  useEffect(() => {
-    console.log("isAuthenticated: ", isAuthenticated)
-  }, [isAuthenticated])
-  useEffect(() => {
-    checkAuth();
-    console.log("path: ", path)
-  }, [path])
+  
+  // useEffect(() => {
+  //   checkAuth();
+  // }, [path])
 
 
 

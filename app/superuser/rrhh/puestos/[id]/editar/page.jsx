@@ -17,7 +17,7 @@ export default function EditarPuestoPage({ params }) {
       if (!id) return;
       setLoading(true);
       try {
-        const response = await fetch(`/api/superuser/rrhh/puestos/${id}`);
+        const response = await fetch(`/api/rrhh/puestos/${id}`);
         if (!response.ok) {
           throw new Error(`Error al cargar los datos del puesto: ${response.statusText}`);
         }

@@ -3,11 +3,12 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
-import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal } from '@mantine/core';
+import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal, SimpleGrid, Paper, Title } from '@mantine/core';
 import { IconEdit, IconTrash, IconEye, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
+import BackButton from '../../../components/BackButton';
 
 // Definición de las columnas de la tabla
 const getColumns = () => [
@@ -37,7 +38,7 @@ export function PuestosTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/rrhh/puestos');
+      const response = await fetch('/api/rrhh/puestos');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -63,7 +64,7 @@ export function PuestosTable() {
   const handleDelete = async () => {
     if (!selectedPuesto) return;
     try {
-      const response = await fetch(`/api/superuser/rrhh/puestos/${selectedPuesto.id}`, {
+      const response = await fetch(`/api/rrhh/puestos/${selectedPuesto.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -146,7 +147,15 @@ export function PuestosTable() {
 
   return (
     <>
-      <MantineReactTable table={table} />
+    <Paper size="xl" my={70} mx={50}>
+      <SimpleGrid cols={3}>
+        <BackButton onClick={() => router.back()}/>
+        <Title order={2} ta="center" mb="lg">
+          Listado de Empleados
+        </Title>
+        <Box></Box>
+      </SimpleGrid>
+      <MantineReactTable table={table}/>
       <Modal opened={deleteModalOpened} onClose={closeDeleteModal} title="Confirmar Eliminación" centered>
         <Text>
           ¿Estás seguro de que quieres eliminar el puesto "
@@ -164,6 +173,7 @@ export function PuestosTable() {
           </Button>
         </Flex>
       </Modal>
+    </Paper>
     </>
   );
 }

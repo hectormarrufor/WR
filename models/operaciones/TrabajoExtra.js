@@ -21,7 +21,6 @@ const sequelize = require('../../sequelize');
     notasSalidaConsumible: { // <--- CAMBIADO de 'notasSalidaRepuesto'
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Notas sobre la salida del consumible/repuesto de la base.',
     },
   }, {
     tableName: 'TrabajosExtra',

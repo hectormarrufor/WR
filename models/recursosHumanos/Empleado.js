@@ -10,25 +10,21 @@ const sequelize = require('../../sequelize');
       autoIncrement: true,
     },
     cedula: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(15),
       allowNull: false,
-      unique: true, // La cédula debe ser única por empleado
-      comment: 'Número de cédula de identidad del empleado.',
+      unique: true,
     },
     nombre: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Nombre del empleado.',
     },
     apellido: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Apellido del empleado.',
     },
     fechaNacimiento: {
       type: DataTypes.DATEONLY, // Solo fecha, sin hora
       allowNull: true,
-      comment: 'Fecha de nacimiento del empleado.',
     },
     genero: {
       type: DataTypes.ENUM('Masculino', 'Femenino', 'Otro'),
@@ -37,43 +33,36 @@ const sequelize = require('../../sequelize');
     direccion: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Dirección de residencia del empleado.',
     },
     telefono: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Número de teléfono de contacto.',
     },
     email: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(50),
       allowNull: true,
-      unique: true, // El email también puede ser único
+      unique: true,
       validate: {
         isEmail: true,
       },
-      comment: 'Correo electrónico del empleado.',
     },
     sueldo: { // Sueldo total del empleado, independiente de los puestos
       type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
-      comment: 'Sueldo mensual bruto del empleado.',
     },
     fechaIngreso: {
       type: DataTypes.DATEONLY,
       defaultValue: DataTypes.NOW, // Fecha actual por defecto, pero modificable
       allowNull: false,
-      comment: 'Fecha de ingreso del empleado a la empresa.',
     },
     estado: {
       type: DataTypes.ENUM('Activo', 'Inactivo', 'Suspendido', 'Vacaciones'),
       defaultValue: 'Activo',
       allowNull: false,
-      comment: 'Estado actual del empleado en la empresa.',
     },
     notas: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Notas adicionales sobre el empleado (ej. historial laboral interno).',
     },
     // No hay "trabajoAsignado" directamente aquí, se gestionará a través de asignaciones a Proyectos/Contratos/Mudanzas/Operaciones.
   }, {

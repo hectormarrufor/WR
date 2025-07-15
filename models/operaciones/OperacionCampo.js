@@ -20,33 +20,27 @@ const sequelize = require('../../sequelize');
     fechaInicio: {
       type: DataTypes.DATE,
       allowNull: false,
-      comment: 'Fecha y hora de inicio de las operaciones en el pozo.',
     },
     fechaFinEstimada: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Fecha y hora estimada de finalización de la operación.',
     },
     fechaFinReal: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Fecha y hora real de finalización de la operación.',
     },
     tiempoTotalEstadia: {
       type: DataTypes.DECIMAL(10, 2), // En días o horas
       allowNull: true,
-      comment: 'Tiempo total de estadía de la maquinaria en el pozo (ej. días).',
     },
     tiempoNoOperado: {
       type: DataTypes.DECIMAL(10, 2), // En horas
       defaultValue: 0,
       allowNull: false,
-      comment: 'Tiempo que la maquinaria no estuvo operando (en horas).',
     },
     motivoNoOperado: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Descripción de los motivos del tiempo no operado.',
     },
     // Asignaciones de personal clave directamente en la operación:
     supervisorId: { // Asignado a OperacionCampo
@@ -123,6 +117,7 @@ const sequelize = require('../../sequelize');
     OperacionCampo.belongsTo(models.Empleado, { foreignKey: 'encuelladorId', as: 'encuellador' });
     OperacionCampo.belongsTo(models.Empleado, { foreignKey: 'llaveroId', as: 'llavero' });
     OperacionCampo.belongsTo(models.Empleado, { foreignKey: 'cuneroId', as: 'cunero' });
+    OperacionCampo.hasMany(models.Factura, { foreignKey: 'operacionCampoId' });
     // Puedes tener asignaciones de vehículos también para el día a día en el pozo
     OperacionCampo.hasMany(models.AsignacionVehiculoOperacion, { foreignKey: 'operacionCampoId', as: 'vehiculosAsignados' });
   };

@@ -134,9 +134,9 @@ export default function FlotaPage() {
           <ScrollArea w="100%" p={0}>
             <MantineReactTable
               columns={columns}
-              w="100%"
               data={data}
               state={{ isLoading: loading }}
+              w="100%"
               enableColumnFilters
               enableDensityToggle={false}
               enableFullScreenToggle={false}

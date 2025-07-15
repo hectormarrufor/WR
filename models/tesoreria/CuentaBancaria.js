@@ -29,7 +29,6 @@ const sequelize = require('../../sequelize');
       type: DataTypes.DECIMAL(18, 2),
       defaultValue: 0,
       allowNull: false,
-      comment: 'Saldo actual de la cuenta bancaria.',
     },
     notas: {
       type: DataTypes.TEXT,

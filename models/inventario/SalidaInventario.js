@@ -27,7 +27,6 @@ const sequelize = require('../../sequelize');
     tipoSalida: {
       type: DataTypes.ENUM('Venta', 'Despacho', 'Ajuste Negativo', 'Transferencia', 'Descarte'),
       allowNull: false,
-      comment: 'Tipo de movimiento de salida (aparte del consumo directo en Mantenimiento/TrabajoExtra).',
     },
     documentoReferencia: { // Nro de factura de venta, guía de despacho, etc.
       type: DataTypes.STRING,
@@ -44,7 +43,6 @@ const sequelize = require('../../sequelize');
     recibidoPor: { // Quién recibió la salida (si aplica, ej. cliente)
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Nombre de la persona o entidad que recibió el ítem si no es un empleado de la empresa.',
     },
     destinoSalida: { // Ej: "Cliente X", "Almacén B", "Descarte por Daño"
       type: DataTypes.STRING,
