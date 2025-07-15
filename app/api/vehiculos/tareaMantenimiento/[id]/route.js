@@ -1,6 +1,7 @@
 // app/api/tareaMantenimiento/[id]/route.js
 import { NextResponse } from 'next/server';
-import { TareaMantenimiento, Mantenimiento, Vehiculo } from '../../../../models'; // Ajusta la ruta y modelos relacionados
+import { TareaMantenimiento, Mantenimiento, Vehiculo } from '../../../../../models'; // Ajusta la ruta y modelos relacionados
+
 
 // GET una tarea de mantenimiento por ID
 export async function GET(request, { params }) {
