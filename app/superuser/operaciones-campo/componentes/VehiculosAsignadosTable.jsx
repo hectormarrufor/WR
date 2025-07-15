@@ -7,7 +7,7 @@ import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal } from '@mant
 import { IconEdit, IconTrash, IconEye, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
-import { VehiculoAsignadoForm } from './VehiculoAsignadoForm'; // Importa el formulario
+import { VehiculoAsignadoForm } from './VehiculoAsignadosForm';
 
 // Definición de las columnas de la tabla
 const getColumns = () => [

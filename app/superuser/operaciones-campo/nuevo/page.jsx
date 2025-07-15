@@ -1,8 +1,8 @@
 // app/superuser/operaciones-campo/nuevo/page.js
 'use client';
 
-import { OperacionCampoForm } from '@/components/operaciones-campo/OperacionCampoForm';
 import { Container } from '@mantine/core';
+import { OperacionCampoForm } from '../componentes/OperacionCampoForm';
 
 export default function NuevaOperacionCampoPage() {
   return (
