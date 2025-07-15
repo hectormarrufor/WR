@@ -1,8 +1,8 @@
 // app/api/consumibleUsado/[id]/route.js
 import { NextResponse } from 'next/server';
-import Consumible from '../../../../../models';
-import ConsumibleUsado from '../../../../../models';
-import Vehiculo from '../../../../../models';
+import { Consumible, ConsumibleUsado, Vehiculo } from '../../../../../models';
+
+
 // GET un registro de consumible usado por ID
 export async function GET(request, { params }) {
   const { id } = params;

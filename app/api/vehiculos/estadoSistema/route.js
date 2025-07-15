@@ -1,7 +1,7 @@
 // app/api/estadoSistema/route.js
 import { NextResponse } from 'next/server';
-import EstadoSistemaVehiculo from '../../../../models';
-import Vehiculo from '../../../../models';
+import { Vehiculo, EstadoSistemaVehiculo } from '../../../../models';
+
 // GET todos los estados de sistema
 export async function GET() {
   try {

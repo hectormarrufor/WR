@@ -1,11 +1,12 @@
 // app/api/hallazgoInspeccion/route.js
 import { NextResponse } from 'next/server';
-import {HallazgoInspeccion, Inspeccion} from '../../../../models';
+import db from '../../../../models';
+
 // GET todos los hallazgos de inspección
 export async function GET() {
   try {
-    const hallazgosInspeccion = await HallazgoInspeccion.findAll({
-      include: [{ model: Inspeccion, as: 'inspeccion' }],
+    const hallazgosInspeccion = await db.HallazgoInspeccion.findAll({
+      include: [{ model: db.Inspeccion, as: 'inspeccion' }],
     });
     return NextResponse.json(hallazgosInspeccion, { status: 200 });
   } catch (error) {
@@ -21,7 +22,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const nuevoHallazgoInspeccion = await HallazgoInspeccion.create(body);
+    const nuevoHallazgoInspeccion = await db.HallazgoInspeccion.create(body);
     return NextResponse.json(nuevoHallazgoInspeccion, { status: 201 });
   } catch (error) {
     console.error('Error al crear hallazgo de inspección:', error.message);

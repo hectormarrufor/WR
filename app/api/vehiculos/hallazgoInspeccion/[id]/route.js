@@ -1,13 +1,13 @@
 // app/api/hallazgoInspeccion/[id]/route.js
 import { NextResponse } from 'next/server';
-import { HallazgoInspeccion, Inspeccion } from '../../../../models'; // Ajusta la ruta
+import db from '../../../../../models';
 
 // GET un hallazgo de inspección por ID
 export async function GET(request, { params }) {
   const { id } = params;
   try {
-    const hallazgoInspeccion = await HallazgoInspeccion.findByPk(id, {
-      include: [{ model: Inspeccion, as: 'inspeccion' }],
+    const hallazgoInspeccion = await db.HallazgoInspeccion.findByPk(id, {
+      include: [{ model: db.Inspeccion, as: 'inspeccion' }],
     });
     if (!hallazgoInspeccion) {
       return NextResponse.json({ message: 'Hallazgo de inspección no encontrado.', type: 'NotFound' }, { status: 404 });
@@ -27,7 +27,7 @@ export async function PUT(request, { params }) {
   const { id } = params;
   try {
     const body = await request.json();
-    const hallazgoInspeccion = await HallazgoInspeccion.findByPk(id);
+    const hallazgoInspeccion = await db.HallazgoInspeccion.findByPk(id);
     if (!hallazgoInspeccion) {
       return NextResponse.json({ message: 'Hallazgo de inspección no encontrado.', type: 'NotFound' }, { status: 404 });
     }
@@ -58,7 +58,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   const { id } = params;
   try {
-    const hallazgoInspeccion = await HallazgoInspeccion.findByPk(id);
+    const hallazgoInspeccion = await db.HallazgoInspeccion.findByPk(id);
     if (!hallazgoInspeccion) {
       return NextResponse.json({ message: 'Hallazgo de inspección no encontrado.', type: 'NotFound' }, { status: 404 });
     }

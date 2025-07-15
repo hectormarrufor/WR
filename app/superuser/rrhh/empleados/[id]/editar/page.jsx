@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { EmpleadoForm } from '@/components/rrhh/EmpleadoForm';
 import { Container, Text, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { EmpleadoForm } from '../../EmpleadoForm';
 
 export default function EditarEmpleadoPage({ params }) {
   const { id } = params; // El ID del empleado viene de los parámetros de la URL

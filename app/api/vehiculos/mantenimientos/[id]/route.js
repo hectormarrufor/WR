@@ -1,6 +1,6 @@
 // app/api/mantenimientos/[id]/route.js
 import { NextResponse } from 'next/server';
-import { Mantenimiento, Vehiculo, Usuario } from '../../../../models'; // Ajusta la ruta
+import { Mantenimiento, Vehiculo, Empleado } from '../../../../../models'; // Ajusta la ruta
 
 // GET un mantenimiento por ID
 export async function GET(request, { params }) {
@@ -9,7 +9,7 @@ export async function GET(request, { params }) {
     const mantenimiento = await Mantenimiento.findByPk(id, {
       include: [
         { model: Vehiculo, as: 'vehiculo' },
-        // { model: Usuario, as: 'responsable' },
+        // { model: Empleado, as: 'responsable' },
       ],
     });
     if (!mantenimiento) {

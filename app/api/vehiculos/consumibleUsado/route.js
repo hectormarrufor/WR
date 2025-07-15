@@ -1,8 +1,8 @@
 // app/api/consumibleUsado/route.js
 import { NextResponse } from 'next/server';
-import Consumible from '../../../../models';
-import ConsumibleUsado from '../../../../models';
-import Vehiculo from '../../../../models';
+import { Consumible, ConsumibleUsado, Vehiculo } from '../../../../models';
+
+
 // GET todos los registros de consumibles usados
 export async function GET() {
   try {
