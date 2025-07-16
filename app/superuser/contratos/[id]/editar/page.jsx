@@ -1,13 +1,13 @@
 // app/superuser/contratos/[id]/editar/page.js
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { Container, Text, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { ContratoForm } from '../../contratoForm';
 
 export default function EditarContratoPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const [contratoData, setContratoData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,7 +17,7 @@ export default function EditarContratoPage({ params }) {
       if (!id) return;
       setLoading(true);
       try {
-        const response = await fetch(`/api/superuser/contratos/${id}`);
+        const response = await fetch(`/api/operaciones/contratos/${id}`);
         if (!response.ok) {
           throw new Error(`Error al cargar los datos del contrato: ${response.statusText}`);
         }

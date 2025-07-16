@@ -2,15 +2,17 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { TextInput, Button, Group, Box, Select, NumberInput, Textarea, Loader, Center, Title, Divider } from '@mantine/core';
+import { TextInput, Button, Group, Box, Select, NumberInput, Textarea, Loader, Center, Title, Divider, Text, Grid } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconPlus } from '@tabler/icons-react';
 import { RenglonFacturaForm } from './RenglonFacturaForm'; // Importa el sub-componente
 import { useRouter } from 'next/navigation';
+import { useMediaQuery } from '@mantine/hooks';
 
 export function FacturaForm({ facturaId = null }) {
+  const isMobile = useMediaQuery(`(max-width: 48em)`);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [clientes, setClientes] = useState([]);
@@ -45,9 +47,9 @@ export function FacturaForm({ facturaId = null }) {
     setLoading(true);
     try {
       const [clientesRes, contratosRes, operacionesRes] = await Promise.all([
-        fetch('/api/superuser/clientes?activo=true'),
-        fetch('/api/superuser/contratos-servicio'), // Asegúrate de que esta API exista
-        fetch('/api/superuser/operaciones-campo'), // Asegúrate de que esta API exista
+        fetch('/api/clientes?activo=true'),
+        fetch('/api/operaciones/contratos'), // Asegúrate de que esta API exista
+        fetch('/api/operaciones/operacionesCampo'), // Asegúrate de que esta API exista
       ]);
 
       const [clientesData, contratosData, operacionesData] = await Promise.all([
@@ -55,6 +57,9 @@ export function FacturaForm({ facturaId = null }) {
         contratosRes.json(),
         operacionesRes.json(),
       ]);
+
+      console.log(clientesData, contratosData, operacionesData);
+      
 
       setClientes(clientesData.map(c => ({
         value: c.id.toString(),
@@ -64,7 +69,7 @@ export function FacturaForm({ facturaId = null }) {
       setOperacionesCampo(operacionesData.map(o => ({ value: o.id.toString(), label: `Op. Campo #${o.id} - Contrato ${o.renglonContrato?.contrato?.numeroContrato || 'N/A'}` })));
 
       if (facturaId) {
-        const facturaRes = await fetch(`/api/superuser/facturacion/${facturaId}`);
+        const facturaRes = await fetch(`/api/facturacion/${facturaId}`);
         if (!facturaRes.ok) throw new Error('Factura no encontrada');
         const facturaData = await facturaRes.json();
 
@@ -92,7 +97,7 @@ export function FacturaForm({ facturaId = null }) {
         message: `No se pudieron cargar los datos necesarios: ${err.message}`,
         color: 'red',
       });
-      router.push('/superuser/facturacion'); // Redirigir si falla la carga inicial
+      // router.push('/superuser/facturacion'); // Redirigir si falla la carga inicial
     } finally {
       setLoading(false);
     }
@@ -135,13 +140,13 @@ export function FacturaForm({ facturaId = null }) {
     };
 
     let response;
-    let url = '/api/superuser/facturacion';
+    let url = '/api/facturacion';
     let method = 'POST';
     let successMessage = 'Factura creada exitosamente';
     let errorMessage = 'Error al crear factura';
 
     if (facturaId) {
-      url = `/api/superuser/facturacion/${facturaId}`;
+      url = `/api/facturacion/${facturaId}`;
       method = 'PUT';
       successMessage = 'Factura actualizada exitosamente';
       errorMessage = 'Error al actualizar factura';
@@ -189,69 +194,94 @@ export function FacturaForm({ facturaId = null }) {
   }
 
   return (
-    <Box maw={900} mx="auto" py="md">
+    <Box mx={isMobile? 0 : "5%"} py="md">
       <Title order={2} mb="lg">{facturaId ? 'Editar Factura' : 'Crear Nueva Factura'}</Title>
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <TextInput
-          label="Número de Factura"
-          placeholder="Ej. F-2025-0001"
-          {...form.getInputProps('numeroFactura')}
-          mb="md"
-        />
-        <Select
-          label="Cliente"
-          placeholder="Selecciona un cliente"
-          data={clientes}
-          searchable
-          {...form.getInputProps('clienteId')}
-          mb="md"
-        />
-        <Select
-          label="Contrato Asociado (Opcional)"
-          placeholder="Selecciona un contrato"
-          data={contratos}
-          clearable
-          searchable
-          {...form.getInputProps('contratoId')}
-          mb="md"
-        />
-        <Select
-          label="Operación de Campo Asociada (Opcional)"
-          placeholder="Selecciona una operación de campo"
-          data={operacionesCampo}
-          clearable
-          searchable
-          {...form.getInputProps('operacionCampoId')}
-          mb="md"
-        />
-        <DateInput
-          label="Fecha de Emisión"
-          placeholder="Selecciona la fecha de emisión"
-          valueFormat="DD/MM/YYYY"
-          {...form.getInputProps('fechaEmision')}
-          mb="md"
-        />
-        <DateInput
-          label="Fecha de Vencimiento"
-          placeholder="Selecciona la fecha de vencimiento"
-          valueFormat="DD/MM/YYYY"
-          {...form.getInputProps('fechaVencimiento')}
-          mb="md"
-        />
-        <Select
-          label="Estado de la Factura"
-          placeholder="Selecciona el estado"
-          data={['Pendiente', 'Pagada', 'Vencida', 'Anulada']}
-          {...form.getInputProps('estado')}
-          mb="md"
-        />
-        <Textarea
-          label="Notas Adicionales"
-          placeholder="Cualquier nota relevante sobre esta factura"
-          {...form.getInputProps('notas')}
-          rows={3}
-          mb="md"
-        />
+        <Grid gutter="xs" grow >
+          <Grid.Col span="content">
+            <TextInput
+              label="Número de Factura"
+              placeholder="Ej. F-2025-0001"
+              {...form.getInputProps('numeroFactura')}
+              mb="md"
+            />
+          </Grid.Col>
+
+          <Grid.Col span="content">
+            <Select
+              label="Cliente"
+              placeholder="Selecciona un cliente"
+              data={clientes}
+              searchable
+              {...form.getInputProps('clienteId')}
+              mb="md"
+            />
+          </Grid.Col>
+
+          <Grid.Col span="content">
+            <Select
+              label="Contrato Asociado (Opcional)"
+              placeholder="Selecciona un contrato"
+              data={contratos}
+              clearable
+              searchable
+              {...form.getInputProps('contratoId')}
+              mb="md"
+            />
+          </Grid.Col>
+
+          <Grid.Col span="content">
+            <Select
+              label="Operación de Campo Asociada (Opcional)"
+              placeholder="Selecciona una operación de campo"
+              data={operacionesCampo}
+              clearable
+              searchable
+              {...form.getInputProps('operacionCampoId')}
+              mb="md"
+            />
+          </Grid.Col>
+
+          <Grid.Col span="content">
+            <DateInput
+              label="Fecha de Emisión"
+              placeholder="Selecciona la fecha de emisión"
+              valueFormat="DD/MM/YYYY"
+              {...form.getInputProps('fechaEmision')}
+              mb="md"
+            />
+          </Grid.Col>
+
+          <Grid.Col span="content">
+            <DateInput
+              label="Fecha de Vencimiento"
+              placeholder="Selecciona la fecha de vencimiento"
+              valueFormat="DD/MM/YYYY"
+              {...form.getInputProps('fechaVencimiento')}
+              mb="md"
+            />
+          </Grid.Col>
+
+          <Grid.Col span="content">
+            <Select
+              label="Estado de la Factura"
+              placeholder="Selecciona el estado"
+              data={['Pendiente', 'Pagada', 'Vencida', 'Anulada']}
+              {...form.getInputProps('estado')}
+              mb="md"
+            />
+          </Grid.Col>
+
+          <Grid.Col span={12}>
+            <Textarea
+              label="Notas Adicionales"
+              placeholder="Cualquier nota relevante sobre esta factura"
+              {...form.getInputProps('notas')}
+              rows={3}
+              mb="md"
+            />
+          </Grid.Col>
+        </Grid>
 
         <Divider my="lg" label="Renglones de Factura" labelPosition="center" />
 

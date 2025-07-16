@@ -1,74 +1,110 @@
 // components/contratos/ContratoForm.jsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { TextInput, Button, Group, Box, Paper, Title, Grid, Loader, Center, Select, NumberInput, Textarea, Switch, Container, Text } from '@mantine/core';
+import React, { useEffect } from 'react';
+import {
+  TextInput, Button, Group, Box, Paper, Title, Grid, Divider, ActionIcon,
+  Select, NumberInput, Textarea, Switch, Container, Text
+} from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
+import '@mantine/dates/styles.css';
 import { SelectClienteConCreacion } from './SelectClienteConCreacion';
-// No necesitas importar ModalCrearCliente aquí directamente, ya lo maneja SelectClienteConCreacion
 
 export function ContratoForm({ initialData = null }) {
   const router = useRouter();
-  // Eliminamos los estados clientes, loadingOptions y errorOptions
-  // ya que SelectClienteConCreacion manejará su propia carga de datos
 
   const form = useForm({
     initialValues: {
       numeroContrato: '',
-      clienteId: '', // Debe ser el ID del cliente (string porque Mantine Select lo espera)
+      clienteId: '',
       fechaInicio: null,
       fechaFin: null,
       montoTotal: 0.0,
       descripcion: '',
       activo: true,
-      estado: 'Activo', // Puedes definir un valor por defecto o un enum
+      estado: 'Activo',
+      renglones: [],
     },
     validate: {
       numeroContrato: (value) => (value ? null : 'El número de contrato es requerido'),
       clienteId: (value) => (value ? null : 'Seleccionar un cliente es requerido'),
       fechaInicio: (value) => (value ? null : 'La fecha de inicio es requerida'),
       montoTotal: (value) => (value > 0 ? null : 'El monto total debe ser mayor a 0'),
+      renglones: (value) => (value.length > 0 ? null : 'Debe agregar al menos un renglón/fase al contrato'),
       fechaFin: (value, values) => {
-        // Si el contrato no está activo, la fecha de fin es requerida
         if (!values.activo && !value) {
           return 'Si el contrato no está activo, la fecha de fin es requerida';
         }
-        // Si hay fecha de fin y fecha de inicio, la fecha de fin no puede ser anterior
         if (value && values.fechaInicio && value < values.fechaInicio) {
-          return 'La fecha de fin no puede ser anterior a la fecha de inicio';
+          return 'La fecha de fin no puede ser anterior a la fecha de inicio del contrato';
         }
         return null;
       },
     },
   });
 
-  // Cargar datos iniciales si se está editando
   useEffect(() => {
     if (initialData) {
       form.setValues({
         ...initialData,
-        clienteId: initialData.clienteId.toString(), // Convertir a string para el Select
+        clienteId: initialData.clienteId.toString(),
         fechaInicio: initialData.fechaInicio ? new Date(initialData.fechaInicio) : null,
         fechaFin: initialData.fechaFin ? new Date(initialData.fechaFin) : null,
+        renglones: initialData.RenglonesContrato?.map(r => ({ // Asegúrate de mapear las fechas si vienen como strings
+          ...r,
+          fechaInicioEstimada: r.fechaInicioEstimada ? new Date(r.fechaInicioEstimada) : null,
+          fechaFinEstimada: r.fechaFinEstimada ? new Date(r.fechaFinEstimada) : null,
+        })) || [],
       });
     }
-  }, [initialData, form]); // Añadir 'form' a las dependencias del useEffect
+  }, [initialData]);
 
-  // El useEffect para cargar opciones de clientes ya no es necesario aquí.
-  // Es manejado internamente por SelectClienteConCreacion.
+  useEffect(() => {
+    const renglonesWithEndDate = form.values.renglones.filter(r => r.fechaFinEstimada);
+    let newFechaFin = null;
+    if (renglonesWithEndDate.length > 0) {
+      newFechaFin = new Date(Math.max(...renglonesWithEndDate.map(r => new Date(r.fechaFinEstimada))));
+    }
+
+    const renglonesWithStartDate = form.values.renglones.filter(r => r.fechaInicioEstimada);
+    let newFechaInicio = form.values.fechaInicio;
+    if (renglonesWithStartDate.length > 0) {
+      const earliestDate = new Date(Math.min(...renglonesWithStartDate.map(r => new Date(r.fechaInicioEstimada))));
+      if (!newFechaInicio || earliestDate < newFechaInicio) {
+        newFechaInicio = earliestDate;
+      }
+    }
+
+    if (newFechaFin?.getTime() !== form.values.fechaFin?.getTime()) {
+      form.setFieldValue('fechaFin', newFechaFin);
+    }
+    if (newFechaInicio?.getTime() !== form.values.fechaInicio?.getTime()) {
+      form.setFieldValue('fechaInicio', newFechaInicio);
+    }
+  }, [form.values.renglones]);
 
   const handleSubmit = async (values) => {
+    console.log("values before payload: ", values);
     const payload = {
       ...values,
-      clienteId: parseInt(values.clienteId), // Convertir a número para la API
+      clienteId: parseInt(values.clienteId),
       fechaInicio: values.fechaInicio ? values.fechaInicio.toISOString().split('T')[0] : null,
       fechaFin: values.fechaFin ? values.fechaFin.toISOString().split('T')[0] : null,
-      montoTotal: parseFloat(values.montoTotal), // Asegurarse de que sea un número flotante
+      montoTotal: parseFloat(values.montoTotal),
+      // IMPORTANTE: Aquí pasamos los renglones tal cual.
+      // El backend se encargará de crear/actualizar/eliminar.
+      renglones: values.renglones.map(renglon => ({
+        ...renglon,
+        fechaInicioEstimada: renglon.fechaInicioEstimada ? new Date(renglon.fechaInicioEstimada).toISOString().split('T')[0] : null,
+        fechaFinEstimada: renglon.fechaFinEstimada ? new Date(renglon.fechaFinEstimada).toISOString().split('T')[0] : null,
+      })),
     };
-
+    console.log("values after payload: ", payload);
+    // return
     let response;
     let url = '/api/operaciones/contratos';
     let method = 'POST';
@@ -101,7 +137,7 @@ export function ContratoForm({ initialData = null }) {
         message: successMessage,
         color: 'green',
       });
-      router.push('/superuser/contratos'); // Redirigir al listado
+      router.push('/superuser/contratos');
     } catch (error) {
       console.error(errorMessage, error);
       notifications.show({
@@ -112,11 +148,89 @@ export function ContratoForm({ initialData = null }) {
     }
   };
 
-  // Eliminamos los loaders y mensajes de error específicos de carga de clientes
-  // ya que SelectClienteConCreacion maneja su propio estado de carga y mensajes.
+  const addRenglon = () => {
+    form.insertListItem('renglones', {
+      nombreRenglon: '',
+      pozoNombre: '',
+      ubicacionPozo: '',
+      fechaInicioEstimada: null,
+      fechaFinEstimada: null,
+      estado: 'Pendiente',
+    });
+  };
+
+  const removeRenglon = (index) => {
+    form.removeListItem('renglones', index);
+  };
+
+  const renglonesFields = form.values.renglones.map((item, index) => (
+    <Paper key={index} withBorder shadow="xs" p="md" mb="sm">
+      <Group justify="flex-end">
+        <ActionIcon
+          color="red"
+          onClick={() => removeRenglon(index)}
+          variant="light"
+          size="sm"
+          aria-label="Eliminar renglón"
+        >
+          <IconTrash style={{ width: '70%', height: '70%' }} stroke={1.5} />
+        </ActionIcon>
+      </Group>
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput
+            label="Nombre del Renglón/Fase"
+            placeholder="Ej: Instalación pozo X, Mantenimiento preventivo"
+            required
+            {...form.getInputProps(`renglones.${index}.nombreRenglon`)}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput
+            label="Nombre del Pozo"
+            placeholder="Ej: Pozo J-15, Campo Morichal"
+            required
+            {...form.getInputProps(`renglones.${index}.pozoNombre`)}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <TextInput
+            label="Ubicación del Pozo"
+            placeholder="Ej: Sector Las Mercedes, Bloque 3"
+            {...form.getInputProps(`renglones.${index}.ubicacionPozo`)}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Select
+            label="Estado de la Fase"
+            placeholder="Selecciona el estado"
+            data={['Pendiente', 'En Preparación', 'Mudanza', 'Operando', 'Finalizado', 'Pausado', 'Cancelado']}
+            required
+            {...form.getInputProps(`renglones.${index}.estado`)}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <DateInput
+            label="Fecha Inicio Estimada"
+            placeholder="Fecha estimada de inicio"
+            valueFormat="DD/MM/YYYY"
+            {...form.getInputProps(`renglones.${index}.fechaInicioEstimada`)}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <DateInput
+            label="Fecha Fin Estimada"
+            placeholder="Fecha estimada de fin"
+            valueFormat="DD/MM/YYYY"
+            {...form.getInputProps(`renglones.${index}.fechaFinEstimada`)}
+          />
+        </Grid.Col>
+      </Grid>
+    </Paper>
+  ));
 
   return (
-    <Box maw={800} mx="auto">
+    <Box maw={1000} mx="auto">
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <Title order={2} ta="center" mb="lg">
           {initialData ? 'Editar Contrato' : 'Registrar Nuevo Contrato'}
@@ -132,40 +246,48 @@ export function ContratoForm({ initialData = null }) {
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
-              {/* Aquí usamos el nuevo componente SelectClienteConCreacion */}
               <SelectClienteConCreacion
                 form={form}
-                fieldName="clienteId" // El nombre del campo en tu objeto `form`
+                fieldName="clienteId"
                 label="Cliente"
                 placeholder="Selecciona un cliente o crea uno nuevo"
-                disabled={!!initialData} // Deshabilitar si se está editando un contrato existente
+                disabled={!!initialData}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
               <DateInput
-                label="Fecha de Inicio"
+                label="Fecha de Inicio del Contrato"
                 placeholder="Selecciona la fecha de inicio"
                 valueFormat="DD/MM/YYYY"
                 required
+                readOnly
+                disabled
                 {...form.getInputProps('fechaInicio')}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
               <DateInput
-                label="Fecha de Fin (Opcional)"
-                placeholder="Selecciona la fecha de fin"
+                label="Fecha de Fin del Contrato"
+                placeholder="Calculada automáticamente"
                 valueFormat="DD/MM/YYYY"
+                readOnly
+                disabled
                 {...form.getInputProps('fechaFin')}
-                // Si está activo, la fecha de fin es opcional.
-                // Si no está activo, la validación hará que sea requerida si está vacía.
-                disabled={form.values.activo}
               />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 6 }}>
+            <Grid.Col span={12}>
+              <Textarea
+                label="Descripción General del Contrato"
+                placeholder="Detalles y términos generales del contrato"
+                {...form.getInputProps('descripcion')}
+                rows={3}
+              />
+            </Grid.Col>
+            <Grid.Col span={12}>
               <NumberInput
-                label="Monto Total"
+                label="Monto Total Acordado del Contrato"
                 placeholder="Ej. 1500.00"
-                prefix="Bs. " // Cambiado a Bs. para Venezuela
+                prefix="Bs. "
                 decimalScale={2}
                 fixedDecimalScale
                 min={0}
@@ -173,26 +295,19 @@ export function ContratoForm({ initialData = null }) {
                 decimalSeparator=","
                 required
                 {...form.getInputProps('montoTotal')}
+                mt="lg"
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
               <Select
                 label="Estado del Contrato"
                 placeholder="Selecciona un estado"
-                data={['Activo', 'Pausado', 'Finalizado', 'Cancelado']} // Ajusta estos estados a tu ENUM en Sequelize
+                data={['Activo', 'Pausado', 'Finalizado', 'Cancelado']}
                 required
                 {...form.getInputProps('estado')}
               />
             </Grid.Col>
-            <Grid.Col span={12}>
-              <Textarea
-                label="Descripción"
-                placeholder="Detalles y términos del contrato"
-                {...form.getInputProps('descripcion')}
-                rows={3}
-              />
-            </Grid.Col>
-            <Grid.Col span={12}>
+            <Grid.Col span={{ base: 12, md: 6 }}>
               <Switch
                 label="Contrato Activo"
                 checked={form.values.activo}
@@ -203,17 +318,30 @@ export function ContratoForm({ initialData = null }) {
                 mt="md"
                 onChange={(event) => {
                   form.setFieldValue('activo', event.currentTarget.checked);
-                  // Si se marca como activo, limpia la fecha de fin y establece estado a 'Activo'
                   if (event.currentTarget.checked) {
-                    form.setFieldValue('fechaFin', null);
                     form.setFieldValue('estado', 'Activo');
                   } else {
-                    // Si se desactiva, puedes establecer un estado por defecto o requerir fechaFin
-                    form.setFieldValue('estado', 'Finalizado'); // O 'Inactivo' / 'Cancelado'
-                    // La validación de fechaFin ya se encarga si es requerido
+                    form.setFieldValue('estado', 'Finalizado');
                   }
                 }}
               />
+            </Grid.Col>
+
+            <Grid.Col span={12}>
+              <Divider my="md" label="Fases/Renglones de Servicio (Hitos)" labelPosition="center" />
+              {renglonesFields.length > 0 ? (
+                renglonesFields
+              ) : (
+                <Text c="dimmed" ta="center" mt="md">No hay fases/renglones agregados. Agregue uno.</Text>
+              )}
+              <Group justify="center" mt="md">
+                <Button leftSection={<IconPlus size={16} />} onClick={addRenglon} variant="light">
+                  Agregar Fase/Renglón
+                </Button>
+              </Group>
+              {form.errors.renglones && form.values.renglones.length === 0 && (
+                <Text c="red" size="sm" mt={4}>{form.errors.renglones}</Text>
+              )}
             </Grid.Col>
           </Grid>
 

@@ -15,7 +15,13 @@ export async function GET(request) {
     }
 
     const contratos = await db.ContratoServicio.findAll({
-      include: includeOptions,
+      include: [
+        ...includeOptions, 
+        {
+          model: db.Cliente, 
+          as: 'cliente', 
+          // attributes: ['nombreCompleto']
+        }],
       order: [['fechaInicio', 'DESC']],
     });
     return NextResponse.json(contratos);
@@ -27,33 +33,26 @@ export async function GET(request) {
 
 export async function POST(request) {
  try {
-    const { numeroContrato, clienteId, fechaInicio, fechaFinEstimada, estado, montoEstimado, descripcion } = await request.json();
+    const {renglones, ...contratoData} = await request.json();
+    console.log(contratoData)
+    console.log("renglones: ",renglones)
+    
+    // return NextResponse.json({ error: 'probando' }, { status: 500 });
+    // Crear el contrato
+    const nuevoContrato = await db.ContratoServicio.create(contratoData);
 
-    // Asegúrate de que clienteId es un número si es necesario y de que existe
-    if (!clienteId) {
-        return NextResponse.json({ message: 'El ID del cliente es requerido.' }, { status: 400 });
+    // Crear los renglones asociados al nuevo contrato
+    if (renglones && renglones.length > 0) {
+      const renglonesConContratoId = renglones.map(renglon => ({
+        ...renglon,
+        contratoId: nuevoContrato.id,
+      }));
+      await db.RenglonContrato.bulkCreate(renglonesConContratoId);
     }
-    const clienteExistente = await db.Cliente.findByPk(clienteId);
-    if (!clienteExistente) {
-        return NextResponse.json({ message: 'Cliente no encontrado con el ID proporcionado.' }, { status: 404 });
-    }
-
-    const nuevoContrato = await db.ContratoServicio.create({
-      numeroContrato,
-      clienteId, // <-- Usamos clienteId ahora
-      fechaInicio,
-      fechaFinEstimada,
-      estado,
-      montoEstimado,
-      descripcion,
-    });
 
     return NextResponse.json(nuevoContrato, { status: 201 });
   } catch (error) {
-    console.error('Error al crear contrato de servicio:', error);
-    if (error.name === 'SequelizeUniqueConstraintError') {
-      return NextResponse.json({ message: 'El número de contrato ya existe.' }, { status: 409 });
-    }
-    return NextResponse.json({ message: 'Error al crear el contrato de servicio', error: error.message }, { status: 500 });
+    console.error('Error al registrar contrato:', error);
+    return NextResponse.json({ error: 'Error interno del servidor al registrar contrato', details: error.message }, { status: 500 });
   }
 }

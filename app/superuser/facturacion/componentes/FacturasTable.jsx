@@ -17,7 +17,7 @@ const getColumns = () => [
     size: 100,
   },
   {
-    accessorKey: 'cliente.razonSocial', // Asume que el cliente viene incluido
+    accessorKey: 'cliente.nombreCompleto', // Asume que el cliente viene incluido
     header: 'Cliente',
     size: 200,
     Cell: ({ row }) => row.original.cliente?.razonSocial || row.original.cliente?.nombreCompleto || 'N/A',
@@ -81,19 +81,22 @@ export function FacturasTable() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    console.log('Iniciando Fetch')
     try {
-      const response = await fetch('/api/superuser/facturacion'); // API para obtener todas las facturas
+      const response = await fetch('/api/facturacion'); // API para obtener todas las facturas
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
       const result = await response.json();
+      console.log(result);
+      if (result.length === 0) throw new Error("No hay facturas registradas aun")
       setData(result);
     } catch (err) {
       console.error('Failed to fetch facturas:', err);
       setError(err);
       notifications.show({
         title: 'Error',
-        message: 'No se pudieron cargar las facturas. Intenta de nuevo.',
+        message: `No se pudieron cargar las facturas: ${err.message}`,
         color: 'red',
       });
     } finally {
@@ -108,7 +111,7 @@ export function FacturasTable() {
   const handleDeleteFactura = async () => {
     if (!selectedFactura) return;
     try {
-      const response = await fetch(`/api/superuser/facturacion/${selectedFactura.id}`, {
+      const response = await fetch(`/api/facturacion/${selectedFactura.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

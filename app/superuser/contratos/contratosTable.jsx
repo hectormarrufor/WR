@@ -17,11 +17,16 @@ const getColumns = () => [
     size: 150,
   },
   {
-    accessorFn: (row) => `${row.cliente?.nombre} ${row.cliente?.apellido || ''}`, // Asume que incluye el objeto cliente
-    id: 'nombreCliente',
+    accessorKey: 'cliente.nombreCompleto',
     header: 'Cliente',
-    size: 200,
+    size: 150,
   },
+  // {
+  //   accessorFn: (row) => `${row.cliente?.nombre} ${row.cliente?.apellido || ''}`, // Asume que incluye el objeto cliente
+  //   id: 'nombreCliente',
+  //   header: 'Cliente',
+  //   size: 200,
+  // },
   {
     accessorKey: 'fechaInicio',
     header: 'Fecha Inicio',
@@ -98,7 +103,7 @@ export function ContratosTable() {
   const handleDelete = async () => {
     if (!selectedContrato) return;
     try {
-      const response = await fetch(`/api/superuser/contratos/${selectedContrato.id}`, {
+      const response = await fetch(`/api/operaciones/contratos/${selectedContrato.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

@@ -15,9 +15,9 @@ export async function GET(request) {
     const facturas = await db.Factura.findAll({
       where: whereClause,
       include: [
-        { model: db.Cliente, as: 'cliente' },
-        { model: db.ContratoServicio, as: 'contrato' },
-        { model: db.OperacionCampo, as: 'operacionCampo' },
+        { model: db.Cliente },
+        { model: db.ContratoServicio },
+        { model: db.OperacionCampo },
         { model: db.RenglonFactura, as: 'renglones' }, // Incluir renglones por defecto en el listado
       ],
       order: [['fechaEmision', 'DESC']],
