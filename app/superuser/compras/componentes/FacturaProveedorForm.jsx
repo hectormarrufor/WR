@@ -108,7 +108,7 @@ export function FacturaProveedorForm({ facturaId }) {
 
   useEffect(() => {
     fetchDependencies();
-  }, [fetchDependencies]);
+  }, []);
 
   const handleOrdenCompraChange = async (ocId, isInitialLoad = false) => {
     form.setFieldValue('ordenCompraId', ocId);
@@ -186,7 +186,6 @@ export function FacturaProveedorForm({ facturaId }) {
 
   const handleSubmit = async (values) => {
     setIsSubmitting(true);
-
     const payload = {
       ...values,
       proveedorId: parseInt(values.proveedorId),
@@ -208,6 +207,7 @@ export function FacturaProveedorForm({ facturaId }) {
     try {
       const method = facturaId ? 'PUT' : 'POST';
       const url = facturaId ? `/api/compras/facturas-proveedor/${facturaId}` : '/api/compras/facturas-proveedor';
+      console.log(url)
       const response = await fetch(url, {
         method: method,
         headers: {
