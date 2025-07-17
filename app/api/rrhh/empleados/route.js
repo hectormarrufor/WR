@@ -18,14 +18,19 @@ export async function GET(request) {
       });
     }
 
-    const { rows: empleados, count } = await db.Empleado.findAndCountAll({
-      limit,
-      offset,
+    const empleados = await db.Empleado.findAll({
       include: includeOptions,
       order: [['nombre', 'ASC']],
-    });
+    })
+    return NextResponse.json(empleados);
+    // const { rows: empleados, count } = await db.Empleado.findAndCountAll({
+    //   limit,
+    //   offset,
+    //   include: includeOptions,
+    //   order: [['nombre', 'ASC']],
+    // });
 
-    return NextResponse.json({ total: count, page, limit, data: empleados });
+    // return NextResponse.json({ total: count, page, limit, data: empleados });
   } catch (error) {
     console.error('Error fetching employees:', error);
     return NextResponse.json({ message: 'Error al obtener empleados', error: error.message }, { status: 500 });

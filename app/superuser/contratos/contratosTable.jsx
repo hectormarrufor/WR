@@ -131,6 +131,10 @@ export function ContratosTable() {
   const columns = useMemo(() => getColumns(), []);
 
   const table = useMantineReactTable({
+    mantineTableBodyRowProps: ({ row }) => ({
+      onClick: () => router.push(`/superuser/contratos/${row.original.id}`),
+      style: { cursor: 'pointer' },
+    }),
     columns,
     data,
     state: { isLoading: loading, showAlertBanner: !!error },

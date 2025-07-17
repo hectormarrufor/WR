@@ -50,7 +50,7 @@ const RenglonContrato = sequelize.define('RenglonContrato', {
 
   RenglonContrato.associate = (models) => {
     RenglonContrato.belongsTo(models.ContratoServicio, { foreignKey: 'contratoId', as: 'contrato' });
-    RenglonContrato.hasMany(models.Mudanza, { foreignKey: 'renglonContratoId', as: 'mudanzas' });
+    RenglonContrato.hasOne(models.Mudanza, { foreignKey: 'renglonContratoId', as: 'mudanza' });
     RenglonContrato.hasMany(models.OperacionCampo, { foreignKey: 'renglonContratoId', as: 'operacionesCampo' });
     RenglonContrato.hasMany(models.TrabajoExtra, { foreignKey: 'renglonContratoId', as: 'trabajosExtra' });
     RenglonContrato.hasMany(models.ConsumoAlimento, { foreignKey: 'renglonContratoId', as: 'consumoAlimentos' });

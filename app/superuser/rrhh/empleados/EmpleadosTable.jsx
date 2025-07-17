@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
-import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal, MantineProvider } from '@mantine/core';
+import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal, MantineProvider, Badge } from '@mantine/core';
 import { IconEdit, IconTrash, IconEye, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
@@ -35,13 +35,8 @@ const getColumns = (openDeleteModal, router) => [
     size: 100,
   },
   {
-    accessorKey: 'nombre',
-    header: 'Nombre',
-    size: 150,
-  },
-  {
-    accessorKey: 'apellido',
-    header: 'Apellido',
+    accessorKey: 'nombreCompleto',
+    header: 'Nombre y apellido',
     size: 150,
   },
   {
@@ -71,10 +66,20 @@ const getColumns = (openDeleteModal, router) => [
     Cell: ({ cell }) => new Date(cell.getValue()).toLocaleDateString(),
   },
   {
-    accessorKey: 'activo',
-    header: 'Activo',
-    size: 80,
-    Cell: ({ cell }) => (cell.getValue() ? 'Sí' : 'No'),
+    accessorKey: 'estado',
+    header: 'Estado',
+    Cell: ({ cell }) => {
+      const val = cell.getValue();
+      const color =
+        val === 'Activo'
+          ? 'green'
+          : val === 'Vacaciones'
+            ? 'orange'
+            : val === 'Suspendido' ? 'red' :
+              val === 'Inactivo' && 'gray';
+      ;
+      return <Badge color={color}>{val}</Badge>;
+    },
   },
 ];
 
@@ -96,7 +101,7 @@ export default function EmpleadosTable() {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
       const result = await response.json();
-      setData(result.data.map(empleado => { return { ...empleado, edad: calcularEdad(empleado.fechaNacimiento) } }));
+      setData(result.map(empleado => { return { ...empleado, nombreCompleto: empleado.nombre + " " + empleado.apellido, edad: calcularEdad(empleado.fechaNacimiento) } }));
     } catch (err) {
       console.error('Failed to fetch employees:', err);
       setError(err);
@@ -189,7 +194,6 @@ export default function EmpleadosTable() {
     ),
     renderTopToolbarCustomActions: () => (
       <Flex gap="md">
-        <BackButton onClick={() => router.back()} />
         <Button
           leftSection={<IconPlus size={20} />}
           onClick={() => router.push('/superuser/rrhh/empleados/nuevo')}
@@ -233,7 +237,7 @@ export default function EmpleadosTable() {
           },
         }}
       >
-        <MantineReactTable table={table} />
+        <MantineReactTable table={table}/>
       </MantineProvider>
       <Modal opened={deleteModalOpened} onClose={closeDeleteModal} title="Confirmar Eliminación" centered>
         <Text>

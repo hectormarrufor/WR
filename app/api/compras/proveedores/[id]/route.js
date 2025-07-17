@@ -40,6 +40,14 @@ export async function DELETE(request, { params }) {
     if (!proveedor) {
       return NextResponse.json({ message: 'Proveedor no encontrado' }, { status: 404 });
     }
+
+    // Opcional: Verificar si el proveedor tiene órdenes de compra asociadas
+    // Si tiene, podrías prohibir la eliminación o hacer una "eliminación lógica" (marcar como inactivo)
+    const ordenesCompraCount = await db.OrdenCompra.count({ where: { proveedorId: id } });
+    if (ordenesCompraCount > 0) {
+      return NextResponse.json({ message: 'No se puede eliminar el proveedor porque tiene órdenes de compra asociadas. Considere desactivarlo si su modelo lo permite.' }, { status: 400 });
+    }
+
     await proveedor.destroy();
     return NextResponse.json({ message: 'Proveedor eliminado exitosamente' }, { status: 200 });
   } catch (error) {

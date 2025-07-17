@@ -4,44 +4,43 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from '@mantine/form';
 import {
-  TextInput, DateInput, Select, Button, Group, Box, Paper, Title, Grid, Textarea,
-  NumberInput, Divider, ActionIcon, Text, Loader, Center
+  TextInput, Select, Button, Group, Box, Paper, Title, Grid, Textarea,
+  NumberInput, Divider, ActionIcon, Text, Loader, Center, Container
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useRouter, useParams } from 'next/navigation';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import '@mantine/dates/styles.css';
+import { DatePickerInput } from '@mantine/dates';
 
 export function MudanzaForm({ initialData = null }) {
   const router = useRouter();
   const params = useParams();
-  const { id: renglonContratoId } = params; // Obtiene el ID del renglón de la URL
+  const { id: renglonIdFromUrl } = params;
 
   const [loadingRenglon, setLoadingRenglon] = useState(true);
   const [renglonInfo, setRenglonInfo] = useState(null);
-  const [empleados, setEmpleados] = useState([]); // Para el Select de supervisor y personal
-  const [vehiculos, setVehiculos] = useState([]); // Para el Select de vehículos
-
+  const [empleados, setEmpleados] = useState([]);
+  const [vehiculos, setVehiculos] = useState([]);
 
   const form = useForm({
     initialValues: {
-      renglonContratoId: parseInt(renglonContratoId), // Pre-llenado desde la URL
-      fechaInicio: null,
-      fechaFinEstimada: null,
-      fechaFinReal: null,
+      renglonContratoId: initialData?.renglonContratoId?.toString() || renglonIdFromUrl,
+      fechaInicio: null, // Solo mantenemos esta fecha
       puntoOrigen: '',
       puntoDestino: '',
-      estado: 'Planificada', // Estado inicial de la mudanza
+      estado: 'Planificada',
       supervisorId: null,
+      kilometrosRecorridos: 0, 
       notas: '',
-      // Arrays para campos dinámicos
-      personalAsignado: [], // { empleadoId: string, rolEnMudanza: string }
-      vehiculosAsignados: [], // { vehiculoId: string, tipoVehiculoMudanza: string, conductorId: string }
+      personalAsignado: [],
+      vehiculosAsignados: [],
     },
     validate: {
-      fechaInicio: (value) => (value ? null : 'La fecha de inicio de la mudanza es requerida'),
+      fechaInicio: (value) => (value ? null : 'La fecha de la mudanza es requerida'), // Actualizamos el mensaje de validación
       puntoOrigen: (value) => (value ? null : 'El punto de origen es requerido'),
       puntoDestino: (value) => (value ? null : 'El punto de destino es requerido'),
+      kilometrosRecorridos: (value) => (value === null || value === undefined || value < 0 ? 'Los kilómetros deben ser un número positivo' : null),
       estado: (value) => (value ? null : 'El estado de la mudanza es requerido'),
       personalAsignado: {
         empleadoId: (value) => (value ? null : 'Seleccione un empleado'),
@@ -51,7 +50,6 @@ export function MudanzaForm({ initialData = null }) {
         vehiculoId: (value) => (value ? null : 'Seleccione un vehículo'),
         tipoVehiculoMudanza: (value) => (value ? null : 'Defina el tipo de vehículo'),
         conductorId: (value, values, index) => {
-          // Si el tipo de vehículo es "Transporte de Personal" o "Carga Pesada"
           const currentVehicleType = form.values.vehiculosAsignados[index]?.tipoVehiculoMudanza;
           if ((currentVehicleType === 'Transporte de Personal' || currentVehicleType === 'Carga Pesada') && !value) {
             return 'Se requiere un conductor para este tipo de vehículo';
@@ -62,43 +60,64 @@ export function MudanzaForm({ initialData = null }) {
     },
   });
 
-  // Efecto para cargar datos iniciales del renglón (si es necesario para display)
   useEffect(() => {
-    const fetchRenglonInfo = async () => {
-      if (renglonContratoId) {
+    const fetchDependencies = async () => {
+      if (!initialData && renglonIdFromUrl) {
         try {
-          const response = await fetch(`/api/operaciones/renglones-servicio/${renglonContratoId}`); // Podrías necesitar un endpoint para un solo renglón
+          const response = await fetch(`/api/operaciones/contratos/renglones/${renglonIdFromUrl}`);
           if (!response.ok) {
             throw new Error(`Error al cargar info del renglón: ${response.statusText}`);
           }
           const data = await response.json();
           setRenglonInfo(data);
+          // if (data.contratoId) {
+          //   const contratoRes = await fetch(`/api/operaciones/contratos/${data.contratoId}`);
+          //   if (contratoRes.ok) {
+          //     const contratoData = await contratoRes.json();
+          //     setRenglonInfo(prev => ({ ...prev, contratoServicio: { numeroContrato: contratoData.numeroContrato } }));
+          //   }
+          // }
         } catch (error) {
           console.error("Error al cargar la información del renglón:", error);
           notifications.show({
             title: 'Error',
-            message: `No se pudo cargar la información del renglón ${renglonContratoId}.`,
+            message: `No se pudo cargar la información del renglón ${renglonIdFromUrl}.`,
             color: 'red',
           });
         } finally {
           setLoadingRenglon(false);
         }
+      } else if (initialData) {
+        setRenglonInfo({
+          id: initialData.renglonContratoId,
+          nombreRenglon: initialData.RenglonContrato?.nombreRenglon,
+          pozoNombre: initialData.RenglonContrato?.pozoNombre,
+          contratoServicio: {
+            numeroContrato: initialData.RenglonContrato?.contratoServicio?.numeroContrato,
+          },
+        });
+        setLoadingRenglon(false);
+      } else {
+        setLoadingRenglon(false);
       }
-    };
 
-    const fetchEmpleadosAndVehiculos = async () => {
       try {
         const [empleadosRes, vehiculosRes] = await Promise.all([
-          fetch('/api/rrhh/empleados'), // API para obtener empleados
-          fetch('/api/flota/vehiculos'), // API para obtener vehículos
+          fetch('/api/rrhh/empleados'),
+          fetch('/api/vehiculos'),
         ]);
 
         if (!empleadosRes.ok) throw new Error(`Error al cargar empleados: ${empleadosRes.statusText}`);
         if (!vehiculosRes.ok) throw new Error(`Error al cargar vehículos: ${vehiculosRes.statusText}`);
-
+        
         const empleadosData = await empleadosRes.json();
         const vehiculosData = await vehiculosRes.json();
-
+        console.log(empleadosData);
+        console.log(vehiculosData);
+        if (empleadosData.length === 0 && vehiculosData.length === 0) throw  new Error ("No hay ni vehiculos ni personal guardado, por favor registre nuevos empleados y vehiculos") 
+        else if (empleadosData.length === 0)throw  new Error ("No hay personal guardado, por favor registre nuevos empleados")
+        else if (vehiculosData.length === 0)throw  new Error ("No hay vehiculos guardados, por favor registre nuevos vehiculos")
+        notifications.show({title: "logre pasar al punto en que me pusiste"})
         setEmpleados(empleadosData.map(emp => ({ value: emp.id.toString(), label: emp.nombreCompleto || `${emp.nombre} ${emp.apellido}` })));
         setVehiculos(vehiculosData.map(veh => ({ value: veh.id.toString(), label: `${veh.marca} ${veh.modelo} (${veh.placa})` })));
 
@@ -106,25 +125,23 @@ export function MudanzaForm({ initialData = null }) {
         console.error("Error al cargar empleados o vehículos:", error);
         notifications.show({
           title: 'Error',
-          message: 'No se pudieron cargar listas de empleados o vehículos.',
+          message: `No se pudieron cargar listas de empleados o vehículos. ${error.message}`,
           color: 'red',
         });
       }
     };
 
-    fetchRenglonInfo();
-    fetchEmpleadosAndVehiculos();
-  }, [renglonContratoId]);
+    fetchDependencies();
+  }, [renglonIdFromUrl, initialData]);
 
-  // Efecto para inicializar formulario con initialData (para edición)
   useEffect(() => {
     if (initialData) {
       form.setValues({
         ...initialData,
         renglonContratoId: initialData.renglonContratoId?.toString() || '',
         fechaInicio: initialData.fechaInicio ? new Date(initialData.fechaInicio) : null,
-        fechaFinEstimada: initialData.fechaFinEstimada ? new Date(initialData.fechaFinEstimada) : null,
-        fechaFinReal: initialData.fechaFinReal ? new Date(initialData.fechaFinReal) : null,
+        // Eliminamos las asignaciones de fechaFinEstimada y fechaFinReal
+        kilometrosRecorridos: initialData.kilometrosRecorridos !== undefined ? initialData.kilometrosRecorridos : 0,
         supervisorId: initialData.supervisorId?.toString() || null,
         personalAsignado: initialData.PersonalMudanzas?.map(p => ({
           empleadoId: p.empleadoId?.toString(),
@@ -137,16 +154,16 @@ export function MudanzaForm({ initialData = null }) {
         })) || [],
       });
     }
-  }, [initialData, form]);
+  }, [initialData]);
 
   const handleSubmit = async (values) => {
-    // Formatear fechas y convertir IDs a números si es necesario
     const payload = {
       ...values,
       renglonContratoId: parseInt(values.renglonContratoId),
       fechaInicio: values.fechaInicio ? values.fechaInicio.toISOString().split('T')[0] : null,
-      fechaFinEstimada: values.fechaFinEstimada ? values.fechaFinEstimada.toISOString().split('T')[0] : null,
-      fechaFinReal: values.fechaFinReal ? values.fechaFinReal.toISOString().split('T')[0] : null,
+      // Eliminamos estas propiedades del payload
+      // fechaFinEstimada: values.fechaFinEstimada ? values.fechaFinEstimada.toISOString().split('T')[0] : null,
+      // fechaFinReal: values.fechaFinReal ? values.fechaFinReal.toISOString().split('T')[0] : null,
       supervisorId: values.supervisorId ? parseInt(values.supervisorId) : null,
       personalAsignado: values.personalAsignado.map(p => ({
         empleadoId: parseInt(p.empleadoId),
@@ -160,12 +177,12 @@ export function MudanzaForm({ initialData = null }) {
     };
 
     let response;
-    let url = '/api/operaciones/mudanzas'; // API para registrar mudanzas
+    let url = '/api/operaciones/mudanzas';
     let method = 'POST';
     let successMessage = 'Mudanza registrada exitosamente';
     let errorMessage = 'Error al registrar mudanza';
 
-    if (initialData) { // Si estás editando una mudanza existente
+    if (initialData) {
       url = `/api/operaciones/mudanzas/${initialData.id}`;
       method = 'PUT';
       successMessage = 'Mudanza actualizada exitosamente';
@@ -185,7 +202,7 @@ export function MudanzaForm({ initialData = null }) {
       }
 
       notifications.show({ title: 'Éxito', message: successMessage, color: 'green' });
-      router.push(`/superuser/servicios-adquiridos/${renglonContratoId}`); // Volver a la página de detalle del renglón
+      router.push(`/superuser/servicios-adquiridos/${renglonIdFromUrl || initialData.renglonContratoId}`);
     } catch (error) {
       console.error(errorMessage, error);
       notifications.show({ title: 'Error', message: `${errorMessage}: ${error.message}`, color: 'red' });
@@ -284,7 +301,7 @@ export function MudanzaForm({ initialData = null }) {
             <Select
               label="Conductor Asignado"
               placeholder="Selecciona un conductor"
-              data={empleados} // Los conductores son empleados
+              data={empleados}
               required
               searchable
               clearable
@@ -296,13 +313,22 @@ export function MudanzaForm({ initialData = null }) {
     </Paper>
   ));
 
-
-  if (loadingRenglon && !initialData) { // Solo muestra loader si estamos creando y no tenemos initialData
+  if (loadingRenglon && !initialData) {
     return (
       <Container size="xl" py="xl">
         <Center>
           <Loader size="xl" />
-          <Text ml="md">Cargando información del renglón...</Text>
+          <Text ml="md">Cargando información del servicio/fase...</Text>
+        </Center>
+      </Container>
+    );
+  }
+
+  if (!renglonInfo && !initialData) {
+    return (
+      <Container size="xl" py="xl">
+        <Center>
+          <Text c="red">No se pudo cargar la información del servicio/fase. Verifique la URL.</Text>
         </Center>
       </Container>
     );
@@ -315,17 +341,17 @@ export function MudanzaForm({ initialData = null }) {
           {initialData ? 'Editar Mudanza' : 'Registrar Nueva Mudanza'}
         </Title>
         <Text ta="center" mb="md" c="dimmed">
-          Para el Servicio/Fase: <Text span fw={700}>{renglonInfo?.nombreRenglon || 'Cargando...'}</Text>
+          Para el Servicio/Fase: <Text span fw={700}>{renglonInfo?.nombreRenglon || 'N/A'}</Text>
           <br />
-          Pozo: <Text span fw={700}>{renglonInfo?.pozoNombre || 'Cargando...'}</Text>
+          Pozo: <Text span fw={700}>{renglonInfo?.pozoNombre || 'N/A'}</Text>
           <br />
-          Contrato Nº: <Text span fw={700}>{renglonInfo?.contratoServicio?.numeroContrato || 'Cargando...'}</Text>
+          Contrato Nº: <Text span fw={700}>{renglonInfo?.contratoServicio?.numeroContrato || 'N/A'}</Text>
         </Text>
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Grid gutter="md">
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <DateInput
-                label="Fecha de Inicio de Mudanza"
+            <Grid.Col span={{ base: 12, md: 6 }}> {/* Cambiado a span 12 para ocupar todo el ancho si no hay otra fecha */}
+              <DatePickerInput
+                label="Fecha estimada de la Mudanza"
                 placeholder="Selecciona la fecha"
                 valueFormat="DD/MM/YYYY"
                 required
@@ -333,11 +359,13 @@ export function MudanzaForm({ initialData = null }) {
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
-              <DateInput
-                label="Fecha Fin Estimada"
-                placeholder="Fecha estimada de fin"
-                valueFormat="DD/MM/YYYY"
-                {...form.getInputProps('fechaFinEstimada')}
+              <NumberInput
+                label="Kilómetros de Recorrido"
+                placeholder="puede agregarse despues si no se tiene este dato"
+                suffix=" km"
+                min={0}
+                required
+                {...form.getInputProps('kilometrosRecorridos')}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}>
@@ -370,7 +398,7 @@ export function MudanzaForm({ initialData = null }) {
               <Select
                 label="Estado de la Mudanza"
                 placeholder="Selecciona el estado"
-                data={['Planificada', 'En Progreso', 'En Pausa', 'Finalizada', 'Cancelada']}
+                data={['Planificada', 'En Progreso', 'Finalizada', 'Cancelada']} 
                 required
                 {...form.getInputProps('estado')}
               />

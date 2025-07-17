@@ -1,6 +1,6 @@
 // app/api/superuser/clientes/route.js
 import { NextResponse } from 'next/server';
-import db from '../../../models';
+import db from '../../../../models';
 
 export async function GET(request) {
   try {

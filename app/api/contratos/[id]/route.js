@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server';
-import db from '../../../../../models';
+import db from '../../../../models';
 
 export async function GET(request, { params }) {
    const { id } = await params;
   try {
-    const contrato = await ContratoServicio.findByPk(id, {
+    const contrato = await db.ContratoServicio.findByPk(id, {
       include: [
         {
-          model: RenglonContrato,
-          as: 'RenglonesContrato', // Asegúrate que este alias coincida con tu asociación en ContratoServicio
+          model: db.RenglonContrato,
+          as: 'renglones', // Asegúrate que este alias coincida con tu asociación en ContratoServicio
         },
         {
-          model: Cliente,
+          model: db.Cliente,
           as: 'cliente', // Asegúrate que este alias coincida
-          attributes: ['id', 'nombreCompleto', 'razonSocial', 'cedulaRif'],
+          // attributes: ['id', 'nombreCompleto', 'razonSocial', 'cedulaRif'],
         }
       ],
     });
@@ -36,7 +36,7 @@ export async function PUT(request, { params }) {
   const transaction = await sequelize.transaction(); // Iniciar transacción
 
   try {
-    const contrato = await ContratoServicio.findByPk(id, { transaction });
+    const contrato = await db.ContratoServicio.findByPk(id, { transaction });
 
     if (!contrato) {
       await transaction.rollback();
@@ -52,7 +52,7 @@ export async function PUT(request, { params }) {
 
     // 2. Eliminar renglones que existen en DB pero no en el frontend
     // Esto es crucial para manejar renglones que fueron eliminados del formulario
-    await RenglonContrato.destroy({
+    await db.RenglonContrato.destroy({
       where: {
         contratoServicioId: id,
         id: { [sequelize.Op.notIn]: renglonIdsDelFrontend },
@@ -64,16 +64,16 @@ export async function PUT(request, { params }) {
     for (const renglon of renglones) {
       if (renglon.id) {
         // Si tiene ID, intenta actualizarlo
-        const existingRenglon = await RenglonContrato.findByPk(renglon.id, { transaction });
+        const existingRenglon = await db.RenglonContrato.findByPk(renglon.id, { transaction });
         if (existingRenglon) {
           await existingRenglon.update(renglon, { transaction });
         } else {
           // Si por alguna razón el ID no existe (ej. error), lo creamos
-          await RenglonContrato.create({ ...renglon, contratoServicioId: id }, { transaction });
+          await db.RenglonContrato.create({ ...renglon, contratoServicioId: id }, { transaction });
         }
       } else {
         // Si no tiene ID, es un nuevo renglón, créalo
-        await RenglonContrato.create({ ...renglon, contratoServicioId: id }, { transaction });
+        await db.RenglonContrato.create({ ...renglon, contratoServicioId: id }, { transaction });
       }
     }
 

@@ -1,6 +1,6 @@
 // app/api/superuser/facturacion/[id]/pagos/route.js
 import { NextResponse } from 'next/server';
-import db from '../../../../../models';
+import db from '../../../../../../models';
 
 export async function POST(request, { params }) {
   const { id: facturaId } = params; // El ID de la factura es el parámetro de la URL

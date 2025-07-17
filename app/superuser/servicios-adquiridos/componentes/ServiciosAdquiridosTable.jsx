@@ -10,13 +10,32 @@ import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
+import { EditRenglonModal } from '../../contratos/EditRenglonModal';
+// Importa el componente del modal de edición de renglones
 
-// Definición de las columnas de la tabla
+// Definición de las columnas de la tabla (sin cambios aquí, es solo para contexto)
 const getColumns = () => [
   {
     accessorKey: 'contratoServicio.numeroContrato',
     header: 'Nº Contrato',
     size: 120,
+    Cell: ({ row }) => {
+      const router = useRouter();
+      // Enlace para ir al detalle del contrato
+      return (
+        <Text
+          component="a"
+          href={`/superuser/contratos/${row.original.contratoServicio?.id}`}
+          onClick={(e) => {
+            e.preventDefault();
+            router.push(`/superuser/contratos/${row.original.contratoServicio?.id}`);
+          }}
+          style={{ cursor: 'pointer', textDecoration: 'underline', color: 'blue' }}
+        >
+          {row.original.contratoServicio?.numeroContrato || 'N/A'}
+        </Text>
+      );
+    },
   },
   {
     accessorKey: 'contratoServicio.cliente.nombreCompania',
@@ -80,13 +99,15 @@ export function ServiciosAdquiridosTable() {
   const [error, setError] = useState(null);
 
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
-  const [selectedRenglon, setSelectedRenglon] = useState(null); // Para eliminar un renglón
+  const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false); // Para el modal de edición
+  const [selectedRenglon, setSelectedRenglon] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/operaciones/renglones-servicio');
+      // Usamos la API que lista todos los renglones, incluyendo el contrato y cliente asociado
+      const response = await fetch('/api/operaciones/renglones-servicio'); // Asegúrate que esta API existe y devuelve los includes
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -113,10 +134,7 @@ export function ServiciosAdquiridosTable() {
   const handleDeleteRenglon = async () => {
     if (!selectedRenglon) return;
     try {
-      // Nota: Eliminar un renglón puede requerir lógica compleja
-      // Asegúrate de que tu API maneje la eliminación de renglones correctamente,
-      // posiblemente requiriendo la eliminación en cascada de mudanzas/operaciones asociadas.
-      const response = await fetch(`/api/operaciones/renglones-servicio/${selectedRenglon.id}`, {
+      const response = await fetch(`/api/operaciones/renglones-servicio/${selectedRenglon.id}`, { // Usamos la API de renglones individuales
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -142,6 +160,17 @@ export function ServiciosAdquiridosTable() {
     }
   };
 
+  const handleEditRenglonModal = (renglon) => {
+    setSelectedRenglon(renglon);
+    openEditModal();
+  };
+
+  const handleRenglonUpdated = () => {
+    closeEditModal();
+    setSelectedRenglon(null);
+    fetchData(); // Recargar los datos de la tabla para ver los cambios
+  };
+
   const columns = useMemo(() => getColumns(), []);
 
   const table = useMantineReactTable({
@@ -153,7 +182,7 @@ export function ServiciosAdquiridosTable() {
       : undefined,
     enableRowActions: true,
     renderRowActionMenuItems: ({ row }) => (
-      <Menu shadow="md" width={200}>
+      <Menu shadow="md" width={250}> {/* Aumentamos el ancho del menú para los nuevos ítems */}
         <Menu.Target>
           <ActionIcon variant="light" size="md" aria-label="Acciones">
             <IconEye size={18} />
@@ -163,6 +192,7 @@ export function ServiciosAdquiridosTable() {
           <Menu.Label>Acciones de Renglón</Menu.Label>
           <Menu.Item
             leftSection={<IconTruck size={18} />}
+            // Considera pasar el ID del contrato también si lo necesitas en el formulario de mudanza/operación
             onClick={() => router.push(`/superuser/servicios-adquiridos/${row.original.id}/mudanzas/new`)}
           >
             Registrar Mudanza
@@ -188,16 +218,22 @@ export function ServiciosAdquiridosTable() {
           <Menu.Divider />
           <Menu.Item
             leftSection={<IconEye size={18} />}
-            onClick={() => router.push(`/superuser/servicios-adquiridos/${row.original.id}`)}
+            onClick={() => router.push(`/superuser/servicios-adquiridos/${row.original.id}`)} // <-- **Aquí el cambio a la página de detalle del renglón**
           >
             Ver Detalle / Historial
           </Menu.Item>
           <Menu.Item
             leftSection={<IconEdit size={18} />}
-            onClick={() => router.push(`/superuser/contratos/${row.original.contratoServicio.id}/editar?renglonId=${row.original.id}`)}
+            onClick={() => handleEditRenglonModal(row.original)} // <-- **Aquí el cambio para abrir el modal de edición**
           >
-            Editar Renglón (en Contrato)
+            Editar Renglón (Directo)
           </Menu.Item>
+          {/* El item "Editar Renglón (en Contrato)" podrías mantenerlo si es útil,
+              o eliminarlo si la edición directa es suficiente.
+              Si lo mantienes, la ruta sería:
+              onClick={() => router.push(`/superuser/contratos/${row.original.contratoServicio.id}?renglonId=${row.original.id}`)}
+              Y en el formulario del contrato, deberías tener un useEffect que abra el modal si hay un renglonId en la URL.
+          */}
           <Menu.Item
             leftSection={<IconTrash size={18} />}
             color="red"
@@ -213,8 +249,6 @@ export function ServiciosAdquiridosTable() {
     ),
     renderTopToolbarCustomActions: () => (
       <Flex gap="md">
-        {/* El botón de "Crear Nuevo Renglón" no tiene sentido aquí, ya que los renglones se crean dentro de un contrato */}
-        {/* Podrías tener un botón para "Ver Contratos" si quieres facilitar la navegación */}
         <Button
           leftSection={<IconPlus size={20} />}
           onClick={() => router.push('/superuser/contratos/nuevo')}
@@ -266,6 +300,16 @@ export function ServiciosAdquiridosTable() {
           </Button>
         </Flex>
       </Modal>
+
+      {/* Modal de edición de renglón (reutilizado) */}
+      {selectedRenglon && (
+        <EditRenglonModal
+          opened={editModalOpened}
+          onClose={closeEditModal}
+          renglon={selectedRenglon}
+          onUpdate={handleRenglonUpdated}
+        />
+      )}
     </>
   );
 }
