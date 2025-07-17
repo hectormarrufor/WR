@@ -1,7 +1,7 @@
 // app/superuser/compras/facturas-proveedor/[id]/page.js
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, use } from 'react';
 import {
   Title, Text, Paper, Group, Divider, Grid,
   ActionIcon, Tooltip, LoadingOverlay, Button, Center, Badge, Anchor, List
@@ -21,7 +21,7 @@ const getEstadoColor = (estado) => {
 };
 
 export default function FacturaProveedorDetailPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const router = useRouter();
   const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);
