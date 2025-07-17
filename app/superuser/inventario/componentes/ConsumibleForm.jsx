@@ -37,7 +37,7 @@ export function ConsumibleForm({ consumibleId = null }) {
     }
     setLoading(true);
     try {
-      const response = await fetch(`/api/superuser/inventario/consumibles/${consumibleId}`);
+      const response = await fetch(`/api/inventario/consumibles/${consumibleId}`);
       if (!response.ok) {
         throw new Error('Consumible no encontrado');
       }
@@ -74,13 +74,13 @@ export function ConsumibleForm({ consumibleId = null }) {
     };
 
     let response;
-    let url = '/api/superuser/inventario/consumibles';
+    let url = '/api/inventario/consumibles';
     let method = 'POST';
     let successMessage = 'Consumible creado exitosamente';
     let errorMessage = 'Error al crear consumible';
 
     if (consumibleId) {
-      url = `/api/superuser/inventario/consumibles/${consumibleId}`;
+      url = `/api/inventario/consumibles/${consumibleId}`;
       method = 'PUT';
       successMessage = 'Consumible actualizado exitosamente';
       errorMessage = 'Error al actualizar consumible';

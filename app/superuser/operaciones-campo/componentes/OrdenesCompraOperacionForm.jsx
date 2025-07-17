@@ -39,7 +39,7 @@ export function OrdenCompraOperacionForm({ operacionId, initialData = null, onSu
       try {
         // Asegúrate de que esta API exista y retorne un array de OCs con 'id', 'numeroOrden', 'proveedor.nombre'
         // Puedes filtrar por OCs que no estén ya asociadas si lo deseas.
-        const ocRes = await fetch('/api/superuser/ordenes-compra'); // Asume esta API para listar OCs
+        const ocRes = await fetch('/api/compras/ordenes-compra'); // Asume esta API para listar OCs
         if (!ocRes.ok) throw new Error('Error al cargar órdenes de compra.');
 
         const ocData = await ocRes.json();
@@ -71,13 +71,13 @@ export function OrdenCompraOperacionForm({ operacionId, initialData = null, onSu
     };
 
     let response;
-    let url = `/api/superuser/operaciones-campo/${operacionId}/ordenes-compra`; // Ruta POST para crear la vinculación
+    let url = `/api/contratos/operaciones-campo/${operacionId}/ordenes-compra`; // Ruta POST para crear la vinculación
     let method = 'POST';
     let successMessage = 'Orden de Compra asociada exitosamente';
     let errorMessage = 'Error al asociar Orden de Compra';
 
     if (initialData) {
-      url = `/api/superuser/operaciones-campo/${operacionId}/ordenes-compra/${initialData.id}`; // Ruta PUT para actualizar notas de la vinculación
+      url = `/api/contratos/operaciones-campo/${operacionId}/ordenes-compra/${initialData.id}`; // Ruta PUT para actualizar notas de la vinculación
       method = 'PUT';
       successMessage = 'Vinculación de Orden de Compra actualizada';
       errorMessage = 'Error al actualizar vinculación de Orden de Compra';

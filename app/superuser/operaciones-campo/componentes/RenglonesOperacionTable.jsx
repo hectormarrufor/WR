@@ -73,7 +73,7 @@ export function RenglonesOperacionTable({ operacionId }) {
     setError(null);
     try {
       // API para obtener renglones de una operación específica
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/renglones`);
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/renglones`);
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -105,7 +105,7 @@ export function RenglonesOperacionTable({ operacionId }) {
   const handleDeleteRenglon = async () => {
     if (!selectedRenglon) return;
     try {
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/renglones/${selectedRenglon.id}`, {
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/renglones/${selectedRenglon.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

@@ -107,7 +107,7 @@ export function ServiciosAdquiridosTable() {
     setError(null);
     try {
       // Usamos la API que lista todos los renglones, incluyendo el contrato y cliente asociado
-      const response = await fetch('/api/operaciones/renglones-servicio'); // Asegúrate que esta API existe y devuelve los includes
+      const response = await fetch('/api/contratos/renglones'); // Asegúrate que esta API existe y devuelve los includes
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -134,7 +134,7 @@ export function ServiciosAdquiridosTable() {
   const handleDeleteRenglon = async () => {
     if (!selectedRenglon) return;
     try {
-      const response = await fetch(`/api/operaciones/renglones-servicio/${selectedRenglon.id}`, { // Usamos la API de renglones individuales
+      const response = await fetch(`/api/contratos/renglones/${selectedRenglon.id}`, { // Usamos la API de renglones individuales
         method: 'DELETE',
       });
       if (!response.ok) {

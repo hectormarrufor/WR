@@ -25,7 +25,7 @@ export default function FacturaDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/facturacion/${id}`);
+      const response = await fetch(`/api/contratos/facturacion/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching factura: ${response.statusText}`);
       }

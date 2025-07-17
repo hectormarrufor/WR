@@ -21,7 +21,7 @@ export default function SalidaInventarioDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/inventario/salidas/${id}`);
+      const response = await fetch(`/api/inventario/salidas/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching salida: ${response.statusText}`);
       }

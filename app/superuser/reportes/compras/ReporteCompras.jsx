@@ -47,8 +47,8 @@ export function ReporteCompras() {
   const fetchDependencies = useCallback(async () => {
     try {
       const [provRes, consRes] = await Promise.all([
-        fetch('/api/superuser/compras/proveedores'),
-        fetch('/api/superuser/inventario/consumibles'),
+        fetch('/api/compras/proveedores'),
+        fetch('/api/inventario/consumibles'),
       ]);
 
       const [provData, consData] = await Promise.all([
@@ -82,7 +82,7 @@ export function ReporteCompras() {
       if (selectedConsumible) params.append('consumibleId', selectedConsumible);
       if (selectedEstadoOC) params.append('estadoOC', selectedEstadoOC);
 
-      const response = await fetch(`/api/superuser/reportes/compras?${params.toString()}`);
+      const response = await fetch(`/api/reportes/compras?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`Error al generar el reporte: ${response.statusText}`);
       }

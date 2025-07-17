@@ -48,8 +48,8 @@ export function FacturaProveedorForm({ facturaId }) {
     setLoading(true);
     try {
       const [provRes, ocRes] = await Promise.all([
-        fetch('/api/superuser/compras/proveedores'),
-        fetch('/api/superuser/compras/ordenes-compra?estado=Recibida Parcial&estado=Recibida Completa&estado=Aprobada&estado=Enviada'), // OCs que puedan ser facturadas
+        fetch('/api/compras/proveedores'),
+        fetch('/api/compras/ordenes-compra?estado=Recibida Parcial&estado=Recibida Completa&estado=Aprobada&estado=Enviada'), // OCs que puedan ser facturadas
       ]);
 
       const [provData, ocData] = await Promise.all([
@@ -62,7 +62,7 @@ export function FacturaProveedorForm({ facturaId }) {
 
       if (facturaId) {
         // Cargar datos de la factura existente para edición
-        const facturaRes = await fetch(`/api/superuser/compras/facturas-proveedor/${facturaId}`);
+        const facturaRes = await fetch(`/api/compras/facturas-proveedor/${facturaId}`);
         if (!facturaRes.ok) throw new Error('No se pudo cargar la factura.');
         const facturaData = await facturaRes.json();
         form.setValues({
@@ -115,7 +115,7 @@ export function FacturaProveedorForm({ facturaId }) {
     setOcItemsForFactura([]);
     if (ocId) {
       try {
-        const response = await fetch(`/api/superuser/compras/ordenes-compra/${ocId}`);
+        const response = await fetch(`/api/compras/ordenes-compra/${ocId}`);
         if (!response.ok) {
           throw new Error('No se pudo cargar la Orden de Compra.');
         }
@@ -207,7 +207,7 @@ export function FacturaProveedorForm({ facturaId }) {
 
     try {
       const method = facturaId ? 'PUT' : 'POST';
-      const url = facturaId ? `/api/superuser/compras/facturas-proveedor/${facturaId}` : '/api/superuser/compras/facturas-proveedor';
+      const url = facturaId ? `/api/compras/facturas-proveedor/${facturaId}` : '/api/compras/facturas-proveedor';
       const response = await fetch(url, {
         method: method,
         headers: {

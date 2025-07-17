@@ -29,7 +29,7 @@ export default function RecepcionCompraDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/compras/recepciones-compra/${id}`);
+      const response = await fetch(`/api/compras/recepciones-compra/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching recepción de compra: ${response.statusText}`);
       }

@@ -29,7 +29,7 @@ export default function RenglonDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/operaciones/contratos/renglones/${id}`);
+      const response = await fetch(`/api/contratos/renglones/${id}`);
       if (!response.ok) throw new Error('Error al cargar renglón');
       const data = await response.json();
       setRenglon(data);
@@ -59,7 +59,7 @@ export default function RenglonDetailPage({ params }) {
   const handleDelete = async () => {
     if (!confirm(`¿Eliminar el renglón "${renglon.nombreRenglon}"?`)) return;
     try {
-      const res = await fetch(`/api/operaciones/contratos/renglones/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/contratos/renglones/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Error eliminando renglón');
       notifications.show({ title: 'Eliminado', message: 'Renglón eliminado', color: 'green' });
       router.push('/superuser/contratos');

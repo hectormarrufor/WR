@@ -90,7 +90,7 @@ export function FacturasProveedorTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/compras/facturas-proveedor');
+      const response = await fetch('/api/compras/facturas-proveedor');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -116,7 +116,7 @@ export function FacturasProveedorTable() {
   const handleDeleteFactura = async () => {
     if (!selectedFactura) return;
     try {
-      const response = await fetch(`/api/superuser/compras/facturas-proveedor/${selectedFactura.id}`, {
+      const response = await fetch(`/api/compras/facturas-proveedor/${selectedFactura.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

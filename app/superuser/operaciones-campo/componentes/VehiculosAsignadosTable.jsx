@@ -57,7 +57,7 @@ export function VehiculosAsignadosTable({ operacionId }) {
     try {
       // API para obtener vehículos asignados a una operación específica
       // Asegúrate de que esta API incluya los datos de Vehiculo y Empleado
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/vehiculos`);
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/vehiculos`);
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -89,7 +89,7 @@ export function VehiculosAsignadosTable({ operacionId }) {
   const handleDeleteAsignacion = async () => {
     if (!selectedAsignacion) return;
     try {
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/vehiculos/${selectedAsignacion.id}`, {
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/vehiculos/${selectedAsignacion.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

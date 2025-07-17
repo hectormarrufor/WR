@@ -58,9 +58,9 @@ export function OrdenCompraForm({ ordenCompraId = null }) {
     setLoading(true);
     try {
       const [proveedoresRes, consumiblesRes, empleadosRes] = await Promise.all([
-        fetch('/api/superuser/proveedores'),
-        fetch('/api/superuser/inventario/consumibles'),
-        fetch('/api/superuser/empleados'), // Asume esta API
+        fetch('/api/compras/proveedores'),
+        fetch('/api/inventario/consumibles'),
+        fetch('/api/rrhh/empleados'), // Asume esta API
       ]);
 
       const [proveedoresData, consumiblesData, empleadosData] = await Promise.all([
@@ -74,7 +74,7 @@ export function OrdenCompraForm({ ordenCompraId = null }) {
       setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
 
       if (ordenCompraId) {
-        const ocRes = await fetch(`/api/superuser/compras/ordenes-compra/${ordenCompraId}`);
+        const ocRes = await fetch(`/api/compras/ordenes-compra/${ordenCompraId}`);
         if (!ocRes.ok) throw new Error('Orden de Compra no encontrada');
         const ocData = await ocRes.json();
 
@@ -155,13 +155,13 @@ export function OrdenCompraForm({ ordenCompraId = null }) {
     };
 
     let response;
-    let url = '/api/superuser/compras/ordenes-compra';
+    let url = '/api/compras/ordenes-compra';
     let method = 'POST';
     let successMessage = 'Orden de Compra registrada exitosamente.';
     let errorMessage = 'Error al registrar orden de compra.';
 
     if (ordenCompraId) {
-      url = `/api/superuser/compras/ordenes-compra/${ordenCompraId}`;
+      url = `/api/compras/ordenes-compra/${ordenCompraId}`;
       method = 'PUT';
       successMessage = 'Orden de Compra actualizada exitosamente.';
       errorMessage = 'Error al actualizar orden de compra.';

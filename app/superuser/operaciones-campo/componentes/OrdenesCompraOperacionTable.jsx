@@ -70,7 +70,7 @@ export function OrdenesCompraOperacionTable({ operacionId }) {
     try {
       // API para obtener órdenes de compra vinculadas a una operación específica
       // Asegúrate de que esta API incluya los datos de la OrdenCompra y su Proveedor
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/ordenes-compra`);
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/ordenes-compra`);
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -102,7 +102,7 @@ export function OrdenesCompraOperacionTable({ operacionId }) {
   const handleDeleteOcOperacion = async () => {
     if (!selectedOcOperacion) return;
     try {
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/ordenes-compra/${selectedOcOperacion.id}`, {
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/ordenes-compra/${selectedOcOperacion.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

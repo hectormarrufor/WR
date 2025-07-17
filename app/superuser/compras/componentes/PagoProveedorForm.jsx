@@ -42,9 +42,9 @@ export function PagoProveedorForm({ facturaProveedorId }) {
     setLoading(true);
     try {
       const [facturaRes, cuentasRes, empleadosRes] = await Promise.all([
-        fetch(`/api/superuser/compras/facturas-proveedor/${facturaProveedorId}`),
-        fetch('/api/superuser/tesoreria/cuentas-bancarias'),
-        fetch('/api/superuser/empleados'),
+        fetch(`/api/compras/facturas-proveedor/${facturaProveedorId}`),
+        fetch('/api/tesoreria/cuentas-bancarias'),
+        fetch('/api/rrhh/empleados'),
       ]);
 
       if (!facturaRes.ok) throw new Error('No se pudo cargar la factura del proveedor.');
@@ -90,7 +90,7 @@ export function PagoProveedorForm({ facturaProveedorId }) {
     };
 
     try {
-      const response = await fetch('/api/superuser/compras/pagos-proveedor', {
+      const response = await fetch('/api/compras/pagos-proveedor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

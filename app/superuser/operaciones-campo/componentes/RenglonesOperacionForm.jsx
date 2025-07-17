@@ -44,13 +44,13 @@ export function RenglonOperacionForm({ operacionId, initialData = null, onSucces
     };
 
     let response;
-    let url = `/api/superuser/operaciones-campo/${operacionId}/renglones`; // Ruta POST para crear
+    let url = `/api/contratos/operaciones-campo/${operacionId}/renglones`; // Ruta POST para crear
     let method = 'POST';
     let successMessage = 'Renglón agregado exitosamente';
     let errorMessage = 'Error al agregar renglón';
 
     if (initialData) {
-      url = `/api/superuser/operaciones-campo/${operacionId}/renglones/${initialData.id}`; // Ruta PUT para actualizar
+      url = `/api/contratos/operaciones-campo/${operacionId}/renglones/${initialData.id}`; // Ruta PUT para actualizar
       method = 'PUT';
       successMessage = 'Renglón actualizado exitosamente';
       errorMessage = 'Error al actualizar renglón';

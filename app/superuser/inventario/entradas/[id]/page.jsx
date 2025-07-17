@@ -21,7 +21,7 @@ export default function EntradaInventarioDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/inventario/entradas/${id}`);
+      const response = await fetch(`/api/inventario/entradas/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching entrada: ${response.statusText}`);
       }

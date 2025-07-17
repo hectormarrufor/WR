@@ -44,13 +44,13 @@ export function TrabajoExtraForm({ operacionId, initialData = null, onSuccess, o
     };
 
     let response;
-    let url = `/api/superuser/operaciones-campo/${operacionId}/trabajos-extra`; // Ruta POST para crear
+    let url = `/api/contratos/operaciones-campo/${operacionId}/trabajos-extra`; // Ruta POST para crear
     let method = 'POST';
     let successMessage = 'Trabajo extra registrado exitosamente';
     let errorMessage = 'Error al registrar trabajo extra';
 
     if (initialData) {
-      url = `/api/superuser/operaciones-campo/${operacionId}/trabajos-extra/${initialData.id}`; // Ruta PUT para actualizar
+      url = `/api/contratos/operaciones-campo/${operacionId}/trabajos-extra/${initialData.id}`; // Ruta PUT para actualizar
       method = 'PUT';
       successMessage = 'Trabajo extra actualizado exitosamente';
       errorMessage = 'Error al actualizar trabajo extra';

@@ -61,7 +61,7 @@ export function OperacionesCampoTable() {
     try {
       // Importante: Tu API GET de operaciones debe incluir los datos del contrato
       // (ej. usando `include: { contrato: true }` en Prisma).
-      const response = await fetch('/api/superuser/operaciones-campo');
+      const response = await fetch('/api/contratos/operaciones-campo');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -87,7 +87,7 @@ export function OperacionesCampoTable() {
   const handleDelete = async () => {
     if (!selectedOperacion) return;
     try {
-      const response = await fetch(`/api/superuser/operaciones-campo/${selectedOperacion.id}`, {
+      const response = await fetch(`/api/contratos/operaciones-campo/${selectedOperacion.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

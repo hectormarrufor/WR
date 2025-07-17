@@ -21,7 +21,7 @@ export default function ConsumibleUsadoDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/inventario/consumibles-usados/${id}`);
+      const response = await fetch(`/api/inventario/consumibles-usados/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching consumible usado: ${response.statusText}`);
       }

@@ -106,13 +106,13 @@ export function ContratoForm({ initialData = null }) {
     console.log("values after payload: ", payload);
     // return
     let response;
-    let url = '/api/operaciones/contratos';
+    let url = '/api/contratos';
     let method = 'POST';
     let successMessage = 'Contrato registrado exitosamente';
     let errorMessage = 'Error al registrar contrato';
 
     if (initialData) {
-      url = `/api/operaciones/contratos/${initialData.id}`;
+      url = `/api/contratos/${initialData.id}`;
       method = 'PUT';
       successMessage = 'Contrato actualizado exitosamente';
       errorMessage = 'Error al actualizar contrato';

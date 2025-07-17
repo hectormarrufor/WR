@@ -67,7 +67,7 @@ export function ConsumiblesTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/inventario/consumibles'); // API para obtener consumibles
+      const response = await fetch('/api/inventario/consumibles'); // API para obtener consumibles
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -93,7 +93,7 @@ export function ConsumiblesTable() {
   const handleDeleteConsumible = async () => {
     if (!selectedConsumible) return;
     try {
-      const response = await fetch(`/api/superuser/inventario/consumibles/${selectedConsumible.id}`, {
+      const response = await fetch(`/api/inventario/consumibles/${selectedConsumible.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

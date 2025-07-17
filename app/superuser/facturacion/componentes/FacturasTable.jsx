@@ -83,7 +83,7 @@ export function FacturasTable() {
     setError(null);
     console.log('Iniciando Fetch')
     try {
-      const response = await fetch('/api/facturacion'); // API para obtener todas las facturas
+      const response = await fetch('/api/contratos/facturacion'); // API para obtener todas las facturas
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -111,7 +111,7 @@ export function FacturasTable() {
   const handleDeleteFactura = async () => {
     if (!selectedFactura) return;
     try {
-      const response = await fetch(`/api/facturacion/${selectedFactura.id}`, {
+      const response = await fetch(`/api/contratos/facturacion/${selectedFactura.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

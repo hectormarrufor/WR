@@ -34,7 +34,7 @@ export default function OrdenCompraDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/compras/ordenes-compra/${id}`);
+      const response = await fetch(`/api/compras/ordenes-compra/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching orden de compra: ${response.statusText}`);
       }

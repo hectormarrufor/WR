@@ -17,7 +17,7 @@ export default function EditarOperacionCampoPage({ params }) {
       if (!id) return;
       setLoading(true);
       try {
-        const response = await fetch(`/api/superuser/operaciones-campo/${id}`);
+        const response = await fetch(`/api/contratos/operaciones-campo/${id}`);
         if (!response.ok) {
           throw new Error(`Error al cargar los datos de la operación: ${response.statusText}`);
         }

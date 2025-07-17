@@ -36,9 +36,9 @@ export function EntradaForm({ entradaId = null }) {
     setLoading(true);
     try {
       const [consumiblesRes, ordenesRes, empleadosRes] = await Promise.all([
-        fetch('/api/superuser/inventario/consumibles'),
-        fetch('/api/superuser/inventario/ordenes-compra'), // Asume esta API para obtener órdenes de compra
-        fetch('/api/superuser/empleados'), // Asume esta API para obtener empleados
+        fetch('/api/inventario/consumibles'),
+        fetch('/api/inventario/ordenes-compra'), // Asume esta API para obtener órdenes de compra
+        fetch('/api/rrhh/empleados'), // Asume esta API para obtener empleados
       ]);
 
       const [consumiblesData, ordenesData, empleadosData] = await Promise.all([
@@ -52,7 +52,7 @@ export function EntradaForm({ entradaId = null }) {
       setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
 
       if (entradaId) {
-        const entradaRes = await fetch(`/api/superuser/inventario/entradas/${entradaId}`);
+        const entradaRes = await fetch(`/api/inventario/entradas/${entradaId}`);
         if (!entradaRes.ok) throw new Error('Entrada no encontrada');
         const entradaData = await entradaRes.json();
 
@@ -93,7 +93,7 @@ export function EntradaForm({ entradaId = null }) {
     };
 
     let response;
-    let url = '/api/superuser/inventario/entradas';
+    let url = '/api/inventario/entradas';
     let method = 'POST';
     let successMessage = 'Entrada de inventario registrada exitosamente.';
     let errorMessage = 'Error al registrar entrada de inventario.';
@@ -105,7 +105,7 @@ export function EntradaForm({ entradaId = null }) {
       // La edición directa de 'cantidad' en una entrada existente se desaconseja por complejidad del stock.
       // Si se necesita corregir una entrada, se suele hacer una "contra-entrada" o "ajuste".
       // Para este ejemplo, solo permitiremos la edición de datos no relacionados con el stock (como notas, OC, etc.)
-      url = `/api/superuser/inventario/entradas/${entradaId}`;
+      url = `/api/inventario/entradas/${entradaId}`;
       method = 'PUT'; // Asume que la API PUT en entradas/[id] maneja los campos que no son de stock
       successMessage = 'Entrada de inventario actualizada exitosamente.';
       errorMessage = 'Error al actualizar entrada de inventario.';

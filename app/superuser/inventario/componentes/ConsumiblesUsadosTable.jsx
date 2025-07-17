@@ -69,7 +69,7 @@ export function ConsumiblesUsadosTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/inventario/consumibles-usados');
+      const response = await fetch('/api/inventario/consumibles-usados');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -95,7 +95,7 @@ export function ConsumiblesUsadosTable() {
   const handleDeleteUsado = async () => {
     if (!selectedUsado) return;
     try {
-      const response = await fetch(`/api/superuser/inventario/consumibles-usados/${selectedUsado.id}`, {
+      const response = await fetch(`/api/inventario/consumibles-usados/${selectedUsado.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

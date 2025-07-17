@@ -23,7 +23,7 @@ export default function ContratoDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/operaciones/contratos/${id}`);
+      const response = await fetch(`/api/contratos/${id}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error al cargar el contrato');

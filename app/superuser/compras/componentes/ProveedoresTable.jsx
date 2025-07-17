@@ -63,7 +63,7 @@ export function ProveedoresTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/proveedores');
+      const response = await fetch('/api/compras/proveedores');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -89,7 +89,7 @@ export function ProveedoresTable() {
   const handleDeleteProveedor = async () => {
     if (!selectedProveedor) return;
     try {
-      const response = await fetch(`/api/superuser/proveedores/${selectedProveedor.id}`, {
+      const response = await fetch(`/api/compras/proveedores/${selectedProveedor.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

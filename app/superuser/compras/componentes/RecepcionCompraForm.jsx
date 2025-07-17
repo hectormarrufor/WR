@@ -42,8 +42,8 @@ export function RecepcionCompraForm() {
     setLoading(true);
     try {
       const [ocRes, empleadosRes] = await Promise.all([
-        fetch('/api/superuser/compras/ordenes-compra?estado=Pendiente&estado=Aprobada&estado=Enviada&estado=Recibida Parcial'), // Solo OCs elegibles para recibir
-        fetch('/api/superuser/empleados'),
+        fetch('/api/compras/ordenes-compra?estado=Pendiente&estado=Aprobada&estado=Enviada&estado=Recibida Parcial'), // Solo OCs elegibles para recibir
+        fetch('/api/rrhh/empleados'),
       ]);
 
       const [ocData, empleadosData] = await Promise.all([
@@ -56,7 +56,7 @@ export function RecepcionCompraForm() {
 
       // Si hay una OC pre-seleccionada, cargar sus detalles
       if (initialOrdenCompraId) {
-        const ocDetailsRes = await fetch(`/api/superuser/compras/ordenes-compra/${initialOrdenCompraId}`);
+        const ocDetailsRes = await fetch(`/api/compras/ordenes-compra/${initialOrdenCompraId}`);
         if (ocDetailsRes.ok) {
           const ocDetailsData = await ocDetailsRes.json();
           form.setFieldValue('ordenCompraId', initialOrdenCompraId);
@@ -113,7 +113,7 @@ export function RecepcionCompraForm() {
     form.setFieldValue('ordenCompraId', ocId);
     if (ocId) {
       try {
-        const response = await fetch(`/api/superuser/compras/ordenes-compra/${ocId}`);
+        const response = await fetch(`/api/compras/ordenes-compra/${ocId}`);
         if (!response.ok) {
           throw new Error('No se pudo cargar la Orden de Compra.');
         }
@@ -155,7 +155,7 @@ export function RecepcionCompraForm() {
     };
 
     try {
-      const response = await fetch('/api/superuser/compras/recepciones-compra', {
+      const response = await fetch('/api/compras/recepciones-compra', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

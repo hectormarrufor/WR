@@ -53,7 +53,7 @@ export function EditRenglonModal({ opened, onClose, renglon, onUpdate }) {
     };
 
     try {
-      const response = await fetch(`/api/operaciones/contratos/renglones/${renglon.id}`, {
+      const response = await fetch(`/api/contratos/renglones/${renglon.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

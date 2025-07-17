@@ -91,7 +91,7 @@ export function OrdenesCompraTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/compras/ordenes-compra');
+      const response = await fetch('/api/compras/ordenes-compra');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -117,7 +117,7 @@ export function OrdenesCompraTable() {
   const handleDeleteOrdenCompra = async () => {
     if (!selectedOrdenCompra) return;
     try {
-      const response = await fetch(`/api/superuser/compras/ordenes-compra/${selectedOrdenCompra.id}`, {
+      const response = await fetch(`/api/compras/ordenes-compra/${selectedOrdenCompra.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

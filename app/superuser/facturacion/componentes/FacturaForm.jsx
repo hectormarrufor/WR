@@ -47,9 +47,9 @@ export function FacturaForm({ facturaId = null }) {
     setLoading(true);
     try {
       const [clientesRes, contratosRes, operacionesRes] = await Promise.all([
-        fetch('/api/clientes?activo=true'),
-        fetch('/api/operaciones/contratos'), // Asegúrate de que esta API exista
-        fetch('/api/operaciones/operacionesCampo'), // Asegúrate de que esta API exista
+        fetch('/api/contratos/clientes?activo=true'),
+        fetch('/api/contratos'), // Asegúrate de que esta API exista
+        fetch('/api/contratos/operaciones-campo'), // Asegúrate de que esta API exista
       ]);
 
       const [clientesData, contratosData, operacionesData] = await Promise.all([
@@ -69,7 +69,7 @@ export function FacturaForm({ facturaId = null }) {
       setOperacionesCampo(operacionesData.map(o => ({ value: o.id.toString(), label: `Op. Campo #${o.id} - Contrato ${o.renglonContrato?.contrato?.numeroContrato || 'N/A'}` })));
 
       if (facturaId) {
-        const facturaRes = await fetch(`/api/facturacion/${facturaId}`);
+        const facturaRes = await fetch(`/api/contratos/facturacion/${facturaId}`);
         if (!facturaRes.ok) throw new Error('Factura no encontrada');
         const facturaData = await facturaRes.json();
 
@@ -140,13 +140,13 @@ export function FacturaForm({ facturaId = null }) {
     };
 
     let response;
-    let url = '/api/facturacion';
+    let url = '/api/contratos/facturacion';
     let method = 'POST';
     let successMessage = 'Factura creada exitosamente';
     let errorMessage = 'Error al crear factura';
 
     if (facturaId) {
-      url = `/api/facturacion/${facturaId}`;
+      url = `/api/contratos/facturacion/${facturaId}`;
       method = 'PUT';
       successMessage = 'Factura actualizada exitosamente';
       errorMessage = 'Error al actualizar factura';

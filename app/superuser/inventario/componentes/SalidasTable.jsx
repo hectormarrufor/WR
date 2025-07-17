@@ -68,7 +68,7 @@ export function SalidasTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/inventario/salidas'); // API para obtener todas las salidas
+      const response = await fetch('/api/inventario/salidas'); // API para obtener todas las salidas
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -94,7 +94,7 @@ export function SalidasTable() {
   const handleDeleteSalida = async () => {
     if (!selectedSalida) return;
     try {
-      const response = await fetch(`/api/superuser/inventario/salidas/${selectedSalida.id}`, {
+      const response = await fetch(`/api/inventario/salidas/${selectedSalida.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

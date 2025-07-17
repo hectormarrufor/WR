@@ -21,7 +21,7 @@ export default function ProveedorDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/proveedores/${id}`);
+      const response = await fetch(`/api/compras/proveedores/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching proveedor: ${response.statusText}`);
       }

@@ -34,7 +34,7 @@ export function PagoFacturaForm({ facturaId, onSuccess, onCancel }) {
     };
 
     try {
-      const response = await fetch(`/api/superuser/facturacion/${facturaId}/pagos`, { // API para registrar pagos
+      const response = await fetch(`/api/contratos/facturacion/${facturaId}/pagos`, { // API para registrar pagos
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

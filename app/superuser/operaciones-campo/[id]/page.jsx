@@ -34,7 +34,7 @@ export default function OperacionCampoDetailPage({ params }) {
         // Tu API GET para una operación individual debe incluir los datos del contrato
         // y opcionalmente los datos de sus relaciones (vehiculosAsignados, renglones, etc.)
         // Si no los incluyes aquí, cada sub-componente de tabla los fetcherá individualmente.
-        const response = await fetch(`/api/superuser/operaciones-campo/${id}`);
+        const response = await fetch(`/api/contratos/operaciones-campo/${id}`);
         if (!response.ok) {
           throw new Error(`Error al cargar los datos de la operación: ${response.statusText}`);
         }

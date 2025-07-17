@@ -63,7 +63,7 @@ export function EntradasTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/inventario/entradas'); // API para obtener todas las entradas
+      const response = await fetch('/api/inventario/entradas'); // API para obtener todas las entradas
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -89,7 +89,7 @@ export function EntradasTable() {
   const handleDeleteEntrada = async () => {
     if (!selectedEntrada) return;
     try {
-      const response = await fetch(`/api/superuser/inventario/entradas/${selectedEntrada.id}`, {
+      const response = await fetch(`/api/inventario/entradas/${selectedEntrada.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

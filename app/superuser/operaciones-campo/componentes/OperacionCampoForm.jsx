@@ -52,7 +52,7 @@ export function OperacionCampoForm({ initialData = null }) {
       setErrorOptions(null);
       try {
         // Asegúrate de que esta API exista y retorne un array de contratos con 'id' y 'numeroContrato'
-        const contratosRes = await fetch('/api/superuser/contratos');
+        const contratosRes = await fetch('/api/contratos');
         if (!contratosRes.ok) throw new Error('Error al cargar contratos.');
 
         const contratosData = await contratosRes.json();
@@ -83,13 +83,13 @@ export function OperacionCampoForm({ initialData = null }) {
     };
 
     let response;
-    let url = '/api/superuser/operaciones-campo';
+    let url = '/api/contratos/operaciones-campo';
     let method = 'POST';
     let successMessage = 'Operación registrada exitosamente';
     let errorMessage = 'Error al registrar operación';
 
     if (initialData) {
-      url = `/api/superuser/operaciones-campo/${initialData.id}`;
+      url = `/api/contratos/operaciones-campo/${initialData.id}`;
       method = 'PUT';
       successMessage = 'Operación actualizada exitosamente';
       errorMessage = 'Error al actualizar operación';

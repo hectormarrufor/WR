@@ -38,9 +38,9 @@ export function SalidaForm({ salidaId = null }) {
     setLoading(true);
     try {
       const [consumiblesRes, empleadosRes, contratosRes] = await Promise.all([
-        fetch('/api/superuser/inventario/consumibles'), // API para obtener consumibles (con stock actual)
-        fetch('/api/superuser/empleados'), // API para obtener empleados
-        fetch('/api/superuser/contratos-servicio'), // Asume esta API para obtener contratos de servicio
+        fetch('/api/inventario/consumibles'), // API para obtener consumibles (con stock actual)
+        fetch('/api/rrhh/empleados'), // API para obtener empleados
+        fetch('/api/contratos'), // Asume esta API para obtener contratos de servicio
       ]);
 
       const [consumiblesData, empleadosData, contratosData] = await Promise.all([
@@ -54,7 +54,7 @@ export function SalidaForm({ salidaId = null }) {
       setContratosServicio(contratosData.map(cs => ({ value: cs.id.toString(), label: `Contrato ${cs.numeroContrato} - ${cs.cliente.nombre || cs.cliente.razonSocial}` }))); // Asume cliente incluido en contrato
 
       if (salidaId) {
-        const salidaRes = await fetch(`/api/superuser/inventario/salidas/${salidaId}`);
+        const salidaRes = await fetch(`/api/inventario/salidas/${salidaId}`);
         if (!salidaRes.ok) throw new Error('Salida no encontrada');
         const salidaData = await salidaRes.json();
 
@@ -95,7 +95,7 @@ export function SalidaForm({ salidaId = null }) {
     };
 
     let response;
-    let url = '/api/superuser/inventario/salidas';
+    let url = '/api/inventario/salidas';
     let method = 'POST';
     let successMessage = 'Salida de inventario registrada exitosamente.';
     let errorMessage = 'Error al registrar salida de inventario.';
@@ -105,7 +105,7 @@ export function SalidaForm({ salidaId = null }) {
       // Por simplicidad, este formulario solo permitirá CREAR o ver los datos de una salida existente.
       // La edición directa de 'cantidad' en una salida existente se desaconseja por complejidad del stock.
       // Si se necesita corregir una salida, se suele hacer una "contra-salida" o "ajuste".
-      url = `/api/superuser/inventario/salidas/${salidaId}`;
+      url = `/api/inventario/salidas/${salidaId}`;
       method = 'PUT';
       successMessage = 'Salida de inventario actualizada exitosamente.';
       errorMessage = 'Error al actualizar salida de inventario.';

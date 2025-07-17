@@ -54,8 +54,8 @@ export function VehiculoAsignadoForm({ operacionId, initialData = null, onSucces
       setErrorOptions(null);
       try {
         const [vehiculosRes, empleadosRes] = await Promise.all([
-          fetch('/api/superuser/vehiculos'), // Asume esta API para listar vehículos
-          fetch('/api/superuser/rrhh/empleados'), // API para listar empleados (conductores)
+          fetch('/api/vehiculos'), // Asume esta API para listar vehículos
+          fetch('/api/rrhh/empleados'), // API para listar empleados (conductores)
         ]);
 
         if (!vehiculosRes.ok) throw new Error('Error al cargar vehículos.');
@@ -93,13 +93,13 @@ export function VehiculoAsignadoForm({ operacionId, initialData = null, onSucces
     };
 
     let response;
-    let url = `/api/superuser/operaciones-campo/${operacionId}/vehiculos`; // Ruta POST para crear
+    let url = `/api/contratos/operaciones-campo/${operacionId}/vehiculos`; // Ruta POST para crear
     let method = 'POST';
     let successMessage = 'Vehículo asignado exitosamente';
     let errorMessage = 'Error al asignar vehículo';
 
     if (initialData) {
-      url = `/api/superuser/operaciones-campo/${operacionId}/vehiculos/${initialData.id}`; // Ruta PUT para actualizar
+      url = `/api/contratos/operaciones-campo/${operacionId}/vehiculos/${initialData.id}`; // Ruta PUT para actualizar
       method = 'PUT';
       successMessage = 'Asignación de vehículo actualizada exitosamente';
       errorMessage = 'Error al actualizar asignación de vehículo';

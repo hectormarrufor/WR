@@ -58,7 +58,7 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/clientes', {
+      const response = await fetch('/api/contratos/clientes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

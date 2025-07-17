@@ -17,7 +17,7 @@ export default function EditarContratoPage({ params }) {
       if (!id) return;
       setLoading(true);
       try {
-        const response = await fetch(`/api/operaciones/contratos/${id}`);
+        const response = await fetch(`/api/contratos/${id}`);
         if (!response.ok) {
           throw new Error(`Error al cargar los datos del contrato: ${response.statusText}`);
         }

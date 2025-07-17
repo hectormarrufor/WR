@@ -80,7 +80,7 @@ export function RecepcionesCompraTable() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/superuser/compras/recepciones-compra');
+      const response = await fetch('/api/compras/recepciones-compra');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -106,7 +106,7 @@ export function RecepcionesCompraTable() {
   const handleDeleteRecepcion = async () => {
     if (!selectedRecepcion) return;
     try {
-      const response = await fetch(`/api/superuser/compras/recepciones-compra/${selectedRecepcion.id}`, {
+      const response = await fetch(`/api/compras/recepciones-compra/${selectedRecepcion.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

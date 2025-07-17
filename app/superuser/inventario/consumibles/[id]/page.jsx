@@ -21,7 +21,7 @@ export default function ConsumibleDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/inventario/consumibles/${id}`);
+      const response = await fetch(`/api/inventario/consumibles/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching consumible: ${response.statusText}`);
       }
@@ -54,8 +54,8 @@ export default function ConsumibleDetailPage({ params }) {
     try {
       // Asume que tienes endpoints para filtrar entradas/salidas por consumibleId
       const [entradasRes, salidasRes] = await Promise.all([
-        fetch(`/api/superuser/inventario/entradas?consumibleId=${id}`),
-        fetch(`/api/superuser/inventario/salidas?consumibleId=${id}`),
+        fetch(`/api/inventario/entradas?consumibleId=${id}`),
+        fetch(`/api/inventario/salidas?consumibleId=${id}`),
       ]);
 
       const entradasData = await entradasRes.json();

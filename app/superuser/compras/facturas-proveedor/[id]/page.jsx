@@ -31,7 +31,7 @@ export default function FacturaProveedorDetailPage({ params }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/superuser/compras/facturas-proveedor/${id}`);
+      const response = await fetch(`/api/compras/facturas-proveedor/${id}`);
       if (!response.ok) {
         throw new Error(`Error fetching factura de proveedor: ${response.statusText}`);
       }

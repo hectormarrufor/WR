@@ -77,7 +77,7 @@ export function ContratosTable() {
     setError(null);
     try {
       // Tu API GET de contratos debe incluir el objeto Cliente relacionado (ej. con Prisma `include: { cliente: true }`)
-      const response = await fetch('/api/operaciones/contratos');
+      const response = await fetch('/api/contratos');
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -103,7 +103,7 @@ export function ContratosTable() {
   const handleDelete = async () => {
     if (!selectedContrato) return;
     try {
-      const response = await fetch(`/api/operaciones/contratos/${selectedContrato.id}`, {
+      const response = await fetch(`/api/contratos/${selectedContrato.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

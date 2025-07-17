@@ -17,7 +17,7 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/clientes'); // Asume que tienes un GET en esta ruta
+      const response = await fetch('/api/contratos/clientes'); // Asume que tienes un GET en esta ruta
       if (!response.ok) {
         throw new Error('Error al cargar clientes');
       }

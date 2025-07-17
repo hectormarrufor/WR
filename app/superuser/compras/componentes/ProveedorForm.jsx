@@ -40,7 +40,7 @@ export function ProveedorForm({ proveedorId = null }) {
     }
     setLoading(true);
     try {
-      const response = await fetch(`/api/superuser/proveedores/${proveedorId}`);
+      const response = await fetch(`/api/compras/proveedores/${proveedorId}`);
       if (!response.ok) {
         throw new Error('Proveedor no encontrado');
       }
@@ -65,13 +65,13 @@ export function ProveedorForm({ proveedorId = null }) {
   const handleSubmit = async (values) => {
     setIsSubmitting(true);
     let response;
-    let url = '/api/superuser/proveedores';
+    let url = '/api/compras/proveedores';
     let method = 'POST';
     let successMessage = 'Proveedor registrado exitosamente.';
     let errorMessage = 'Error al registrar proveedor.';
 
     if (proveedorId) {
-      url = `/api/superuser/proveedores/${proveedorId}`;
+      url = `/api/compras/proveedores/${proveedorId}`;
       method = 'PUT';
       successMessage = 'Proveedor actualizado exitosamente.';
       errorMessage = 'Error al actualizar proveedor.';

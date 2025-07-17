@@ -64,7 +64,7 @@ export function TrabajosExtraTable({ operacionId }) {
     setError(null);
     try {
       // API para obtener trabajos extra de una operación específica
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/trabajos-extra`);
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/trabajos-extra`);
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
@@ -96,7 +96,7 @@ export function TrabajosExtraTable({ operacionId }) {
   const handleDeleteTrabajoExtra = async () => {
     if (!selectedTrabajoExtra) return;
     try {
-      const response = await fetch(`/api/superuser/operaciones-campo/${operacionId}/trabajos-extra/${selectedTrabajoExtra.id}`, {
+      const response = await fetch(`/api/contratos/operaciones-campo/${operacionId}/trabajos-extra/${selectedTrabajoExtra.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

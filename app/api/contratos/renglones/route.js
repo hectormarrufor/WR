@@ -23,7 +23,7 @@ export async function GET(request) {
     const renglones = await db.RenglonContrato.findAll({
       where: whereClause,
       include: includeOptions,
-      order: [['fechaCreacion', 'ASC']],
+      // order: [['fechaCreacion', 'ASC']],
     });
     return NextResponse.json(renglones);
   } catch (error) {

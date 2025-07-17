@@ -64,7 +64,7 @@ export function MudanzaForm({ initialData = null }) {
     const fetchDependencies = async () => {
       if (!initialData && renglonIdFromUrl) {
         try {
-          const response = await fetch(`/api/operaciones/contratos/renglones/${renglonIdFromUrl}`);
+          const response = await fetch(`/api/contratos/renglones/${renglonIdFromUrl}`);
           if (!response.ok) {
             throw new Error(`Error al cargar info del renglón: ${response.statusText}`);
           }
@@ -177,13 +177,13 @@ export function MudanzaForm({ initialData = null }) {
     };
 
     let response;
-    let url = '/api/operaciones/mudanzas';
+    let url = '/api/contratos/mudanzas';
     let method = 'POST';
     let successMessage = 'Mudanza registrada exitosamente';
     let errorMessage = 'Error al registrar mudanza';
 
     if (initialData) {
-      url = `/api/operaciones/mudanzas/${initialData.id}`;
+      url = `/api/contratos/mudanzas/${initialData.id}`;
       method = 'PUT';
       successMessage = 'Mudanza actualizada exitosamente';
       errorMessage = 'Error al actualizar mudanza';

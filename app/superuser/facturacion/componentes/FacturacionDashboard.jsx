@@ -23,7 +23,7 @@ export function FacturacionDashboard() {
       if (startDate) params.append('startDate', formatISO(startDate, { representation: 'date' }));
       if (endDate) params.append('endDate', formatISO(endDate, { representation: 'date' }));
 
-      const response = await fetch(`/api/superuser/reportes/facturacion/resumen?${params.toString()}`);
+      const response = await fetch(`/api/reportes/facturacion/resumen?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`Error fetching report data: ${response.statusText}`);
       }

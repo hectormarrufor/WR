@@ -17,7 +17,7 @@ export default function EditarAsignacionPuestoPage({ params }) {
       if (!id) return;
       setLoading(true);
       try {
-        const response = await fetch(`/api/superuser/rrhh/asignacion-puestos/${id}`);
+        const response = await fetch(`/api/rrhh/asignacion-puestos/${id}`);
         if (!response.ok) {
           throw new Error(`Error al cargar los datos de la asignación: ${response.statusText}`);
         }

@@ -60,8 +60,8 @@ export function AsignacionPuestoForm({ initialData = null }) {
       setErrorOptions(null);
       try {
         const [empleadosRes, puestosRes] = await Promise.all([
-          fetch('/api/superuser/rrhh/empleados'),
-          fetch('/api/superuser/rrhh/puestos'),
+          fetch('/api/rrhh/empleados'),
+          fetch('/api/rrhh/puestos'),
         ]);
 
         if (!empleadosRes.ok) throw new Error('Error al cargar empleados.');
@@ -100,13 +100,13 @@ export function AsignacionPuestoForm({ initialData = null }) {
     };
 
     let response;
-    let url = '/api/superuser/rrhh/asignacion-puestos';
+    let url = '/api/rrhh/asignacion-puestos';
     let method = 'POST';
     let successMessage = 'Asignación registrada exitosamente';
     let errorMessage = 'Error al registrar asignación';
 
     if (initialData) {
-      url = `/api/superuser/rrhh/asignacion-puestos/${initialData.id}`;
+      url = `/api/rrhh/asignacion-puestos/${initialData.id}`;
       method = 'PUT';
       successMessage = 'Asignación actualizada exitosamente';
       errorMessage = 'Error al actualizar asignación';

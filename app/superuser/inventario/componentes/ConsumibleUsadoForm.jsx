@@ -38,10 +38,10 @@ export function ConsumibleUsadoForm({ consumibleUsadoId = null }) {
     setLoading(true);
     try {
       const [consumiblesRes, contratosRes, equiposRes, empleadosRes] = await Promise.all([
-        fetch('/api/superuser/inventario/consumibles'), // Necesitamos los consumibles con su stock actual
-        fetch('/api/superuser/contratos-servicio'), // Asume esta API
-        fetch('/api/superuser/equipos'), // Asume esta API
-        fetch('/api/superuser/empleados'), // Asume esta API
+        fetch('/api/inventario/consumibles'), // Necesitamos los consumibles con su stock actual
+        fetch('/api/contratos'), // Asume esta API
+        fetch('/api/vehiculos'), // Asume esta API
+        fetch('/api/rrhh/empleados'), // Asume esta API
       ]);
 
       const [consumiblesData, contratosData, equiposData, empleadosData] = await Promise.all([
@@ -57,7 +57,7 @@ export function ConsumibleUsadoForm({ consumibleUsadoId = null }) {
       setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
 
       if (consumibleUsadoId) {
-        const usadoRes = await fetch(`/api/superuser/inventario/consumibles-usados/${consumibleUsadoId}`);
+        const usadoRes = await fetch(`/api/inventario/consumibles-usados/${consumibleUsadoId}`);
         if (!usadoRes.ok) throw new Error('Registro de uso no encontrado');
         const usadoData = await usadoRes.json();
 
@@ -100,14 +100,14 @@ export function ConsumibleUsadoForm({ consumibleUsadoId = null }) {
     };
 
     let response;
-    let url = '/api/superuser/inventario/consumibles-usados';
+    let url = '/api/inventario/consumibles-usados';
     let method = 'POST';
     let successMessage = 'Uso de consumible registrado exitosamente.';
     let errorMessage = 'Error al registrar uso de consumible.';
 
     if (consumibleUsadoId) {
       // Para la edición de un uso, solo permitimos modificar campos auxiliares, no cantidad/consumible.
-      url = `/api/superuser/inventario/consumibles-usados/${consumibleUsadoId}`;
+      url = `/api/inventario/consumibles-usados/${consumibleUsadoId}`;
       method = 'PUT';
       successMessage = 'Uso de consumible actualizado exitosamente.';
       errorMessage = 'Error al actualizar uso de consumible.';
