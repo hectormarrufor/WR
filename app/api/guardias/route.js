@@ -1,9 +1,10 @@
 // Ruta: app/api/recursoshumanos/guardias/route.js
 
 import { NextResponse } from 'next/server';
-import sequelize from '../../../../sequelize'; // Ajusta la ruta a tu config de sequelize
 import { Op } from 'sequelize';
 import { RegistroGuardia } from '../../../models';
+import sequelize from '../../../sequelize';
+
 
 
 export async function POST(req) {

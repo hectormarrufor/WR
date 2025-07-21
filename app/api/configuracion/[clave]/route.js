@@ -1,6 +1,6 @@
 // En tu controlador o servicio cuando necesites el horario de oficina
 const { NextResponse } = require('next/server');
-const { ConfiguracionGeneral } = require('../models'); // Asegúrate de importar el modelo
+const { ConfiguracionGeneral } = require('../../../../models');
 
 async function GET({ params }) {
     try {

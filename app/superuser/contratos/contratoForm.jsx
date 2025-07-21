@@ -219,7 +219,7 @@ export function ContratoForm({ initialData = null }) {
           const fetchedTasa = await fetchTasaCambioReal(fechaFirmaIso); // 🚀 Llama a la API real
           tasa = fetchedTasa;
           form.setFieldValue('tasaCambioUSDVES', fetchedTasa);
-        
+
         } catch (error) {
           console.error("Error al obtener la tasa de cambio:", error);
           notifications.show({
