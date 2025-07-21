@@ -1,6 +1,6 @@
 // app/api/vehiculos/route.js
 import { NextResponse } from 'next/server';
-import { Vehiculo, FichaTecnica, Kilometraje, Horometro } from '../../../models';
+import db, { Vehiculo, FichaTecnica, Kilometraje, Horometro } from '../../../models';
 
 export async function GET() {
   try {
