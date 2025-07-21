@@ -1,8 +1,9 @@
 // Ruta: app/api/recursoshumanos/guardias/crear-con-proyeccion/route.js
 
 import { NextResponse } from 'next/server';
-import sequelize from '../../../../../sequelize'; // Ajusta la ruta a tu archivo de configuración de sequelize
+
 import { Empleado, Puesto, RegistroGuardia } from '../../../../models';
+import sequelize from '../../../../sequelize';
 
 // Define la lógica de los horarios de forma centralizada
 const HORARIOS = {
