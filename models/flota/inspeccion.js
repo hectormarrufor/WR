@@ -30,32 +30,6 @@ const Inspeccion = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-
-    // Bombillos
-    bombilloDelBaja: DataTypes.BOOLEAN,
-    bombilloDelAlta: DataTypes.BOOLEAN,
-    intermitenteDelFrizq: DataTypes.BOOLEAN,
-    intermitenteDelFder: DataTypes.BOOLEAN,
-    intermitenteLateral: DataTypes.BOOLEAN,
-    bombilloTrasero: DataTypes.BOOLEAN,
-
-    // Filtros, correa, neumático
-    filtroAireOk: DataTypes.BOOLEAN,
-    filtroAceiteOk: DataTypes.BOOLEAN,
-    filtroCombustibleOk: DataTypes.BOOLEAN,
-    correaOk: DataTypes.BOOLEAN,
-    neumaticoOk: DataTypes.BOOLEAN,
-
-    // Combustible y sistema de inyección
-    inyectoresOk: DataTypes.BOOLEAN,
-
-    // Estado aceite calculado
-    aceiteUltimoCambioKm: DataTypes.INTEGER,
-    aceiteEstado: {
-      type: DataTypes.ENUM('OK', 'Próximo a cambio', 'Cambio requerido'),
-      defaultValue: 'OK',
-    },
-
     // Relación con Vehículo
     vehiculoId: {
       type: DataTypes.INTEGER,

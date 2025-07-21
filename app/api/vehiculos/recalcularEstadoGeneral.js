@@ -1,57 +1,73 @@
-import {EstadoSistemaVehiculo, Mantenimiento, Vehiculo} from "../../../models";
+// app/api/vehiculos/recalcularEstadoGeneral.js
+import db from '../../../models'; // Asegúrate que la ruta a tu 'models/index.js' es correcta
 
-/**
- * Recalcula y actualiza el estado operativo general de un vehículo
- * basándose en los estados de sus sistemas y órdenes de mantenimiento.
- * @param {number} vehiculoId - El ID del vehículo a recalcular.
- * @param {object} [transaction=null] - Una transacción de Sequelize opcional.
- */
-export async function recalcularEstadoGeneralVehiculo(vehiculoId, transaction = null) {
+export const recalcularEstadoGeneralVehiculo = async (vehiculoId, transaction = null) => {
   try {
-    const sistemas = await EstadoSistemaVehiculo.findAll({
-      where: { vehiculoId: vehiculoId },
-      transaction: transaction
+    let newEstadoGeneral = 'Operativo'; // Estado por defecto
+
+    // 1. Obtener los últimos estados de los sistemas del vehículo
+    const estadosSistemas = await db.EstadoSistemaVehiculo.findAll({
+      where: { vehiculoId },
+      transaction,
     });
 
-    let nuevoEstadoGeneral = 'Operativo'; // Punto de partida optimista
-
-    // Regla 1: Si hay algún sistema con 'Fallo Crítico', el vehículo no es operativo
-    if (sistemas.some(s => s.estado === 'Fallo Crítico')) {
-      nuevoEstadoGeneral = 'No Operativo';
-    } else if (sistemas.some(s => s.estado === 'Advertencia')) {
-      // Regla 2: Si no hay fallos críticos, pero hay advertencias
-      nuevoEstadoGeneral = 'Operativo con Advertencias';
-    } else if (sistemas.length > 0 && sistemas.every(s => s.estado === 'No Aplica')) {
-      // Regla 3: Si todos los sistemas registrados son 'No Aplica'
-      nuevoEstadoGeneral = 'Desconocido';
-    } else if (sistemas.length === 0) {
-        // Regla 4: Si no hay estados de sistema registrados (vehículo nuevo, etc.)
-        nuevoEstadoGeneral = 'Desconocido';
-    }
-
-
-    // Regla 5: Si el vehículo tiene órdenes de mantenimiento abiertas o en progreso, podría estar "En Taller"
-    const ordenesAbiertas = await Mantenimiento.count({
+    // 2. Obtener todos los hallazgos de inspección pendientes (no resueltos)
+    const hallazgosPendientes = await db.HallazgoInspeccion.findAll({
       where: {
-        vehiculoId: vehiculoId,
-        estadoOrden: ['Abierta', 'En Progreso']
+        vehiculoId,
+        estaResuelto: false,
       },
-      transaction: transaction
+      transaction,
     });
 
-    // Sobrescribe si ya es 'No Operativo', pero lo pone 'En Taller' si está en 'Operativo' o 'Advertencias'
-    if (ordenesAbiertas > 0 && nuevoEstadoGeneral !== 'No Operativo') {
-      nuevoEstadoGeneral = 'En Taller';
+    // 3. Evaluar el estado basado en los EstadosSistemaVehiculo
+    let tieneAdvertenciasDeSistema = false;
+    for (const estadoSistema of estadosSistemas) {
+      if (estadoSistema.estado === 'Fallo Crítico') {
+        newEstadoGeneral = 'No Operativo'; // Un fallo crítico en cualquier sistema lo hace NO OPERATIVO
+        break; // No necesitamos revisar más si ya encontramos un fallo crítico
+      } else if (estadoSistema.estado === 'Advertencia') {
+        tieneAdvertenciasDeSistema = true;
+      }
     }
 
-    // Finalmente, actualiza el campo en el modelo Vehiculo
-    await Vehiculo.update(
-      { estadoOperativoGeneral: nuevoEstadoGeneral },
-      { where: { id: vehiculoId }, transaction: transaction }
+    // 4. Evaluar el estado basado en los Hallazgos de Inspección pendientes
+    let tieneAdvertenciasDeHallazgo = false;
+    for (const hallazgo of hallazgosPendientes) {
+      if (hallazgo.gravedad === 'Crítica') {
+        newEstadoGeneral = 'No Operativo'; // Un hallazgo crítico pendiente lo hace NO OPERATIVO
+        break; // No necesitamos revisar más si ya encontramos un hallazgo crítico
+      } else if (hallazgo.gravedad === 'Media' || hallazgo.gravedad === 'Baja') {
+        tieneAdvertenciasDeHallazgo = true;
+      }
+    }
+
+    // Si ya es 'No Operativo' por alguna de las razones anteriores, se mantiene.
+    // Si no es 'No Operativo', pero tiene advertencias, se pone en 'Operativo con Advertencias'.
+    if (newEstadoGeneral === 'Operativo') {
+      if (tieneAdvertenciasDeSistema || tieneAdvertenciasDeHallazgo) {
+        newEstadoGeneral = 'Operativo con Advertencias';
+      }
+    }
+
+    // Opcional: Considerar el estado del vehículo si está en taller.
+    // Podrías tener un campo `enTaller` en el modelo Vehiculo o similar
+    // const vehiculo = await db.Vehiculo.findByPk(vehiculoId, { transaction });
+    // if (vehiculo.enTaller) {
+    //   newEstadoGeneral = 'En Taller';
+    // }
+
+    // Actualizar el campo estadoOperativoGeneral en el modelo Vehiculo
+    await db.Vehiculo.update(
+      { estadoOperativoGeneral: newEstadoGeneral },
+      { where: { id: vehiculoId }, transaction }
     );
+
+    console.log(`Estado operativo general del vehículo ${vehiculoId} actualizado a: ${newEstadoGeneral}`);
+    return newEstadoGeneral;
+
   } catch (error) {
-    console.error(`Error al recalcular estado general para el vehículo ${vehiculoId}:`, error);
-    // Relanza el error para que la transacción principal pueda hacer rollback
-    throw error;
+    console.error(`Error al recalcular estado general del vehículo ${vehiculoId}:`, error.message);
+    throw error; // Re-lanzar el error para que la transacción se revierta
   }
-}
+};

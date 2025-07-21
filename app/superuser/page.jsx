@@ -1,117 +1,103 @@
-// app/superuser/page.jsx
+// app/superuser/page.js
 'use client';
-import { useState, useEffect } from 'react';
-import { Container, Paper, Title, Text, SimpleGrid, ThemeIcon, UnstyledButton, Group, Badge, Loader, Tooltip } from '@mantine/core';
-import Link from 'next/link';
+
+import { Button, Card, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
-    IconFileText,
-    IconChecklist,
-    IconArrowsLeftRight,
-    IconEngine,
-    IconTruck,
-    IconUsers,
-    IconToolsKitchen2,
-    IconBus,
-    IconPigMoney,
-    IconShoppingCart,
-    IconCashBanknote,
-    IconBuildingStore,
-    IconUsersGroup,
-    IconCalendarTime,
-    IconReport
+    IconFileText, IconTools, IconTruck, IconGasStation, IconUsers,
+    IconToolsKitchen2, IconSteeringWheel, IconCash, IconShoppingCart,
+    IconFileInvoice, IconArchive, IconUser, IconChartBar, IconMapPin, IconShieldLock
 } from '@tabler/icons-react';
-import classes from './superuser.module.css';
+import './superuser.css';
 
-// LISTA DEFINITIVA BASADA EN TUS INSTRUCCIONES
-const modulesData = [
-    { title: 'Contratos', icon: IconFileText, color: 'indigo', href: '/superuser/contratos', description: 'Gestiona contratos de servicio con clientes.' },
-    { title: 'Servicios Adquiridos', icon: IconChecklist, color: 'blue', href: '/superuser/servicios-adquiridos', description: 'Administra los servicios contratados.' },
-    { title: 'Mudanzas', icon: IconArrowsLeftRight, color: 'orange', href: '/superuser/mudanzas', description: 'Coordina la logística de traslados de equipos.' },
-    { title: 'Operaciones', icon: IconEngine, color: 'red', href: '/superuser/operaciones-campo', description: 'Control de operaciones diarias en pozos.' },
-    { title: 'Flota', icon: IconTruck, color: 'cyan', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.' },
-    { title: 'Usuarios', icon: IconUsers, color: 'gray', href: '/superuser/usuarios', description: 'Gestiona el acceso y roles de los usuarios.' },
-    { title: 'Comidas', icon: IconToolsKitchen2, color: 'lime', href: '#', description: 'Control de consumos y logística de alimentos.' },
-    { title: 'Transporte', icon: IconBus, color: 'yellow', href: '#', description: 'Logística de transporte de personal.' },
-    { title: 'Tesorería', icon: IconPigMoney, color: 'pink', href: '#', description: 'Gestiona cuentas bancarias y flujos de caja.' },
-    { title: 'Compras', icon: IconShoppingCart, color: 'grape', href: '/superuser/compras', description: 'Administra proveedores y órdenes de compra.' },
-    { title: 'Cobranza', icon: IconCashBanknote, color: 'green', href: '#', description: 'Seguimiento de facturas y pagos de clientes.' },
-    { title: 'Inventario', icon: IconBuildingStore, color: 'violet', href: '/superuser/inventario', description: 'Control de stock de partes y consumibles.' },
-    { title: 'Recursos Humanos', icon: IconUsersGroup, color: 'teal', href: '/superuser/rrhh', description: 'Administra personal, puestos y departamentos.' },
-    { title: 'Guardias', icon: IconCalendarTime, color: 'blue', href: '#', description: 'Planificación de turnos y guardias del personal.' },
-    { title: 'Reportes', icon: IconReport, color: 'red', href: '/superuser/reportes', description: 'Genera reportes gerenciales y operativos.' },
-];
-
-export default function SuperuserDashboard() {
-    const [bcvRate, setBcvRate] = useState(null);
-    const [loadingBcv, setLoadingBcv] = useState(true);
+export default function SuperUserHome() {
+    const [precioBCV, setPrecioBCV] = useState(0);
+    const router = useRouter();
+    const theme = useMantineTheme();
+    const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
     useEffect(() => {
-        const fetchBcvRate = async () => {
+        (async () => {
             try {
-                const response = await fetch("/api/bcv");
-                const data = await response.json();
-                setBcvRate(data.precio);
+                const req = await fetch('/api/bcv');
+                if (req.ok) {
+                    const data = await req.json();
+                    setPrecioBCV(data.precio);
+                } else {
+                     console.error("Error fetching BCV price: ", req.statusText);
+                }
             } catch (error) {
-                console.error("Error fetching BCV rate:", error);
-                setBcvRate('Error');
-            } finally {
-                setLoadingBcv(false);
+                console.error("Error fetching BCV price:", error);
             }
-        };
-
-        fetchBcvRate();
+        })();
     }, []);
 
-    const items = modulesData.map((item) => {
-        const isEnabled = item.href !== '#';
-
-        const cardContent = (
-            <UnstyledButton
-                component={isEnabled ? Link : 'div'}
-                href={item.href}
-                key={item.title}
-                className={classes.item}
-                style={{ opacity: isEnabled ? 1 : 0.6, cursor: isEnabled ? 'pointer' : 'not-allowed' }}
-            >
-                <ThemeIcon color={item.color} variant="light" size={60}>
-                    <item.icon size="1.8rem" />
-                </ThemeIcon>
-                <Text size="sm" mt="sm" weight={500}>{item.title}</Text>
-                <Text size="xs" c="dimmed" mt={4}>{item.description}</Text>
-            </UnstyledButton>
-        );
-
-        if (isEnabled) {
-            return cardContent;
-        }
-
-        return (
-            <Tooltip label="Módulo en construcción" key={item.title}>
-                {cardContent}
-            </Tooltip>
-        );
-    });
+    const menuOptions = [
+        { disabled: true, title: 'Contratos', href: '/superuser/contratos', description: 'Gestiona contratos de servicio con clientes.', icon: IconFileText, size: 32, color:theme.colors.blue[5] },
+        { disabled: true, title: 'Servicios Adquiridos', href: '/superuser/servicios-adquiridos', description: 'Administra los servicios contratados.', icon: IconTools, size: 32, color:theme.colors.cyan[6] },
+        { disabled: true, title: 'Mudanzas', href: '#', description: 'Coordina la logística de traslados de equipos.', icon: IconMapPin, size: 32, color:theme.colors.cyan[6] },
+        { disabled: true, title: 'Operaciones', href: '/superuser/operaciones-campo', description: 'Control de operaciones diarias en pozos.', icon: IconGasStation, size: 32, color:theme.colors.red[5] },
+        { disabled: false, title: 'Flota', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.', icon: IconTruck, size: 32, color:theme.colors.teal[6] },
+        { disabled: true, title: 'Usuarios', href: '/superuser/usuarios', description: 'Gestiona el acceso y roles de los usuarios.', icon: IconUsers, size: 32, color:theme.colors.grape[5] },
+        { disabled: true, title: 'Comidas', href: '#', description: 'Control de consumos y logística de alimentos.', icon: IconToolsKitchen2 , size: 32, color:theme.colors.cyan[6]},
+        { disabled: true, title: 'Transporte', href: '#', description: 'Logística de transporte de personal.', icon: IconSteeringWheel , size: 32, color:theme.colors.cyan[6]},
+        { disabled: true, title: 'Tesorería', href: '#', description: 'Gestiona cuentas bancarias y flujos de caja.', icon: IconCash , size: 32, color:theme.colors.cyan[6]},
+        { disabled: true, title: 'Compras', href: '/superuser/compras', description: 'Administra proveedores y órdenes de compra.', icon: IconShoppingCart, size: 32, color:theme.colors.pink[5] },
+        { disabled: true, title: 'Cobranza', href: '/superuser/facturacion', description: 'Seguimiento de facturas y pagos de clientes.', icon: IconFileInvoice, size: 32, color:theme.colors.lime[6] },
+        { disabled: true, title: 'Inventario', href: '/superuser/inventario', description: 'Control de stock de partes y consumibles.', icon: IconArchive, size: 32, color:theme.colors.indigo[5] },
+        { disabled: true, title: 'Recursos Humanos', href: '/superuser/rrhh', description: 'Administra personal, puestos y departamentos.', icon: IconUser, size: 32, color:theme.colors.cyan[8] },
+        { disabled: true, title: 'Guardias', href: '/superuser/guardias', description: 'Planificación de turnos y guardias del personal.', icon: IconShieldLock , size: 32, color:theme.colors.cyan[6]},
+        { disabled: true, title: 'Reportes', href: '/superuser/reportes', description: 'Genera reportes gerenciales y operativos.', icon: IconChartBar, size: 32, color:theme.colors.red[8] },
+    ];
 
     return (
-        <Container fluid>
-            <Paper withBorder shadow="md" p={30} mt={70} radius="md" className={classes.paper_translucent}>
-                <Title order={2} ta="center">
-                    Panel de Administración
+        <Stack justify="center" align="center" style={{ minHeight: '100vh', padding: '2rem 0' }} mt={20}>
+            <Card
+                shadow="md"
+                padding="xl"
+                radius="md"
+                withBorder
+                style={{ width: '100%', maxWidth: 1200, backgroundColor: 'white' }}
+            >
+                <Title order={1} align="center" mb={0} c="blue.8">
+                    PANEL DE ADMINISTRACIÓN
                 </Title>
 
-                <Group justify="center" mt="xs" mb="lg">
-
-
-                    <Badge variant="light" color={bcvRate === 'Error' ? 'red' : 'green'} size="lg">
-                        BCV: {loadingBcv ? <Loader size="xs" /> : bcvRate + " Bs"}
+                <Box mb="sm" style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Badge color={precioBCV ? "green" : "gray"} size="lg">
+                        BCV: {precioBCV ? `${precioBCV} BS` : "Cargando..."}
                     </Badge>
-
-                </Group>
-
-                <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5 }}>
-                    {items}
+                </Box>
+                <SimpleGrid
+                    cols={isMobile ? 2 : 5}
+                    spacing="xl"
+                    verticalSpacing="xl"
+                    breakpoints={[
+                        { maxWidth: 'lg', cols: 4 },
+                        { maxWidth: 'md', cols: 3 },
+                        { maxWidth: 'sm', cols: 2 },
+                    ]}
+                >
+                    {menuOptions.map((option, index) => (
+                        <Button
+                            key={index}
+                            fullWidth
+                            variant="default"
+                            disabled={option.disabled}
+                            onClick={() => !option.disabled && router.push(option.href)}
+                            className="superuser-button"
+                        >
+                            {<option.icon color={option.disabled? "gray" :option.color} size={option.size}/>}
+                            <Text fw={700} size="sm" mt={5}>{option.title}</Text>
+                            <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
+                                {option.disabled ? '(No disponible)' : option.description}
+                            </Text>
+                        </Button>
+                    ))}
                 </SimpleGrid>
-            </Paper>
-        </Container>
+            </Card>
+        </Stack>
     );
 }

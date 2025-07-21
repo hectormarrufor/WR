@@ -5,13 +5,13 @@ import { Container, Title, Text, Center, Loader, Box, Paper } from '@mantine/cor
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
-import { InspeccionForm } from './InspeccionForm';
+import { InspeccionForm } from './InspeccionForm'; // Importa el componente del formulario
 import { httpGet } from '../../../../ApiFunctions/httpServices';
 
 export default function NuevaInspeccionPage() {
   const { id } = useParams(); // ID del vehículo
   const [vehiculo, setVehiculo] = useState(null);
-  const [lastInspection, setLastInspection] = useState(null);
+  // No necesitamos 'lastInspection' directamente, obtendremos los valores de kilometraje/horómetro de 'vehiculo'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,19 +19,14 @@ export default function NuevaInspeccionPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        const vehiculoData = await httpGet(`/api/vehiculos/${id}`);
+        const vehiculoData = await httpGet(`/api/vehiculos/${id}`); ///route.js]
         if (!vehiculoData) {
           throw new Error('Vehículo no encontrado.');
         }
         setVehiculo(vehiculoData);
 
-        // Obtener la última inspección para precargar kilometraje/horómetro
-        // Tu API /api/vehiculos/[id] ya incluye `inspecciones`, así que podemos usarla
-        if (vehiculoData.inspecciones && vehiculoData.inspecciones.length > 0) {
-          setLastInspection(vehiculoData.inspecciones[0]); // La última inspección ya viene primero por el order
-        }
       } catch (err) {
-        console.error('Error al cargar datos del vehículo o última inspección:', err);
+        console.error('Error al cargar datos del vehículo:', err);
         setError(err.message);
         notifications.show({
           title: 'Error',
@@ -69,12 +64,21 @@ export default function NuevaInspeccionPage() {
     );
   }
 
+  // Extraer el último kilometraje y horómetro directamente de los arrays del vehículo
+  const latestKilometraje = vehiculo.kilometrajes?.[0]?.kilometrajeActual || 0;
+  const latestHorometro = vehiculo.horometros?.[0]?.horas || 0;
+
   return (
-    <Paper size="xl" py="xl" mx={50} mt={70} px="sm">
+    <Paper size="xl" py="xl" mx={20} mt={70}>
       <Title order={2} ta="center" mb="lg">
         Nueva Inspección para: {vehiculo.marca} {vehiculo.modelo} ({vehiculo.placa})
       </Title>
-      <InspeccionForm vehiculoId={id} lastInspectionData={lastInspection} />
+      {/* Pasa el ID del vehículo y los últimos datos de kilometraje/horómetro */}
+      <InspeccionForm 
+        vehiculoId={id} 
+        lastKnownKilometraje={latestKilometraje} 
+        lastKnownHorometro={latestHorometro} 
+      />
     </Paper>
   );
 }

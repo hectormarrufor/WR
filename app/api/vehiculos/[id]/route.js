@@ -36,7 +36,7 @@ export async function GET(request, { params }) {
           include: [
             {
               model: TareaMantenimiento,
-              as: 'tareasMantenimiento', // Asegúrate que 'as' coincide con tu asociación en Mantenimiento
+              as: 'tareas', // Asegúrate que 'as' coincide con tu asociación en Mantenimiento
               required: false,
               include: [
                 {
@@ -79,7 +79,6 @@ export async function GET(request, { params }) {
             },
           ],
           order: [['fechaInspeccion', 'DESC']], // Obtener las inspecciones más recientes primero
-          limit: 1, // Solo la última inspección para el estado de los sistemas
           required: false,
         },
         // Si necesitas los EstadoSistemaVehiculo directamente, no desde la inspección

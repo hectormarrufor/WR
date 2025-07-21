@@ -1,18 +1,17 @@
 // app/api/vehiculos/inspecciones/route.js
 import { NextResponse } from 'next/server';
 import db from '../../../../models';
-import { recalcularEstadoGeneralVehiculo } from '../recalcularEstadoGeneral'; // Importa la función de ayuda
+import { recalcularEstadoGeneralVehiculo } from '../recalcularEstadoGeneral';
 
-// GET todas las inspecciones
+// GET todas las inspecciones (este GET no necesita cambios para tu solicitud actual)
 export async function GET() {
   try {
     const inspecciones = await db.Inspeccion.findAll({
       include: [
         { model: db.Vehiculo, as: 'vehiculo' },
-        { model: db.HallazgoInspeccion, as: 'hallazgos' }, // Incluye hallazgos
-        // { model: db.EstadoSistemaVehiculo, as: 'estadosSistemas' }, // Si quieres incluirlos aquí directamente
+        { model: db.HallazgoInspeccion, as: 'hallazgos' },
       ],
-      order: [['fechaInspeccion', 'DESC']], // Ordenar para que la más reciente sea la primera
+      order: [['fechaInspeccion', 'DESC']],
     });
     return NextResponse.json(inspecciones, { status: 200 });
   } catch (error) {
@@ -26,7 +25,7 @@ export async function GET() {
 
 // POST una nueva inspección con sus hallazgos y estados de sistema
 export async function POST(request) {
-  const transaction = await db.sequelize.transaction(); // Iniciar una transacción
+ const transaction = await db.sequelize.transaction();
   try {
     const body = await request.json();
     const { vehiculoId, fechaInspeccion, kilometrajeInspeccion, horometro, inspector, observacionesGenerales, estadosSistemas } = body;
@@ -35,28 +34,103 @@ export async function POST(request) {
     const nuevaInspeccion = await db.Inspeccion.create({
       vehiculoId,
       fechaInspeccion,
-      kilometrajeInspeccion,
-      horometro,
+      kilometrajeInspeccion: parseInt(kilometrajeInspeccion),
+      horometro: parseInt(horometro),
       inspector,
       observacionesGenerales,
-      // Los campos de bombillos, filtros, etc. del modelo Inspeccion original (si aún los usas)
-      // tendrían que mapearse aquí desde el 'body' si los recoges del frontend.
-      // Por ejemplo:
-      // bombilloDelBaja: body.bombillos.delBaja,
-      // filtroAireOk: body.filtros.aireOk,
-      // etc.
-      // Pero si la idea es usar `estadosSistemas` y `HallazgoInspeccion` para esos detalles,
-      // esos campos directos en Inspeccion podrían ser redundantes o solo para un resumen.
     }, { transaction });
 
-    // 2. Procesar los estados de los sistemas y crear Hallazgos
-    // y actualizar/crear EstadoSistemaVehiculo para cada sistema
+    // 2. Registrar el Kilometraje de la Inspección en la tabla Kilometrajes
+    if (kilometrajeInspeccion !== undefined && kilometrajeInspeccion !== null) {
+      await db.Kilometraje.create({
+        vehiculoId,
+        kilometrajeActual: parseInt(kilometrajeInspeccion),
+        fechaRegistro: fechaInspeccion, // Usar la fecha de la inspección
+      }, { transaction });
+    }
+
+    // 3. Registrar el Horómetro de la Inspección en la tabla Horometros
+    if (horometro !== undefined && horometro !== null) {
+      await db.Horometro.create({
+        vehiculoId,
+        horas: parseInt(horometro),
+        fecha: fechaInspeccion, // Usar la fecha de la inspección
+      }, { transaction });
+    }
+
+    // Obtener la ficha técnica del vehículo para los intervalos de mantenimiento
+    const vehiculoConFicha = await db.Vehiculo.findByPk(vehiculoId, {
+      include: [{ model: db.FichaTecnica, as: 'fichaTecnica' }],
+      transaction,
+    });
+    const fichaTecnica = vehiculoConFicha?.fichaTecnica;
+
+    // --- Lógica para Hallazgos Automáticos de Cambio de Aceite ---
+    // (Esta lógica se mantiene, solo se asegura de usar los valores correctos de la FichaTécnica)
+    const hallazgosAutomaticos = [];
+
+    // 1. Aceite de Motor
+    if (fichaTecnica?.motor?.aceite?.ultimoCambioKm !== null && fichaTecnica?.motor?.aceite?.intervaloCambioKm !== null) {
+      const proximoCambioMotorKm = parseFloat(fichaTecnica.motor.aceite.ultimoCambioKm) + parseFloat(fichaTecnica.motor.aceite.intervaloCambioKm);
+      if (parseInt(kilometrajeInspeccion) >= proximoCambioMotorKm) {
+        const existingMotorOilFinding = await db.HallazgoInspeccion.findOne({
+          where: {
+            vehiculoId,
+            nombreSistema: 'Aceite de Motor',
+            descripcion: 'Cambio de Aceite de Motor Requerido',
+            estaResuelto: false,
+          },
+          transaction,
+        });
+        if (!existingMotorOilFinding) {
+          hallazgosAutomaticos.push({
+            vehiculoId,
+            inspeccionId: nuevaInspeccion.id,
+            nombreSistema: 'Aceite de Motor',
+            descripcion: 'Cambio de Aceite de Motor Requerido',
+            gravedad: 'Crítica',
+            estaResuelto: false,
+          });
+        }
+      }
+    }
+
+    // 2. Aceite de Transmisión (si la estructura existe en la ficha técnica)
+    if (fichaTecnica?.transmision?.ultimoCambioKm !== null && fichaTecnica?.transmision?.intervaloCambioKm !== null) {
+      const proximoCambioTransmisionKm = parseFloat(fichaTecnica.transmision.ultimoCambioKm) + parseFloat(fichaTecnica.transmision.intervaloCambioKm);
+      if (parseInt(kilometrajeInspeccion) >= proximoCambioTransmisionKm) {
+        const existingTransmisionOilFinding = await db.HallazgoInspeccion.findOne({
+          where: {
+            vehiculoId,
+            nombreSistema: 'Aceite de Transmisión',
+            descripcion: 'Cambio de Aceite de Transmisión Requerido',
+            estaResuelto: false,
+          },
+          transaction,
+        });
+        if (!existingTransmisionOilFinding) {
+          hallazgosAutomaticos.push({
+            vehiculoId,
+            inspeccionId: nuevaInspeccion.id,
+            nombreSistema: 'Aceite de Transmisión',
+            descripcion: 'Cambio de Aceite de Transmisión Requerido',
+            gravedad: 'Crítica',
+            estaResuelto: false,
+          });
+        }
+      }
+    }
+
+    if (hallazgosAutomaticos.length > 0) {
+      await db.HallazgoInspeccion.bulkCreate(hallazgosAutomaticos, { transaction });
+    }
+    // --- Fin Lógica para Hallazgos Automáticos ---
+
+    // Procesar hallazgos manuales/reportados en la inspección (sin cambios)
     if (estadosSistemas && estadosSistemas.length > 0) {
         for (const sistema of estadosSistemas) {
             const { nombreSistema, estado, notas } = sistema;
 
-            // Actualizar o crear el registro de EstadoSistemaVehiculo para este sistema en el vehículo
-            // Busca la última entrada para este sistema en este vehículo
             let estadoVehiculo = await db.EstadoSistemaVehiculo.findOne({
                 where: { vehiculoId, nombreSistema },
                 order: [['fechaActualizacion', 'DESC']],
@@ -64,15 +138,12 @@ export async function POST(request) {
             });
 
             if (estadoVehiculo) {
-                // Si existe, actualiza su estado
                 await estadoVehiculo.update({
                     estado,
                     notas,
                     fechaActualizacion: new Date(),
-                    // Puedes vincularlo a la inspección que lo generó (hallazgoInspeccionId) si el hallazgo existe
                 }, { transaction });
             } else {
-                // Si no existe, crea uno nuevo
                 estadoVehiculo = await db.EstadoSistemaVehiculo.create({
                     vehiculoId,
                     nombreSistema,
@@ -82,27 +153,26 @@ export async function POST(request) {
                 }, { transaction });
             }
 
-            // Si el estado no es 'Operativo' o 'No Aplica', crea un HallazgoInspeccion
             if (estado !== 'Operativo' && estado !== 'No Aplica') {
                 await db.HallazgoInspeccion.create({
                     vehiculoId,
                     inspeccionId: nuevaInspeccion.id,
+                    nombreSistema: nombreSistema,
                     descripcion: notas || `Problema detectado en ${nombreSistema} (Estado: ${estado}).`,
-                    gravedad: estado === 'Fallo Crítico' ? 'Crítica' : 'Media', // O mapear más detalladamente
-                    estaResuelto: false, // Por defecto, un nuevo hallazgo no está resuelto
+                    gravedad: estado === 'Fallo Crítico' ? 'Crítica' : 'Media',
+                    estaResuelto: false,
                 }, { transaction });
             }
         }
     }
 
-    // 3. Recalcular el estado operativo general del vehículo
-    await recalcularEstadoGeneralVehiculo(vehiculoId, transaction);
+    await recalcularEstadoGeneralVehiculo(vehiculoId, transaction); //
 
-    await transaction.commit(); // Confirmar todas las operaciones si todo fue exitoso
+    await transaction.commit();
 
     return NextResponse.json(nuevaInspeccion, { status: 201 });
   } catch (error) {
-    await transaction.rollback(); // Revertir la transacción si ocurre algún error
+    await transaction.rollback();
     console.error('Error al crear inspección y hallazgos:', error.message);
     if (error.name === 'SequelizeValidationError') {
       const validationErrors = error.errors.map(err => ({ field: err.path, message: err.message }));
