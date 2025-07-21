@@ -1,63 +1,70 @@
-// app/superuser/rrhh/page.js
-'use client'; // Si estás usando Next.js App Router, esto es necesario para componentes con interactividad
+// app/superuser/rrhh/page.jsx
+'use client';
+import { Container, Paper, Title, Text, SimpleGrid, ThemeIcon, Group, UnstyledButton } from '@mantine/core';
+import Link from 'next/link';
+import { FaUsers, FaBriefcase, FaIdBadge, FaBuilding } from 'react-icons/fa';
+import classes from '../superuser.module.css'; // Usamos el CSS module para estilos
 
-import { SimpleGrid, Button, Title, Container, Flex, Paper } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
-import { useRouter } from 'next/navigation'; // O 'next/router' si usas Pages Router
-import { IconUsers, IconBuildingCommunity, IconUserScan } from '@tabler/icons-react'; // Iconos para mejor UX
+const mockdata = [
+    { 
+      title: 'Gestión de Empleados', 
+      icon: FaUsers, 
+      color: 'blue', 
+      href: '/superuser/rrhh/empleados',
+      description: 'Crear, editar y consultar la ficha de todo el personal.'
+    },
+    { 
+      title: 'Gestión de Puestos', 
+      icon: FaBriefcase, 
+      color: 'teal', 
+      href: '/superuser/rrhh/puestos',
+      description: 'Definir los cargos, roles y responsabilidades de la organización.'
+    },
+    { 
+      title: 'Gestión de Departamentos', 
+      icon: FaBuilding, 
+      color: 'violet', 
+      href: '/superuser/rrhh/departamentos',
+      description: 'Organizar la empresa en áreas como Operaciones, Mantenimiento, etc.'
+    },
+    { 
+      title: 'Asignación de Puestos', 
+      icon: FaIdBadge, 
+      color: 'grape', 
+      href: '/superuser/rrhh/asignacion-puestos',
+      description: 'Asignar uno o más puestos específicos a cada empleado.'
+    },
+];
 
-export default function RRHHDashboardPage() {
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const router = useRouter();
+export default function RRHHPage() {
+    const items = mockdata.map((item) => (
+        <UnstyledButton component={Link} href={item.href} key={item.title} className={classes.item}>
+            <ThemeIcon color={item.color} variant="light" size={60}>
+                <item.icon size="1.8rem" />
+            </ThemeIcon>
+            <Text size="sm" mt="sm" weight={500}>
+                {item.title}
+            </Text>
+            <Text size="xs" c="dimmed" mt={4}>
+                {item.description}
+            </Text>
+        </UnstyledButton>
+    ));
 
-  return (
-    <Container size="xl" py="xl">
-      <Paper p="xl" mt={100}>
-        <Flex direction="column" align="center" mb="lg">
-          <Title order={2} ta="center" mb="md">
-            Gestión de Recursos Humanos
-          </Title>
-          <p>Selecciona una opción para administrar los recursos humanos de la empresa.</p>
-        </Flex>
-        <SimpleGrid
-          cols={isMobile ? 1 : 2}
-          spacing="md"
-          breakpoints={[
-            { maxWidth: 'lg', cols: 2 },
-            { maxWidth: 'md', cols: 2 },
-            { maxWidth: 'sm', cols: 1 },
-          ]}
-        >
-          <Button
-            fullWidth
-            variant="outline"
-            color="blue"
-            leftSection={<IconUsers size={20} />}
-            onClick={() => router.push('/superuser/rrhh/empleados')}
-          >
-            Administrar Empleados
-          </Button>
-          <Button
-            fullWidth
-            variant="outline"
-            color="teal"
-            leftSection={<IconBuildingCommunity size={20} />}
-            onClick={() => router.push('/superuser/rrhh/puestos')} // Crearás esta página después
-          >
-            Administrar Puestos
-          </Button>
-          <Button
-            fullWidth
-            variant="outline"
-            color="grape"
-            leftSection={<IconUserScan size={20} />}
-            onClick={() => router.push('/superuser/rrhh/asignacion-puestos')} // Crearás esta página después
-          >
-            Asignación de Puestos
-          </Button>
-          {/* Puedes añadir más botones para otros sub-módulos de RRHH aquí */}
-        </SimpleGrid>
-      </Paper>
-    </Container>
-  );
-}   
+    return (
+        <Container fluid>
+            <Paper withBorder shadow="md" p={30} mt={70} radius="md">
+                <Title order={2} ta="center" mb="lg">
+                    Módulo de Recursos Humanos
+                </Title>
+                <Text c="dimmed" ta="center" mb="xl">
+                    Seleccione una sección para administrar el personal y la estructura organizativa.
+                </Text>
+
+                <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+                    {items}
+                </SimpleGrid>
+            </Paper>
+        </Container>
+    );
+}

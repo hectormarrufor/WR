@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Container, Title, Text, Loader, Center, Group, Button, Paper, Divider } from '@mantine/core';
+import { Container, Title, Text, Loader, Center, Group, Button, Paper, Divider, Grid } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { ContratoDetailCard } from '../ContratoDetailCard';
@@ -97,7 +97,7 @@ export default function ContratoDetailPage({ params }) {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Paper size="lg" py="xl" mx={50} px={50} mt={60}>
       <Group justify="space-between" mb="lg">
         <Button variant="default" onClick={() => router.back()} leftSection={<IconArrowLeft size={16} />}>
           Volver a Contratos
@@ -112,11 +112,11 @@ export default function ContratoDetailPage({ params }) {
       {/* Sección de Renglones del Contrato */}
       <Divider my="xl" label="Fases/Renglones de Servicio" labelPosition="center" />
 
-      {contrato.RenglonesContrato && contrato.RenglonesContrato.length > 0 ? (
+      {contrato.renglones && contrato.renglones.length > 0 ? (
         <Grid gutter="md">
-          {contrato.RenglonesContrato.sort((a, b) => new Date(a.fechaInicioEstimada) - new Date(b.fechaInicioEstimada)).map((renglon) => (
+          {contrato.renglones.sort((a, b) => new Date(a.fechaInicioEstimada) - new Date(b.fechaInicioEstimada)).map((renglon) => (
             <Grid.Col key={renglon.id} span={{ base: 12, sm: 6, md: 4 }}>
-              <RenglonContratoDetail renglon={renglon} onEdit={handleOpenEditRenglon} />
+              <RenglonContratoDetail  renglon={renglon} onEdit={handleOpenEditRenglon} />
             </Grid.Col>
           ))}
         </Grid>
@@ -133,6 +133,6 @@ export default function ContratoDetailPage({ params }) {
           onUpdate={handleRenglonUpdated}
         />
       )}
-    </Container>
+    </Paper>
   );
 }

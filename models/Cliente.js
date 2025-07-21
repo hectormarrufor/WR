@@ -8,12 +8,7 @@ const Cliente = sequelize.define('Cliente', {
     primaryKey: true,
     autoIncrement: true,
   },
-  tipoIdentificacion: {
-    type: DataTypes.ENUM('V', 'E', 'J', 'G', 'P'), // Venezolano, Extranjero, Jurídico, Gobierno, Pasaporte
-    allowNull: false,
-    defaultValue: 'J', // Por defecto, asumiendo la mayoría son empresas
-  },
-  identificacion: { // Cédula, RIF, Pasaporte
+  rif: { // RIF
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
@@ -33,9 +28,6 @@ const Cliente = sequelize.define('Cliente', {
   nombreCompleto: { // Para personas naturales o un campo combinado para búsqueda
     type: DataTypes.VIRTUAL,
     get() {
-      if (this.razonSocial) {
-        return this.razonSocial;
-      }
       return `${this.nombreContacto || ''} ${this.apellidoContacto || ''}`.trim();
     },
     set(value) {
@@ -56,11 +48,6 @@ const Cliente = sequelize.define('Cliente', {
   direccion: {
     type: DataTypes.TEXT,
     allowNull: true,
-  },
-  activo: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: true,
   },
   notas: {
     type: DataTypes.TEXT,

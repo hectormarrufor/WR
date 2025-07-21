@@ -4,7 +4,8 @@
 import React, { useState, useEffect, useCallback, use } from 'react';
 import {
   Container, Title, Text, Button, Group, Paper, Stack, Grid,
-  ActionIcon, Divider, Collapse, ThemeIcon, Badge, Center, Loader, Accordion
+  ActionIcon, Divider, Collapse, ThemeIcon, Badge, Center, Loader, Accordion,
+  Flex
 } from '@mantine/core';
 import { IconArrowLeft, IconEdit, IconTrash, IconTruckDelivery, IconTools, IconClipboardText, IconRoute, IconContract } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
@@ -89,25 +90,7 @@ export default function RenglonDetailPage({ params }) {
             </ActionIcon>
           </Group>
         </Group>
-        {renglon?.contrato && (
-          <Accordion variant="contained" radius="md" defaultValue={null} mt="xl" mb={20}>
-            <Accordion.Item value="contrato">
-              <Accordion.Control icon={<ThemeIcon color="blue" variant="light"><IconContract /></ThemeIcon>}>
-                Información del Contrato Asociado
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Stack gap="xs">
-                  <Text><strong>Número:</strong> {renglon.contrato.numeroContrato}</Text>
-                  <Text><strong>Cliente:</strong> {renglon.contrato.cliente?.nombreCompleto}</Text>
-                  <Text><strong>Inicio:</strong> {format(new Date(renglon.contrato.fechaInicio), 'dd/MM/yyyy', { locale: es })}</Text>
-                  <Text><strong>Fin Estimada:</strong> {renglon.contrato.fechaFinEstimada ? format(new Date(renglon.contrato.fechaFinEstimada), 'dd/MM/yyyy', { locale: es }) : 'N/A'}</Text>
-                  <Text><strong>Estado:</strong> <Badge color={renglon.contrato.estado === 'Activo' ? 'green' : 'gray'}>{renglon.contrato.estado}</Badge></Text>
-                  <Text><strong>Descripción:</strong> {renglon.contrato.descripcion || 'No especificada'}</Text>
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        )}
+
         <Stack gap="sm">
           <Group>
             <Text size="md" fw={600}>Estado:</Text>
@@ -124,10 +107,32 @@ export default function RenglonDetailPage({ params }) {
               <Text><strong>Fin estimado:</strong> {renglon.fechaFinEstimada ? format(new Date(renglon.fechaFinEstimada), 'dd/MM/yyyy', { locale: es }) : 'N/A'}</Text>
             </Grid.Col>
           </Grid>
-
+          {/* {renglon?.contrato && (
+            <Accordion variant="contained" radius="md" defaultValue={null} mt="xl" mb={20}>
+              <Accordion.Item value="contrato">
+                <Accordion.Control icon={<ThemeIcon color="blue" variant="light"><IconContract /></ThemeIcon>}>
+                  Información del Contrato Asociado
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack gap="xs">
+                    <Text><strong>Número:</strong> {renglon.contrato.numeroContrato}</Text>
+                    <Text><strong>Cliente:</strong> {renglon.contrato.cliente?.nombreCompleto}</Text>
+                    <Text><strong>Inicio:</strong> {format(new Date(renglon.contrato.fechaInicio), 'dd/MM/yyyy', { locale: es })}</Text>
+                    <Text><strong>Fin Estimada:</strong> {renglon.contrato.fechaFinEstimada ? format(new Date(renglon.contrato.fechaFinEstimada), 'dd/MM/yyyy', { locale: es }) : 'N/A'}</Text>
+                    <Flex>
+                      <Text><strong>Estado:</strong></Text>
+                      <Badge color={renglon.contrato.estado === 'Activo' ? 'green' : 'gray'}>{renglon.contrato.estado}</Badge>
+                    </Flex>
+                    <Text><strong>Descripción:</strong> {renglon.contrato.descripcion || 'No especificada'}</Text>
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          )} */}
           <Divider mt="md" />
+
           <Group justify="space-around" mt="md">
-            {!renglon.mudanza && <Button leftSection={<IconTruckDelivery />} onClick={() => router.push(`/superuser/renglones/${id}/mudanza/nueva`)}>Registrar Mudanza</Button>}
+            {!renglon.mudanza && <Button leftSection={<IconTruckDelivery />} onClick={() => router.push(`/superuser/servicios-adquiridos/${id}/mudanza/nueva`)}>Registrar Mudanza</Button>}
             {!renglon.operacion && <Button leftSection={<IconTools />} onClick={() => router.push(`/superuser/servicios-adquiridos/${id}/operaciones/nueva`)}>Registrar Operación</Button>}
             {!renglon.transporte && <Button leftSection={<IconClipboardText />} onClick={() => router.push(`/superuser/renglones/${id}/transporte`)}>Registrar Transporte</Button>}
             <Button color="red" onClick={() => router.push(`/superuser/renglones/${id}/cancelar`)}>Cancelar Renglón</Button>
@@ -138,7 +143,7 @@ export default function RenglonDetailPage({ params }) {
 
 
       {renglon?.mudanza && (
-        <Paper withBorder shadow="sm" radius="md" p="md" mt="xl" onClick={() => router.push(`/superuser/mudanzas/${renglon.mudanza.id}`)}>
+        <Paper withBorder shadow="sm" radius="md" p="md" mt="xl" onClick={() => router.push(`/superuser/mudanza/${renglon.mudanza.id}`)}>
           <Group mb="sm">
             <ThemeIcon color="orange" radius="xl" size="lg"><IconRoute /></ThemeIcon>
             <Title order={4}>Mudanza Registrada</Title>

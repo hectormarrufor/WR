@@ -16,7 +16,7 @@ import { EditRenglonModal } from '../../contratos/EditRenglonModal';
 // Definición de las columnas de la tabla (sin cambios aquí, es solo para contexto)
 const getColumns = () => [
   {
-    accessorKey: 'contratoServicio.numeroContrato',
+    accessorKey: 'contrato.numeroContrato',
     header: 'Nº Contrato',
     size: 120,
     Cell: ({ row }) => {
@@ -25,23 +25,23 @@ const getColumns = () => [
       return (
         <Text
           component="a"
-          href={`/superuser/contratos/${row.original.contratoServicio?.id}`}
+          href={`/superuser/contratos/${row.original.contrato?.id}`}
           onClick={(e) => {
             e.preventDefault();
-            router.push(`/superuser/contratos/${row.original.contratoServicio?.id}`);
+            router.push(`/superuser/contratos/${row.original.contrato?.id}`);
           }}
           style={{ cursor: 'pointer', textDecoration: 'underline', color: 'blue' }}
         >
-          {row.original.contratoServicio?.numeroContrato || 'N/A'}
+          {row.original.contrato?.numeroContrato || 'N/A'}
         </Text>
       );
     },
   },
   {
-    accessorKey: 'contratoServicio.cliente.nombreCompania',
+    accessorKey: 'contrato.cliente.nombreCompleto',
     header: 'Cliente',
     size: 200,
-    Cell: ({ row }) => row.original.contratoServicio?.cliente?.nombreCompania || 'N/A',
+    Cell: ({ row }) => row.original.contrato?.cliente?.nombreCompleto || 'N/A',
   },
   {
     accessorKey: 'nombreRenglon',

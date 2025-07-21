@@ -1,7 +1,7 @@
 // components/clientes/ModalCrearCliente.jsx (Actualizado)
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal, Button, Group, TextInput, Select, Textarea, Checkbox,
   Stack, Box, Title, Grid, Tooltip
@@ -18,42 +18,36 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
 
   const form = useForm({
     initialValues: {
-      tipoIdentificacion: 'J',
-      identificacion: '',
+      rif: '',
       razonSocial: '',
       nombreContacto: '',
       apellidoContacto: '',
       telefono: '',
       email: '',
       direccion: '',
-      activo: true,
       notas: '',
     },
 
     validate: {
-      tipoIdentificacion: (value) => (value ? null : 'Tipo de identificación es requerido'),
-      identificacion: (value) => (value ? null : 'Identificación es requerida'),
-      razonSocial: (value, values) => {
-        if (values.tipoIdentificacion === 'J' || values.tipoIdentificacion === 'G') {
-          return value ? null : 'Razón Social es requerida para personas jurídicas/gobierno';
-        }
-        return null;
-      },
-      nombreContacto: (value, values) => {
-        if (values.tipoIdentificacion !== 'J' && values.tipoIdentificacion !== 'G' && values.tipoIdentificacion !== 'P') { // Incluye Pasaporte
-          return value ? null : 'Nombre de contacto es requerido para personas naturales/pasaporte';
-        }
-        return null;
-      },
-      apellidoContacto: (value, values) => {
-        if (values.tipoIdentificacion !== 'J' && values.tipoIdentificacion !== 'G' && values.tipoIdentificacion !== 'P') { // Incluye Pasaporte
-          return value ? null : 'Apellido de contacto es requerido para personas naturales/pasaporte';
-        }
-        return null;
-      },
+      rif: (value) => (value ? null : 'Identificación es requerida'),
+
       email: (value) => (value && !/^\S+@\S+$/.test(value) ? 'Email inválido' : null),
     },
   });
+
+  useEffect(() => { 
+    form.setValues({
+      rif: 'J-12345678-9',
+      razonSocial: 'PDVSA',
+      nombreContacto: 'Jose',
+      apellidoContacto: 'Perez',
+      telefono: '04121234567',
+      email: 'pdvsa@pdvsa.com',
+      direccion: 'El Tigre',
+      notas: '',
+    })
+  }, [])
+  
 
   const handleSubmit = async (values) => {
     setLoading(true);
@@ -94,15 +88,8 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
     }
   };
 
-  const tipoIdentificacionData = [
-    { value: 'V', label: 'V - Venezolano' },
-    { value: 'E', label: 'E - Extranjero' },
-    { value: 'J', label: 'J - Jurídico (RIF)' },
-    { value: 'G', label: 'G - Gobierno' },
-    { value: 'P', label: 'P - Pasaporte' },
-  ];
 
-  const esJuridicoOGobierno = form.values.tipoIdentificacion === 'J' || form.values.tipoIdentificacion === 'G';
+
 
   return (
     <>
@@ -114,57 +101,41 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
           <Stack>
             <Grid>
               <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Select
-                  label="Tipo de Identificación"
-                  placeholder="Selecciona tipo"
-                  data={tipoIdentificacionData}
-                  required
-                  leftSection={<IconId size={18} />}
-                  {...form.getInputProps('tipoIdentificacion')}
-                />
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
                   label="Identificación"
                   placeholder="Ej. V-12345678, J-12345678-9"
                   required
                   leftSection={<IconId size={18} />}
-                  {...form.getInputProps('identificacion')}
+                  {...form.getInputProps('rif')}
                 />
               </Grid.Col>
-              <Grid.Col span={12}>
-                {esJuridicoOGobierno ? (
-                  <TextInput
-                    label="Razón Social"
-                    placeholder="Nombre de la empresa"
-                    required
-                    leftSection={<IconBuildingFactory size={18} />}
-                    {...form.getInputProps('razonSocial')}
-                  />
-                ) : (
-                  <Grid>
-                    <Grid.Col span={{ base: 12, sm: 6 }}>
-                      <TextInput
-                        label="Nombre de Contacto"
-                        placeholder="Nombre de la persona"
-                        required
-                        leftSection={<IconUserPlus size={18} />}
-                        {...form.getInputProps('nombreContacto')}
-                      />
-                    </Grid.Col>
-                    <Grid.Col span={{ base: 12, sm: 6 }}>
-                      <TextInput
-                        label="Apellido de Contacto"
-                        placeholder="Apellido de la persona"
-                        required
-                        leftSection={<IconUserPlus size={18} />}
-                        {...form.getInputProps('apellidoContacto')}
-                      />
-                    </Grid.Col>
-                  </Grid>
-                )}
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <TextInput
+                  label="Razón Social"
+                  placeholder="Nombre de la empresa"
+                  required
+                  leftSection={<IconBuildingFactory size={18} />}
+                  {...form.getInputProps('razonSocial')}
+                />
               </Grid.Col>
-
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <TextInput
+                  label="Nombre de Representante"
+                  placeholder="Nombre de la persona"
+                  required
+                  leftSection={<IconUserPlus size={18} />}
+                  {...form.getInputProps('nombreContacto')}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <TextInput
+                  label="Apellido de Representante"
+                  placeholder="Apellido de la persona"
+                  required
+                  leftSection={<IconUserPlus size={18} />}
+                  {...form.getInputProps('apellidoContacto')}
+                />
+              </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
                   label="Teléfono"
@@ -197,13 +168,6 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
                   minRows={2}
                   leftSection={<IconNotes size={18} />}
                   {...form.getInputProps('notas')}
-                />
-              </Grid.Col>
-              <Grid.Col span={12}>
-                <Checkbox
-                  label="Cliente Activo"
-                  defaultChecked
-                  {...form.getInputProps('activo', { type: 'checkbox' })}
                 />
               </Grid.Col>
             </Grid>

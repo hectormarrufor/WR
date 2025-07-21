@@ -31,46 +31,43 @@ export function ContratoDetailCard({ contrato }) {
       <Group justify="space-between" mb="md" align="flex-start">
         <Stack gap={4}>
           <Title order={3}>{contrato.numeroContrato}</Title>
-          <Text size="sm" color="dimmed">Contrato ID: {contrato.id}</Text>
+        
         </Stack>
         <Group>
           <Badge color={estadoColor} variant="light" size="lg">
             {contrato.estado}
           </Badge>
-          <Badge color={contrato.activo ? 'teal' : 'orange'} variant="outline" size="lg">
-            {contrato.activo ? 'ACTIVO' : 'INACTIVO'}
-          </Badge>
         </Group>
       </Group>
 
       <Text size="md" mb="xs">
-        **Cliente:** {contrato.cliente?.nombreCompleto || contrato.cliente?.razonSocial || 'N/A'} (ID: {contrato.clienteId})
+        <strong>Cliente:</strong> {contrato.cliente?.nombreCompleto || contrato.cliente?.razonSocial || 'N/A'}
       </Text>
       <Text size="md" mb="md">
-        **RIF/Cédula Cliente:** {contrato.cliente?.cedulaRif || 'N/A'}
+        <strong>RIF/Cédula Cliente: </strong> {contrato.cliente?.cedulaRif || 'N/A'}
       </Text>
 
-      <Grid gutter="md">
+   
+        <Grid gutter="md">
+   
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Text size="sm">
-            **Fecha de Inicio:**{' '}
-            {contrato.fechaInicio ? format(new Date(contrato.fechaInicio), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
+            <strong>Fecha de Inicio: </strong> {contrato.fechaInicio ? format(new Date(contrato.fechaInicio), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
           </Text>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Text size="sm">
-            **Fecha de Fin:**{' '}
-            {contrato.fechaFin ? format(new Date(contrato.fechaFin), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
+            <strong>Fecha de Fin:</strong>{contrato.fechaFinEstimada ? format(new Date(contrato.fechaFinEstimada), 'dd/MM/yyyy', { locale: es }) : 'N/A'}
           </Text>
         </Grid.Col>
         <Grid.Col span={12}>
           <Text size="sm">
-            **Monto Total:** Bs. {contrato.montoTotal ? parseFloat(contrato.montoTotal).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00'}
+            <strong>Monto Total:</strong> Bs. {contrato.montoTotal ? parseFloat(contrato.montoTotal).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00'}
           </Text>
         </Grid.Col>
         <Grid.Col span={12}>
           <Text size="sm">
-            **Descripción:** {contrato.descripcion || 'Sin descripción.'}
+            <strong>Descripción:</strong> {contrato.descripcion || 'Sin descripción.'}
           </Text>
         </Grid.Col>
       </Grid>

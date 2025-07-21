@@ -112,12 +112,9 @@ export function MudanzaForm({ initialData = null }) {
         
         const empleadosData = await empleadosRes.json();
         const vehiculosData = await vehiculosRes.json();
-        console.log(empleadosData);
-        console.log(vehiculosData);
         if (empleadosData.length === 0 && vehiculosData.length === 0) throw  new Error ("No hay ni vehiculos ni personal guardado, por favor registre nuevos empleados y vehiculos") 
         else if (empleadosData.length === 0)throw  new Error ("No hay personal guardado, por favor registre nuevos empleados")
         else if (vehiculosData.length === 0)throw  new Error ("No hay vehiculos guardados, por favor registre nuevos vehiculos")
-        notifications.show({title: "logre pasar al punto en que me pusiste"})
         setEmpleados(empleadosData.map(emp => ({ value: emp.id.toString(), label: emp.nombreCompleto || `${emp.nombre} ${emp.apellido}` })));
         setVehiculos(vehiculosData.map(veh => ({ value: veh.id.toString(), label: `${veh.marca} ${veh.modelo} (${veh.placa})` })));
 
@@ -345,7 +342,7 @@ export function MudanzaForm({ initialData = null }) {
           <br />
           Pozo: <Text span fw={700}>{renglonInfo?.pozoNombre || 'N/A'}</Text>
           <br />
-          Contrato Nº: <Text span fw={700}>{renglonInfo?.contratoServicio?.numeroContrato || 'N/A'}</Text>
+          Contrato Nº: <Text span fw={700}>{renglonInfo?.contrato?.numeroContrato || 'N/A'}</Text>
         </Text>
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Grid gutter="md">

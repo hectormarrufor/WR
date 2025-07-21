@@ -1,3 +1,4 @@
+// app/superuser/flota/[id]/page.jsx
 'use client';
 
 import {
@@ -17,8 +18,10 @@ import {
   ThemeIcon,
   Accordion,
   Stack,
+  Center, // Agregado para el Loader
+  Loader, // Agregado para el Loader
 } from '@mantine/core';
-import { useEffect, useRef, useState, useMemo, use } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, use } from 'react'; // 'use' no es un hook de React, se elimina
 import { useRouter, notFound } from 'next/navigation';
 import * as html2pdf from 'html2pdf.js';
 import BackButton from '../../../components/BackButton';
@@ -110,48 +113,54 @@ export default function VehiculoPage({ params }) {
   const pdfRef = useRef(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const { id } = use(params);
+  const { id } = use(params); // Se accede directamente a params.id
   const [vehiculo, setVehiculo] = useState(null);
   const [showFichaTecnica, setShowFichaTecnica] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchVehiculoData = async () => {
-      try {
-        setLoading(true);
-        const data = await httpGet(`/api/vehiculos/${id}`);
-        if (!data) {
-          throw new Error('Vehículo no encontrado');
-        }
-        console.log(data);
-        const v = {
-          ano: data.ano,
-          color: data.color,
-          createdAt: data.createdAt,
-          fichaTecnica: data.fichaTecnica,
-          horometro: data.horometros[0]?.horas,
-          imagen: data.imagen,
-          inspecciones: data.inspecciones,
-          kilometraje: data.kilometrajes[0]?.kilometrajeActual,
-          mantenimientos: data.mantenimientos,
-          marca: data.marca,
-          modelo: data.modelo,
-          placa: data.placa,
-          updatedAt: data.updatedAt,
-          vin: data.vin,
-        }
-        setVehiculo(v);
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching vehicle data:', err);
-        // notFound();
-      } finally {
-        setLoading(false);
+  const fetchVehiculoData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await httpGet(`/api/vehiculos/${id}`);
+      if (!data) {
+        // Usa notFound() de Next.js para rutas no encontradas
+        notFound();
+        return;
       }
-    };
-    fetchVehiculoData();
+      console.log(data);
+      const v = {
+        ano: data.ano,
+        color: data.color,
+        createdAt: data.createdAt,
+        fichaTecnica: data.fichaTecnica,
+        horometro: data.horometros?.[0]?.horas, // Uso de optional chaining por si no hay horometros
+        imagen: data.imagen,
+        inspecciones: data.inspecciones,
+        kilometraje: data.kilometrajes?.[0]?.kilometrajeActual, // Uso de optional chaining por si no hay kilometrajes
+        mantenimientos: data.mantenimientos,
+        marca: data.marca,
+        modelo: data.modelo,
+        placa: data.placa,
+        updatedAt: data.updatedAt,
+        vin: data.vin,
+        estadoOperativoGeneral: data.estadoOperativoGeneral,
+      };
+      setVehiculo(v);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching vehicle data:', err);
+      // No llamar a notFound() aquí directamente para manejar el error de forma más controlada en la UI
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchVehiculoData();
+    }
+  }, [id, fetchVehiculoData]);
 
   const { kmToday, avgKm7Days, avgKm30Days } = useMemo(() => {
     if (!vehiculo || !vehiculo.kilometrajes) {
@@ -196,7 +205,14 @@ export default function VehiculoPage({ params }) {
   };
 
   if (loading) {
-    return <Paper p="md" mt={90} mx={20} shadow="md">Cargando información del vehículo...</Paper>;
+    return (
+      <Paper p="md" mt={90} mx={20} shadow="md">
+        <Center style={{ height: '300px' }}>
+          <Loader size="lg" />
+          <Text ml="md">Cargando información del vehículo...</Text>
+        </Center>
+      </Paper>
+    );
   }
 
   if (error) {
@@ -204,12 +220,12 @@ export default function VehiculoPage({ params }) {
   }
 
   if (!vehiculo) {
-    return null;
+    // Esto podría ocurrir si `notFound()` fue llamado por `httpGet` o si el vehículo no se cargó por alguna otra razón
+    return <Paper p="md" mt={90} mx={20} shadow="md">Vehículo no encontrado.</Paper>;
   }
 
-  const pendingHallazgos = vehiculo.inspecciones?.flatMap(inspeccion =>
-    inspeccion.hallazgos?.filter(hallazgo => !hallazgo.resuelto && !hallazgo.completado)
-  ) || [];
+  const allHallazgos = vehiculo.inspecciones?.flatMap(inspeccion => inspeccion.hallazgos || []) || [];
+  const pendingHallazgos = allHallazgos.filter(hallazgo => !hallazgo.estaResuelto);
 
   const handleMantenimiento = () => {
     router.push(`/superuser/flota/${id}/mantenimiento`);
@@ -257,8 +273,9 @@ export default function VehiculoPage({ params }) {
         <Group position="right" mb="xl" grow={isMobile}>
           <Flex justify="space-between" wrap="wrap" w="100%" gap="md">
             <BackButton onClick={() => router.push('/superuser/flota')} />
+            {/* Botón para la nueva inspección */}
             <Button leftSection={<IconClipboardList size={18} />} color="blue" onClick={() => router.push(`/superuser/flota/${id}/nuevaInspeccion`)}>
-              Nueva Inspección
+              Registrar Nueva Inspección
             </Button>
             <Button leftSection={<IconTools size={18} />} color="teal" onClick={handleMantenimiento}>
               Realizar Mantenimientos
@@ -273,6 +290,7 @@ export default function VehiculoPage({ params }) {
           </Flex>
         </Group>
 
+        {/* CONTENIDO PRINCIPAL DEL REPORTE (para PDF) */}
         <Box ref={pdfRef} p="md">
           <Title order={2} mb="xl" align="center" style={{ color: '#228BE6' }}>
             <Group position="center" spacing="sm">
@@ -307,14 +325,14 @@ export default function VehiculoPage({ params }) {
                   <Badge leftSection={<IconClockHour4 size={14} />} variant="light" color="indigo" size="lg">{vehiculo.horometro} horas</Badge>
                 </Group>
 
-                {/* ELIMINADO: Estado Operativo General de la ficha del vehículo */}
-                {/* <Group spacing="xs">
+                 <Group spacing="xs">
                   <Text size="md"><strong>Estado Operativo General:</strong></Text>
                   <Badge
                     color={
                       vehiculo.estadoOperativoGeneral === 'Operativo' ? 'green' :
                       vehiculo.estadoOperativoGeneral === 'Operativo con Advertencias' ? 'yellow' :
                       vehiculo.estadoOperativoGeneral === 'No Operativo' ? 'red' :
+                      vehiculo.estadoOperativoGeneral === 'En Taller' ? 'blue' :
                       'gray'
                     }
                     size="lg"
@@ -322,7 +340,7 @@ export default function VehiculoPage({ params }) {
                   >
                     {vehiculo.estadoOperativoGeneral}
                   </Badge>
-                </Group> */}
+                </Group>
 
                 <Text size="md"><strong>Kilómetros recorridos hoy:</strong> {kmToday.toFixed(0)} km</Text>
                 <Text size="md"><strong>Promedio KM (últimos 7 días):</strong> {avgKm7Days.toFixed(2)} km/día</Text>
@@ -345,54 +363,21 @@ export default function VehiculoPage({ params }) {
                 crossOrigin="anonymous"
               />
             </Flex>
-
-            {/* AÑADIDO/MOVIDO: Detalles del Estado de Cada Sistema (última inspección) */}
-            {vehiculo.inspecciones && vehiculo.inspecciones.length > 0 && vehiculo.inspecciones[0].estadoSistemas && (
-              <Box mt="xl"> {/* Agregamos un margen superior para separarlo de la información general */}
-                <Divider my="md" />
-                <Title order={4} align="center" mb="md" c="blue.7">Estado Actual de los Sistemas (Última Inspección)</Title>
-                <Accordion defaultValue={Object.keys(vehiculo.inspecciones[0].estadoSistemas)[0]} chevronPosition="right" variant="filled"> {/* Usamos variant="filled" para un look más destacado */}
-                  {Object.entries(vehiculo.inspecciones[0].estadoSistemas).map(([sistema, estado], index) => (
-                    <Accordion.Item value={sistema} key={index}>
-                      <Accordion.Control icon={
-                        estado === 'Operativo' ? <IconCircleCheck style={{ color: 'green' }} /> :
-                        estado === 'Advertencia' ? <IconAlertCircle style={{ color: 'orange' }} /> :
-                        estado === 'Fallo Crítico' ? <IconCircleX style={{ color: 'red' }} /> :
-                        <IconCircleDot style={{ color: 'gray' }} />
-                      }>
-                        <Text fw={500}>{formatKey(sistema)}</Text>
-                      </Accordion.Control>
-                      <Accordion.Panel>
-                        <Text>Estado: <Badge color={
-                          estado === 'Operativo' ? 'green' :
-                          estado === 'Advertencia' ? 'orange' :
-                          estado === 'Fallo Crítico' ? 'red' :
-                          'gray'
-                        } variant="light">{estado}</Badge></Text>
-                        {/* Si tu modelo EstadoSistemaVehiculo tuviera 'notas' aquí, se podría mostrar: */}
-                        {/* vehiculo.inspecciones[0].estadoSistemas[sistema].notas &&
-                          <Text mt="xs" size="sm" color="dimmed">Notas: {vehiculo.inspecciones[0].estadoSistemas[sistema].notas}</Text>
-                        */}
-                      </Accordion.Panel>
-                    </Accordion.Item>
-                  ))}
-                </Accordion>
-              </Box>
-            )}
           </Paper>
 
-          {/* Hallazgos de Inspecciones Anteriores (sin cambios) */}
+          {/* Hallazgos de Inspecciones Anteriores (sin cambios, pero ahora filtrando por resuelto) */}
           {pendingHallazgos.length > 0 && (
             <Paper shadow="xs" p="xl" radius="md" mb="xl" withBorder>
-              <Title order={3} align="center" mb="md" c="red.7">Hallazgos Pendientes de Inspecciones</Title>
+              <Title order={3} align="center" mb="md" c="red.7">Hallazgos Pendientes de Resolver</Title>
               <List spacing="xs" size="sm" center icon={<ThemeIcon color="red" size={24} radius="xl"><IconAlertCircle style={{ width: '80%', height: '80%' }} /></ThemeIcon>}>
                 {pendingHallazgos.map((hallazgo, index) => (
                   <List.Item key={index}>
                     <Text>
                       <Text fw={700} span>{hallazgo.descripcion}</Text>{' '}
                       (Reportado en inspección del{' '}
-                      {new Date(hallazgo.Inspeccion.fecha).toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit' })} -{' '}
-                      <Text fw={700} span>Sistema: {formatKey(hallazgo.sistemaAfectado)}</Text>)
+                      {new Date(hallazgo.createdAt).toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit' })} -{' '}
+                      <Text fw={700} span>Gravedad: {hallazgo.gravedad}</Text>)
+                      {/* Aquí podrías añadir un botón para 'Crear Tarea de Mantenimiento' para este hallazgo */}
                     </Text>
                   </List.Item>
                 ))}
@@ -411,7 +396,7 @@ export default function VehiculoPage({ params }) {
                     <Text size="md"><strong>Ejes:</strong> {vehiculo.fichaTecnica.ejes}</Text>
                     <Text size="md"><strong>Tipo de Vehículo:</strong> {vehiculo.fichaTecnica.tipo}</Text>
                     <Text size="md"><strong>Tipo de Peso:</strong> {vehiculo.fichaTecnica.tipoPeso}</Text>
-                    <Text size="md"><strong>Tipo de Combustible Principal:</strong> {vehiculo.fichaTecnica.tipoCombustible}</Text>
+                    <Text size="md"><strong>Tipo de Combustible Principal:</strong> {vehiculo.fichaTecnica.combustible?.tipoCombustible || 'N/A'}</Text>
                 </SimpleGrid>
 
                 <Accordion defaultValue="motor" chevronPosition="right" variant="separated">
@@ -421,7 +406,6 @@ export default function VehiculoPage({ params }) {
                       <Text fw={500}>Motor</Text>
                     </Accordion.Control>
                     <Accordion.Panel>
-                      {/* Aquí usamos el renderObjectDetails mejorado */}
                       {renderObjectDetails(vehiculo.fichaTecnica.motor)}
                     </Accordion.Panel>
                   </Accordion.Item>
@@ -481,8 +465,8 @@ export default function VehiculoPage({ params }) {
               <Text align="center" color="dimmed" mt="xl" size="lg">No hay datos de ficha técnica disponibles para este vehículo.</Text>
             )}
           </Collapse>
-        </Box>
-      </Paper>
+        </Box> {/* Cierre de la Box que contiene el contenido para PDF */}
+      </Paper> {/* Cierre de la Paper principal que envuelve toda la página */}
     </>
   );
 }

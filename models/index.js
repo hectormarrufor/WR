@@ -1,8 +1,7 @@
-// index.js (o flota/index.js si solo manejarás los de flota aquí)
-const sequelize = require('../sequelize'); // Ajusta esta ruta a tu instancia de sequelize
+// index.js
+const sequelize = require('../sequelize'); 
 
 // --- Importar todos tus modelos ---
-// Ajusta las rutas según tu estructura real
 const User = require('./user');
 const TipoVehiculo = require('./flota/tipoVehiculo');
 const MedidaNeumatico = require('./flota/medidaNeumatico');
@@ -19,13 +18,13 @@ const Horometro = require('./flota/horometro');
 const Mantenimiento = require('./flota/mantenimiento');
 const TareaMantenimiento = require('./flota/tareaMantenimiento');
 
-// NUEVOS MODELOS DE RECURSOS HUMANOS
+// RECURSOS HUMANOS
 const Empleado = require('./recursosHumanos/Empleado');
 const Puesto = require('./recursosHumanos/Puesto');
 const EmpleadoPuesto = require('./recursosHumanos/EmpleadoPuesto');
+const Departamento = require('./recursosHumanos/Departamento'); // <-- AÑADIR NUEVO MODELO
 
-
-// NUEVOS MODELOS DE OPERACIONES
+// OPERACIONES
 const ContratoServicio = require('./operaciones/ContratoServicio');
 const RenglonContrato = require('./operaciones/RenglonContrato');
 const Mudanza = require('./operaciones/Mudanza');
@@ -36,24 +35,23 @@ const AsignacionVehiculoOperacion = require('./operaciones/AsignacionVehiculoOpe
 const TrabajoExtra = require('./operaciones/TrabajoExtra');
 const ConsumoAlimento = require('./operaciones/ConsumoAlimento');
 
-
-// INVENTARIO (Ahora más completo)
+// INVENTARIO
 const Consumible = require('./inventario/Consumible');
 const ConsumibleUsado = require('./inventario/ConsumibleUsado');
 const EntradaInventario = require('./inventario/EntradaInventario');
 const SalidaInventario = require('./inventario/SalidaInventario');
 
-// TESORERIA (¡NUEVOS!)
+// TESORERIA
 const CuentaBancaria = require('./tesoreria/CuentaBancaria');
 const MovimientoTesoreria = require('./tesoreria/MovimientoTesoreria');
 
-//FACTURACION
+// FACTURACION
 const Factura = require('./facturacion/Factura');
 const RenglonFactura = require('./facturacion/RenglonFactura');
 const PagoFactura = require('./facturacion/PagoFactura');
 const NotaCredito = require('./facturacion/NotaCredito');
 
-//COMPRAS
+// COMPRAS
 const Proveedor = require('./compras/Proveedor');
 const OrdenCompra = require('./compras/OrdenCompra');
 const DetalleOrdenCompra = require('./compras/DetalleOrdenCompra');
@@ -63,15 +61,12 @@ const RecepcionCompra = require('./compras/RecepcionCompra');
 const DetalleRecepcionCompra = require('./compras/DetalleRecepcionCompra');
 const DetalleFacturaProveedor = require('./compras/DetalleFacturaProveedor');
 
-
-
-//CONTRATOS
+// CONTRATOS
 const Cliente = require('./Cliente');
+const AsignacionSupervisorOperacion = require('./operaciones/AsignacionSupervisorOperacion');
+const BcvPrecioHistorico = require('./BcvPrecioHistorico');
 
-
-
-// --- Crear un objeto 'db' (o ') para agruparlos ---
-// Las claves deben coincidir con el 'modelName' de cada modelo
+// --- Crear un objeto 'db' para agruparlos ---
 const db = {
     User,
     TipoVehiculo,
@@ -102,6 +97,7 @@ const db = {
     Empleado,
     EmpleadoPuesto,
     Puesto,
+    Departamento, // <-- AÑADIR NUEVO MODELO
     Proveedor,
     OrdenCompra,
     EntradaInventario,
@@ -119,16 +115,18 @@ const db = {
     PagoProveedor,
     RecepcionCompra,
     DetalleRecepcionCompra,
+    AsignacionSupervisorOperacion,
+    BcvPrecioHistorico,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---
 Object.values(db).forEach(model => {
     if (typeof model.associate === 'function') {
-        model.associate(db); // Pasa el objeto 'db' completo con todos los modelos
+        model.associate(db);
     }
 });
 
-db.sequelize = sequelize; // Exporta también la instancia de sequelize si es necesario
-db.Sequelize = require('sequelize'); // Exporta la clase Sequelize
+db.sequelize = sequelize;
+db.Sequelize = require('sequelize');
 
-module.exports = db; // Exporta el objeto 'db' con todos los modelos asociados
+module.exports = db;

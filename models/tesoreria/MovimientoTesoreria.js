@@ -1,6 +1,7 @@
 // models/tesoreria/MovimientoTesoreria.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
+
 const MovimientoTesoreria = sequelize.define('MovimientoTesoreria', {
   id: {
     type: DataTypes.INTEGER,
@@ -21,6 +22,7 @@ const MovimientoTesoreria = sequelize.define('MovimientoTesoreria', {
     allowNull: false,
     defaultValue: 'USD',
   },
+  // Definiciones unificadas y corregidas
   tipoMovimiento: {
     type: DataTypes.ENUM('Ingreso', 'Egreso', 'Transferencia'),
     allowNull: false,
@@ -82,33 +84,19 @@ const MovimientoTesoreria = sequelize.define('MovimientoTesoreria', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  // Nuevo campo: Referencia al pago de proveedor si aplica
   pagoProveedorId: {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'PagosProveedor', // Nombre de la tabla del modelo PagoProveedor
+      model: 'PagosProveedor',
       key: 'id',
     },
   },
-  tipoMovimiento: {
-    type: DataTypes.ENUM('Ingreso', 'Egreso', 'Transferencia'),
-    allowNull: false,
-  },
-  categoria: {
-    type: DataTypes.ENUM(
-      'Venta', 'Compra', 'Salario', 'Servicio', 'Impuesto',
-      'Alquiler', 'Mantenimiento', 'Devolucion', 'TransferenciaInterna',
-      'OtroIngreso', 'OtroEgreso'
-    ),
-    allowNull: false,
-  },
-  // Añadir campo para la factura del cliente (Factura) si no lo tienes ya
-  facturaClienteId: {
+  facturaClienteId: { // Referencia a la factura del cliente si aplica
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Facturas', // Nombre de la tabla de tu modelo Factura (de cliente)
+      model: 'Facturas',
       key: 'id',
     }
   },
@@ -128,6 +116,7 @@ MovimientoTesoreria.associate = (models) => {
     as: 'pagoProveedor',
     allowNull: true,
   });
+  MovimientoTesoreria.belongsTo(models.Factura, { foreignKey: 'facturaClienteId', as: 'facturaCliente' }); // Nueva asociación
 };
 
 module.exports = MovimientoTesoreria;

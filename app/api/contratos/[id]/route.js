@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '../../../../models';
+import sequelize from '../../../../sequelize';
+import { Op } from 'sequelize';
 
 export async function GET(request, { params }) {
    const { id } = await params;
@@ -54,8 +56,8 @@ export async function PUT(request, { params }) {
     // Esto es crucial para manejar renglones que fueron eliminados del formulario
     await db.RenglonContrato.destroy({
       where: {
-        contratoServicioId: id,
-        id: { [sequelize.Op.notIn]: renglonIdsDelFrontend },
+        contratoId: id,
+        id: { [Op.notIn]: renglonIdsDelFrontend },
       },
       transaction,
     });
@@ -69,11 +71,11 @@ export async function PUT(request, { params }) {
           await existingRenglon.update(renglon, { transaction });
         } else {
           // Si por alguna razón el ID no existe (ej. error), lo creamos
-          await db.RenglonContrato.create({ ...renglon, contratoServicioId: id }, { transaction });
+          await db.RenglonContrato.create({ ...renglon, contratoId: id }, { transaction });
         }
       } else {
         // Si no tiene ID, es un nuevo renglón, créalo
-        await db.RenglonContrato.create({ ...renglon, contratoServicioId: id }, { transaction });
+        await db.RenglonContrato.create({ ...renglon, contratoId: id }, { transaction });
       }
     }
 

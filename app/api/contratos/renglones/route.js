@@ -9,12 +9,12 @@ export async function GET(request) {
     const includeDetails = searchParams.get('includeDetails') === 'true'; // Para incluir mudanzas, ops, etc.
 
     const whereClause = contratoId ? { contratoId } : {};
-    const includeOptions = [{ model: db.ContratoServicio, as: 'contrato' }];
+    const includeOptions = [{ model: db.ContratoServicio, as: 'contrato', include: [{model: db.Cliente, as: "cliente"}]}];
 
     if (includeDetails) {
       includeOptions.push(
         { model: db.Mudanza, as: 'mudanzas' },
-        { model: db.OperacionCampo, as: 'operacionesCampo' },
+        { model: db.OperacionCampo, as: 'operacionCampo' },
         { model: db.TrabajoExtra, as: 'trabajosExtra' },
         { model: db.ConsumoAlimento, as: 'consumosAlimento' }
       );

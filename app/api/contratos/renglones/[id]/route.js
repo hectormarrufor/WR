@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
           }]
         },
         { model: Mudanza, as: 'mudanza' },
-        { model: OperacionCampo, as: 'operacionesCampo' },
+        { model: OperacionCampo, as: 'operacionCampo' },
         { model: TrabajoExtra, as: 'trabajosExtra' },
         { model: ConsumoAlimento, as: 'consumoAlimentos' }
       ]

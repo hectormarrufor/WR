@@ -120,6 +120,10 @@ const sequelize = require('../../sequelize');
     OperacionCampo.hasMany(models.Factura, { foreignKey: 'operacionCampoId' });
     // Puedes tener asignaciones de vehículos también para el día a día en el pozo
     OperacionCampo.hasMany(models.AsignacionVehiculoOperacion, { foreignKey: 'operacionCampoId', as: 'vehiculosAsignados' });
+    OperacionCampo.hasMany(models.AsignacionSupervisorOperacion, { 
+    foreignKey: 'operacionCampoId', 
+    as: 'historialSupervisores' 
+  });
   };
 
   module.exports = OperacionCampo;

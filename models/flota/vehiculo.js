@@ -55,6 +55,7 @@ Vehiculo.associate = (models) => {
   Vehiculo.hasMany(models.EstadoSistemaVehiculo, { foreignKey: 'vehiculoId', as: 'estadosSistemas' }); // Nueva asociación
   Vehiculo.hasMany(models.AsignacionVehiculoMudanza, { foreignKey: 'vehiculoId', as: 'asignacionesMudanza' });
   Vehiculo.hasMany(models.AsignacionVehiculoOperacion, { foreignKey: 'vehiculoId', as: 'asignacionesOperacion' });
+ 
 };
 
 module.exports = Vehiculo;

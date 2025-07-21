@@ -6,6 +6,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.18",
+    "@fullcalendar/daygrid": "^6.1.18",
+    "@fullcalendar/interaction": "^6.1.18",
+    "@fullcalendar/react": "^6.1.18",
+    "@fullcalendar/timegrid": "^6.1.18",
     "@mantine/carousel": "^7.15.3",
     "@mantine/charts": "^7.15.3",
     "@mantine/code-highlight": "^7.15.3",
@@ -49,6 +54,7 @@
     "pkg": "^5.8.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
     "recharts": "2",
     "sequelize": "^6.37.6",
     "use-image": "^1.1.1"

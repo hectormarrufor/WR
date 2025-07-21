@@ -1,11 +1,14 @@
 // components/contratos/RenglonContratoDetail.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Paper, Text, Group, Badge, ActionIcon, Stack } from '@mantine/core';
 import { IconEdit } from '@tabler/icons-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
 
 export function RenglonContratoDetail({ renglon, onEdit }) {
+  const [isHovered, setIsHovered] = useState(false)
+  const router = useRouter();
   if (!renglon) return null;
 
   // Determinar el color de la insignia de estado del renglón
@@ -37,11 +40,26 @@ export function RenglonContratoDetail({ renglon, onEdit }) {
   }
 
   return (
-    <Paper withBorder shadow="sm" p="md" radius="md" h="100%">
+    <Paper
+      withBorder
+      shadow="sm"
+      p="md"
+      radius="md"
+      h="100%"
+      style={{
+        // cursor: 'pointer',
+        transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out', // Transición suave
+        transform: isHovered ? 'scale(1.02)' : 'scale(1)', // Pequeño escalado al hacer hover
+        boxShadow: isHovered ? '0 8px 16px rgba(0, 0, 0, 0.15)' : '0 4px 8px rgba(0, 0, 0, 0.1)', // Sombra más pronunciada al hacer hover
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => { router.push(`/superuser/servicios-adquiridos/${renglon.id}/`) }}
+    >
       <Group justify="space-between" mb="sm" align="flex-start">
         <Stack gap={2}>
           <Text size="lg" fw={500} lineClamp={1}>{renglon.nombreRenglon}</Text>
-          <Text size="xs" color="dimmed">ID: {renglon.id}</Text>
+          
         </Stack>
         <ActionIcon
           variant="light"
@@ -58,8 +76,8 @@ export function RenglonContratoDetail({ renglon, onEdit }) {
         <Badge color={estadoColor} variant="filled">{renglon.estado}</Badge>
       </Group>
 
-      <Text size="sm" mb={4}>**Pozo:** {renglon.pozoNombre}</Text>
-      <Text size="sm" mb={8}>**Ubicación:** {renglon.ubicacionPozo || 'No especificada'}</Text>
+      <Text size="sm" mb={4}><strong>Pozo:</strong> {renglon.pozoNombre}</Text>
+      <Text size="sm" mb={8}><strong>Ubicación:</strong> {renglon.ubicacionPozo || 'No especificada'}</Text>
 
       <Group gap="xs" wrap="nowrap" grow>
         <Text size="xs" color="dimmed">

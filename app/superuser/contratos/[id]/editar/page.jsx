@@ -4,7 +4,7 @@
 import { use, useEffect, useState } from 'react';
 import { Container, Text, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { ContratoForm } from '../../contratoForm';
+import { ContratoForm } from '../../ContratoForm';
 
 export default function EditarContratoPage({ params }) {
   const { id } = use(params);

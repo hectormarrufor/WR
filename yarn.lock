@@ -103,6 +103,35 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.9.tgz#50dea3616bc8191fb8e112283b49eaff03e78429"
   integrity sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==
 
+"@fullcalendar/core@^6.1.18":
+  version "6.1.18"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/core/-/core-6.1.18.tgz#772477215aa45c4cad0f45a83465a9c8095bd15a"
+  integrity sha512-cD7XtZIZZ87Cg2+itnpsONCsZ89VIfLLDZ22pQX4IQVWlpYUB3bcCf878DhWkqyEen6dhi5ePtBoqYgm5K+0fQ==
+  dependencies:
+    preact "~10.12.1"
+
+"@fullcalendar/daygrid@^6.1.18", "@fullcalendar/daygrid@~6.1.18":
+  version "6.1.18"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/daygrid/-/daygrid-6.1.18.tgz#49b4a237d0115b4695cd8593d0dfa36d81fa5ad4"
+  integrity sha512-s452Zle1SdMEzZDw+pDczm8m3JLIZzS9ANMThXTnqeqJewW1gqNFYas18aHypJSgF9Fh9rDJjTSUw04BpXB/Mg==
+
+"@fullcalendar/interaction@^6.1.18":
+  version "6.1.18"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/interaction/-/interaction-6.1.18.tgz#2fbcae93f982af2abfe8a1078bfa740fe559fe44"
+  integrity sha512-f/mD5RTjzw+Q6MGTMZrLCgIrQLIUUO9NV/58aM2J6ZBQZeRlNizDqmqldqyG+j49zj2vFhUfZibPrVKWm5yA4Q==
+
+"@fullcalendar/react@^6.1.18":
+  version "6.1.18"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/react/-/react-6.1.18.tgz#6424d941dbc8aabdbf2db12c44c5e29a45daac11"
+  integrity sha512-Jwvb+T+/1yGZKe+UYXn0id022HJm0Fq2X/PGFvVh/QRYAI/6xPMRvJrwercBkToxf6LjqYXrDO+/NhRN6IDlmg==
+
+"@fullcalendar/timegrid@^6.1.18":
+  version "6.1.18"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/timegrid/-/timegrid-6.1.18.tgz#8673c4870282ade1545f12e81c0dc11d2da039f6"
+  integrity sha512-T/ouhs+T1tM8JcW7Cjx+KiohL/qQWKqvRITwjol8ktJ1e1N/6noC40/obR1tyolqOxMRWHjJkYoj9fUqfoez9A==
+  dependencies:
+    "@fullcalendar/daygrid" "~6.1.18"
+
 "@img/sharp-darwin-arm64@0.33.5":
   version "0.33.5"
   resolved "https://registry.yarnpkg.com/@img/sharp-darwin-arm64/-/sharp-darwin-arm64-0.33.5.tgz#ef5b5a07862805f1e8145a377c8ba6e98813ca08"
@@ -2262,6 +2291,11 @@ postgres-interval@^1.1.0:
   dependencies:
     xtend "^4.0.0"
 
+preact@~10.12.1:
+  version "10.12.1"
+  resolved "https://registry.yarnpkg.com/preact/-/preact-10.12.1.tgz#8f9cb5442f560e532729b7d23d42fd1161354a21"
+  integrity sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==
+
 prebuild-install@7.1.1:
   version "7.1.1"
   resolved "https://registry.yarnpkg.com/prebuild-install/-/prebuild-install-7.1.1.tgz#de97d5b34a70a0c81334fd24641f2a1702352e45"
@@ -2506,6 +2540,11 @@ react-dropzone-esm@15.2.0:
   integrity sha512-pPwR8xWVL+tFLnbAb8KVH5f6Vtl397tck8dINkZ1cPMxHWH+l9dFmIgRWgbh7V7jbjIcuKXCsVrXbhQz68+dVA==
   dependencies:
     prop-types "^15.8.1"
+
+react-icons@^5.5.0:
+  version "5.5.0"
+  resolved "https://registry.yarnpkg.com/react-icons/-/react-icons-5.5.0.tgz#8aa25d3543ff84231685d3331164c00299cdfaf2"
+  integrity sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==
 
 react-is@^16.13.1:
   version "16.13.1"
