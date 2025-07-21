@@ -26,64 +26,74 @@ export async function GET() {
 // POST un nuevo mantenimiento
 export async function POST(request) {
   const transaction = await db.sequelize.transaction();
-  try {
-    const body = await request.json();
-    const { vehiculoId, fechaInicio, descripcionGeneral, responsableId, kilometrajeMantenimiento, horometroMantenimiento, tareas } = body;
-
-    // Determinar el tipo de mantenimiento general basado en las tareas
-    let tipoMantenimientoGeneral = 'Preventivo'; // Valor por defecto
-    if (tareas && tareas.length > 0) {
-      if (tareas.some(tarea => tarea.tipo === 'Correctivo')) {
-        tipoMantenimientoGeneral = 'Correctivo';
-      } else if (tareas.some(tarea => tarea.tipo === 'Predictivo')) {
-        tipoMantenimientoGeneral = 'Predictivo'; // Predictivo tiene menos prioridad que correctivo si ambos existen
+    try {
+      const body = await request.json();
+      const { vehiculoId, fechaInicio, descripcionGeneral, responsableId, kilometrajeMantenimiento, horometroMantenimiento, tareas } = body;
+  
+      let tipoMantenimientoGeneral = 'Preventivo';
+      if (tareas && tareas.length > 0) {
+        if (tareas.some(tarea => tarea.tipo === 'Correctivo')) {
+          tipoMantenimientoGeneral = 'Correctivo';
+        } else if (tareas.some(tarea => tarea.tipo === 'Predictivo')) {
+          tipoMantenimientoGeneral = 'Predictivo';
+        }
       }
-    }
-    // Si no hay tareas o todas son preventivas, se mantiene 'Preventivo'
-
-    // Crear el mantenimiento principal
-    const nuevoMantenimiento = await db.Mantenimiento.create({
-      vehiculoId,
-      tipo: tipoMantenimientoGeneral, // Usar el tipo determinado por las tareas
-      estado: 'Pendiente', // Siempre Pendiente al crear
-      fechaInicio,
-      descripcionGeneral,
-      responsableId,
-      kilometrajeMantenimiento,
-      horometroMantenimiento,
-    }, { transaction });
-
-    // Crear las tareas de mantenimiento asociadas
-    if (tareas && tareas.length > 0) {
-      const tareasParaCrear = tareas.map(tarea => ({
-        ...tarea,
-        mantenimientoId: nuevoMantenimiento.id,
-      }));
-      await db.TareaMantenimiento.bulkCreate(tareasParaCrear, { transaction });
-    }
-
-    await recalcularEstadoGeneralVehiculo(vehiculoId, transaction);
-
-    await transaction.commit();
-    return NextResponse.json(nuevoMantenimiento, { status: 201 });
-  } catch (error) {
-    await transaction.rollback();
-    console.error('Error al crear orden de mantenimiento:', error.message);
-    if (error.name === 'SequelizeValidationError') {
-      const validationErrors = error.errors.map(err => ({ field: err.path, message: err.message }));
+  
+      const nuevoMantenimiento = await db.Mantenimiento.create({
+        vehiculoId,
+        tipo: tipoMantenimientoGeneral,
+        estado: 'Pendiente',
+        fechaInicio,
+        descripcionGeneral,
+        responsableId,
+        kilometrajeMantenimiento,
+        horometroMantenimiento,
+      }, { transaction });
+  
+      const hallazgosIdsAsignados = [];
+      if (tareas && tareas.length > 0) {
+        const tareasParaCrear = tareas.map(tarea => {
+          if (tarea.hallazgoInspeccionId) {
+            hallazgosIdsAsignados.push(tarea.hallazgoInspeccionId);
+          }
+          return {
+            ...tarea,
+            mantenimientoId: nuevoMantenimiento.id,
+          };
+        });
+        await db.TareaMantenimiento.bulkCreate(tareasParaCrear, { transaction });
+      }
+  
+      // Marcar hallazgos como 'Asignado'
+      if (hallazgosIdsAsignados.length > 0) {
+        await db.HallazgoInspeccion.update(
+          { estado: 'Asignado' },
+          { where: { id: hallazgosIdsAsignados, estado: 'Pendiente' }, transaction } // Solo si están Pendientes
+        );
+      }
+  
+      await recalcularEstadoGeneralVehiculo(vehiculoId, transaction);
+  
+      await transaction.commit();
+      return NextResponse.json(nuevoMantenimiento, { status: 201 });
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Error al crear orden de mantenimiento:', error.message);
+      if (error.name === 'SequelizeValidationError') {
+        const validationErrors = error.errors.map(err => ({ field: err.path, message: err.message }));
+        return NextResponse.json(
+          { message: 'Error de validación.', type: 'ValidationError', errors: validationErrors },
+          { status: 400 }
+        );
+      } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+        return NextResponse.json(
+          { message: 'ID de vehículo, responsable o tarea no válido.', type: 'ForeignKeyConstraintError' },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
-        { message: 'Error de validación.', type: 'ValidationError', errors: validationErrors },
-        { status: 400 }
-      );
-    } else if (error.name === 'SequelizeForeignKeyConstraintError') {
-      return NextResponse.json(
-        { message: 'ID de vehículo, responsable o tarea no válido.', type: 'ForeignKeyConstraintError' },
-        { status: 400 }
+        { message: 'Error interno del servidor al crear orden de mantenimiento.', type: 'ServerError', details: error.message },
+        { status: 500 }
       );
     }
-    return NextResponse.json(
-      { message: 'Error interno del servidor al crear orden de mantenimiento.', type: 'ServerError', details: error.message },
-      { status: 500 }
-    );
-  }
 }
