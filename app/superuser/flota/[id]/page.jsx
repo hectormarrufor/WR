@@ -52,7 +52,60 @@ import {
   IconWrench,
 } from '@tabler/icons-react';
 
-// ... (calculateMetrics y formatKey helpers sin cambios) ...
+// Helper para calcular promedios y estimaciones
+const calculateMetrics = (kilometrajes, currentKm) => {
+  if (!kilometrajes || kilometrajes.length < 2) {
+    return {
+      kmToday: 0,
+      avgKm7Days: 0,
+      avgKm30Days: 0,
+    };
+  }
+
+  const sortedKm = [...kilometrajes].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+  let kmToday = 0;
+  if (sortedKm.length > 1) {
+    const latestKmEntry = sortedKm[sortedKm.length - 1];
+    const secondLatestKmEntry = sortedKm[sortedKm.length - 2];
+    const latestDate = new Date(latestKmEntry.fecha);
+    const secondLatestDate = new Date(secondLatestKmEntry.fecha);
+    if (latestDate.toDateString() === new Date().toDateString() && secondLatestDate.toDateString() === new Date(latestDate.getTime() - 24 * 60 * 60 * 1000).toDateString()) {
+      kmToday = latestKmEntry.kilometraje - secondLatestKmEntry.kilometraje;
+    } else if (latestDate.toDateString() === new Date().toDateString()) {
+        kmToday = 0;
+    }
+  }
+
+  const today = new Date();
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(today.getDate() - 7);
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+
+  const kmDataLast7Days = sortedKm.filter(k => new Date(k.fecha) >= sevenDaysAgo);
+  const kmDataLast30Days = sortedKm.filter(k => new Date(k.fecha) >= thirtyDaysAgo);
+
+  const calculateAvg = (data) => {
+    if (data.length < 2) return 0;
+    const firstKm = data[0].kilometraje;
+    const lastKm = data[data.length - 1].kilometraje;
+    const firstDate = new Date(data[0].fecha);
+    const lastDate = new Date(data[data.length - 1].fecha);
+    const diffDays = Math.max(1, Math.ceil(Math.abs(lastDate - firstDate) / (1000 * 60 * 60 * 24)));
+    return (lastKm - firstKm) / diffDays;
+  };
+
+  const avgKm7Days = calculateAvg(kmDataLast7Days);
+  const avgKm30Days = calculateAvg(kmDataLast30Days);
+
+  return { kmToday, avgKm7Days, avgKm30Days };
+};
+
+// Helper para capitalizar y formatear claves de objetos
+const formatKey = (key) => {
+  return key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+};
 
 export default function VehiculoPage({ params }) {
   const router = useRouter();
