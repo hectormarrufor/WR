@@ -2,7 +2,7 @@
 'use client';
 
 import { Container } from '@mantine/core';
-import { ContratoForm } from '../ContratoForm';
+import { ContratoForm } from '../ContratoFormulary';
 
 export default function NuevoContratoPage() {
   return (
