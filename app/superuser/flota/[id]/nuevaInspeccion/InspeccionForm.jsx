@@ -230,9 +230,9 @@ export function InspeccionForm({ vehiculoId, lastKnownKilometraje = 0, lastKnown
         </Paper>
 
         <Paper withBorder shadow="md" p="md" mb="lg">
-          <Title order={{base: 1, xs: 1, sm: 2, md: 4}} mb="sm">Niveles de Líquidos</Title>
+          <Title order={4} mb="sm">Niveles de Líquidos</Title>
           <Text c="dimmed" mb="md">Verifica el nivel y estado de los líquidos del vehículo.</Text>
-          <SimpleGrid cols={4}>
+          <SimpleGrid cols={{base: 1, xs: 1, sm: 2, md: 4}}>
               <SistemaInspeccionField form={form} sistemaKey="liquidoLimpiaparabrisas" label="Líquido Limpiaparabrisas" />
               <SistemaInspeccionField form={form} sistemaKey="liquidoRefrigerante" label="Líquido Refrigerante" />
               <SistemaInspeccionField form={form} sistemaKey="aceiteMotor" label="Aceite de Motor" />
