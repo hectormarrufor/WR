@@ -230,7 +230,7 @@ export function InspeccionForm({ vehiculoId, lastKnownKilometraje = 0, lastKnown
         </Paper>
 
         <Paper withBorder shadow="md" p="md" mb="lg">
-          <Title order={4} mb="sm">Niveles de Líquidos</Title>
+          <Title order={{base: 1, xs: 1, sm: 2, md: 4}} mb="sm">Niveles de Líquidos</Title>
           <Text c="dimmed" mb="md">Verifica el nivel y estado de los líquidos del vehículo.</Text>
           <SimpleGrid cols={4}>
               <SistemaInspeccionField form={form} sistemaKey="liquidoLimpiaparabrisas" label="Líquido Limpiaparabrisas" />
@@ -246,7 +246,7 @@ export function InspeccionForm({ vehiculoId, lastKnownKilometraje = 0, lastKnown
           <Title order={4} mb="sm">Estado por Otros Sistemas (Detalles y Hallazgos)</Title>
           <Text c="dimmed" mb="md">Para cada sistema, selecciona su estado. Si hay una Advertencia o Fallo Crítico, describe el hallazgo.</Text>
           
-          <SimpleGrid cols={4}>
+          <SimpleGrid cols={{base: 1, xs: 1, sm: 2, md: 4}}>
               <SistemaInspeccionField form={form} sistemaKey="motor" label="Motor y Tren Motriz" />
               <SistemaInspeccionField form={form} sistemaKey="transmision" label="Transmisión y Embrague" />
               <SistemaInspeccionField form={form} sistemaKey="frenos" label="Sistema de Frenos" />
