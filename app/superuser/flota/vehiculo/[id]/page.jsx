@@ -25,9 +25,9 @@ import {
 import { useEffect, useRef, useState, useMemo, useCallback, use } from 'react';
 import { useRouter, notFound } from 'next/navigation';
 import * as html2pdf from 'html2pdf.js';
-import BackButton from '../../../components/BackButton';
+import BackButton from '../../../../components/BackButton';
 import { useMediaQuery } from '@mantine/hooks';
-import { httpGet } from '../../../ApiFunctions/httpServices'; //
+import { httpGet } from '../../../../ApiFunctions/httpServices'; //
 import {
   IconCircleCheck,
   IconCircleDot,
@@ -183,7 +183,7 @@ export default function VehiculoPage({ params }) {
       return;
     }
     const selectedIdsString = selectedHallazgos.join(',');
-    router.push(`/superuser/flota/${id}/mantenimiento/nueva?hallazgoIds=${selectedIdsString}`);
+    router.push(`/superuser/flota/vehiculo/${id}/mantenimiento/nueva?hallazgoIds=${selectedIdsString}`);
   };
 
   const { kmToday, avgKm7Days, avgKm30Days } = useMemo(() => {
@@ -287,7 +287,7 @@ export default function VehiculoPage({ params }) {
   ).length || 0;
 
   const handleMantenimiento = () => {
-    router.push(`/superuser/flota/${id}/mantenimiento`);
+    router.push(`/superuser/flota/vehiculo/${id}/mantenimiento`);
   };
 
   const renderObjectDetails = (obj, isNested = false) => {
@@ -330,8 +330,8 @@ export default function VehiculoPage({ params }) {
       <Paper px={isMobile ? 0 : 100} py={30} mt={90} mx={isMobile ? 0 : 20} shadow="md" radius="lg">
         <Group position="right" mb="xl" grow={isMobile}>
           <Flex justify="space-between" wrap="wrap" w="100%" gap="md">
-            <BackButton onClick={() => router.push('/superuser/flota')} />
-            <Button leftSection={<IconClipboardList size={18} />} color="blue" onClick={() => router.push(`/superuser/flota/${id}/nuevaInspeccion`)}>
+            <BackButton onClick={() => router.push('/superuser/flota/vehiculo')} />
+            <Button leftSection={<IconClipboardList size={18} />} color="blue" onClick={() => router.push(`/superuser/flota/vehiculo/${id}/nuevaInspeccion`)}>
               Registrar Nueva Inspección
             </Button>
             <Button leftSection={<IconTools size={18} />} color="teal" onClick={handleMantenimiento}>

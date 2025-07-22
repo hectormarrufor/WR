@@ -66,6 +66,7 @@ const Cliente = require('./Cliente');
 const AsignacionSupervisorOperacion = require('./operaciones/AsignacionSupervisorOperacion');
 const BcvPrecioHistorico = require('./BcvPrecioHistorico');
 const ConfiguracionGeneral = require('./ConfiguracionGeneral');
+const Equipo = require('./flota/Equipo');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -119,6 +120,7 @@ const db = {
     AsignacionSupervisorOperacion,
     BcvPrecioHistorico,
     ConfiguracionGeneral,
+    Equipo
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

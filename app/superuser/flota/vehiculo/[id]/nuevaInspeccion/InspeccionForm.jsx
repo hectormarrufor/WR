@@ -11,7 +11,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import { IconAlertCircle, IconCheck, IconExclamationCircle, IconX } from '@tabler/icons-react';
-import { httpPost } from '../../../../ApiFunctions/httpServices';
+import { httpPost } from '../../../../../ApiFunctions/httpServices';
 
 // Componente para agrupar la lógica de cada sistema inspeccionado
 function SistemaInspeccionField({ form, sistemaKey, label }) {
@@ -161,7 +161,7 @@ export function InspeccionForm({ vehiculoId, lastKnownKilometraje = 0, lastKnown
         message: 'Inspección registrada exitosamente.',
         color: 'green',
       });
-      router.push(`/superuser/flota/${vehiculoId}`);
+      router.push(`/superuser/flota/vehiculo/${vehiculoId}`);
     } catch (error) {
       console.error('Error al registrar inspección:', error);
       notifications.show({
@@ -262,7 +262,7 @@ export function InspeccionForm({ vehiculoId, lastKnownKilometraje = 0, lastKnown
         </Paper>
 
         <Group justify="flex-end" mt="xl">
-          <Button variant="default" onClick={() => router.push(`/superuser/flota/${vehiculoId}`)}>
+          <Button variant="default" onClick={() => router.push(`/superuser/flota/vehiculo/${vehiculoId}`)}>
             Cancelar
           </Button>
           <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>

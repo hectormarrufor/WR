@@ -39,7 +39,7 @@ export default function SuperUserHome() {
         { disabled: true, title: 'Servicios Adquiridos', href: '/superuser/servicios-adquiridos', description: 'Administra los servicios contratados.', icon: IconTools, size: 32, color:theme.colors.cyan[6] },
         { disabled: true, title: 'Mudanzas', href: '#', description: 'Coordina la logística de traslados de equipos.', icon: IconMapPin, size: 32, color:theme.colors.cyan[6] },
         { disabled: true, title: 'Operaciones', href: '/superuser/operaciones-campo', description: 'Control de operaciones diarias en pozos.', icon: IconGasStation, size: 32, color:theme.colors.red[5] },
-        { disabled: false, title: 'Flota', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.', icon: IconTruck, size: 32, color:theme.colors.teal[6] },
+        { disabled: false, title: 'Mantenimiento', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.', icon: IconTruck, size: 32, color:theme.colors.teal[6] },
         { disabled: true, title: 'Usuarios', href: '/superuser/usuarios', description: 'Gestiona el acceso y roles de los usuarios.', icon: IconUsers, size: 32, color:theme.colors.grape[5] },
         { disabled: true, title: 'Comidas', href: '#', description: 'Control de consumos y logística de alimentos.', icon: IconToolsKitchen2 , size: 32, color:theme.colors.cyan[6]},
         { disabled: true, title: 'Transporte', href: '#', description: 'Logística de transporte de personal.', icon: IconSteeringWheel , size: 32, color:theme.colors.cyan[6]},

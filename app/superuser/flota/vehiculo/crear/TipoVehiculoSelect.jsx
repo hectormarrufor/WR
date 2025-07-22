@@ -8,7 +8,7 @@ import {
   Title,
   Button,
 } from '@mantine/core';
-import { httpGet, httpPost } from '../../../ApiFunctions/httpServices';
+import { httpGet, httpPost } from '../../../../ApiFunctions/httpServices';
 import { notifications } from '@mantine/notifications';
 
 export function TipoVehiculoSelect({ form }) {

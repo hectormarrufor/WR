@@ -8,9 +8,9 @@ import {
   Title,
   Button,
 } from '@mantine/core';
-import { httpGet, httpPost } from '../../../ApiFunctions/httpServices';
+import { httpGet, httpPost } from '../../../../ApiFunctions/httpServices';
 import { notifications } from '@mantine/notifications';
-import { normalizarMedida } from '../../../handlers/normalizarMedida';
+import { normalizarMedida } from '../../../../handlers/normalizarMedida';
 
 export function MedidaNeumaticoSelect({ form }) {
   const combobox = useCombobox({

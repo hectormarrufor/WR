@@ -1,0 +1,20 @@
+/* app/superuser/flota/crear/CrearFlotaPage.module.css */
+
+.cardOption {
+  /* Estilos base de la tarjeta */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  text-decoration: none;
+  color: var(--mantine-color-text); /* Usar variable de color de Mantine */
+  cursor: pointer;
+  /* Transición para las propiedades que cambian en :hover */
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.cardOption:hover {
+  /* Estilos al hacer hover */
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--mantine-shadow-xl); /* Usar variable de sombra de Mantine */
+}

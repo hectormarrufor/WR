@@ -5,8 +5,8 @@ import { Container, Title, Text, Paper, Group, Button, Box, Divider, Badge, Simp
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
-import { httpGet, httpPut } from '../../../../../../app/ApiFunctions/httpServices'; // Asegúrate de la ruta correcta a httpServices
-import BackButton from '../../../../../../app/components/BackButton';
+import { httpGet, httpPut } from '../../../../../../ApiFunctions/httpServices'; // Asegúrate de la ruta correcta a httpServices
+import BackButton from '../../../../../../components/BackButton';
 import { IconChecks, IconTools, IconStatusChange, IconCalendar, IconGauge, IconClockHour4, IconFileDescription, IconCurrencyDollar, IconListCheck } from '@tabler/icons-react';
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
@@ -144,7 +144,7 @@ export default function DetalleMantenimientoPage() {
   return (
     <Paper size="xl" p="xl" mt={70} mx={50}>
       <Group justify="space-between" mb="lg">
-        <BackButton onClick={() => router.push(`/superuser/flota/${vehiculoId}`)} />
+        <BackButton onClick={() => router.push(`/superuser/flota/vehiculo/${vehiculoId}`)} />
         <Title order={2} ta="center">
           Orden de Mantenimiento # {mantenimiento.id}
         </Title>
@@ -244,7 +244,7 @@ export default function DetalleMantenimientoPage() {
           ))}
 
           <Group justify="flex-end" mt="xl">
-            <Button variant="default" onClick={() => router.push(`/superuser/flota/${vehiculoId}`)}>
+            <Button variant="default" onClick={() => router.push(`/superuser/flota/vehiculo/${vehiculoId}`)}>
               Cancelar
             </Button>
             <Button type="submit" loading={isUpdating} disabled={isUpdating}>

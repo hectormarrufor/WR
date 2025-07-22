@@ -5,8 +5,8 @@ import { Container, Title, Text, Paper, Group, Button, Box, Divider, Badge, Cent
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
-import { httpGet } from '../../../../../app/ApiFunctions/httpServices'; // Asegúrate de la ruta correcta
-import BackButton from '../../../../../app/components/BackButton';
+import { httpGet } from '../../../../../ApiFunctions/httpServices'; // Asegúrate de la ruta correcta
+import BackButton from '../../../../../components/BackButton';
 import { IconTools, IconPlus, IconEye } from '@tabler/icons-react';
 
 export default function ListaMantenimientosPage() {
@@ -86,13 +86,13 @@ export default function ListaMantenimientosPage() {
   return (
     <Paper size="xl" p="xl" mt={60} mx={50}>
       <Group justify="space-between" mb="lg">
-        <BackButton onClick={() => router.push(`/superuser/flota/${vehiculoId}`)} />
+        <BackButton onClick={() => router.push(`/superuser/flota/vehiculo/${vehiculoId}`)} />
         <Title order={2} ta="center">
           Mantenimientos para: {vehiculo.marca} {vehiculo.modelo} ({vehiculo.placa})
         </Title>
         <Button
           leftSection={<IconPlus size={18} />}
-          onClick={() => router.push(`/superuser/flota/${vehiculoId}/mantenimiento/nueva`)}
+          onClick={() => router.push(`/superuser/flota/vehiculo/${vehiculoId}/mantenimiento/nueva`)}
           color="blue"
         >
           Crear Nuevo Mantenimiento
@@ -139,7 +139,7 @@ export default function ListaMantenimientosPage() {
                 mt="md"
                 radius="md"
                 leftSection={<IconEye size={16} />}
-                onClick={() => router.push(`/superuser/flota/${vehiculoId}/mantenimiento/${mantenimientoItem.id}`)}
+                onClick={() => router.push(`/superuser/flota/vehiculo/${vehiculoId}/mantenimiento/${mantenimientoItem.id}`)}
               >
                 Ver Detalles
               </Button>

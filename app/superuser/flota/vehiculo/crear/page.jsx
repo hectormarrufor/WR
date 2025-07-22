@@ -20,15 +20,16 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
-import BackButton from '../../../components/BackButton';
-import { SectionBox } from '../../../components/SectionBox';
 import { TipoVehiculoSelect } from './TipoVehiculoSelect';
 import { MedidaNeumaticoSelect } from './MedidaNeumaticoSelect';
-import { httpPost } from '../../../ApiFunctions/httpServices';
 import { AceiteCajaSelect } from './AceiteCajaSelect';
 import { AceiteMotorSelect } from './AceiteMotorSelect';
 import { TipoBombilloSelect } from './TipoBombilloSelect';
 import { ImagenVehiculoUploader } from './ImageVehiculoUploader';
+import BackButton from '../../../../components/BackButton';
+import { SectionBox } from '../../../../components/SectionBox';
+import { httpPost } from '../../../../ApiFunctions/httpServices';
+
 
 const VehicleRegistrationPage = () => {
     const theme = useMantineTheme();
@@ -307,7 +308,7 @@ const VehicleRegistrationPage = () => {
             // await httpPost('/api/vehiculos/fichastecnicas', fichaTecnicaData);
             // notifications.show({ title: "Ficha Técnica registrada exitosamente", message: `Asociada al vehículo ${createdVehiculo.placa}`, color: 'green' });
 
-            router.push('/superuser/flota');
+            router.push('/superuser/flota/vehiculo');
         } catch (error) {
             console.error("Error al registrar vehículo o ficha técnica:", error);
             notifications.show({ title: 'Error en el registro', message: error.message || 'Ocurrió un error al registrar el vehículo o la ficha técnica.', color: 'red' });
@@ -339,7 +340,7 @@ const VehicleRegistrationPage = () => {
                                     onClick={() =>
                                         form.values.tipoPeso !== ''
                                             ? form.setValues({ ...form.values, tipoPeso: '' })
-                                            : router.push('/superuser/flota')
+                                            : router.push('/superuser/flota/vehiculo')
                                     }
                                 />
                             </Box>
@@ -374,15 +375,6 @@ const VehicleRegistrationPage = () => {
                                 </Button>
                                 <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
                                     Pesada
-                                </Button>
-                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
-                                    Especial
-                                </Button>
-                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
-                                    Equipo
-                                </Button>
-                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
-                                    Gabarra
                                 </Button>
                             </Flex>
                         </Flex>

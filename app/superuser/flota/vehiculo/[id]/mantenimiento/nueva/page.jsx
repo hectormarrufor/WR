@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
 import { DatePickerInput } from '@mantine/dates';
-import { httpGet, httpPost } from '../../../../../ApiFunctions/httpServices';
+import { httpGet, httpPost } from '../../../../../../ApiFunctions/httpServices';
 
 export default function NuevoMantenimientoPage() {
   const { id: vehiculoId } = useParams();
@@ -132,7 +132,7 @@ export default function NuevoMantenimientoPage() {
         message: 'Orden de mantenimiento creada exitosamente.',
         color: 'green',
       });
-      router.push(`/superuser/flota/${vehiculoId}/mantenimiento`); // Redirigir a la lista de mantenimientos del vehículo
+      router.push(`/superuser/flota/vehiculo/${vehiculoId}/mantenimiento`); // Redirigir a la lista de mantenimientos del vehículo
     } catch (error) {
       console.error('Error al crear orden de mantenimiento:', error);
       notifications.show({
@@ -238,7 +238,7 @@ export default function NuevoMantenimientoPage() {
           )}
 
           <Group justify="flex-end" mt="xl">
-            <Button variant="default" onClick={() => router.push(`/superuser/flota/${vehiculoId}/mantenimiento`)}>
+            <Button variant="default" onClick={() => router.push(`/superuser/flota/vehiculo/${vehiculoId}/mantenimiento`)}>
               Cancelar
             </Button>
             <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>

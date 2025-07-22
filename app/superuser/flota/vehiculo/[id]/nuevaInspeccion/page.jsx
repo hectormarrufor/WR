@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { InspeccionForm } from './InspeccionForm'; // Importa el componente del formulario
-import { httpGet } from '../../../../ApiFunctions/httpServices';
+import { httpGet } from '../../../../../ApiFunctions/httpServices';
 
 export default function NuevaInspeccionPage() {
   const { id } = useParams(); // ID del vehículo
