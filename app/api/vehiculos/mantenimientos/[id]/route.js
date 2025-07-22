@@ -1,6 +1,6 @@
 // app/api/vehiculos/mantenimientos/[id]/route.js
 import { NextResponse } from 'next/server';
-import db from '../../../../../models'; // Asegúrate que la ruta a tu 'models/index.js' es correcta
+import db, { HallazgoInspeccion } from '../../../../../models'; // Asegúrate que la ruta a tu 'models/index.js' es correcta
 import { recalcularEstadoGeneralVehiculo } from '../../recalcularEstadoGeneral';
 
 // GET un mantenimiento por ID (sin cambios en esta parte para esta solicitud)
@@ -32,18 +32,24 @@ export async function GET(request, { params }) {
 
 // PUT (Actualizar) un mantenimiento por ID
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const transaction = await db.sequelize.transaction();
   try {
     const body = await request.json();
     const { estado, fechaCompletado, kilometrajeMantenimiento, horometroMantenimiento, tareas } = body;
 
+    // Obtener el mantenimiento existente con sus relaciones necesarias
+    // Es crucial cargar también el Kilometraje y Horometro más recientes del vehículo aquí
     const mantenimiento = await db.Mantenimiento.findByPk(id, {
       include: [
         {
           model: db.Vehiculo,
           as: 'vehiculo',
-          include: [{ model: db.FichaTecnica, as: 'fichaTecnica' }]
+          include: [
+            { model: db.FichaTecnica, as: 'fichaTecnica' },
+            { model: db.Kilometraje, as: 'kilometrajes', order: [['fechaRegistro', 'DESC']], limit: 1 }, // Último kilometraje
+            { model: db.Horometro, as: 'horometros', order: [['fecha', 'DESC']], limit: 1 },       // Último horómetro
+          ]
         },
         { model: db.TareaMantenimiento, as: 'tareas' },
       ],
@@ -61,21 +67,27 @@ export async function PUT(request, { params }) {
 
     const hallazgosAResolver = [];
     const tareasParaCrear = [];
-
+    
     if (tareas && tareas.length > 0) {
+      console.log(`\x1b[44m NUMERO DE TAREAS CONSEGUIDAS: ${tareas.length} \x1b[0m`);
+      
       for (const tareaActualizada of tareas) {
         const tareaExistente = mantenimiento.tareas.find(t => t.id === tareaActualizada.id);
+        console.log(`\x1b[44m TAREA EXISTENTE: ${tareaExistente} \x1b[0m`);
+        
         if (tareaExistente) {
           await tareaExistente.update({
             estado: tareaActualizada.estado,
             fechaInicio: tareaActualizada.fechaInicio,
             fechaFin: tareaActualizada.fechaFin,
-            // Mantener el hallazgoInspeccionId si ya existe
             hallazgoInspeccionId: tareaExistente.hallazgoInspeccionId || tareaActualizada.hallazgoInspeccionId,
+            tipo: tareaActualizada.tipo || tareaExistente.tipo // Asegúrate de que el tipo de tarea se mantenga
           }, { transaction });
 
-          // Si la tarea existente fue marcada como COMPLETADA y tiene un hallazgo asociado
-          if (tareaActualizada.estado === 'Completada' && tareaExistente.estado !== 'Completada' && tareaExistente.hallazgoInspeccionId) {
+          console.log(`\x1b[44m tareaExistenteActualizada: ${tareaExistente.estado} \x1b[0m`);
+          
+
+          if (tareaActualizada.estado === 'Completada' && tareaExistente.estado === 'Completada' && tareaExistente.hallazgoInspeccionId) {
               hallazgosAResolver.push(tareaExistente.hallazgoInspeccionId);
           }
         } else if (!tareaActualizada.id) {
@@ -89,13 +101,18 @@ export async function PUT(request, { params }) {
         await db.TareaMantenimiento.bulkCreate(tareasParaCrear, { transaction });
       }
     }
-
+    console.log(`\x1b[30m\x1b[44m HALLAZGOS A RESOLVER: ${hallazgosAResolver} \x1b[0m`);
+    
     const updatedMantenimiento = await db.Mantenimiento.findByPk(id, {
         include: [
             {
                 model: db.Vehiculo,
                 as: 'vehiculo',
-                include: [{ model: db.FichaTecnica, as: 'fichaTecnica' }]
+                include: [
+                    { model: db.FichaTecnica, as: 'fichaTecnica' },
+                    { model: db.Kilometraje, as: 'kilometrajes', order: [['fechaRegistro', 'DESC']], limit: 1 },
+                    { model: db.Horometro, as: 'horometros', order: [['fecha', 'DESC']], limit: 1 },
+                ]
             },
             { model: db.TareaMantenimiento, as: 'tareas' },
         ],
@@ -106,7 +123,7 @@ export async function PUT(request, { params }) {
     const fichaTecnica = vehiculo?.fichaTecnica;
 
     if (!vehiculo || !fichaTecnica) {
-      console.warn(`No se pudo encontrar el vehículo o ficha técnica para mantenimiento ${id}`);
+      console.warn(`No se pudo encontrar el vehículo o ficha técnica para mantenimiento ${id}.`);
     } else {
       const currentKm = kilometrajeMantenimiento || vehiculo.kilometrajes?.[0]?.kilometrajeActual || 0;
       const currentHorometro = horometroMantenimiento || vehiculo.horometros?.[0]?.horas || 0;
@@ -131,40 +148,59 @@ export async function PUT(request, { params }) {
           }, { transaction });
         }
       }
+      
+      let fichaTecnicaChanged = false;
 
       // Lógica de Actualización de Ficha Técnica (solo para cambios de aceite específicos)
       for (const tarea of updatedMantenimiento.tareas) {
         if (tarea.estado === 'Completada') {
-            if (tarea.nombre === 'Cambio de Aceite de Motor' || tarea.tipo === 'Cambio de Aceite de Motor') {
+            // Depuración:
+            console.log(`Procesando tarea completada: ${tarea.descripcion}, Tipo: ${tarea.tipo}`);
+
+            if (tarea.descripcion.includes('Cambio de Aceite de Motor') || tarea.tipo === 'Cambio de Aceite de Motor') {
                 if (fichaTecnica.motor && fichaTecnica.motor.aceite) {
-                fichaTecnica.motor.aceite.ultimoCambioKm = currentKm;
-                fichaTecnica.motor.aceite.ultimoCambioHoras = currentHorometro;
+                    fichaTecnica.motor.aceite.ultimoCambioKm = currentKm;
+                    fichaTecnica.motor.aceite.ultimoCambioHoras = currentHorometro;
+                    fichaTecnicaChanged = true;
+                    fichaTecnica.changed('motor', true); // Forzar detección de cambio en JSONB
+                    console.log(`Ficha Técnica Motor Aceite actualizada: ultimoCambioKm=${fichaTecnica.motor.aceite.ultimoCambioKm}`);
                 }
-            } else if (tarea.nombre === 'Cambio de Aceite de Transmisión' || tarea.tipo === 'Cambio de Aceite de Transmisión') {
-                if (fichaTecnica.transmision) {
-                fichaTecnica.transmision.ultimoCambioKm = currentKm;
-                fichaTecnica.transmision.ultimoCambioHoras = currentHorometro;
+            } else if (tarea.descripcion.includes('Cambio de Aceite de Transmisión') || tarea.tipo === 'Cambio de Aceite de Transmisión'){
+                // Corregir acceso anidado a 'aceite' dentro de 'transmision'
+                if (fichaTecnica.transmision && fichaTecnica.transmision.aceite) { // Asegurarse que .aceite existe
+                    fichaTecnica.transmision.aceite.ultimoCambioKm = currentKm; // Acceso correcto
+                    fichaTecnica.transmision.aceite.ultimoCambioHoras = currentHorometro; // Acceso correcto
+                    fichaTecnicaChanged = true;
+                    fichaTecnica.changed('transmision', true); // Forzar detección de cambio en JSONB
+                    console.log(`Ficha Técnica Transmisión Aceite actualizada: ultimoCambioKm=${fichaTecnica.transmision.aceite.ultimoCambioKm}`);
+                } else {
+                    console.warn(`FichaTecnica.transmision.aceite no encontrado para la actualización.`);
                 }
             }
         }
       }
-
-      // Resolver los hallazgos acumulados desde el inicio de la actualización de tareas
-      // Esto resuelve los hallazgos vinculados a CUALQUIER tarea que se haya completado en esta operación PUT
-      if (hallazgosAResolver.length > 0) {
-          await db.HallazgoInspeccion.update(
-              { estado: 'Resuelto', estaResuelto: true, fechaResolucion: new Date() }, // <-- CAMBIO AQUÍ: Actualiza estado y estaResuelto
-              {
-                  where: {
-                      id: hallazgosAResolver,
-                      estado: { [db.Sequelize.Op.in]: ['Pendiente', 'Asignado'] }, // Solo si están Pendientes o Asignados
-                  },
-                  transaction,
-              }
-          );
+      
+      if (fichaTecnicaChanged) {
+        await fichaTecnica.save({ transaction });
+        console.log("Ficha Técnica guardada en DB.");
+      } else {
+        console.log("Ficha Técnica no fue modificada para guardar.");
       }
+    }
 
-      await fichaTecnica.save({ transaction });
+    // Resolver los hallazgos acumulados
+    if (hallazgosAResolver.length > 0) {
+        await db.HallazgoInspeccion.update(
+            { estado: 'Resuelto', estaResuelto: true, fechaResolucion: new Date() },
+            {
+                where: {
+                    id: hallazgosAResolver,
+                    estado: { [db.Sequelize.Op.in]: ['Pendiente', 'Asignado'] },
+                },
+                transaction,
+            }
+        );
+        console.log(`Hallazgos resueltos: ${hallazgosAResolver.join(', ')}`);
     }
 
     await recalcularEstadoGeneralVehiculo(mantenimiento.vehiculoId, transaction);

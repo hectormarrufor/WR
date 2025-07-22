@@ -199,7 +199,6 @@ const VehicleRegistrationPage = () => {
             "horometro": "200",
             "imagen": "https://zfdhcaitqdnowkxr.public.blob.vercel-storage.com/T8003HB43J.jpg",
             "tipo": "Chuto",
-            "tipoPeso": "pesada",
             "ejes": "3",
             "correas": {
                 "tipoCorreaMotor": "Correa V",
@@ -375,6 +374,15 @@ const VehicleRegistrationPage = () => {
                                 </Button>
                                 <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
                                     Pesada
+                                </Button>
+                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
+                                    Especial
+                                </Button>
+                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
+                                    Equipo
+                                </Button>
+                                <Button m="sm" onClick={() => form.setValues({ ...form.values, tipoPeso: "pesada" })}>
+                                    Gabarra
                                 </Button>
                             </Flex>
                         </Flex>

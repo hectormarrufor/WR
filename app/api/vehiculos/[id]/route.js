@@ -17,7 +17,7 @@ export async function GET(request, { params }) {
           model: Kilometraje,
           as: 'kilometrajes', // Asegúrate que 'as' coincide con tu asociación en Vehiculo
           order: [['fechaRegistro', 'DESC']], // Ordenar para obtener el más reciente primero
-          limit: 1, // Limitar a 1 para obtener solo el más reciente
+          limit: 30, // Limitar a 1 para obtener solo el más reciente
           required: false, // No requiere que haya kilometrajes para traer el vehículo
         },
         // Incluir la última entrada de Horometro
@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
           model: Horometro,
           as: 'horometros', // Asegúrate que 'as' coincide con tu asociación en Vehiculo
           order: [['fecha', 'DESC']], // Ordenar para obtener el más reciente primero
-          limit: 1, // Limitar a 1 para obtener solo el más reciente
+          limit: 30, // Limitar a 1 para obtener solo el más reciente
           required: false,
         },
         // Incluir mantenimientos y sus tareas anidadas

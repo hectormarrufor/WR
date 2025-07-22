@@ -22,7 +22,7 @@ import {
   Loader,
   Checkbox,
 } from '@mantine/core';
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, use } from 'react';
 import { useRouter, notFound } from 'next/navigation';
 import * as html2pdf from 'html2pdf.js';
 import BackButton from '../../../components/BackButton';
@@ -52,9 +52,10 @@ import {
   IconWrench,
 } from '@tabler/icons-react';
 
-// Helper para calcular promedios y estimaciones
-const calculateMetrics = (kilometrajes, currentKm) => {
-  if (!kilometrajes || kilometrajes.length < 2) {
+//  Helper para calcular promedios y estimaciones
+const calculateMetrics = (allKilometrajes) => { // Recibe todos los registros de kilometraje
+  // Necesitamos al menos dos puntos para calcular un cambio de kilometraje y días
+  if (!allKilometrajes || allKilometrajes.length < 2) {
     return {
       kmToday: 0,
       avgKm7Days: 0,
@@ -62,42 +63,47 @@ const calculateMetrics = (kilometrajes, currentKm) => {
     };
   }
 
-  const sortedKm = [...kilometrajes].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  // Ordenar todos los registros de kilometraje por fecha ascendente
+  const sortedKm = [...allKilometrajes].sort((a, b) => new Date(a.fechaRegistro) - new Date(b.fechaRegistro));
 
+  // Determinar los puntos de inicio y fin de la actividad general
+  const firstOverallEntry = sortedKm[0];
+  const lastOverallEntry = sortedKm[sortedKm.length - 1];
+  const firstOverallDate = new Date(firstOverallEntry.fechaRegistro);
+  const lastOverallDate = new Date(lastOverallEntry.fechaRegistro);
+
+  // Calcular la diferencia total de kilómetros y días
+  const totalKmChange = lastOverallEntry.kilometrajeActual - firstOverallEntry.kilometrajeActual;
+  const totalDaysOfActivity = Math.max(1, Math.ceil(Math.abs(lastOverallDate - firstOverallDate) / (1000 * 60 * 60 * 24))); // Al menos 1 día si hay 2 puntos en el mismo día
+
+
+  // Cálculo de kmToday (Kilómetros recorridos hoy)
   let kmToday = 0;
-  if (sortedKm.length > 1) {
-    const latestKmEntry = sortedKm[sortedKm.length - 1];
-    const secondLatestKmEntry = sortedKm[sortedKm.length - 2];
-    const latestDate = new Date(latestKmEntry.fecha);
-    const secondLatestDate = new Date(secondLatestKmEntry.fecha);
-    if (latestDate.toDateString() === new Date().toDateString() && secondLatestDate.toDateString() === new Date(latestDate.getTime() - 24 * 60 * 60 * 1000).toDateString()) {
-      kmToday = latestKmEntry.kilometraje - secondLatestKmEntry.kilometraje;
-    } else if (latestDate.toDateString() === new Date().toDateString()) {
-        kmToday = 0;
-    }
+  const todayDate = new Date();
+  const latestTodayEntry = sortedKm.findLast(k => new Date(k.fechaRegistro).toDateString() === todayDate.toDateString());
+  if (latestTodayEntry) {
+      const yesterday = new Date(todayDate);
+      yesterday.setDate(todayDate.getDate() - 1);
+      const latestYesterdayEntry = sortedKm.findLast(k => new Date(k.fechaRegistro).toDateString() === yesterday.toDateString());
+      if (latestYesterdayEntry) {
+          kmToday = latestTodayEntry.kilometrajeActual - latestYesterdayEntry.kilometrajeActual;
+      }
   }
 
-  const today = new Date();
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 7);
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(today.getDate() - 30);
 
-  const kmDataLast7Days = sortedKm.filter(k => new Date(k.fecha) >= sevenDaysAgo);
-  const kmDataLast30Days = sortedKm.filter(k => new Date(k.fecha) >= thirtyDaysAgo);
-
-  const calculateAvg = (data) => {
-    if (data.length < 2) return 0;
-    const firstKm = data[0].kilometraje;
-    const lastKm = data[data.length - 1].kilometraje;
-    const firstDate = new Date(data[0].fecha);
-    const lastDate = new Date(data[data.length - 1].fecha);
-    const diffDays = Math.max(1, Math.ceil(Math.abs(lastDate - firstDate) / (1000 * 60 * 60 * 24)));
-    return (lastKm - firstKm) / diffDays;
+  // Función para obtener el promedio diario, topando el número de días
+  const getCappedAvg = (capDays) => {
+    // Los días efectivos para el promedio serán el mínimo entre los días totales de actividad y el límite de días (capDays)
+    const effectiveDays = Math.min(totalDaysOfActivity, capDays);
+    
+    // Si no hay días efectivos o no hay cambio de kilómetros, el promedio es 0
+    if (effectiveDays === 0 || totalKmChange <= 0) return 0;
+    
+    return totalKmChange / effectiveDays;
   };
-
-  const avgKm7Days = calculateAvg(kmDataLast7Days);
-  const avgKm30Days = calculateAvg(kmDataLast30Days);
+  
+  const avgKm7Days = getCappedAvg(7);
+  const avgKm30Days = getCappedAvg(30);
 
   return { kmToday, avgKm7Days, avgKm30Days };
 };
@@ -112,7 +118,7 @@ export default function VehiculoPage({ params }) {
   const pdfRef = useRef(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const { id } = params;
+  const { id } = use(params);
   const [vehiculo, setVehiculo] = useState(null);
   const [showFichaTecnica, setShowFichaTecnica] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -137,6 +143,7 @@ export default function VehiculoPage({ params }) {
         imagen: data.imagen,
         inspecciones: data.inspecciones,
         kilometraje: data.kilometrajes?.[0]?.kilometrajeActual,
+        allKilometrajes: data.kilometrajes,
         mantenimientos: data.mantenimientos,
         marca: data.marca,
         modelo: data.modelo,
@@ -180,62 +187,64 @@ export default function VehiculoPage({ params }) {
   };
 
   const { kmToday, avgKm7Days, avgKm30Days } = useMemo(() => {
-    if (!vehiculo || !vehiculo.kilometrajes) {
+    // Pasar todos los registros de kilometraje a calculateMetrics
+    if (!vehiculo || !vehiculo.allKilometrajes) {
       return { kmToday: 0, avgKm7Days: 0, avgKm30Days: 0 };
     }
-    return calculateMetrics(vehiculo.kilometrajes, vehiculo.kilometraje);
+    return calculateMetrics(vehiculo.allKilometrajes, vehiculo.kilometraje);
   }, [vehiculo]);
 
+  // Función genérica para estimar próximo cambio de aceite
+  const getOilChangeEstimation = useCallback((ultimoCambioKm, intervaloCambioKm, currentKm, avgKm30Days) => {
+    let kmRemaining = 'N/A';
+    let daysRemaining = 'N/A';
+    let nextChangeDateFormatted = 'N/A';
+    let statusColor = 'gray';
+
+    // Calcular KM restantes
+    if (ultimoCambioKm !== null && ultimoCambioKm !== undefined && intervaloCambioKm !== null && intervaloCambioKm !== undefined) {
+      const proximoCambioKm = parseFloat(ultimoCambioKm) + parseFloat(intervaloCambioKm);
+      const remaining = proximoCambioKm - parseFloat(currentKm || 0); // Usar currentKm o 0 si es nulo
+      kmRemaining = `${remaining.toFixed(0)} km restantes`;
+      if (remaining <= 0) {
+        kmRemaining = 'Cambio requerido';
+        statusColor = 'red';
+      } else if (remaining < (intervaloCambioKm * 0.1)) { // Advertencia si queda menos del 10%
+        statusColor = 'orange';
+      } else {
+        statusColor = 'blue';
+      }
+    }
+
+    // Calcular DÍAS estimados
+    if (kmRemaining !== 'N/A' && kmRemaining !== 'Cambio requerido' && avgKm30Days > 0) {
+      const remainingKmValue = parseFloat(kmRemaining.split(' ')[0]); // Extraer solo el número
+      const estimatedDays = remainingKmValue / avgKm30Days;
+      const nextChangeDate = new Date();
+      nextChangeDate.setDate(nextChangeDate.getDate() + estimatedDays);
+      daysRemaining = `${estimatedDays.toFixed(0)} días (aprox. ${nextChangeDate.toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit' })})`;
+    } else if (kmRemaining === 'Cambio requerido') {
+      daysRemaining = 'Cambio requerido';
+    }
+
+    return { km: kmRemaining, days: daysRemaining, color: statusColor };
+  }, []);
+
   const estimatedNextMotorOilChange = useMemo(() => {
-    const ultimoCambioKm = vehiculo?.fichaTecnica?.motor?.aceite?.ultimoCambioKm;
-    const intervaloCambioKm = vehiculo?.fichaTecnica?.motor?.aceite?.intervaloCambioKm;
-
-    if (!intervaloCambioKm || ultimoCambioKm === null || avgKm30Days <= 0) {
-      return { km: 'N/A', days: 'N/A' };
+    if (!vehiculo?.fichaTecnica?.motor?.aceite) {
+      return { km: 'N/A', days: 'N/A', color: 'gray' };
     }
-
-    const currentKm = vehiculo.kilometraje;
-    const kmRemaining = (parseFloat(ultimoCambioKm) + parseFloat(intervaloCambioKm)) - parseFloat(currentKm);
-
-    if (kmRemaining <= 0) {
-      return { km: 'Cambio requerido', days: 'Cambio requerido' };
-    }
-
-    const daysRemaining = kmRemaining / avgKm30Days;
-    const nextChangeDate = new Date();
-    nextChangeDate.setDate(nextChangeDate.getDate() + daysRemaining);
-
-    return {
-      km: `${kmRemaining.toFixed(0)} km restantes`,
-      days: `${daysRemaining.toFixed(0)} días (aprox. ${nextChangeDate.toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit' })})`,
-    };
-  }, [vehiculo, avgKm30Days]);
+    const { ultimoCambioKm, intervaloCambioKm } = vehiculo.fichaTecnica.motor.aceite;
+    return getOilChangeEstimation(ultimoCambioKm, intervaloCambioKm, vehiculo.kilometraje, avgKm30Days);
+  }, [vehiculo, avgKm30Days, getOilChangeEstimation]);
 
   const estimatedNextTransmisionOilChange = useMemo(() => {
-    const ultimoCambioKm = vehiculo?.fichaTecnica?.transmision?.aceite?.ultimoCambioKm;
-    const intervaloCambioKm = vehiculo?.fichaTecnica?.transmision?.aceite?.intervaloCambioKm;
-
-    if (!intervaloCambioKm || ultimoCambioKm === null || avgKm30Days <= 0) {
-      return { km: 'N/A', days: 'N/A' };
+    if (!vehiculo?.fichaTecnica?.transmision) {
+      return { km: 'N/A', days: 'N/A', color: 'gray' };
     }
-
-    const currentKm = vehiculo.kilometraje;
-    const kmRemaining = (parseFloat(ultimoCambioKm) + parseFloat(intervaloCambioKm)) - parseFloat(currentKm);
-
-    if (kmRemaining <= 0) {
-      return { km: 'Cambio requerido', days: 'Cambio requerido' };
-    }
-
-    const daysRemaining = kmRemaining / avgKm30Days;
-    const nextChangeDate = new Date();
-    nextChangeDate.setDate(nextChangeDate.getDate() + daysRemaining);
-
-    return {
-      km: `${kmRemaining.toFixed(0)} km restantes`,
-      days: `${daysRemaining.toFixed(0)} días (aprox. ${nextChangeDate.toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit' })})`,
-    };
-  }, [vehiculo, avgKm30Days]);
-
+    const { ultimoCambioKm, intervaloCambioKm } = vehiculo.fichaTecnica.transmision;
+    return getOilChangeEstimation(ultimoCambioKm, intervaloCambioKm, vehiculo.kilometraje, avgKm30Days);
+  }, [vehiculo, avgKm30Days, getOilChangeEstimation]);
 
   const exportToPDF = () => {
     const opt = {
@@ -270,8 +279,12 @@ export default function VehiculoPage({ params }) {
   // Filtrar hallazgos que no están Resueltos ni Descartados
   const allHallazgosFromInspecciones = vehiculo.inspecciones?.flatMap(inspeccion => inspeccion.hallazgos || []) || [];
   const pendingHallazgos = allHallazgosFromInspecciones.filter(hallazgo => 
-    hallazgo.estado === 'Pendiente' || hallazgo.estado === 'Asignado'
+    hallazgo.estado === 'Pendiente'
   );
+
+  const pendingMantenimientoCount = vehiculo.mantenimientos?.filter(m => 
+    m.estado === 'Pendiente' || m.estado === 'En Progreso'
+  ).length || 0;
 
   const handleMantenimiento = () => {
     router.push(`/superuser/flota/${id}/mantenimiento`);
@@ -322,7 +335,7 @@ export default function VehiculoPage({ params }) {
               Registrar Nueva Inspección
             </Button>
             <Button leftSection={<IconTools size={18} />} color="teal" onClick={handleMantenimiento}>
-              Gestionar Mantenimientos
+              Gestionar Mantenimientos {pendingMantenimientoCount > 0 && `(${pendingMantenimientoCount})`}
             </Button>
             <Button leftSection={<IconListDetails size={18} />} color="grape" onClick={() => setShowFichaTecnica(!showFichaTecnica)}>
               {showFichaTecnica ? 'Ocultar Ficha Técnica' : 'Mostrar Ficha Técnica'}
@@ -445,7 +458,7 @@ export default function VehiculoPage({ params }) {
               <Title order={3} align="center" mb="md" c="red.7">Hallazgos Pendientes de Resolver</Title>
               <Group justify="flex-end" mb="md">
                 <Button
-                  leftSection={<IconWrench size={18} />}
+                  leftSection={IconWrench}
                   color="orange"
                   onClick={handleCrearMantenimientoConSeleccionados}
                   disabled={selectedHallazgos.length === 0}
@@ -454,13 +467,14 @@ export default function VehiculoPage({ params }) {
                 </Button>
               </Group>
 
-              <List spacing="xs" size="sm" center icon={<ThemeIcon color="red" size={24} radius="xl"><IconAlertCircle style={{ width: '80%', height: '80%' }} /></ThemeIcon>}>
+              <List spacing="xs" size="sm" center >
                 {pendingHallazgos.map((hallazgo) => (
-                  <List.Item key={hallazgo.id}>
+                  <List.Item key={hallazgo.id} icon={<ThemeIcon color={hallazgo.gravedad === 'Media' ? "yellow": "red"} size={24} radius="xl"><IconAlertCircle style={{ width: '80%', height: '80%' }} /></ThemeIcon>}>
                     <Flex justify="space-between" align="center" wrap="wrap" gap="xs">
                       <Checkbox
                         checked={selectedHallazgos.includes(hallazgo.id)}
                         onChange={() => handleCheckboxChange(hallazgo.id)}
+                        
                         label={
                           <Box style={{ flex: 1 }}>
                             <Text>
