@@ -26,8 +26,8 @@ export default function CrearFlotaPage() {
     {
       href: "/superuser/flota/equipo",
       icon: IconTools,
-      title: "Equipo Modular",
-      description: "Componentes independientes que forman parte de unidades mayores o gabarras. (p.ej., Bombas, Generadores, Compresores, Motores auxiliares, Unidad de inyector de Coiled Tubing (remolcado/sin motor), Cabina de control)."
+      title: "Equipo",
+      description: "Componentes independientes que forman parte de unidades mayores o gabarras. (p.ej., Bombas (centrifugas, alta presion, bomba de trasnferencia de gasoil y otras), Generadores, Compresores, Unidad de Coiled Tubing (remolcado/sin motor), Cabina de control)."
     },
     {
       href: "/superuser/flota/gabarra",
