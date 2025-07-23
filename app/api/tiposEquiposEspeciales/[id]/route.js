@@ -4,9 +4,9 @@ import db from '../../../../models'; // Asegúrate que la ruta es correcta
 
 // GET un Tipo de Equipo Especial por ID
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
-    const tipo = await db.TipoEquipoEspecial.findByPk(id);
+    const tipo = await db.TipoEquipoEspecial.findOne({where: {nombre: id}});
 
     if (!tipo) {
       return NextResponse.json(

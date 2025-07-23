@@ -1,300 +1,151 @@
-// app/superuser/flota/especial/[id]/page.jsx
 'use client';
 
-import { Container, Title, Text, Paper, Group, Button, Box, Divider, Badge, SimpleGrid, Accordion, Center, Loader, Flex, Image } from '@mantine/core';
-import { useParams, useRouter, notFound } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
-import { IconTruckLoading, IconTools, IconShip, IconCalendarEvent, IconGauge, IconWrench, IconInfoCircle, IconEdit, IconTrash, IconFileCertificate } from '@tabler/icons-react';
-import { httpDelete, httpGet } from '../../../../ApiFunctions/httpServices';
-import BackButton from '../../../../components/BackButton';
-import DeleteModal from '../../../DeleteModal';
+import React, { useState, useEffect } from 'react';
+import { Container, Paper, Title, Grid, Text, Loader, Center, Alert, Badge, Group, Button, Box, Divider, Tree, ThemeIcon, rem, ScrollArea } from '@mantine/core';
+import { IconAlertCircle, IconArrowLeft, IconPencil, IconAdjustments, IconFileText, IconHash } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import classes from './detalle.module.css'; // Crearemos este archivo CSS para estilos adicionales
 
+// Componente para el color del badge según el estado
+const EstadoBadge = ({ estado }) => {
+  const color = {
+    'Operativo': 'green',
+    'Operativo con Advertencias': 'yellow',
+    'No Operativo': 'red',
+    'En Taller': 'blue',
+    'Inactivo': 'gray',
+  }[estado];
+  return <Badge color={color} size="lg" radius="sm">{estado}</Badge>;
+};
 
-export default function DetalleEquipoEspecialPage() {
-  const router = useRouter();
-  const { id } = useParams(); // ID del equipo especial
+// --- NUEVO Y MEJORADO VISUALIZADOR DE JSON ---
+const EnhancedJsonViewer = ({ data }) => {
+  // Función recursiva que convierte el objeto JSON al formato que el componente Tree necesita
+  const buildTreeData = (jsonData) => {
+    if (!jsonData || typeof jsonData !== 'object') return [];
 
-  const [equipoEspecial, setEquipoEspecial] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showFichaTecnica, setShowFichaTecnica] = useState(false); // Para colapsar/expandir la ficha técnica
-
-  const fetchEquipoEspecialData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // API para obtener un equipo especial por su ID
-      const data = await httpGet(`/api/equiposEspeciales/${id}`);
-      if (!data) {
-        notFound(); // Redirige a la página 404 si no se encuentra
-        return;
-      }
-      setEquipoEspecial(data);
-    } catch (err) {
-      console.error(`Error al cargar equipo especial con ID ${id}:`, err);
-      setError('Error al cargar los detalles del equipo especial.');
-      notifications.show({
-        title: 'Error',
-        message: 'No se pudieron cargar los detalles del equipo especial.',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (id) {
-      fetchEquipoEspecialData();
-    }
-  }, [id, fetchEquipoEspecialData]);
-
-  const handleDelete = useCallback(async () => {
-    if (equipoEspecial) {
-      setIsDeleting(true);
-      try {
-        await httpDelete(`/api/equiposEspeciales/${equipoEspecial.id}`);
-        notifications.show({
-          title: 'Eliminado',
-          message: 'Equipo especial eliminado exitosamente.',
-          color: 'green',
-        });
-        router.push('/superuser/flota/especial'); // Redirigir a la lista después de eliminar
-      } catch (err) {
-        notifications.show({
-          title: 'Error',
-          message: 'No se pudo eliminar el equipo especial.',
-          color: 'red',
-        });
-      } finally {
-        setIsDeleting(false);
-        setDeleteModalOpened(false);
-      }
-    }
-  }, [equipoEspecial, router]);
-
-  const openDeleteModal = () => {
-    setDeleteModalOpened(true);
-  };
-
-  const renderObjectDetails = (obj, isNested = false) => {
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
-      if (Array.isArray(obj)) {
-        return (
-          <List size="sm" mt="xs">
-            {obj.map((item, idx) => (
-              <List.Item key={idx}>
-                {typeof item === 'object' ? Object.entries(item).map(([k, v]) => `${k}: ${String(v)}`).join(', ') : String(item)}
-              </List.Item>
-            ))}
-          </List>
-        );
-      }
-      return <Text color="dimmed" fs="italic">{isNested ? 'No disponible' : 'Información no disponible'}</Text>;
-    }
-  
-    const itemsToRender = Object.entries(obj).map(([key, value]) => {
-      // Ignorar campos de id y timestamps que no son relevantes para la visualización directa del detalle
-      if (['id', 'createdAt', 'updatedAt', 'equipoEspecialId', 'tipoEquipoEspecial'].includes(key)) {
-        return null;
-      }
-  
-      const formattedKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
-  
+    return Object.entries(jsonData).map(([key, value]) => {
+      const nodeId = `${key}-${Math.random()}`;
+      
+      // Si el valor es otro objeto, creamos una rama del árbol
       if (typeof value === 'object' && value !== null) {
-        if (Array.isArray(value)) {
-            // Manejar arrays, especialmente de certificaciones
-            return (
-                <Box key={key} p="sm" style={{ borderLeft: '3px solid var(--mantine-color-blue-3)', paddingLeft: '10px' }}>
-                    <Text size="sm" fw={700} mb={5} c="blue.7">{formattedKey}:</Text>
-                    <List size="sm" mt="xs">
-                        {value.map((item, idx) => (
-                            <List.Item key={idx}>
-                                {typeof item === 'object' ? Object.entries(item).map(([k, v]) => `${k}: ${String(v instanceof Date ? v.toLocaleDateString() : v)}`).join(', ') : String(item)}
-                            </List.Item>
-                        ))}
-                    </List>
-                </Box>
-            );
-        }
-        // Objeto anidado
-        return (
-          <Box key={key} p="sm" style={{ borderLeft: '3px solid var(--mantine-color-blue-3)', paddingLeft: '10px' }}>
-            <Text size="sm" fw={700} mb={5} c="blue.7">{formattedKey}:</Text>
-            {renderObjectDetails(value, true)}
-          </Box>
-        );
-      } else {
-        // Valor simple
-        return (
-          <Text key={key} size="sm">
-            <Text fw={600} span>{formattedKey}:</Text>{' '}
-            {String(value instanceof Date ? value.toLocaleDateString('es-VE') : value)}
-          </Text>
-        );
+        return {
+          value: nodeId,
+          label: <Text fw={500} tt="capitalize">{key}</Text>,
+          icon: <ThemeIcon variant="light" size={24}><IconAdjustments size={16} /></ThemeIcon>,
+          children: buildTreeData(value),
+        };
       }
+      
+      // Si el valor es un dato simple, creamos una hoja
+      return {
+        value: nodeId,
+        label: (
+          <Group justify="space-between" grow>
+            <Text tt="capitalize">{key}</Text>
+            <Text c="dimmed" size="sm" ta="right">{value.toString()}</Text>
+          </Group>
+        ),
+        icon: <ThemeIcon variant="light" color="gray" size={24}>
+                {typeof value === 'number' ? <IconHash size={16} /> : <IconFileText size={16} />}
+              </ThemeIcon>,
+      };
     });
-  
-    return (
-      <SimpleGrid
-        cols={{ base: 1, xs: 2, sm: 2, md: 3 }}
-        spacing="md"
-        verticalSpacing="sm"
-        mt={isNested ? 0 : 'sm'}
-      >
-        {itemsToRender}
-      </SimpleGrid>
-    );
   };
 
-  if (loading) {
-    return (
-      <Center style={{ height: 'calc(100vh - 120px)' }}>
-        <Loader size="lg" />
-        <Text ml="md">Cargando detalles del equipo especial...</Text>
-      </Center>
-    );
-  }
+  const treeData = buildTreeData(data);
 
-  if (error || !equipoEspecial) {
-    return (
-      <Center style={{ height: 'calc(100vh - 120px)' }}>
-        <Text color="red">{error || 'Equipo especial no encontrado.'}</Text>
-      </Center>
-    );
+  if (treeData.length === 0) {
+    return <Text c="dimmed" ta="center" mt="xl">No hay especificaciones detalladas.</Text>;
   }
 
   return (
-    <Container size="xl" py="xl">
-      <Group justify="space-between" mb="lg">
-        <BackButton onClick={() => router.push('/superuser/flota/especial')} />
-        <Title order={2} ta="center">
-          Detalles de {equipoEspecial.nombre}
-        </Title>
-        <Group>
-          <Button leftSection={<IconEdit size={18} />} color="blue" onClick={() => router.push(`/superuser/flota/especial/${equipoEspecial.id}/editar`)}>
-            Editar
-          </Button>
-          <Button leftSection={<IconTrash size={18} />} color="red" onClick={openDeleteModal}>
-            Eliminar
-          </Button>
-        </Group>
-      </Group>
-
-      <Paper withBorder shadow="md" p="md" mb="lg">
-        <Title order={4} mb="sm" c="blue.7">Información General</Title>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-          <Text><strong>Tipo de Equipo:</strong> {equipoEspecial.tipoEquipoEspecial}</Text>
-          <Text><strong>Número de Serie:</strong> {equipoEspecial.numeroSerie}</Text>
-          <Text><strong>Fabricante:</strong> {equipoEspecial.fabricante}</Text>
-          <Text><strong>Modelo:</strong> {equipoEspecial.modelo}</Text>
-          <Text><strong>Fecha Adquisición:</strong> {equipoEspecial.fechaAdquisicion ? new Date(equipoEspecial.fechaAdquisicion).toLocaleDateString('es-VE') : 'N/A'}</Text>
-          <Text><strong>Costo Adquisición:</strong> ${equipoEspecial.costoAdquisicion?.toFixed(2) || '0.00'}</Text>
-          <Text><strong>Horómetro Actual:</strong> {equipoEspecial.horometroActual} horas</Text>
-          <Text><strong>Estado Operativo:</strong> 
-            <Badge ml="xs" color={
-              equipoEspecial.estadoOperativoGeneral === 'Operativo' ? 'green' :
-              equipoEspecial.estadoOperativoGeneral === 'Operativo con Advertencias' ? 'yellow' :
-              equipoEspecial.estadoOperativoGeneral === 'No Operativo' ? 'red' :
-              equipoEspecial.estadoOperativoGeneral === 'En Taller' ? 'blue' :
-              'gray'
-            }>{equipoEspecial.estadoOperativoGeneral}</Badge>
-          </Text>
-          <Text><strong>Ubicación Actual:</strong> {equipoEspecial.ubicacionActual || 'No especificada'}</Text>
-          <Text><strong>Es Móvil:</strong> {equipoEspecial.esMovil ? 'Sí' : 'No'}</Text>
-          {equipoEspecial.vehiculoRemolque && (
-            <Text><strong>Vehículo de Remolque:</strong> {equipoEspecial.vehiculoRemolque.marca} {equipoEspecial.vehiculoRemolque.modelo} ({equipoEspecial.vehiculoRemolque.placa})</Text>
-          )}
-          <Textarea label="Descripción" value={equipoEspecial.descripcion || 'No hay descripción.'} readOnly autosize minRows={2} style={{ gridColumn: '1 / -1' }} />
-        </SimpleGrid>
-      </Paper>
-
-      {/* Ficha Técnica del Equipo Especial (Colapsable) */}
-      {equipoEspecial.fichaTecnica && (
-        <Paper withBorder shadow="md" p="md" mb="lg">
-          <Group justify="space-between" align="center" mb="md">
-            <Title order={4} c="grape.7"><IconInfoCircle size={20} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Detalles de Ficha Técnica</Title>
-            <Button variant="light" onClick={() => setShowFichaTecnica(!showFichaTecnica)}>
-              {showFichaTecnica ? 'Ocultar Ficha Técnica' : 'Mostrar Ficha Técnica'}
-            </Button>
-          </Group>
-          {showFichaTecnica && (
-            <Box>
-              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" mb="md">
-                <Text><strong>Capacidad Operacional:</strong> {equipoEspecial.fichaTecnica.capacidadOperacional || 'N/A'}</Text>
-                <Text><strong>Potencia HP:</strong> {equipoEspecial.fichaTecnica.potenciaHP || 'N/A'}</Text>
-                {/* Dimensiones */}
-                {equipoEspecial.fichaTecnica.dimensiones && (
-                  <Box>
-                    <Text fw={700} size="sm" mb="xs" c="blue.7">Dimensiones:</Text>
-                    <Text size="sm">Largo: {equipoEspecial.fichaTecnica.dimensiones.largoM || 'N/A'} m</Text>
-                    <Text size="sm">Ancho: {equipoEspecial.fichaTecnica.dimensiones.anchoM || 'N/A'} m</Text>
-                    <Text size="sm">Alto: {equipoEspecial.fichaTecnica.altoM || 'N/A'} m</Text>
-                    <Text size="sm">Peso: {equipoEspecial.fichaTecnica.dimensiones.pesoKg || 'N/A'} Kg</Text>
-                  </Box>
-                )}
-              </SimpleGrid>
-
-              <Divider my="md" label="Especificaciones Detalladas" labelPosition="center" />
-              {/* Renderizar especificacionesDetalladas (JSONB) */}
-              {equipoEspecial.fichaTecnica.especificacionesDetalladas && Object.keys(equipoEspecial.fichaTecnica.especificacionesDetalladas).length > 0 ? (
-                <Accordion chevronPosition="right" variant="filled">
-                  <Accordion.Item value="especificaciones">
-                    <Accordion.Control>Ver Especificaciones Detalladas</Accordion.Control>
-                    <Accordion.Panel>
-                      {renderObjectDetails(equipoEspecial.fichaTecnica.especificacionesDetalladas)}
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                </Accordion>
-              ) : (
-                <Text size="sm" c="dimmed">No hay especificaciones detalladas registradas.</Text>
-              )}
-
-              <Divider my="md" label="Mantenimiento de Componentes Clave" labelPosition="center" />
-              {/* Renderizar mantenimientoComponentes (JSONB) */}
-              {equipoEspecial.fichaTecnica.mantenimientoComponentes && Object.keys(equipoEspecial.fichaTecnica.mantenimientoComponentes).length > 0 ? (
-                <Accordion chevronPosition="right" variant="filled">
-                  <Accordion.Item value="mantenimiento">
-                    <Accordion.Control>Ver Historial de Mantenimiento de Componentes</Accordion.Control>
-                    <Accordion.Panel>
-                      {renderObjectDetails(equipoEspecial.fichaTecnica.mantenimientoComponentes)}
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                </Accordion>
-              ) : (
-                <Text size="sm" c="dimmed">No hay datos de mantenimiento de componentes clave.</Text>
-              )}
-
-              <Divider my="md" label="Certificaciones" labelPosition="center" />
-              {/* Renderizar certificaciones (JSONB Array) */}
-              {equipoEspecial.fichaTecnica.certificaciones && equipoEspecial.fichaTecnica.certificaciones.length > 0 ? (
-                <List spacing="xs" size="sm" center icon={<IconFileCertificate size={20} color="green" />}>
-                  {equipoEspecial.fichaTecnica.certificaciones.map((cert, index) => (
-                    <List.Item key={index}>
-                      <Text>
-                        <Text fw={700} span>{cert.nombre}:</Text>{' '}
-                        Vencimiento: {cert.vencimiento ? new Date(cert.vencimiento).toLocaleDateString('es-VE') : 'N/A'}
-                      </Text>
-                    </List.Item>
-                  ))}
-                </List>
-              ) : (
-                <Text size="sm" c="dimmed">No hay certificaciones registradas.</Text>
-              )}
-            </Box>
-          )}
-        </Paper>
-      )}
-
-      {/* Modal de confirmación de eliminación */}
-      <DeleteModal
-        opened={deleteModalOpened}
-        onClose={() => setDeleteModalOpened(false)}
-        onConfirm={handleDelete}
-        itemType="Equipo Especial"
+    <ScrollArea h={400}>
+      <Tree
+        data={treeData}
+        className={classes.tree}
       />
+    </ScrollArea>
+  );
+};
+
+
+export default function DetalleEquipoEspecialPage({ params }) {
+  const { id } = params;
+  const router = useRouter();
+  const [equipo, setEquipo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!id) return;
+    const fetchEquipo = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/equiposEspeciales/${id}`);
+        if (!response.ok) {
+          throw new Error(response.status === 404 ? 'Equipo no encontrado' : 'Error al cargar los datos');
+        }
+        const data = await response.json();
+        setEquipo(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEquipo();
+  }, [id]);
+
+  if (loading) return <Center h="80vh"><Loader size="lg" /></Center>;
+  if (error) return (
+    <Container>
+      <Center h="80vh">
+        <Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red">
+          {error}. <Link href="/superuser/flota/especial">Volver a la lista.</Link>
+        </Alert>
+      </Center>
+    </Container>
+  );
+  if (!equipo) return null;
+
+  return (
+    <Container size="lg" my="xl">
+      <Paper withBorder shadow="md" p="xl" radius="md">
+        <Group justify="space-between" mb="lg">
+          <Box>
+            <Title order={2}>{equipo.identificativo}</Title>
+            <Text c="dimmed" tt="capitalize">{equipo.marca} {equipo.modelo}</Text>
+          </Box>
+          <Group>
+            <Button variant="default" onClick={() => router.back()} leftSection={<IconArrowLeft size={16} />}>Volver</Button>
+            <Button variant="light" leftSection={<IconPencil size={16} />}>Editar</Button>
+          </Group>
+        </Group>
+        
+        <Divider my="md" />
+
+        <Grid gutter="xl">
+          <Grid.Col span={{ base: 12, md: 5 }}>
+            <Title order={4} mb="md">Datos Generales</Title>
+            <Group grow direction="column" gap="xs">
+                <Group justify="space-between"><Text fw={700}>Tipo de Equipo:</Text><Text tt="capitalize">{equipo.tipoEquipo?.nombre}</Text></Group>
+                <Group justify="space-between"><Text fw={700}>Placa:</Text><Text>{equipo.placa || 'N/A'}</Text></Group>
+                <Group justify="space-between"><Text fw={700}>Kilometraje:</Text><Text>{equipo.kilometraje.toLocaleString('es-VE')} km</Text></Group>
+                <Group justify="space-between"><Text fw={700}>Horómetro:</Text><Text>{equipo.horometro.toLocaleString('es-VE')} h</Text></Group>
+                <Group justify="space-between" mt="sm"><Text fw={700}>Estado Operativo:</Text><EstadoBadge estado={equipo.estadoOperativoGeneral} /></Group>
+            </Group>
+          </Grid.Col>
+
+          <Grid.Col span={{ base: 12, md: 7 }}>
+            <Title order={4} mb="md">Ficha Técnica / Especificaciones</Title>
+            <Paper withBorder p="md" radius="sm" bg="var(--mantine-color-gray-0)">
+                <EnhancedJsonViewer data={equipo.fichaTecnica?.especificaciones} />
+            </Paper>
+          </Grid.Col>
+        </Grid>
+      </Paper>
     </Container>
   );
 }

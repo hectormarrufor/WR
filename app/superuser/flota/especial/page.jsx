@@ -1,229 +1,177 @@
-// app/superuser/flota/especial/page.jsx
 'use client';
 
-import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
-import { useMemo, useState, useEffect, useCallback } from 'react';
-import { ActionIcon, Box, Button, Flex, Text, Tooltip, Title, Group, Paper, Center, Loader } from '@mantine/core';
-import { IconEdit, IconTrash, IconEye, IconPlus, IconTruckLoading } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Table, Title, Button, Group, Badge, Text, Container, Paper, Loader, Center, ActionIcon, TextInput, UnstyledButton } from '@mantine/core';
+import { IconPlus, IconEye, IconPencil, IconTrash, IconSearch, IconChevronUp, IconChevronDown, IconSelector } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { httpGet, httpPost } from '../../../ApiFunctions/httpServices';
-import DeleteModal from '../../DeleteModal';
-import { SectionBox } from '../../../components/SectionBox';
-import { SectionTitle } from '../../../components/SectionTitle';
+import { notifications } from '@mantine/notifications';
+import Link from 'next/link';
+import _ from 'lodash'; // Usaremos lodash para un ordenamiento más robusto
 
-export default function EquiposEspecialesPage() {
-  const [equiposEspeciales, setEquiposEspeciales] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState(null);
+// Componente para el color del badge según el estado
+const EstadoBadge = ({ estado }) => {
+  const color = {
+    'Operativo': 'green',
+    'Operativo con Advertencias': 'yellow',
+    'No Operativo': 'red',
+    'En Taller': 'blue',
+    'Inactivo': 'gray',
+  }[estado];
+  return <Badge color={color} variant="light">{estado}</Badge>;
+};
+
+export default function FlotaEspecialPage() {
   const router = useRouter();
+  const [allEquipos, setAllEquipos] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const fetchEquiposEspeciales = useCallback(async () => {
-    setLoading(true);
+  // Estados para ordenamiento y filtrado
+  const [filters, setFilters] = useState({});
+  const [sortConfig, setSortConfig] = useState({ key: 'identificativo', direction: 'asc' });
+
+  // Función para obtener los datos iniciales
+  const fetchEquipos = async () => {
     try {
-      // Necesitarás crear este endpoint API en app/api/equiposEspeciales/route.js
-      const data = await httpGet('/api/equiposEspeciales');
-      setEquiposEspeciales(data);
-    } catch (err) {
-      setError('Error al cargar equipos especiales.');
-      notifications.show({
-        title: 'Error',
-        message: 'No se pudieron cargar los equipos especiales.',
-        color: 'red',
-      });
+      const response = await fetch('/api/equiposEspeciales');
+      if (!response.ok) throw new Error('Error al cargar los datos de la flota especial.');
+      const data = await response.json();
+      setAllEquipos(data);
+    } catch (error) {
+      notifications.show({ title: 'Error', message: error.message, color: 'red' });
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchEquiposEspeciales();
-  }, [fetchEquiposEspeciales]);
-
-  const handleDelete = useCallback(async () => {
-    if (selectedItemId) {
-      setIsDeleting(true);
-      try {
-        // Necesitarás crear este endpoint API en app/api/equiposEspeciales/[id]/route.js
-        await httpDelete(`/api/equiposEspeciales/${selectedItemId}`);
-        notifications.show({
-          title: 'Eliminado',
-          message: 'Equipo especial eliminado exitosamente.',
-          color: 'green',
-        });
-        fetchEquiposEspeciales(); // Volver a cargar la lista
-      } catch (err) {
-        notifications.show({
-          title: 'Error',
-          message: 'No se pudo eliminar el equipo especial.',
-          color: 'red',
-        });
-      } finally {
-        setIsDeleting(false);
-        setDeleteModalOpened(false);
-        setSelectedItemId(null);
-      }
-    }
-  }, [selectedItemId, fetchEquiposEspeciales]);
-
-  const openDeleteModal = (id) => {
-    setSelectedItemId(id);
-    setDeleteModalOpened(true);
   };
 
-  const columns = useMemo(() => [
-    {
-      accessorKey: 'nombre',
-      header: 'Nombre/Identificador',
-      size: 150,
-    },
-    {
-      accessorKey: 'tipoEquipoEspecial',
-      header: 'Tipo de Equipo',
-      size: 150,
-      filterVariant: 'select',
-      // Aquí puedes cargar dinámicamente los tipos si los tienes en un endpoint
-      // filterSelectOptions: ['Coiled Tubing', 'Snubbing', 'Wireline', 'Taladro', 'Cementacion', 'Fractura'],
-    },
-    {
-      accessorKey: 'numeroSerie',
-      header: 'Número de Serie',
-      size: 120,
-    },
-    {
-      accessorKey: 'fabricante',
-      header: 'Fabricante',
-      size: 120,
-    },
-    {
-      accessorKey: 'modelo',
-      header: 'Modelo',
-      size: 120,
-    },
-    {
-      accessorKey: 'horometroActual',
-      header: 'Horómetro Actual',
-      size: 100,
-      Cell: ({ cell }) => `${cell.getValue()} horas`,
-    },
-    {
-      accessorKey: 'estadoOperativoGeneral',
-      header: 'Estado Operativo',
-      size: 120,
-      filterVariant: 'select',
-      // filterSelectOptions: ['Operativo', 'No Operativo', 'En Taller', 'Inactivo'],
-      Cell: ({ cell }) => (
-        <Badge
-          color={
-            cell.getValue() === 'Operativo' ? 'green' :
-            cell.getValue() === 'Operativo con Advertencias' ? 'yellow' :
-            cell.getValue() === 'No Operativo' ? 'red' :
-            cell.getValue() === 'En Taller' ? 'blue' :
-            'gray'
-          }
-        >
-          {cell.getValue()}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: 'ubicacionActual',
-      header: 'Ubicación Actual',
-      size: 150,
-    },
-  ], []);
+  useEffect(() => {
+    fetchEquipos();
+  }, []);
 
-  const table = useMantineReactTable({
-    columns,
-    data: equiposEspeciales,
-    enableColumnFilterModes: true,
-    enableColumnOrdering: true,
-    enableFacetedValues: true,
-    enableGrouping: true,
-    enablePagination: true,
-    enableSorting: true,
-    enableBottomToolbar: true,
-    enableStickyHeader: true,
-    enableRowActions: true, // Habilitar acciones por fila
-    manualFiltering: false, // Usar filtrado del lado del cliente
-    manualPagination: false, // Usar paginación del lado del cliente
-    manualSorting: false, // Usar ordenamiento del lado del cliente
-    initialState: { showColumnFilters: false, showGlobalFilter: true, pagination: { pageSize: 10, pageIndex: 0 } },
-    mantinePaginationProps: {
-      rowsPerPageOptions: ['5', '10', '25', '50', '100'],
-    },
-    positionToolbarAlertActions: 'bottom',
-    renderTopToolbarCustomActions: ({ table }) => (
-      <Flex p="md" justify="flex-end" align="center" style={{ width: '100%' }}>
-        <Button
-          leftSection={<IconPlus size={20} />}
-          onClick={() => router.push('/superuser/flota/especial/crear')} // Lleva a la página de selección de tipo
-          variant="filled"
-          color="blue"
-        >
-          Añadir Equipo Especial
-        </Button>
-      </Flex>
-    ),
-    renderRowActions: ({ row }) => (
-      <Flex gap="md">
-        <Tooltip label="Ver Detalles">
-          <ActionIcon onClick={() => router.push(`/superuser/flota/especial/${row.original.id}`)}>
-            <IconEye size={20} />
-          </ActionIcon>
-        </Tooltip>
-        {/*
-        <Tooltip label="Editar">
-          <ActionIcon onClick={() => router.push(`/superuser/flota/especial/${row.original.id}/editar`)}>
-            <IconEdit size={20} />
-          </ActionIcon>
-        </Tooltip>
-        */}
-        <Tooltip label="Eliminar">
-          <ActionIcon color="red" onClick={() => openDeleteModal(row.original.id)}>
-            <IconTrash size={20} />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
-    ),
-  });
+  // Función para manejar cambios en los filtros
+  const handleFilterChange = (column, value) => {
+    setFilters(prev => ({ ...prev, [column]: value }));
+  };
 
-  if (loading) {
+  // Función para manejar el ordenamiento
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // Lógica para procesar los datos (filtrar y ordenar)
+  const processedData = useMemo(() => {
+    let filtered = [...allEquipos];
+
+    // Aplicar filtros
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        filtered = filtered.filter(item => 
+          _.get(item, key, '').toString().toLowerCase().includes(value.toLowerCase())
+        );
+      }
+    });
+
+    // Aplicar ordenamiento
+    if (sortConfig.key) {
+      filtered = _.orderBy(filtered, [sortConfig.key], [sortConfig.direction]);
+    }
+
+    return filtered;
+  }, [allEquipos, filters, sortConfig]);
+
+  // Componente para las cabeceras de la tabla
+  const SortableTh = ({ children, columnKey }) => {
+    const Icon = sortConfig.key === columnKey 
+      ? (sortConfig.direction === 'asc' ? IconChevronUp : IconChevronDown) 
+      : IconSelector;
+    
     return (
-      <Center style={{ height: 'calc(100vh - 120px)' }}>
-        <Loader size="lg" />
-        <Text ml="md">Cargando equipos especiales...</Text>
-      </Center>
+      <Table.Th>
+        <UnstyledButton onClick={() => handleSort(columnKey)}>
+          <Group gap="xs">
+            <Text fw={700} size="sm">{children}</Text>
+            <Icon size={16} />
+          </Group>
+        </UnstyledButton>
+      </Table.Th>
     );
-  }
-
-  if (error) {
-    return (
-      <Center style={{ height: 'calc(100vh - 120px)' }}>
-        <Text color="red">{error}</Text>
-      </Center>
-    );
-  }
+  };
+  
+  const rows = processedData.map((equipo) => (
+    <Table.Tr key={equipo.id}>
+      <Table.Td>{equipo.identificativo}</Table.Td>
+      <Table.Td>{equipo.marca}</Table.Td>
+      <Table.Td>{equipo.modelo}</Table.Td>
+      <Table.Td><Text tt="capitalize">{equipo.tipoEquipo?.nombre || 'N/A'}</Text></Table.Td>
+      <Table.Td>{equipo.placa || 'N/A'}</Table.Td>
+      <Table.Td>{equipo.kilometraje.toLocaleString('es-VE')} km</Table.Td>
+      <Table.Td>{equipo.horometro.toLocaleString('es-VE')} h</Table.Td>
+      <Table.Td><EstadoBadge estado={equipo.estadoOperativoGeneral} /></Table.Td>
+      <Table.Td>
+        <Group gap="xs">
+          <ActionIcon variant="subtle" color="blue" title="Ver Detalles" onClick={() => router.push(`/superuser/flota/especial/${equipo.id}`)}><IconEye size={18} /></ActionIcon>
+          <ActionIcon variant="subtle" color="yellow" title="Editar" onClick={() => router.push(`/superuser/flota/especial/${equipo.id}`)}><IconPencil size={18} /></ActionIcon>
+          <ActionIcon variant="subtle" color="red" title="Eliminar"><IconTrash size={18} /></ActionIcon>
+        </Group>
+      </Table.Td>
+    </Table.Tr>
+  ));
 
   return (
-    <SectionBox>
-      <SectionTitle
-        title="Gestión de Equipos Especiales"
-        description="Aquí puedes visualizar y gestionar todos los equipos especiales de tu flota."
-        icon={IconTruckLoading}
-      />
-      <Paper shadow="sm" p="md" withBorder>
-        <MantineReactTable table={table} />
+    <Container size="xl" my="xl">
+      <Paper withBorder shadow="md" p="lg" radius="md" mt={60}>
+        <Group justify="space-between" mb="lg">
+          <Title order={2}>Gestión de Flota Especial</Title>
+          <Button component={Link} href="/superuser/flota/especial/crear" leftSection={<IconPlus size={18} />}>
+            Registrar Nuevo Equipo
+          </Button>
+        </Group>
+
+        {loading ? (
+          <Center h={200}><Loader /></Center>
+        ) : (
+          <Table.ScrollContainer minWidth={900}>
+            <Table striped highlightOnHover withTableBorder withColumnBorders>
+              <Table.Thead>
+                <Table.Tr>
+                  <SortableTh columnKey="identificativo">Identificativo</SortableTh>
+                  <SortableTh columnKey="marca">Marca</SortableTh>
+                  <SortableTh columnKey="modelo">Modelo</SortableTh>
+                  <SortableTh columnKey="tipoEquipo.nombre">Tipo de Equipo</SortableTh>
+                  <SortableTh columnKey="placa">Placa</SortableTh>
+                  <SortableTh columnKey="kilometraje">Kilometraje</SortableTh>
+                  <SortableTh columnKey="horometro">Horómetro</SortableTh>
+                  <SortableTh columnKey="estadoOperativoGeneral">Estado</SortableTh>
+                  <Table.Th>Acciones</Table.Th>
+                </Table.Tr>
+                {/* --- FILA DE FILTROS --- */}
+                <Table.Tr>
+                  <Table.Th><TextInput placeholder="Filtrar..." onChange={(e) => handleFilterChange('identificativo', e.target.value)} /></Table.Th>
+                  <Table.Th><TextInput placeholder="Filtrar..." onChange={(e) => handleFilterChange('marca', e.target.value)} /></Table.Th>
+                  <Table.Th><TextInput placeholder="Filtrar..." onChange={(e) => handleFilterChange('modelo', e.target.value)} /></Table.Th>
+                  <Table.Th><TextInput placeholder="Filtrar..." onChange={(e) => handleFilterChange('tipoEquipo.nombre', e.target.value)} /></Table.Th>
+                  <Table.Th><TextInput placeholder="Filtrar..." onChange={(e) => handleFilterChange('placa', e.target.value)} /></Table.Th>
+                  <Table.Th><TextInput type="number" placeholder="Filtrar..." onChange={(e) => handleFilterChange('kilometraje', e.target.value)} /></Table.Th>
+                  <Table.Th><TextInput type="number" placeholder="Filtrar..." onChange={(e) => handleFilterChange('horometro', e.target.value)} /></Table.Th>
+                  <Table.Th><TextInput placeholder="Filtrar..." onChange={(e) => handleFilterChange('estadoOperativoGeneral', e.target.value)} /></Table.Th>
+                  <Table.Th></Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.length > 0 ? rows : (
+                  <Table.Tr>
+                    <Table.Td colSpan={9}>
+                      <Text c="dimmed" ta="center" py="xl">No se encontraron equipos que coincidan con los filtros.</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        )}
       </Paper>
-      <DeleteModal
-        opened={deleteModalOpened}
-        onClose={() => setDeleteModalOpened(false)}
-        onConfirm={handleDelete}
-        itemType="Equipo Especial"
-      />
-    </SectionBox>
+    </Container>
   );
 }

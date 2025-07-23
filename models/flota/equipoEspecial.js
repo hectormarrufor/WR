@@ -8,12 +8,15 @@ const EquipoEspecial = sequelize.define('EquipoEspecial', {
     primaryKey: true,
     autoIncrement: true,
   },
-  nombre: {
+  marca: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
   },
-  numeroSerie: {
+  modelo: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  identificativo: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
@@ -32,12 +35,12 @@ const EquipoEspecial = sequelize.define('EquipoEspecial', {
       key: 'id',
     },
   },
-  horometroActual: {
+  horometro: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
     allowNull: false,
   },
-  kilometrajeActual: {
+  kilometraje: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
     allowNull: false,
@@ -47,29 +50,18 @@ const EquipoEspecial = sequelize.define('EquipoEspecial', {
     defaultValue: 'Operativo',
     allowNull: false,
   },
-  esMovil: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true,
-    allowNull: false,
-  },
-  vehiculoRemolqueId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'Vehiculos',
-      key: 'id',
-    },
-  },
 }, {
   tableName: 'EquiposEspeciales',
   timestamps: true,
 });
 
 EquipoEspecial.associate = (models) => {
-  EquipoEspecial.hasOne(models.FichaTecnicaEquipoEspecial, { foreignKey: 'equipoEspecialId', as: 'fichaTecnica' });
-  EquipoEspecial.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoRemolqueId', as: 'vehiculoRemolque' });
+  // EquipoEspecial.hasOne(models.FichaTecnicaEquipoEspecial, { foreignKey: 'equipoEspecialId', as: 'fichaTecnica' });
+  // EquipoEspecial.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoRemolqueId', as: 'vehiculoRemolque' });
   // NUEVA ASOCIACIÓN: Un EquipoEspecial pertenece a un TipoEquipoEspecial
   EquipoEspecial.belongsTo(models.TipoEquipoEspecial, { foreignKey: 'tipoEquipoEspecialId', as: 'tipoEquipo' });
+  EquipoEspecial.hasOne(models.FichaTecnicaEquipoEspecial, { foreignKey: 'equipoEspecialId', as: 'fichaTecnica' });
+
 };
 
 module.exports = EquipoEspecial;

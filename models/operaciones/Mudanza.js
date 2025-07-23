@@ -17,6 +17,24 @@ const Mudanza = sequelize.define('Mudanza', {
     },
     allowNull: false,
   },
+  renglonContratoId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'RenglonesContratos', // Usa el nombre de la tabla
+      key: 'id'
+    }
+  },
+
+  // --- CAMBIO CLAVE: AÑADIR ESTA CLAVE FORÁNEA ---
+  unidadOperativaId: {
+    type: DataTypes.INTEGER,
+    allowNull: false, // Una mudanza siempre debe ser de una unidad específica
+    references: {
+      model: 'UnidadesOperativas', // Nombre de la tabla
+      key: 'id'
+    }
+  },
   fechaInicio: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -60,6 +78,7 @@ const Mudanza = sequelize.define('Mudanza', {
 Mudanza.associate = (models) => {
   Mudanza.belongsTo(models.RenglonContrato, { foreignKey: 'renglonContratoId', as: 'renglonContrato' });
   Mudanza.belongsTo(models.Empleado, { foreignKey: 'supervisorId', as: 'supervisor' });
+  Mudanza.belongsTo(models.UnidadOperativa, { foreignKey: 'unidadOperativaId', as: 'unidadOperativa' });
   // Asignación de personal y vehículos a la mudanza
   Mudanza.hasMany(models.AsignacionPersonalMudanza, { foreignKey: 'mudanzaId', as: 'personalAsignado' });
   Mudanza.hasMany(models.AsignacionVehiculoMudanza, { foreignKey: 'mudanzaId', as: 'vehiculosAsignados' });

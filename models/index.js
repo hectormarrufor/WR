@@ -69,7 +69,6 @@ const ConfiguracionGeneral = require('./ConfiguracionGeneral');
 const Equipo = require('./flota/Equipo');
 const EquipoEspecial = require('./flota/equipoEspecial');
 const FichaTecnicaEquipoEspecial = require('./flota/fichaTecnicaEquipoEspecial');
-const FeatureEquipoEspecial = require('./flota/featureEquipoEspecial');
 const TipoEquipoEspecial = require('./flota/tipoEquipoEspecial');
 
 // --- Crear un objeto 'db' para agruparlos ---
@@ -128,7 +127,6 @@ const db = {
     TipoEquipoEspecial,
     EquipoEspecial,
     FichaTecnicaEquipoEspecial,
-    FeatureEquipoEspecial,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

@@ -17,7 +17,7 @@ const FichaTecnicaEquipoEspecial = sequelize.define('FichaTecnicaEquipoEspecial'
       key: 'id',
     },
   },
-  propiedades: { // ¡NUEVO CAMPO! Contendrá todo el árbol de clave:valor dinámico
+  especificaciones: { // ¡NUEVO CAMPO! Contendrá todo el árbol de clave:valor dinámico
     type: DataTypes.JSONB,
     defaultValue: {}, // Se inicializa como un objeto JSON vacío
     allowNull: false, // Debe existir, aunque esté vacío
@@ -28,7 +28,7 @@ const FichaTecnicaEquipoEspecial = sequelize.define('FichaTecnicaEquipoEspecial'
 });
 
 FichaTecnicaEquipoEspecial.associate = (models) => {
-  FichaTecnicaEquipoEspecial.belongsTo(models.EquipoEspecial, { foreignKey: 'equipoEspecialId', as: 'equipoEspecial' });
+  FichaTecnicaEquipoEspecial.belongsTo(models.EquipoEspecial, { foreignKey: 'equipoEspecialId'});
 };
 
 module.exports = FichaTecnicaEquipoEspecial;

@@ -55,6 +55,23 @@ Vehiculo.associate = (models) => {
   Vehiculo.hasMany(models.EstadoSistemaVehiculo, { foreignKey: 'vehiculoId', as: 'estadosSistemas' }); // Nueva asociación
   Vehiculo.hasMany(models.AsignacionVehiculoMudanza, { foreignKey: 'vehiculoId', as: 'asignacionesMudanza' });
   Vehiculo.hasMany(models.AsignacionVehiculoOperacion, { foreignKey: 'vehiculoId', as: 'asignacionesOperacion' });
+  // ... dentro del método Vehiculo.associate = (models) => { ... }
+    
+Vehiculo.hasOne(models.Motor, { foreignKey: 'vehiculoId', as: 'Motor' });
+Vehiculo.hasOne(models.Transmision, { foreignKey: 'vehiculoId', as: 'Transmision' });
+Vehiculo.hasOne(models.PTO, { foreignKey: 'vehiculoId', as: 'PTO' });
+Vehiculo.hasOne(models.BombaDireccion, { foreignKey: 'vehiculoId', as: 'BombaDireccion' });
+Vehiculo.hasOne(models.CompresorAire, { foreignKey: 'vehiculoId', as: 'CompresorAire' });
+
+Vehiculo.hasMany(models.ActivoDeUnidad, {
+  foreignKey: 'activoId',
+  constraints: false, // Requerido para asociaciones polimórficas
+  scope: {
+    activoTipo: 'vehiculo' // Define el tipo para la tabla polimórfica
+  },
+  as: 'asignacionesDeUnidad'
+});
+// ... resto de tus asociaciones ...
  
 };
 
