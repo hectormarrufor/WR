@@ -70,6 +70,25 @@ const Equipo = require('./flota/Equipo');
 const EquipoEspecial = require('./flota/equipoEspecial');
 const FichaTecnicaEquipoEspecial = require('./flota/fichaTecnicaEquipoEspecial');
 const TipoEquipoEspecial = require('./flota/tipoEquipoEspecial');
+const Activo = require('./flota/activos/Activo');
+const UnidadOperativa = require('./operaciones/UnidadOperativa');
+const Motor = require('./flota/componentes/Motor');
+const Transmision = require('./flota/componentes/Transmision');
+const PTO = require('./flota/componentes/PTO');
+const CompresorAire = require('./flota/componentes/CompresorAire');
+const BombaDireccion = require('./flota/componentes/BombaDireccion');
+const ComponenteMayor = require('./flota/componentes/ComponenteMayor');
+const Ubicacion = require('./operaciones/Ubicacion');
+const ManoDeObraOrdenTrabajo = require('./operaciones/ManoObraOrdenTrabajo');
+const Fabricante = require('./operaciones/Fabricante');
+const Tecnico = require('./flota/Tecnico');
+const PlanMantenimiento = require('./flota/PlanMantenimiento');
+const PartesOrdenTrabajo = require('./flota/PartesOrdenTrabajo');
+const ParteInventario = require('./flota/ParteInventario');
+const OrdenTrabajo = require('./flota/OrdenTrabajo');
+const TipoActivo = require('./flota/activos/TipoActivo');
+const JerarquiaActivos = require('./flota/activos/JerarquiaActivo');
+const HistorialConfiguracionActivo = require('./flota/activos/HistorialConfiguracionActivo');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -127,6 +146,26 @@ const db = {
     TipoEquipoEspecial,
     EquipoEspecial,
     FichaTecnicaEquipoEspecial,
+    Activo,
+    UnidadOperativa,
+    Motor,
+    Transmision,
+    PTO,
+    CompresorAire,
+    BombaDireccion,
+    ComponenteMayor,
+    Ubicacion,
+    ManoDeObraOrdenTrabajo,
+    Fabricante,
+    Tecnico,
+    PlanMantenimiento,
+    PartesOrdenTrabajo,
+    ParteInventario,
+    OrdenTrabajo,
+    TipoActivo,
+    JerarquiaActivos,
+    HistorialConfiguracionActivo,
+    
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

@@ -50,29 +50,34 @@ Vehiculo.associate = (models) => {
   Vehiculo.hasOne(models.FichaTecnica, { foreignKey: 'vehiculoId', as: 'fichaTecnica' });
   Vehiculo.hasMany(models.Kilometraje, { foreignKey: 'vehiculoId', as: 'kilometrajes' });
   Vehiculo.hasMany(models.Horometro, { foreignKey: 'vehiculoId', as: 'horometros' });
-  Vehiculo.hasMany(models.Inspeccion, { foreignKey: 'vehiculoId', as: 'inspecciones' });
-  Vehiculo.hasMany(models.Mantenimiento, { foreignKey: 'vehiculoId', as: 'mantenimientos' });
   Vehiculo.hasMany(models.EstadoSistemaVehiculo, { foreignKey: 'vehiculoId', as: 'estadosSistemas' }); // Nueva asociación
   Vehiculo.hasMany(models.AsignacionVehiculoMudanza, { foreignKey: 'vehiculoId', as: 'asignacionesMudanza' });
   Vehiculo.hasMany(models.AsignacionVehiculoOperacion, { foreignKey: 'vehiculoId', as: 'asignacionesOperacion' });
+  Vehiculo.hasMany(models.Mantenimiento, {
+    foreignKey: 'activoId', constraints: false, scope: { activoTipo: 'vehiculo' }, as: 'historialMantenimiento'
+  });
+  Vehiculo.hasMany(models.Inspeccion, {
+    foreignKey: 'inspeccionableId', constraints: false, scope: { inspeccionableTipo: 'vehiculo' }, as: 'historialInspecciones'
+  });
   // ... dentro del método Vehiculo.associate = (models) => { ... }
-    
-Vehiculo.hasOne(models.Motor, { foreignKey: 'vehiculoId', as: 'Motor' });
-Vehiculo.hasOne(models.Transmision, { foreignKey: 'vehiculoId', as: 'Transmision' });
-Vehiculo.hasOne(models.PTO, { foreignKey: 'vehiculoId', as: 'PTO' });
-Vehiculo.hasOne(models.BombaDireccion, { foreignKey: 'vehiculoId', as: 'BombaDireccion' });
-Vehiculo.hasOne(models.CompresorAire, { foreignKey: 'vehiculoId', as: 'CompresorAire' });
 
-Vehiculo.hasMany(models.ActivoDeUnidad, {
-  foreignKey: 'activoId',
-  constraints: false, // Requerido para asociaciones polimórficas
-  scope: {
-    activoTipo: 'vehiculo' // Define el tipo para la tabla polimórfica
-  },
-  as: 'asignacionesDeUnidad'
-});
-// ... resto de tus asociaciones ...
- 
+  Vehiculo.hasOne(models.Motor, { foreignKey: 'vehiculoId', as: 'Motor' });
+  Vehiculo.hasOne(models.Transmision, { foreignKey: 'vehiculoId', as: 'Transmision' });
+  Vehiculo.hasOne(models.PTO, { foreignKey: 'vehiculoId', as: 'PTO' });
+  Vehiculo.hasOne(models.BombaDireccion, { foreignKey: 'vehiculoId', as: 'BombaDireccion' });
+  Vehiculo.hasOne(models.CompresorAire, { foreignKey: 'vehiculoId', as: 'CompresorAire' });
+
+  Vehiculo.hasMany(models.ActivoDeUnidad, {
+    foreignKey: 'activoId',
+    constraints: false, // Requerido para asociaciones polimórficas
+    scope: {
+      activoTipo: 'vehiculo' // Define el tipo para la tabla polimórfica
+    },
+    as: 'asignacionesDeUnidad'
+  });
+  Vehiculo.hasOne(models.TipoVehiculo, { foreignKey: 'vehiculoId' });
+  // ... resto de tus asociaciones ...
+
 };
 
 module.exports = Vehiculo;

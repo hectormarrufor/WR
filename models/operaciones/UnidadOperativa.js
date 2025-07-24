@@ -11,7 +11,6 @@ const UnidadOperativa = sequelize.define('UnidadOperativa', {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    comment: 'Nombre o código de la unidad, ej: "CTU-05", "SNUB-02".'
   },
   tipoUnidad: {
     type: DataTypes.ENUM('Coiled Tubing', 'Snubbing', 'Cementación', 'Wireline', 'Gabarra'),
@@ -41,6 +40,9 @@ UnidadOperativa.associate = (models) => {
     foreignKey: 'unidadOperativaId',
     as: 'historialMudanzas'
   });
+  UnidadOperativa.hasMany(models.Inspeccion, {
+  foreignKey: 'inspeccionableId', constraints: false, scope: { inspeccionableTipo: 'unidadOperativa' }, as: 'historialInspecciones'
+});
 };
 
 module.exports = UnidadOperativa;

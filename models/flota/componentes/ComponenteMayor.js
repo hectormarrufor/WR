@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../../sequelize');
+const sequelize = require('../../../sequelize');
 
 const ComponenteMayor = sequelize.define('ComponenteMayor', {
   id: {
@@ -42,6 +42,12 @@ ComponenteMayor.associate = (models) => {
     },
     as: 'asignacionesDeUnidad'
   });
+  ComponenteMayor.hasMany(models.Mantenimiento, {
+  foreignKey: 'activoId', constraints: false, scope: { activoTipo: 'componenteMayor' }, as: 'historialMantenimiento'
+});
+ComponenteMayor.hasMany(models.Inspeccion, {
+  foreignKey: 'inspeccionableId', constraints: false, scope: { inspeccionableTipo: 'componenteMayor' }, as: 'historialInspecciones'
+});
 };
 
 module.exports = ComponenteMayor;

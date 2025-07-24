@@ -21,7 +21,7 @@ const Mudanza = sequelize.define('Mudanza', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'RenglonesContratos', // Usa el nombre de la tabla
+      model: 'RenglonesContrato', // Usa el nombre de la tabla
       key: 'id'
     }
   },

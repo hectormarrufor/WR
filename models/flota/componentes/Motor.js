@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../../sequelize'); // Asegúrate de que la ruta sea correcta
+const sequelize = require('../../../sequelize'); // Asegúrate de que la ruta sea correcta
 
 const Motor = sequelize.define('Motor', {
   id: {
