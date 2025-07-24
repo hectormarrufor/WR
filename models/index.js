@@ -12,7 +12,6 @@ const Vehiculo = require('./flota/vehiculo');
 const EstadoSistemaVehiculo = require('./flota/estadoSistemaVehiculo');
 const FichaTecnica = require('./flota/fichaTecnica');
 const HallazgoInspeccion = require('./flota/hallazgoInspeccion');
-const Inspeccion = require('./flota/inspeccion');
 const Kilometraje = require('./flota/kilometraje');
 const Horometro = require('./flota/horometro');
 const Mantenimiento = require('./flota/mantenimiento');
@@ -70,7 +69,6 @@ const Equipo = require('./flota/Equipo');
 const EquipoEspecial = require('./flota/equipoEspecial');
 const FichaTecnicaEquipoEspecial = require('./flota/fichaTecnicaEquipoEspecial');
 const TipoEquipoEspecial = require('./flota/tipoEquipoEspecial');
-const Activo = require('./flota/activos/Activo');
 const UnidadOperativa = require('./operaciones/UnidadOperativa');
 const Motor = require('./flota/componentes/Motor');
 const Transmision = require('./flota/componentes/Transmision');
@@ -86,9 +84,16 @@ const PlanMantenimiento = require('./flota/PlanMantenimiento');
 const PartesOrdenTrabajo = require('./flota/PartesOrdenTrabajo');
 const ParteInventario = require('./flota/ParteInventario');
 const OrdenTrabajo = require('./flota/OrdenTrabajo');
-const TipoActivo = require('./flota/activos/TipoActivo');
-const JerarquiaActivos = require('./flota/activos/JerarquiaActivo');
-const HistorialConfiguracionActivo = require('./flota/activos/HistorialConfiguracionActivo');
+const { default: Activo } = require('./gestionMantenimiento/Activo');
+const { default: CategoriaActivo } = require('./gestionMantenimiento/CategoriaActivo');
+const { default: ChecklistTemplate } = require('./gestionMantenimiento/ChecklistTemplate');
+const { default: Componente } = require('./gestionMantenimiento/Componente');
+const { default: HistorialMantenimiento } = require('./gestionMantenimiento/HistorialMantenimiento');
+const { default: Inspeccion } = require('./gestionMantenimiento/Inspeccion');
+const { default: Inventario } = require('./gestionMantenimiento/Inventario');
+const { default: OrdenTrabajoRepuesto } = require('./gestionMantenimiento/OrdenTrabajoRepuesto');
+const { default: Repuesto } = require('./gestionMantenimiento/Repuesto');
+const { default: Usuario } = require('./gestionMantenimiento/Usuario');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -104,7 +109,6 @@ const db = {
     EstadoSistemaVehiculo,
     FichaTecnica,
     HallazgoInspeccion,
-    Inspeccion,
     Kilometraje,
     Horometro,
     Mantenimiento,
@@ -162,10 +166,15 @@ const db = {
     PartesOrdenTrabajo,
     ParteInventario,
     OrdenTrabajo,
-    TipoActivo,
-    JerarquiaActivos,
-    HistorialConfiguracionActivo,
-    
+    CategoriaActivo,
+    ChecklistTemplate,
+    Componente,
+    HistorialMantenimiento,
+    Inspeccion,
+    Inventario,
+    OrdenTrabajoRepuesto,
+    Repuesto,
+    Usuario,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---
