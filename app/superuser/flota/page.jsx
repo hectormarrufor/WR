@@ -9,7 +9,7 @@ import classes from './flota.module.css';
 // Datos para las nuevas tarjetas de navegación
 const mockdata = [
   {
-    title: 'Inventario de Activos',
+    title: 'Todos los Activos',
     icon: IconBuildingWarehouse,
     color: 'blue',
     description: 'Gestiona cada activo físico individual: vehículos, skids, motores, power packs y más.',
@@ -20,7 +20,21 @@ const mockdata = [
     icon: IconAssembly,
     color: 'teal',
     description: 'Configura y gestiona los equipos funcionales ensamblados, listos para el servicio en campo.',
-    href: '/superuser/flota/unidades', // <-- RUTA CORREGIDA
+    href: '/superuser/flota/unidades-operativas', // <-- RUTA CORREGIDA
+  },
+  {
+    title: 'Vehiculos',
+    icon: IconAssembly,
+    color: 'teal',
+    description: 'Configura y gestiona los vehiculos.',
+    href: '/superuser/flota/vehiculos', // <-- RUTA CORREGIDA
+  },
+  {
+    title: 'Gabarras',
+    icon: IconAssembly,
+    color: 'teal',
+    description: 'Configura y gestiona las gabarras.',
+    href: '/superuser/flota/gabarras', // <-- RUTA CORREGIDA
   },
 ];
 

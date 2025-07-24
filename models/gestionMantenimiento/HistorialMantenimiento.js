@@ -1,7 +1,7 @@
-import { DataTypes } from 'sequelize';
-import Activo from './Activo.js';
-import OrdenTrabajo from './OrdenTrabajo.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const Activo = require('./Activo.js');
+const OrdenTrabajo = require('./OrdenTrabajo.js');
+const sequelize = require('../../sequelize.js');
 
 
 const HistorialMantenimiento = sequelize.define('HistorialMantenimiento', {
@@ -39,4 +39,4 @@ HistorialMantenimiento.belongsTo(OrdenTrabajo, {
   as: 'orden_trabajo',
 });
 
-export default HistorialMantenimiento;
+module.exports = HistorialMantenimiento;

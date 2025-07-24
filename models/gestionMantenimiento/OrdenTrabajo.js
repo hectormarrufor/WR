@@ -1,7 +1,7 @@
-import { DataTypes } from 'sequelize';
-import Activo from './Activo.js';
-import Usuario from './Usuario.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const Activo = require('./Activo.js');
+const Usuario = require('./Usuario.js');
+const sequelize = require('../../sequelize.js');
 
 // Asumimos que tienes un modelo de Usuario
 // import Usuario from '../Usuario.js';
@@ -76,4 +76,4 @@ OrdenTrabajo.belongsTo(Usuario, { foreignKey: 'tecnicoAsignadoId', as: 'tecnico'
 
 // OrdenTrabajo.belongsTo(Usuario, { foreignKey: 'tecnicoAsignadoId', as: 'tecnico' });
 
-export default OrdenTrabajo;
+module.exports = OrdenTrabajo;

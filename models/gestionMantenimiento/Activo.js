@@ -1,6 +1,6 @@
-import { DataTypes } from 'sequelize';
-import CategoriaActivo from './CategoriaActivo.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require ('sequelize');
+const CategoriaActivo = require ('./CategoriaActivo.js');
+const sequelize = require ('../../sequelize.js');
 
 const Activo = sequelize.define('Activo', {
   id: {
@@ -54,4 +54,4 @@ CategoriaActivo.hasMany(Activo, {
   as: 'activos',
 });
 
-export default Activo;
+module.exports= Activo;

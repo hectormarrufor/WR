@@ -1,6 +1,6 @@
-import { DataTypes } from 'sequelize';
-import Activo from './Activo.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const Activo = require('./Activo.js');
+const sequelize = require('../../sequelize.js');
 
 const Componente = sequelize.define('Componente', {
   id: {
@@ -34,4 +34,4 @@ Componente.belongsTo(Activo, {
   as: 'activo',
 });
 
-export default Componente;
+module.exports = Componente;

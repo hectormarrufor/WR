@@ -1,6 +1,6 @@
-import { DataTypes } from 'sequelize';
-import Activo from './Activo.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const Activo = require('./Activo.js');
+const sequelize = require('../../sequelize.js');
 
 
 const Kilometraje = sequelize.define('Kilometraje', {
@@ -26,4 +26,4 @@ const Kilometraje = sequelize.define('Kilometraje', {
 Kilometraje.belongsTo(Activo, { foreignKey: 'activoId' });
 Activo.hasMany(Kilometraje, { foreignKey: 'activoId', as: 'historial_kilometrajes' });
 
-export default Kilometraje;
+module.exports = Kilometraje;

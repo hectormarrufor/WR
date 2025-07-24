@@ -1,0 +1,145 @@
+/* --- Contenedor Principal con Variables de Color y Diseño --- */
+.tableContainer {
+  /* Variables definidas localmente para este componente y sus hijos */
+  --background-color: #ffffff;
+  --surface-color: #f8f9fa;
+  --primary-text-color: #212529;
+  --secondary-text-color: #6c757d;
+  --border-color: #dee2e6;
+  --accent-color: #007bff;
+  --accent-color-hover: #0056b3;
+  --status-operativo: #28a745;
+  --status-mantenimiento: #ffc107;
+  --status-fuera_servicio: #dc3545;
+  --border-radius: 6px;
+
+  /* Estilos del contenedor que ya teníamos */
+  width: 100%;
+  padding: 1.5rem;
+  background-color: var(--background-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Barra de Herramientas (Búsqueda y Botón) --- */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.searchInput {
+  flex-grow: 1;
+  max-width: 400px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+}
+
+.createButton {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--accent-color);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.createButton:hover {
+  background-color: var(--accent-color-hover);
+}
+
+/* --- Estilos de la Tabla --- */
+.tableWrapper {
+  overflow-x: auto; /* Para responsividad en pantallas pequeñas */
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 1rem;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--secondary-text-color);
+  cursor: pointer;
+  user-select: none; /* Evita seleccionar el texto al hacer clic */
+  transition: background-color 0.2s;
+}
+
+.table th:hover {
+  background-color: var(--surface-color);
+}
+
+.table tbody tr:hover {
+  background-color: var(--surface-color);
+}
+
+.table td {
+  color: var(--primary-text-color);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* --- Botón de Detalles --- */
+.detailsButton {
+  padding: 0.4rem 0.8rem;
+  background-color: transparent;
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.detailsButton:hover {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+/* --- Insignias de Status --- */
+.statusBadge {
+  padding: 0.3rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: white;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.statusBadge.operativo { background-color: var(--status-operativo); }
+.statusBadge.en_mantenimiento { background-color: var(--status-mantenimiento); color: #333; }
+.statusBadge.fuera_de_servicio { background-color: var(--status-fuera_servicio); }
+
+/* --- Mensajes de Error --- */
+.error {
+    color: var(--status-fuera_servicio);
+    background-color: rgba(220, 53, 69, 0.1);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+}

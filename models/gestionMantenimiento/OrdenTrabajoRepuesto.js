@@ -1,7 +1,7 @@
-import { DataTypes } from 'sequelize';
-import OrdenTrabajo from './OrdenTrabajo.js';
-import Repuesto from './Repuesto.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const OrdenTrabajo = require('./OrdenTrabajo.js');
+const Repuesto = require('./Repuesto.js');
+const sequelize = require('../../sequelize.js');
 
 const OrdenTrabajoRepuesto = sequelize.define('OrdenTrabajoRepuesto', {
   id: {
@@ -29,4 +29,4 @@ Repuesto.belongsToMany(OrdenTrabajo, {
   as: 'ordenes_de_trabajo'
 });
 
-export default OrdenTrabajoRepuesto;
+module.exports = OrdenTrabajoRepuesto;

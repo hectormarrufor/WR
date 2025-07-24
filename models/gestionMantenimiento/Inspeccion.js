@@ -1,9 +1,9 @@
-import { DataTypes } from 'sequelize';
-import Activo from './Activo.js';
-import Usuario from './Usuario.js';
-import ChecklistTemplate from './ChecklistTemplate.js';
-import OrdenTrabajo from './OrdenTrabajo.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const Activo = require('./Activo.js');
+const Usuario = require('./Usuario.js');
+const ChecklistTemplate = require('./ChecklistTemplate.js');
+const OrdenTrabajo = require('./OrdenTrabajo.js');
+const sequelize = require('../../sequelize.js');
 
 
 const Inspeccion = sequelize.define('Inspeccion', {
@@ -43,4 +43,4 @@ Inspeccion.belongsTo(ChecklistTemplate, { foreignKey: 'templateId', as: 'templat
 Inspeccion.hasOne(OrdenTrabajo, { foreignKey: 'origen_id', constraints: false, scope: { tipo_origen: 'inspeccion' } });
 OrdenTrabajo.belongsTo(Inspeccion, { foreignKey: 'origen_id', constraints: false, as: 'inspeccion_origen' });
 
-export default Inspeccion;
+module.exports = Inspeccion;

@@ -1,5 +1,5 @@
-import { DataTypes } from 'sequelize';
-import sequelize from '../../sequelize';
+const { DataTypes } =  require('sequelize');
+const sequelize =  require('../../sequelize');
 
 const ChecklistTemplate = sequelize.define('ChecklistTemplate', {
     id: {
@@ -25,4 +25,4 @@ const ChecklistTemplate = sequelize.define('ChecklistTemplate', {
     timestamps: true,
 });
 
-export default ChecklistTemplate;
+module.exports = ChecklistTemplate;

@@ -7,6 +7,9 @@ const PlanMantenimiento = sequelize.define('PlanMantenimiento', {
     primaryKey: true,
     autoIncrement: true,
   },
+  id_tipo_activo: {
+    type: DataTypes.INTEGER,
+  },
   descripcion: {
     type: DataTypes.TEXT,
     allowNull: false,
@@ -35,7 +38,7 @@ const PlanMantenimiento = sequelize.define('PlanMantenimiento', {
 PlanMantenimiento.associate = (models) => {
   // Un plan puede aplicar a un tipo de activo o a un activo específico
   PlanMantenimiento.belongsTo(models.Activo, { foreignKey: 'id_activo', allowNull: true });
-  PlanMantenimiento.belongsTo(models.TipoActivo, { foreignKey: 'id_tipo_activo', allowNull: true });
+  PlanMantenimiento.belongsTo(models.CategoriaActivo, { foreignKey: 'id_tipo_activo', allowNull: true });
 };
 
 module.exports = PlanMantenimiento;

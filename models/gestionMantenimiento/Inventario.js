@@ -1,6 +1,6 @@
-import { DataTypes } from 'sequelize';
-import Repuesto from './Repuesto.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const Repuesto = require('./Repuesto.js');
+const sequelize = require('../../sequelize.js');
 
 const Inventario = sequelize.define('Inventario', {
   id: {
@@ -25,4 +25,4 @@ const Inventario = sequelize.define('Inventario', {
 Repuesto.hasOne(Inventario, { foreignKey: 'repuestoId', as: 'stock' });
 Inventario.belongsTo(Repuesto, { foreignKey: 'repuestoId', as: 'repuesto' });
 
-export default Inventario;
+module.exports = Inventario;

@@ -1,6 +1,6 @@
-import { DataTypes } from 'sequelize';
-import Activo from './Activo.js';
-import sequelize from '../../sequelize.js';
+const { DataTypes } = require('sequelize');
+const Activo = require('./Activo.js');
+const sequelize = require('../../sequelize.js');
 
 const Horometro = sequelize.define('Horometro', {
     id: {
@@ -25,4 +25,4 @@ const Horometro = sequelize.define('Horometro', {
 Horometro.belongsTo(Activo, { foreignKey: 'activoId' });
 Activo.hasMany(Horometro, { foreignKey: 'activoId', as: 'historial_horometros' });
 
-export default Horometro;
+module.exports = Horometro;
