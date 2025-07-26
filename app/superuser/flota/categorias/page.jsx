@@ -1,21 +1,92 @@
-import Link from 'next/link';
-import { Button, Paper } from '@mantine/core';
-import {SectionTitle} from '../../../components/SectionTitle';
-import ListaCategorias from '../components/ListaCategorias';
+// app/superuser/flota/categorias/page.jsx
+'use client';
 
-export default function GestionCategoriasPage() {
-  return (
-    <Paper p={30}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <SectionTitle title="Gestión de Categorías de Activos" />
-        <Button component={Link} href="/superuser/flota/categorias/crear">
-          Crear Nueva Categoría
-        </Button>
-      </div>
-      <p style={{marginTop: '-1rem', marginBottom: '2rem', color: '#6c757d'}}>
-        Las categorías agrupan plantillas (Grupos) para definir un tipo específico de activo.
-      </p>
-      <ListaCategorias />
-    </Paper>
-  );
+import { useState, useEffect } from 'react';
+import { Table, Button, Group, Title, Paper, LoadingOverlay, Text, ActionIcon } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { useRouter } from 'next/navigation';
+import { IconPencil, IconTrash, IconPlus } from '@tabler/icons-react';
+import Link from 'next/link';
+
+export default function CategoriasListPage() {
+    const router = useRouter();
+    const [categorias, setCategorias] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchCategorias() {
+            try {
+                const response = await fetch('/api/gestionMantenimiento/categorias');
+                if (!response.ok) {
+                    throw new Error('Error al cargar las categorías');
+                }
+                const data = await response.json();
+                setCategorias(data);
+            } catch (error) {
+                notifications.show({
+                    title: 'Error',
+                    message: error.message,
+                    color: 'red',
+                });
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchCategorias();
+    }, []);
+
+    const rows = categorias.map((cat) => (
+        <Table.Tr key={cat.id}>
+            <Table.Td>{cat.id}</Table.Td>
+            <Table.Td>{cat.nombre}</Table.Td>
+            <Table.Td>{cat.grupos.map(g => g.nombre).join(', ')}</Table.Td>
+            <Table.Td>
+                <Group>
+                    <ActionIcon
+                        variant="subtle"
+                        color="blue"
+                        onClick={() => router.push(`/superuser/flota/categorias/${cat.id}/editar`)}
+                    >
+                        <IconPencil size={18} />
+                    </ActionIcon>
+                    {/* Aquí puedes añadir un modal de confirmación para borrar */}
+                    <ActionIcon variant="subtle" color="red" onClick={() => {/* handle delete */}}>
+                        <IconTrash size={18} />
+                    </ActionIcon>
+                </Group>
+            </Table.Td>
+        </Table.Tr>
+    ));
+
+    return (
+        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+            <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
+            <Group justify="space-between" mb="xl">
+                <Title order={2}>Categorías de Activos</Title>
+                <Button
+                    leftSection={<IconPlus size={14}/>}
+                    component={Link}
+                    href="/superuser/flota/categorias/crear"
+                >
+                    Crear Categoría
+                </Button>
+            </Group>
+
+            {categorias.length > 0 ? (
+                 <Table striped highlightOnHover>
+                    <Table.Thead>
+                        <Table.Tr>
+                            <Table.Th>ID</Table.Th>
+                            <Table.Th>Nombre</Table.Th>
+                            <Table.Th>Grupos Base</Table.Th>
+                            <Table.Th>Acciones</Table.Th>
+                        </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>{rows}</Table.Tbody>
+                </Table>
+            ) : (
+                <Text>No hay categorías creadas todavía.</Text>
+            )}
+        </Paper>
+    );
 }
