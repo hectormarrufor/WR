@@ -15,20 +15,25 @@ const CategoriaActivo = sequelize.define('CategoriaActivo', {
   descripcion: {
     type: DataTypes.TEXT,
   },
-  // CAMBIO CLAVE: Campo para agrupar las categorías
-  grupo: {
-    type: DataTypes.ENUM(
-      'VEHICULO',       // Para camionetas, carros, etc.
-      'GABARRA',        // Para activos offshore
-      'UNIDAD_OPERATIVA', // Para Coiled Tubing, Wireline, Taladros
-      'COMPONENTE_MAYOR', // Para Chutos, Lowboys, Skids
-      'COMPONENTE_MENOR'  // Para Motores, Transmisiones, Bombas
-    ),
-    allowNull: false,
+  parentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'categorias_activos', key: 'id' }
   },
+  definicion_formulario_propia: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
+  valores_predeterminados: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+  }
 }, {
   tableName: 'categorias_activos',
   timestamps: true,
 });
+
+CategoriaActivo.belongsTo(CategoriaActivo, { as: 'parent', foreignKey: 'parentId' });
+CategoriaActivo.hasMany(CategoriaActivo, { as: 'children', foreignKey: 'parentId' });
 
 module.exports = CategoriaActivo;

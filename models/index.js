@@ -82,7 +82,6 @@ const PlanMantenimiento = require('./flota/PlanMantenimiento');
 const PartesOrdenTrabajo = require('./flota/PartesOrdenTrabajo');
 const ParteInventario = require('./flota/ParteInventario');
 const Activo = require('./gestionMantenimiento/Activo');
-const CategoriaActivo = require('./gestionMantenimiento/CategoriaActivo');
 const ChecklistTemplate = require('./gestionMantenimiento/ChecklistTemplate');
 const Componente = require('./gestionMantenimiento/Componente');
 const HistorialMantenimiento = require('./gestionMantenimiento/HistorialMantenimiento');
@@ -94,6 +93,8 @@ const Usuario = require('./gestionMantenimiento/Usuario');
 const Kilometraje = require('./gestionMantenimiento/Kilometraje');
 const Horometro = require('./gestionMantenimiento/Horometro');
 const OrdenTrabajo = require('./gestionMantenimiento/OrdenTrabajo');
+const { CategoriaGrupo , CategoriaActivo, Grupo} = require('./gestionMantenimiento/CategoriaGrupo');
+const ListaOpciones = require('./gestionMantenimiento/ListaOpciones');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -175,6 +176,10 @@ const db = {
     OrdenTrabajoRepuesto,
     Repuesto,
     Usuario,
+    CategoriaGrupo,
+    Grupo,
+    ListaOpciones
+    
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

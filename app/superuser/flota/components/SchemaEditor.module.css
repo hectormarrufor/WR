@@ -1,0 +1,27 @@
+.container {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--mantine-color-gray-0);
+    border: 1px dashed var(--mantine-color-gray-4);
+    border-radius: var(--mantine-radius-md);
+}
+
+.objectContainer, .itemContainer {
+    background-color: #ffffff;
+}
+.itemContainer {
+    border: 1px solid var(--mantine-color-gray-2);
+}
+
+.titleInput, .idInput {
+    font-weight: 500;
+}
+
+.titleInput {
+    font-size: var(--mantine-font-size-lg);
+}
+
+.idInput {
+    font-size: var(--mantine-font-size-sm);
+    color: var(--mantine-color-gray-6);
+}

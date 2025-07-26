@@ -140,7 +140,8 @@ export default function RootLayout({ children }) {
 
             <AppShell.Main
               px={0}
-              mt={showHeader ? 40 : 0}
+              mt={showHeader ? isMobile ? 40 : 50 : 0}
+              mx={ isMobile ? 0 : 10}
             >
               {children}
               <Image

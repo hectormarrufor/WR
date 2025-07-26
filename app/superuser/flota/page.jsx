@@ -1,7 +1,7 @@
 'use client';
 
 import { Container, Title, Text, SimpleGrid, Paper, Group, ThemeIcon, rem, Menu, Button } from '@mantine/core';
-import { IconBuildingWarehouse, IconAssembly, IconTruck, IconTool, IconPlus } from '@tabler/icons-react';
+import { IconBuildingWarehouse, IconAssembly, IconTruck, IconTool, IconPlus, IconShip, IconRectangleRoundedTop, IconLayersUnion, IconCar4wd, IconCar4wdFilled, IconCar, IconCategory, IconBoxModel } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import classes from './flota.module.css';
@@ -18,23 +18,44 @@ const mockdata = [
   {
     title: 'Unidades Operativas',
     icon: IconAssembly,
-    color: 'teal',
+    color: 'brown',
     description: 'Configura y gestiona los equipos funcionales ensamblados, listos para el servicio en campo.',
     href: '/superuser/flota/unidades-operativas', // <-- RUTA CORREGIDA
   },
   {
     title: 'Vehiculos',
-    icon: IconAssembly,
-    color: 'teal',
+    icon: IconCar,
+    color: 'red',
     description: 'Configura y gestiona los vehiculos.',
     href: '/superuser/flota/vehiculos', // <-- RUTA CORREGIDA
   },
   {
     title: 'Gabarras',
-    icon: IconAssembly,
-    color: 'teal',
+    icon: IconShip,
+    color: 'orange',
     description: 'Configura y gestiona las gabarras.',
     href: '/superuser/flota/gabarras', // <-- RUTA CORREGIDA
+  },
+  {
+    title: 'Grupos',
+    icon: IconLayersUnion,
+    color: 'yellow',
+    description: 'Configura y gestiona los grupos de activos (motor, vehiculo, bombas, transmision, gabarra).',
+    href: '/superuser/flota/grupos', // <-- RUTA CORREGIDA
+  },
+  {
+    title: 'Categorias',
+    icon: IconCategory,
+    color: 'green',
+    description: 'Configura y gestiona las categorias de activos (Taladro autopropulsado, camioneta, Chuto, Lowboys).',
+    href: '/superuser/flota/categorias', // <-- RUTA CORREGIDA
+  },
+  {
+    title: 'Modelos',
+    icon: IconBoxModel,
+    color: 'magenta',
+    description: 'Configura y gestiona los modelos (Silverado, Ikaicene, Motor Cummins IS12).',
+    href: '/superuser/flota/modelos', // <-- RUTA CORREGIDA
   },
 ];
 
@@ -63,7 +84,7 @@ export default function FlotaDashboardPage() {
   ));
 
   return (
-    <Container size="lg" my="xl">
+    <Paper size="lg"  p={40}>
       <Group justify="space-between" mb="lg">
         <Title order={2}>
           Gestión de Flota y Operaciones
@@ -105,6 +126,6 @@ export default function FlotaDashboardPage() {
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
         {items}
       </SimpleGrid>
-    </Container>
+    </Paper>
   );
 }
