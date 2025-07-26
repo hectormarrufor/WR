@@ -1,187 +1,171 @@
+// app/superuser/flota/_components/AtributoConstructor.js
 'use client';
 
-import { TextInput, Select, Checkbox, Paper, Title, ActionIcon, Group, Tooltip, Button, Text, Switch, Stack, MultiSelect, TagsInput } from '@mantine/core';
-import { IconTrash, IconPlus, IconLink } from '@tabler/icons-react';
-import styles from './AtributoConstructor.module.css';
+import { useState, memo, useCallback } from 'react'; // Importamos memo y useCallback
+import {
+  TextInput, Select, Button, Group, Box, Paper, Text, ActionIcon, Collapse,
+  TagsInput, NumberInput, Checkbox, SimpleGrid, SegmentedControl, useMantineTheme
+} from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { IconTrash, IconPlus, IconArrowDown, IconArrowUp } from '@tabler/icons-react';
+import {theme as THEME} from '@/theme'; // Asegúrate de que la ruta sea correcta
 
-// --- Componente para una sola propiedad (no anidada) ---
-function AtributoItem({
-  attr, value, onSchemaChange, onDataChange, onRemove, onAddNested, gruposDisponibles, isInherited
-}) {
-  const handleSchemaUpdate = (field, val) => onSchemaChange({ ...attr, [field]: val });
-  const handleDataUpdate = (val) => onDataChange(val);
-  const isValueDisabled = isInherited && value !== undefined;
+const getDeep = (obj, path) => path.split('.').filter(Boolean).reduce((acc, part) => acc && acc[part], obj);
 
-  // Si es un objeto, la lógica se maneja en la lista padre
-  if (attr.type === 'object') {
-    return (
-      <AtributoList
-        level={1}
-        atributos={attr.schema || []}
-        data={value || {}}
-        onSchemaChange={(newSchema) => handleSchemaUpdate('schema', newSchema)}
-        onDataChange={handleDataUpdate}
-        parentHeader={{
-          label: attr.label, name: attr.name,
-          onUpdate: (headerData) => onSchemaChange({ ...attr, ...headerData }),
-          onRemove: onRemove
-        }}
-        gruposDisponibles={gruposDisponibles}
-        isInherited={isInherited}
-      />
-    );
+// --- Componente AtributoField "Memoizado" ---
+// Envolvemos el componente con React.memo. Ahora solo se renderizará de nuevo si sus props cambian.
+const MemoizedAtributoField = memo(function AtributoField({ attribute, path, onRemove, onUpdate, level }) {
+  const [showDetails, setShowDetails] = useState(true);
+  const theme = useMantineTheme(THEME);
+  const paperColor = theme.colors.gray[Math.min(level, 9)];
+
+  // ... (el resto del código de AtributoField es idéntico al de la versión anterior)
+  const handleUpdate = (field, value) => {
+    onUpdate(path, { ...attribute, [field]: value });
+  };
+  
+  const renderSelectOptionsInput = () => {
+    if (attribute.inputType === 'select' || attribute.inputType === 'multiSelect') {
+      return <TagsInput label="Opciones del Select" description="Presione Enter para agregar una opción." placeholder="Ej: Opción 1..." value={attribute.selectOptions || []} onChange={(value) => handleUpdate('selectOptions', value)} mt="xs" />;
+    }
+    return null;
+  };
+
+  const renderDefaultValueInput = () => {
+    if (attribute.inputType === 'select' || attribute.inputType === 'multiSelect') return null;
+    switch(attribute.dataType) {
+      case 'string': return <TextInput label="Valor por Defecto" value={attribute.defaultValue || ''} onChange={(e) => handleUpdate('defaultValue', e.currentTarget.value)} mt="xs" />;
+      case 'number': return <NumberInput label="Valor por Defecto" value={attribute.defaultValue || ''} onChange={(value) => handleUpdate('defaultValue', value)} mt="xs" />;
+      case 'boolean': return <Checkbox label="Valor por Defecto (marcado = true)" checked={attribute.defaultValue || false} onChange={(e) => handleUpdate('defaultValue', e.currentTarget.checked)} mt="xs" />;
+      default: return null;
+    }
+  }
+
+  const renderRangeInputs = () => {
+    if(attribute.dataType === 'number') {
+      return <Group grow mt="xs"><NumberInput label="Valor Mínimo" value={attribute.min} onChange={(val) => handleUpdate('min', val)} /><NumberInput label="Valor Máximo" value={attribute.max} onChange={(val) => handleUpdate('max', val)} /></Group>;
+    }
+    return null;
   }
 
   return (
-    <div className={styles.itemWrapper}>
-      <Group justify="space-between" wrap="nowrap" align="flex-start">
-        <TextInput
-          placeholder="Etiqueta para el usuario (ej: Serial de Carrocería)"
-          value={attr.label}
-          onChange={(e) => handleSchemaUpdate('label', e.currentTarget.value)}
-          style={{ flex: 1 }}
-        />
-        <Group gap="xs" justify="flex-end" className={styles.actionsGroup}>
-          <Tooltip label="Convertir en Sub-grupo"><ActionIcon color="blue" variant="light" onClick={onAddNested}><IconPlus size={16} /></ActionIcon></Tooltip>
-          <Tooltip label="Eliminar Propiedad"><ActionIcon color="red" variant="light" onClick={onRemove}><IconTrash size={16} /></ActionIcon></Tooltip>
-        </Group>
+    <Paper withBorder p="md" mt="sm" shadow="xs" bg={paperColor}>
+      <Group justify="space-between">
+        <Text fw={500}>{attribute.label || 'Nuevo Atributo'}</Text>
+        <ActionIcon color="red" onClick={onRemove}><IconTrash size={16} /></ActionIcon>
       </Group>
-
-      <div className={styles.detailsContainer}>
-        {/* Columna de Valor */}
-        <div className={styles.valueContainer}>
-          {attr.primitiveType === 'boolean' ? <Checkbox mt="xs" label="Valor" checked={!!value} onChange={(e) => handleDataUpdate(e.currentTarget.checked)} disabled={isValueDisabled} />
-          : attr.primitiveType === 'select' ? <Select data={attr.options || []} value={value || ''} onChange={handleDataUpdate} searchable disabled={isValueDisabled} />
-          : attr.primitiveType === 'multiselect' ? <MultiSelect data={attr.options || []} value={value || []} onChange={handleDataUpdate} searchable disabled={isValueDisabled} />
-          : <TextInput value={value || ''} onChange={(e) => handleDataUpdate(e.target.value)} disabled={isValueDisabled} placeholder="Valor (opcional)" />}
-        </div>
-        
-        {/* Columna de Estructura */}
-        {!isInherited && (
-          <div className={styles.structureColumn}>
-            <TextInput size="xs" placeholder="ID único (ej: serial_carroceria)" value={attr.name} onChange={(e) => handleSchemaUpdate('name', e.currentTarget.value)} />
-            <Select size="xs" data={['text', 'number', 'date', 'boolean', 'select', 'multiselect']} value={attr.primitiveType || 'text'} onChange={(value) => handleSchemaUpdate('primitiveType', value)} />
-            {(attr.primitiveType === 'select' || attr.primitiveType === 'multiselect') && (
-              <TagsInput size="xs" placeholder="Opciones (Enter)" value={attr.options || []} onChange={(options) => handleSchemaUpdate('options', options)} />
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+      <Button variant="subtle" size="xs" onClick={() => setShowDetails((p) => !p)} leftSection={showDetails ? <IconArrowUp size={14}/> : <IconArrowDown size={14}/>}>
+        {showDetails ? 'Ocultar Detalles' : 'Mostrar Detalles'}
+      </Button>
+      <Collapse in={showDetails}>
+        <SimpleGrid cols={2} mt="xs">
+          <TextInput label="Label del Campo" placeholder="Ej: Tipo de Aceite" required value={attribute.label} onChange={(e) => handleUpdate('label', e.currentTarget.value)} />
+          <TextInput label="ID del Atributo (en JSON)" placeholder="Ej: tipoAceite" required value={attribute.id} onChange={(e) => handleUpdate('id', e.currentTarget.value)} />
+        </SimpleGrid>
+        <SimpleGrid cols={2} mt="xs">
+          <Select label="Tipo de Dato" placeholder="Seleccione un tipo" required value={attribute.dataType} onChange={(value) => handleUpdate('dataType', value)} data={['string', 'number', 'boolean', 'object', 'grupo']} />
+          {attribute.dataType === 'string' && (<Select label="Tipo de Input" placeholder="Seleccione un input" value={attribute.inputType} onChange={(value) => handleUpdate('inputType', value)} data={['text', 'textarea', 'select', 'multiSelect']} />)}
+        </SimpleGrid>
+        {renderSelectOptionsInput()}
+        {renderDefaultValueInput()}
+        {renderRangeInputs()}
+      </Collapse>
+    </Paper>
   );
-}
+});
 
-// --- Componente de Lista y Recursión ---
-function AtributoList({
-  atributos, data, onSchemaChange, onDataChange, level, parentHeader, gruposDisponibles, isInherited
-}) {
-    const handleAddProperty = () => {
-        const newSchema = [...(atributos || []), { name: `propiedad${(atributos || []).length}`, label: 'Nueva Propiedad', type: 'primitive', primitiveType: 'text', isNew: true }];
-        onSchemaChange(newSchema);
-    };
-    const handleUpdateItemSchema = (index, newAttr) => {
-        const newSchema = [...atributos]; newSchema[index] = newAttr;
-        onSchemaChange(newSchema);
-    };
-    const handleUpdateItemData = (index, newValue) => {
-        const propertyName = atributos[index].name;
-        const newData = { ...data, [propertyName]: newValue };
-        onDataChange(newData);
-    };
-    const handleRemoveItem = (index) => {
-        const propertyNameToRemove = atributos[index].name;
-        const newSchema = atributos.filter((_, i) => i !== index);
-        const { [propertyNameToRemove]: removed, ...restData } = (data || {});
-        onSchemaChange(newSchema);
-        onDataChange(restData);
-    };
-    const handleAddNested = (index) => {
-        const newSchema = [...atributos];
-        const target = newSchema[index];
-        target.type = 'object';
-        if (!target.schema) target.schema = [];
-        target.schema.push({ name: 'nuevaSubPropiedad', label: 'Nueva Sub-propiedad', type: 'primitive', primitiveType: 'text', isNew: true });
-        onSchemaChange(newSchema);
-    };
-    const levelClass = styles[`level${level}`] || styles.levelDefault;
-    return (
-        <Paper withBorder p="md" mt="md" radius="md" shadow="xs" className={`${styles.listContainer} ${levelClass}`}>
-            {parentHeader && (
-                <div className={styles.parentHeaderContainer}>
-                    <Stack align="center" gap={0} style={{ flex: 1 }}>
-                        <TextInput variant="unstyled" placeholder={parentHeader.isMain ? "Nombre del Grupo" : "Título del Sub-grupo"} value={parentHeader.label} onChange={parentHeader.onLabelChange} classNames={{ input: parentHeader.isMain ? styles.mainTitleInput : styles.titleInput }} />
-                        {!parentHeader.isMain && <TextInput variant="unstyled" placeholder="ID del Sub-grupo" value={parentHeader.name} onChange={parentHeader.onNameChange} classNames={{ input: styles.idInput }} />}
-                        {parentHeader.isMain && <Text size="sm" c="dimmed">Define la plantilla base para este tipo de activo</Text>}
-                    </Stack>
-                    {level > 0 && (<Tooltip label="Eliminar Grupo Completo"><ActionIcon color="red" variant="filled" onClick={parentHeader.onRemove} className={styles.headerDeleteButton}><IconTrash size={16} /></ActionIcon></Tooltip>)}
-                </div>
-            )}
-            
-            {(atributos || []).map((attr, index) => {
-                if (attr.type === 'object') {
-                    return (
-                        <AtributoList
-                            key={index}
-                            atributos={attr.schema || []}
-                            data={data?.[attr.name] || {}}
-                            onSchemaChange={(newSchema) => handleUpdateItemSchema(index, { ...attr, schema: newSchema })}
-                            onDataChange={(newData) => handleUpdateItemData(index, newData)}
-                            level={level + 1}
-                            parentHeader={{
-                                label: attr.label, name: attr.name,
-                                onLabelChange: (e) => handleUpdateItemSchema(index, { ...attr, label: e.target.value }),
-                                onNameChange: (e) => handleUpdateItemSchema(index, { ...attr, name: e.target.value }),
-                                onRemove: () => handleRemoveItem(index),
-                            }}
-                            gruposDisponibles={gruposDisponibles}
-                            isInherited={isInherited || attr.isInherited}
-                        />
-                    );
-                }
-                return (
-                    <AtributoItem
-                        key={index}
-                        attr={attr}
-                        value={data?.[attr.name]}
-                        onSchemaChange={(newAttr) => handleUpdateItemSchema(index, newAttr)}
-                        onDataChange={(newValue) => handleUpdateItemData(index, newValue)}
-                        onRemove={() => handleRemoveItem(index)}
-                        onAddNested={() => handleAddNested(index)}
-                        gruposDisponibles={gruposDisponibles}
-                        isInherited={isInherited || attr.isInherited}
-                    />
-                );
-            })}
-            <Group mt="md" justify="center">
-                <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={handleAddProperty}>Añadir Propiedad</Button>
+// --- El Constructor Principal (también memoizado) ---
+export default memo(function AtributoConstructor({ form, pathPrefix = '', availableGroups = [], level = 0 }) {
+  const theme = useMantineTheme();
+  const paperColor = theme.colors.gray[Math.min(level, 9)];
+
+  // --- OPTIMIZACIÓN: Funciones envueltas en useCallback ---
+  // Estas funciones ahora mantendrán la misma referencia entre renders,
+  // a menos que sus dependencias (form, pathPrefix) cambien.
+  const addAttribute = useCallback(() => {
+    const definicionPath = `${pathPrefix}definicion`;
+    const currentDefinicion = getDeep(form.values, definicionPath) || [];
+    form.setFieldValue(definicionPath, [...currentDefinicion, { key: `attr_${Date.now()}`, id: '', label: '', dataType: 'string', inputType: 'text', selectOptions: [], defaultValue: '', min: undefined, max: undefined, mode: 'none', refId: null, subGrupo: null, definicion: [] }]);
+  }, [form, pathPrefix]);
+
+  const removeAttribute = useCallback((index) => {
+    const definicionPath = `${pathPrefix}definicion`;
+    const currentDefinicion = getDeep(form.values, definicionPath) || [];
+    form.setFieldValue(definicionPath, currentDefinicion.filter((_, i) => i !== index));
+  }, [form, pathPrefix]);
+  
+  const updateAttribute = useCallback((index, newValue) => {
+    form.setFieldValue(`${pathPrefix}definicion.${index}`, newValue);
+  }, [form, pathPrefix]);
+
+  const handleModeChange = useCallback((index, mode) => {
+    const attributePath = `${pathPrefix}definicion.${index}`;
+    const attribute = getDeep(form.values, attributePath);
+    if (mode === 'define') {
+      updateAttribute(index, { ...attribute, mode, refId: null, subGrupo: { key: `sub_${Date.now()}`, nombre: '', definicion: [] } });
+    } else {
+      updateAttribute(index, { ...attribute, mode, refId: null, subGrupo: null });
+    }
+  }, [updateAttribute, pathPrefix, form.values]);
+
+  const definicion = getDeep(form.values, `${pathPrefix}definicion`) || [];
+
+  const fields = definicion.map((item, index) => {
+    
+    if (item.dataType === 'object') {
+      //... (código para 'object' sin cambios)
+      return (
+        <Paper key={item.key} withBorder p="md" mt="sm" shadow="xs" bg={paperColor}>
+            <Group justify="space-between">
+              <Text fw={700} c="cyan">Atributo de Objeto: {item.label || ''}</Text>
+              <ActionIcon color="red" onClick={() => removeAttribute(index)}><IconTrash size={16} /></ActionIcon>
             </Group>
+            <SimpleGrid cols={2} mt="xs">
+              <TextInput label="Label del Objeto" placeholder="Ej: Aceite" required value={item.label} onChange={(e) => updateAttribute(index, { ...item, label: e.currentTarget.value })}/>
+              <TextInput label="ID del Objeto (en JSON)" placeholder="Ej: aceite" required value={item.id} onChange={(e) => updateAttribute(index, { ...item, id: e.currentTarget.value })}/>
+            </SimpleGrid>
+            <AtributoConstructor form={form} pathPrefix={`${pathPrefix}definicion.${index}.`} availableGroups={availableGroups} level={level + 1} />
         </Paper>
-    );
-}
+      );
+    }
+    
+    if (item.dataType === 'grupo') {
+      //... (código para 'grupo' sin cambios)
+      return (
+        <Paper key={item.key} withBorder p="md" mt="sm" shadow="xs" bg={paperColor}>
+            <Group justify="space-between">
+                <Text fw={700} c="blue">Atributo de Grupo: {item.label || ''}</Text>
+                 <ActionIcon color="red" onClick={() => removeAttribute(index)}><IconTrash size={16} /></ActionIcon>
+            </Group>
+             <SimpleGrid cols={2} mt="xs">
+                <TextInput label="Label del Campo" placeholder="Ej: Motor" required value={item.label} onChange={(e) => updateAttribute(index, { ...item, label: e.currentTarget.value })}/>
+                <TextInput label="ID del Atributo (en JSON)" placeholder="Ej: motor" required value={item.id} onChange={(e) => updateAttribute(index, { ...item, id: e.currentTarget.value })}/>
+            </SimpleGrid>
+            <SegmentedControl fullWidth mt="md" value={item.mode || 'none'} onChange={(v) => handleModeChange(index, v)} data={[{ label: 'Seleccionar Existente', value: 'select' },{ label: 'Definir Nuevo Grupo', value: 'define' }]}/>
+            <Collapse in={item.mode === 'select'}>
+              <Select label="Seleccionar un grupo existente" placeholder="Elija un grupo" data={availableGroups.map(g => ({ value: g.id.toString(), label: g.nombre }))} value={item.refId} onChange={(v) => updateAttribute(index, { ...item, refId: v })} mt="xs"/>
+            </Collapse>
+            <Collapse in={item.mode === 'define'}>
+              <Paper withBorder p="md" mt="md" bg={theme.colors.gray[Math.min(level + 1, 9)]}>
+                  <TextInput label="Nombre del Nuevo Sub-Grupo" placeholder="Ej: MOTOR_VEHICULO" required value={item.subGrupo?.nombre || ''} onChange={(e) => updateAttribute(index, { ...item, subGrupo: { ...item.subGrupo, nombre: e.currentTarget.value } })}/>
+                  <AtributoConstructor form={form} pathPrefix={`${pathPrefix}definicion.${index}.subGrupo.`} availableGroups={availableGroups} level={level + 1}/>
+              </Paper>
+            </Collapse>
+        </Paper>
+      );
+    }
+    
+    // Usamos el componente memoizado para los atributos simples
+    return <MemoizedAtributoField key={item.key} attribute={item} path={`${pathPrefix}definicion.${index}`} onRemove={() => removeAttribute(index)} onUpdate={updateAttribute} level={level} />;
+  });
 
-// --- Componente Principal (Wrapper) ---
-export default function AtributoConstructor({ value, onUpdate, gruposDisponibles, isInherited = false }) {
-    const { definicion_formulario, valores_predeterminados, nombre } = value || {};
-
-    const handleSchemaChange = (newSchema) => onUpdate({ ...value, definicion_formulario: { atributos_especificos: newSchema } });
-    const handleDataChange = (newData) => onUpdate({ ...value, valores_predeterminados: newData });
-
-    return (
-        <div className={styles.constructorWrapper}>
-            <AtributoList
-                atributos={definicion_formulario?.atributos_especificos || []}
-                data={valores_predeterminados || {}}
-                onSchemaChange={handleSchemaChange}
-                onDataChange={handleDataChange}
-                level={0}
-                parentHeader={{
-                    label: nombre,
-                    isMain: true,
-                    onLabelChange: (e) => onUpdate({ ...value, nombre: e.target.value }),
-                }}
-                gruposDisponibles={gruposDisponibles}
-                isInherited={isInherited}
-            />
-        </div>
-    );
-}
+  return (
+    <Box mt="lg">
+      <Text size="lg" fw={500}>{level === 0 ? 'Definición de Atributos' : ''}</Text>
+      {fields && fields.length > 0 ? fields : <Text c="dimmed" mt="md">Aún no se han definido atributos para {level > 0 ? 'este sub-nivel' : 'el grupo principal'}.</Text>}
+      <Button leftSection={<IconPlus size={14} />} onClick={addAttribute} mt="md">
+        Añadir Atributo
+      </Button>
+    </Box>
+  );
+});

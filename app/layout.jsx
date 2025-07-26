@@ -11,7 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { useRouter, usePathname } from 'next/navigation';
-import Theme from '../theme';
+import {theme as themeee} from '../theme';
 import useUserType from '../hooks/useUserType';
 import useAuth from '../hooks/useAuth';
 import { cerrarSesion } from './ApiFunctions/userServices';
@@ -27,7 +27,7 @@ import { useMantineTheme } from '@mantine/core';
 export default function RootLayout({ children }) {
   const [showHeader, setShowHeader] = useState(true);
 
-  const theme = createTheme(Theme)
+  const theme = createTheme(themeee)
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   // const { userType, isLoading } = useUserType();
   const { isAuthenticated, checkAuth, userType, isLoading } = useAuth();

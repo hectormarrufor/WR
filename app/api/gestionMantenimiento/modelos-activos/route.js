@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import ModeloActivo from '../../../../models/gestionMantenimiento/ModeloActivo';
-import { CategoriaActivo } from '../../../../models/gestionMantenimiento/CategoriaGrupo';
+import ModeloActivo from '../../../../models/gestionMantenimiento/Modelo';
+import { CategoriaActivo } from '../../../../models/gestionMantenimiento/CategoriaGrupos';
 import sequelize from '../../../../sequelize';
 
 try {

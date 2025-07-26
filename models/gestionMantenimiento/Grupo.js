@@ -13,13 +13,27 @@ const Grupo = sequelize.define('Grupo', {
     unique: true,
   },
   // La plantilla del formulario para este grupo:
-  definicion_formulario: {
+  definicion: {
     type: DataTypes.JSONB,
     allowNull: true,
+    defaultValue: {},
   },
+  parentId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'GG_Grupos', // Se referencia a sí mismo
+            key: 'id'
+        },
+    }
 }, {
-  tableName: 'grupos',
+  tableName: 'GG_Grupos',
   timestamps: true,
+  underscored: true,
 });
+
+// Definimos la asociación para la jerarquía
+Grupo.hasMany(Grupo, { as: 'subGrupos', foreignKey: 'parentId' });
+Grupo.belongsTo(Grupo, { as: 'parent', foreignKey: 'parentId' });
 
 module.exports = Grupo;

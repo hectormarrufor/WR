@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import ModeloActivo from '../../../../../models/gestionMantenimiento/ModeloActivo';
-import { CategoriaActivo, Grupo } from '../../../../../models/gestionMantenimiento/CategoriaGrupo';
+import ModeloActivo from '../../../../../models/gestionMantenimiento/Modelo';
+import { CategoriaActivo, Grupo } from '../../../../../models/gestionMantenimiento/CategoriaGrupos';
 import sequelize from '../../../../../sequelize';
 
 // GET para un solo modelo (con todo el detalle necesario para el formulario)

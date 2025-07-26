@@ -93,25 +93,28 @@ const Usuario = require('./gestionMantenimiento/Usuario');
 const Kilometraje = require('./gestionMantenimiento/Kilometraje');
 const Horometro = require('./gestionMantenimiento/Horometro');
 const OrdenTrabajo = require('./gestionMantenimiento/OrdenTrabajo');
-const { CategoriaGrupo , CategoriaActivo, Grupo} = require('./gestionMantenimiento/CategoriaGrupo');
 const ListaOpciones = require('./gestionMantenimiento/ListaOpciones');
+const Categoria = require('./gestionMantenimiento/Categoria');
+const CategoriaGrupos = require('./gestionMantenimiento/CategoriaGrupos');
+const Modelo = require('./gestionMantenimiento/Modelo');
+const Grupo = require('./gestionMantenimiento/Grupo');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
     User,
     // TipoVehiculo,
-    MedidaNeumatico,
-    TipoAceiteCaja,
-    TipoAceiteMotor,
-    TipoBombillo,
+    // MedidaNeumatico,
+    // TipoAceiteCaja,
+    // TipoAceiteMotor,
+    // TipoBombillo,
     // Vehiculo,
     // Consumible,
     // ConsumibleUsado,
     // EstadoSistemaVehiculo,
     // FichaTecnica,
     // HallazgoInspeccion,
-    Kilometraje,
-    Horometro,
+    // Kilometraje,
+    // Horometro,
     // Mantenimiento,
     // TareaMantenimiento,
     // AsignacionPersonalMudanza,
@@ -159,27 +162,27 @@ const db = {
     // CompresorAire,
     // BombaDireccion,
     // ComponenteMayor,
-    Ubicacion,
-    ManoDeObraOrdenTrabajo,
-    Fabricante,
-    Tecnico,
-    PlanMantenimiento,
-    PartesOrdenTrabajo,
-    ParteInventario,
-    OrdenTrabajo,
-    CategoriaActivo,
-    ChecklistTemplate,
-    Componente,
-    HistorialMantenimiento,
-    Inspeccion,
-    Inventario,
-    OrdenTrabajoRepuesto,
-    Repuesto,
-    Usuario,
-    CategoriaGrupo,
-    Grupo,
-    ListaOpciones
-    
+    // Ubicacion,
+    // ManoDeObraOrdenTrabajo,
+    // Fabricante,
+    // Tecnico,
+    // PlanMantenimiento,
+    // PartesOrdenTrabajo,
+    // ParteInventario,
+    // OrdenTrabajo,
+    // ChecklistTemplate,
+    // Componente,
+    // HistorialMantenimiento,
+    // Inspeccion,
+    // Inventario,
+    // OrdenTrabajoRepuesto,
+    // Repuesto,
+    // Usuario,
+    // ListaOpciones,
+    Categoria,
+    CategoriaGrupos,
+    Modelo,
+    Grupo
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

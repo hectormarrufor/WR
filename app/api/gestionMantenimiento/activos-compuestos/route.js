@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Activo from '../../../../models/gestionMantenimiento/Activo';
-import ModeloActivo from '../../../../models/gestionMantenimiento/ModeloActivo';
-import { CategoriaActivo, Grupo } from '../../../../models/gestionMantenimiento/CategoriaGrupo';
+import ModeloActivo from '../../../../models/gestionMantenimiento/Modelo';
+import { CategoriaActivo, Grupo } from '../../../../models/gestionMantenimiento/CategoriaGrupos';
 import sequelize from '../../../../sequelize';
 
 // Función Helper para encontrar el ModeloActivo para un componente

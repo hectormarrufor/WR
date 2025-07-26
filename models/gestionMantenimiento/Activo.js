@@ -1,79 +1,50 @@
-const { DataTypes } = require ('sequelize');
-const CategoriaActivo = require ('./CategoriaActivo.js');
-const sequelize = require ('../../sequelize.js');
-const ModeloActivo = require('./ModeloActivo.js');
+// app/models/gestionMantenimiento/Activo.js
+const { DataTypes } = require('sequelize');
+const sequelize = require('../../sequelize');
 
 const Activo = sequelize.define('Activo', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  nombre: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  codigo: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
-  },
-  parentId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'activos',
-      key: 'id',
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    codigoActivo: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+    },
+    modeloId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'GG_Modelos',
+            key: 'id'
+        },
+    },
+    datosPersonalizados: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: {},
+    },
+    estadoOperativo: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'Operativo',
     }
-  },
-  status: {
-    type: DataTypes.ENUM('operativo', 'en_mantenimiento', 'en_espera_de_repuesto', 'fuera_de_servicio'),
-    defaultValue: 'operativo',
-  },
-  atributos_dinamicos: {
-    type: DataTypes.JSONB,
-    allowNull: true,
-  },
-  modeloActivoId: {
-    type: DataTypes.INTEGER,
-    references: { model: 'modelos_activos', key: 'id' }
-  },
-  
-  // Almacena solo los valores que son únicos de esta unidad
-  atributos_instancia: {
-    type: DataTypes.JSONB,
-    allowNull: true,
-  },
-  imagen_url: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    comment: 'URL de la imagen específica de este activo'
-  },
-  well_latitude: {
-    type: DataTypes.DECIMAL(10, 8),
-    allowNull: true,
-  },
-  well_longitude: {
-    type: DataTypes.DECIMAL(11, 8),
-    allowNull: true,
-  },
 }, {
-  tableName: 'activos',
-  timestamps: true,
+    tableName: 'GG_Activos',
+    timestamps: true,
+    underscored: true,
 });
 
-// Relaciones existentes...
-Activo.belongsTo(Activo, { as: 'parent', foreignKey: 'parentId' });
-Activo.hasMany(Activo, { as: 'children', foreignKey: 'parentId' });
-Activo.belongsTo(CategoriaActivo, {
-  foreignKey: 'categoriaId',
-  as: 'categoria',
-});
-CategoriaActivo.hasMany(Activo, {
-  foreignKey: 'categoriaId',
-  as: 'activos',
-});
-Activo.belongsTo(ModeloActivo, { foreignKey: 'modeloActivoId' });
-ModeloActivo.hasMany(Activo, { foreignKey: 'modeloActivoId' });
+Activo.associate = (models) => {
+    Activo.belongsTo(models.Modelo, {
+        foreignKey: 'modeloId',
+        as: 'modelo'
+    });
+    // Aquí irían las futuras relaciones con Inspecciones y Mantenimientos
+    // Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
+    // Activo.hasMany(models.Mantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
+};
 
-module.exports= Activo;
+module.exports = Activo;

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Activo from '../../../models/gestionMantenimiento/Activo';
-import CategoriaActivo from '../../../models/gestionMantenimiento/CategoriaActivo';
+import CategoriaActivo from '../../../models/gestionMantenimiento/Categoria';
 
 export async function GET(request) {
   try {

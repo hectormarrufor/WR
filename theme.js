@@ -1,5 +1,5 @@
 // theme.js
-const theme = {
+export const theme = {
   "scale": 1,
   "fontSmoothing": true,
   "focusRing": "auto",
@@ -8,27 +8,27 @@ const theme = {
   "colors": {
     "dark": [
       "#C9C9C9",
-      "#b8b8b8",
-      "#828282",
-      "#696969",
-      "#424242",
-      "#3b3b3b",
+      "#cacacaff",
+      "#a0a0a0ff",
+      "#919191ff",
+      "#747474ff",
+      "#585858ff",
       "#2e2e2e",
       "#242424",
       "#1f1f1f",
       "#141414"
     ],
     "gray": [
-      "#f8f9fa",
-      "#f1f3f5",
-      "#e9ecef",
-      "#dee2e6",
-      "#ced4da",
-      "#adb5bd",
-      "#868e96",
-      "#495057",
-      "#343a40",
-      "#212529"
+      "#ffffff",
+      "#dfdfdf",
+      "#c0c0c0",
+      "#a2a2a2",
+      "#858585",
+      "#696969",
+      "#4e4e4e",
+      "#353535",
+      "#1e1e1e",
+      "#000000",
     ],
     "red": [
       "#fff5f5",
@@ -281,5 +281,3 @@ const theme = {
     }
   }
 };
-
-export default theme;

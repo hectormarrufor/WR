@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import CategoriaActivo from '../../../../models/gestionMantenimiento/CategoriaActivo';
+import CategoriaActivo from '../../../../models/gestionMantenimiento/Categoria';
 
 
 // GET para obtener todas las categorías

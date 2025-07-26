@@ -1,26 +1,91 @@
-'use client'
-import { Button, Paper, Title } from '@mantine/core';
-import Link from 'next/link';
-import {SectionTitle} from '../../../components/SectionTitle';
-import ListaGrupos from '../components/ListaGrupos'; // Crearemos este componente
-import BackButton from '../../../components/BackButton';
-import { useRouter } from 'next/navigation';
+// app/superuser/flota/grupos/page.jsx
+'use client';
 
-export default function GestionGruposPage() {
-  const router = useRouter();
-  return (
-    <Paper p={30}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <BackButton onClick={() => router.push('/superuser/flota')}/>
-        <Title order={3} >Gestión de Plantillas de Grupos</Title>
-        <Button component={Link} href="/superuser/flota/grupos/crear">
-          Crear Nuevo Grupo
-        </Button>
-      </div>
-      <p style={{marginTop: '-1rem', marginBottom: '2rem', color: '#6c757d'}}>
-        Los grupos son las plantillas base que definen las propiedades de un tipo de funcionalidad (ej. qué campos tiene un vehículo, un motor, etc.).
-      </p>
-      <ListaGrupos />
-    </Paper>
-  );
+import { useState, useEffect } from 'react';
+import { Table, Button, Title, Paper, LoadingOverlay, Alert, Group, Anchor, Text } from '@mantine/core';
+import { IconPencil, IconPlus } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+export default function GruposListPage() {
+    const router = useRouter();
+    const [grupos, setGrupos] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchGrupos = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch('/api/gestionMantenimiento/grupos');
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'No se pudieron cargar los grupos');
+                }
+                setGrupos(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchGrupos();
+    }, []);
+
+    const rows = grupos.map((grupo) => (
+        <Table.Tr key={grupo.id}>
+            <Table.Td>{grupo.id}</Table.Td>
+            <Table.Td>{grupo.nombre}</Table.Td>
+            <Table.Td>{Object.keys(grupo.definicion).length}</Table.Td>
+            <Table.Td>
+                <Button 
+                    leftSection={<IconPencil size={14} />} 
+                    variant="outline"
+                    onClick={() => router.push(`/superuser/flota/grupos/${grupo.id}/editar`)}
+                >
+                    Editar
+                </Button>
+            </Table.Td>
+        </Table.Tr>
+    ));
+
+    return (
+        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+            <Group justify="space-between" mb="xl">
+                <Title order={2}>Grupos de Activos</Title>
+                <Button
+                    component={Link}
+                    href="/superuser/flota/grupos/crear"
+                    leftSection={<IconPlus size={14} />}
+                >
+                    Crear Nuevo Grupo
+                </Button>
+            </Group>
+            
+            <LoadingOverlay visible={loading} />
+            
+            {error && <Alert color="red" title="Error">{error}</Alert>}
+
+            <Table striped highlightOnHover withTableBorder withColumnBorders>
+                <Table.Thead>
+                    <Table.Tr>
+                        <Table.Th>ID</Table.Th>
+                        <Table.Th>Nombre</Table.Th>
+                        <Table.Th>Nº de Atributos Definidos</Table.Th>
+                        <Table.Th>Acciones</Table.Th>
+                    </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                    {rows.length > 0 ? rows : (
+                        <Table.Tr>
+                            <Table.Td colSpan={4}>
+                                <Text c="dimmed" align="center">No se encontraron grupos.</Text>
+                            </Table.Td>
+                        </Table.Tr>
+                    )}
+                </Table.Tbody>
+            </Table>
+        </Paper>
+    );
 }
