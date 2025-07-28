@@ -22,14 +22,13 @@ const Grupo = sequelize.define('Grupo', {
         type: DataTypes.INTEGER,
         allowNull: true,
         references: {
-            model: 'GG_Grupos', // Se referencia a sí mismo
+            model: 'Grupos', // Se referencia a sí mismo
             key: 'id'
         },
     }
 }, {
-  tableName: 'GG_Grupos',
+  tableName: 'Grupos',
   timestamps: true,
-  underscored: true,
 });
 
 // Definimos la asociación para la jerarquía

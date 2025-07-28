@@ -4,14 +4,24 @@ import { NextResponse } from 'next/server';
 
 // GET para obtener una categoría específica por ID
 export async function GET(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     try {
         const categoria = await db.Categoria.findByPk(id, {
             include: [{
                 model: db.Grupo,
-                as: 'grupos',
+                as: 'gruposBase',
                 attributes: ['id', 'nombre', 'definicion'], // Incluimos la definición para reconstruir el estado
                 through: { attributes: [] }
+            },{
+                model: db.Categoria,
+                as: 'subCategorias',
+                attributes: ['id', 'nombre', 'definicion'],
+                include: [{
+                    model: db.Grupo,
+                    as: 'gruposBase',
+                    attributes: ['id', 'nombre'],
+                    through: { attributes: [] }
+                }]
             }],
         });
 
@@ -28,7 +38,7 @@ export async function GET(request, { params }) {
 
 // PUT para actualizar una categoría
 export async function PUT(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     const transaction = await db.sequelize.transaction();
     try {
         const { nombre, definicion, gruposBaseIds } = await request.json();
@@ -58,7 +68,7 @@ export async function PUT(request, { params }) {
         const categoriaActualizada = await db.Categoria.findByPk(id, {
              include: [{
                 model: db.Grupo,
-                as: 'grupos',
+                as: 'gruposBase',
                 attributes: ['id', 'nombre'],
                 through: { attributes: [] }
             }]
@@ -80,7 +90,7 @@ export async function PUT(request, { params }) {
 
 // DELETE para eliminar una categoría (opcional, pero buena práctica tenerlo)
 export async function DELETE(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     try {
         const categoria = await db.Categoria.findByPk(id);
         if (!categoria) {

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@mantine/core';
 import {SectionTitle} from '../../../components/SectionTitle';
-import ListaModelos from '../components/ListaModelos';
+import ListaModelos from './components/ListaModelos';
 
 export default function GestionModelosPage() {
   return (

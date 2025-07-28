@@ -36,7 +36,7 @@ HistorialMantenimiento.belongsTo(Activo, {
 
 HistorialMantenimiento.belongsTo(OrdenTrabajo, {
   foreignKey: 'ordenTrabajoId',
-  as: 'orden_trabajo',
+  as: 'ordenTrabajo',
 });
 
 module.exports = HistorialMantenimiento;

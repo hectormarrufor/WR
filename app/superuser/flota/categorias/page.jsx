@@ -12,6 +12,31 @@ export default function CategoriasListPage() {
     const router = useRouter();
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
+    
+    const handleDelete = async (id) => { 
+        if (confirm('¿Estás seguro de que quieres eliminar esta categoría?')) {
+            try {
+                const response = await fetch(`/api/gestionMantenimiento/categorias/${id}`, {
+                    method: 'DELETE',
+                });
+                if (!response.ok) {
+                    throw new Error(`Error al eliminar la categoría: ${response.statusText}`);
+                }
+                notifications.show({
+                    title: 'Éxito',
+                    message: 'Categoría eliminada correctamente.',
+                    color: 'green',
+                });
+                setCategorias(categorias.filter(cat => cat.id !== id));
+            } catch (error) {
+                notifications.show({
+                    title: 'Error',
+                    message: error.message,
+                    color: 'red',
+                });
+            }
+        }
+    }
 
     useEffect(() => {
         async function fetchCategorias() {
@@ -21,6 +46,8 @@ export default function CategoriasListPage() {
                     throw new Error(`Error al cargar las categorías: ${response.statusText}`);
                 }
                 const data = await response.json();
+                console.log(data);
+                
                 setCategorias(data);
             } catch (error) {
                 notifications.show({
@@ -39,7 +66,7 @@ export default function CategoriasListPage() {
         <Table.Tr key={cat.id}>
             <Table.Td>{cat.id}</Table.Td>
             <Table.Td>{cat.nombre}</Table.Td>
-            <Table.Td>{cat.grupos.map(g => g.nombre).join(', ')}</Table.Td>
+            <Table.Td>{cat.gruposBase.map(g => g.nombre).join(', ')}</Table.Td>
             <Table.Td>
                 <Group>
                     <ActionIcon
@@ -50,7 +77,7 @@ export default function CategoriasListPage() {
                         <IconPencil size={18} />
                     </ActionIcon>
                     {/* Aquí puedes añadir un modal de confirmación para borrar */}
-                    <ActionIcon variant="subtle" color="red" onClick={() => {/* handle delete */}}>
+                    <ActionIcon variant="subtle" color="red" onClick={() => handleDelete(cat.id)}>
                         <IconTrash size={18} />
                     </ActionIcon>
                 </Group>

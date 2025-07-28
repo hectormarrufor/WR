@@ -49,7 +49,6 @@ function transformPayloadToFormValues(payload) {
 
 export default function CrearCategoriaPage() {
     const router = useRouter();
-    const [nombre, setNombre] = useState('');
     const [grupos, setGrupos] = useState([]);
     const [selectedGrupos, setSelectedGrupos] = useState([]);
     const [initialDefinition, setInitialDefinition] = useState({});
@@ -92,51 +91,77 @@ export default function CrearCategoriaPage() {
     }, []);
 
     // 2. ¡AQUÍ OCURRE LA MAGIA! Este hook se ejecuta cada vez que cambia la selección de grupos.
+     // 2. ¡AQUÍ OCURRE LA MAGIA! Este hook se ejecuta cada vez que cambia la selección de grupos.
     useEffect(() => {
-        // Si hay grupos seleccionados...
+        // Si no hay grupos seleccionados, limpia el formulario y termina.
+        if (selectedGrupos.length === 0) {
+            form.setFieldValue('definicion', []);
+            return;
+        }
 
-        (async () => {
-            const fetchedGrupos = await Promise.all(
-                selectedGrupos.map(async (selected) => {
-                    console.log('Fetching grupo:', selected);
-                    const res = await fetch(`/api/gestionMantenimiento/grupos/${selected}`);
-                    return res.json();
-                })
-            );
+        const fetchAndMergeGrupos = async () => {
+            setLoading(true);
+            try {
+                // 1. Obtenemos los datos completos de cada grupo seleccionado.
+                const fetchedGrupos = await Promise.all(
+                    selectedGrupos.map(async (grupoId) => {
+                        const res = await fetch(`/api/gestionMantenimiento/grupos/${grupoId}`);
+                        if (!res.ok) {
+                            console.error(`Error al obtener el grupo ${grupoId}`);
+                            return null; // Devuelve null si hay un error para filtrarlo después
+                        }
+                        return res.json();
+                    })
+                );
+                
+                // Filtramos cualquier resultado nulo por si una petición falló.
+                const validGrupos = fetchedGrupos.filter(g => g !== null);
+                console.log("Grupos completos obtenidos:", validGrupos);
 
-            console.log(fetchedGrupos);
-            if (selectedGrupos.length > 0) {
-                // ...usamos reduce para fusionar las definiciones de cada grupo seleccionado en un solo objeto.
-                const mergedDefinition = selectedGrupos.reduce((acc, grupoId) => {
-                    console.log(`\x1b[44m [DEBUG]: ${grupoId} \x1b[0m`);
-                    // Buscamos el grupo en los datos obtenidos.
-                    const grupo = fetchedGrupos.find(g => g.id == grupoId);
-                    console.log(`\x1b[32m\x1b[44m ${grupo} \x1b[0m`);
-                    
-                    // Si el grupo existe y tiene una definición, sus propiedades se añaden al acumulador.
-                    // Si una propiedad ya existe (ej. 'motor'), la del último grupo seleccionado en la lista prevalecerá.
+                // 2. Usamos reduce para FUSIONAR las DEFINICIONES de cada grupo en un solo objeto.
+                const mergedDefinitionObject = validGrupos.reduce((acc, grupo) => {
+                    // La clave: en lugar de esparcir todo el 'grupo', esparcimos 'grupo.definicion'.
+                    // Esto combina las propiedades de todos los objetos 'definicion'.
+                    // Si dos grupos tienen una propiedad con el mismo ID ('motor'), la del último prevalecerá,
+                    // pero si tienen propiedades diferentes, todas se conservarán.
                     if (grupo && grupo.definicion) {
-                        console.log(`\x1b[44m [DEBUG]: Añadiendo definición de ${grupo.nombre} \x1b[0m`);
-                        // Aquí usamos el spread operator para combinar las definiciones.   
-
-                        return { ...acc, ...grupo };
+                        return { ...acc, ...grupo.definicion };
                     }
                     return acc;
-                }, {});
+                }, {}); // El acumulador inicial es un objeto vacío.
 
-                // 3. Actualizamos el estado con la nueva definición combinada.
-                setInitialDefinition(mergedDefinition);
-                console.log(mergedDefinition)
-                console.log("Definición inicial combinada:", transformPayloadToFormValues(mergedDefinition));
+                console.log("Objeto de definición fusionado:", mergedDefinitionObject);
                 
-                form.setValues(transformPayloadToFormValues(mergedDefinition)); // Actualizamos el formulario con la definición combinada
-            } else {
-                // Si no hay grupos seleccionados, la definición inicial está vacía.
-                setInitialDefinition({});
-            }
+                // 3. Transformamos el objeto fusionado al formato que el formulario necesita.
+                // Creamos un "payload" temporal solo para que la función transformadora trabaje.
+                const tempPayload = {
+                    nombre: form.values.nombre, // Mantenemos el nombre que ya estaba en el form
+                    definicion: mergedDefinitionObject
+                };
 
-        })();
-    }, [selectedGrupos, grupos]);
+                const formValues = transformPayloadToFormValues(tempPayload);
+
+                // 4. Actualizamos SOLAMENTE el campo 'definicion' del formulario.
+                // Así no borramos el nombre de la categoría que el usuario ya pudo haber escrito.
+                if (formValues && formValues.definicion) {
+                    form.setFieldValue('definicion', formValues.definicion);
+                }
+
+            } catch (err) {
+                notifications.show({
+                    title: 'Error al procesar grupos',
+                    message: err.message,
+                    color: 'red',
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAndMergeGrupos();
+        // La dependencia clave que dispara la actualización automática.
+        // No es necesario 'grupos' aquí, solo reaccionar al cambio de selección.
+    }, [selectedGrupos]);
 
     useEffect(() => { console.log(form.values) }, [form.values]); // Para depurar los valores del formulario
 
@@ -145,7 +170,7 @@ export default function CrearCategoriaPage() {
 
 
     const handleSubmit = async () => {
-        if (!nombre || selectedGrupos.length === 0) {
+        if (!form.values.nombre || selectedGrupos.length === 0) {
             notifications.show({
                 title: 'Campos Incompletos',
                 message: 'Por favor, asigna un nombre a la categoría y selecciona al menos un grupo base.',
@@ -157,11 +182,13 @@ export default function CrearCategoriaPage() {
         setIsSubmitting(true);
         try {
             const payload = {
-                nombre,
-                definicion: finalDefinition, // Esta es la definición final, potencialmente modificada por el usuario.
+                nombre: form.values.nombre,
+                definicion: form.values.definicion, // Esta es la definición final, potencialmente modificada por el usuario.
                 gruposBaseIds: selectedGrupos.map(id => parseInt(id)),
             };
-
+            console.log("Payload de creación:", payload);
+            // setIsSubmitting(false);
+            // return
             const response = await fetch('/api/gestionMantenimiento/categorias', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -211,8 +238,8 @@ export default function CrearCategoriaPage() {
             <TextInput
                 label="Nombre de la Categoría"
                 placeholder="Ej: CAMIONETA, CHUTO, UNIDAD_SNUBBING"
-                value={nombre}
-                onChange={(event) => setNombre(event.currentTarget.value.toUpperCase())}
+                value={form.values.nombre}
+                onChange={(event) => form.setFieldValue('nombre', event.currentTarget.value.toUpperCase().replace(' ', '_'))}
                 required
                 mb="md"
             />

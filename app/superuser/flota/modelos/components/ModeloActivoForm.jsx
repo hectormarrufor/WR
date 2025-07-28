@@ -1,137 +1,236 @@
+// app/superuser/flota/components/ModeloActivoForm.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TextInput, Select, Button, Paper, Title, Group, Alert, Loader, Text } from '@mantine/core';
-import RenderDynamicForm from '../../components/RenderDynamicForm';
-import styles from './ModeloActivoForm.module.css'; // Asegúrate de tener estilos adecuados
+import { useForm } from '@mantine/form';
+import { TextInput, Select, Button, Paper, Title, Group, Alert, Loader, Box, Text, Collapse, LoadingOverlay } from '@mantine/core';
+import AtributoConstructor from '../../components/AtributoConstructor';
+import { set } from 'date-fns';
 
-// Función Helper para fusionar las definiciones de formulario (Grupos + Categoría)
-const mergeFormDefinitions = (categoria) => {
-    if (!categoria) return { atributos_especificos: [] };
-    const mergedDefinition = { atributos_especificos: [] };
-    const seenNames = new Set();
+/**
+ * Función recursiva para transformar la definición de una categoría y sus hijas
+ * en un esquema que AtributoConstructor pueda entender.
+ * @param {object} category - El objeto de la categoría con sus subCategorías.
+ * @returns {Array} - Una definición de atributos lista para el formulario.
+ */
+function transformCategoriaToFormSchema(category) {
+    if (!category || !category.definicion) return [];
 
-    (categoria.grupos || []).forEach(grupo => {
-        (grupo.definicion_formulario?.atributos_especificos || []).forEach(attr => {
-            if (!seenNames.has(attr.name)) {
-                mergedDefinition.atributos_especificos.push(attr);
-                seenNames.add(attr.name);
+    const definicionArray = Object.values(category.definicion);
+
+    return definicionArray.map(attr => {
+        const newAttr = { ...attr };
+
+        // Si el atributo es una referencia a una sub-categoría...
+        if (attr.dataType === 'grupo' && attr.refId) {
+            // Buscamos la sub-categoría correspondiente en el array de hijos.
+            const subCategory = (category.subCategorias || []).find(sc => sc.id === attr.refId);
+            
+            if (subCategory) {
+                // Si la encontramos, la transformamos recursivamente y la anidamos.
+                newAttr.subGrupo = {
+                    key: `sub_${subCategory.id}_${Math.random()}`,
+                    nombre: subCategory.nombre,
+                    // Llamada recursiva para procesar la definición de la sub-categoría.
+                    definicion: transformCategoriaToFormSchema(subCategory),
+                };
+                newAttr.mode = 'define'; // Modo para mostrar el constructor anidado.
             }
-        });
-    });
-    // Añadir/Sobrescribir con las propiedades de la categoría
-    (categoria.definicion_formulario_propia?.atributos_especificos || []).forEach(attr => {
-        if (!seenNames.has(attr.name)) {
-            mergedDefinition.atributos_especificos.push(attr);
-            seenNames.add(attr.name);
         }
+        
+        // Asignamos una clave única para que Mantine pueda manejar el array.
+        newAttr.key = `attr_${attr.id}_${Math.random()}`;
+        return newAttr;
     });
-    return mergedDefinition;
-};
+}
 
 
 export default function ModeloActivoForm({ modeloId = null }) {
-  const router = useRouter();
-  const [formData, setFormData] = useState({ nombre: '', categoriaId: '', propiedades_definidas: {} });
-  const [categorias, setCategorias] = useState([]);
-  const [selectedCategoria, setSelectedCategoria] = useState(null);
-  const [mergedSchema, setMergedSchema] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const isEditing = !!modeloId;
+    const router = useRouter();
+    const [categorias, setCategorias] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const isEditing = !!modeloId;
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-        const catRes = await fetch('/api/gestionMantenimiento/categorias');
-        const catData = await catRes.json();
-        setCategorias(catData.map(c => ({ value: c.id.toString(), label: c.nombre })));
-    };
-    fetchInitialData();
-  }, []);
+    const form = useForm({
+        initialValues: {
+            nombre: '',
+            categoriaId: '',
+            // Este campo contendrá la estructura jerárquica para AtributoConstructor
+            propiedades_definidas: [], 
+        },
+        validate: {
+            nombre: (value) => (value.trim().length > 2 ? null : 'El nombre es requerido'),
+            categoriaId: (value) => (value ? null : 'Debe seleccionar una categoría'),
+        },
+    });
 
-  useEffect(() => {
-    if (isEditing) {
-        const fetchModelo = async () => {
-            setLoading(true);
-            const res = await fetch(`/api/gestionMantenimiento/modelos-activos/${modeloId}`);
-            const data = await res.json();
-            setFormData({
-                nombre: data.nombre,
-                categoriaId: data.categoriaId.toString(),
-                propiedades_definidas: data.propiedades_definidas || {}
-            });
-            setSelectedCategoria(data.CategoriaActivo);
-            const merged = mergeFormDefinitions(data.CategoriaActivo);
-            setMergedSchema(merged);
-            setLoading(false);
+    // 1. Carga la lista de categorías para el Select
+    useEffect(() => {
+      setLoading(true);
+      setError('');
+        const fetchCategorias = async () => {
+            try {
+                const res = await fetch('/api/gestionMantenimiento/categorias');
+                if (!res.ok) throw new Error('No se pudieron cargar las categorías');
+                const data = await res.json();
+                // Solo mostrar categorías principales en el selector
+                setCategorias(data.filter(c => !c.parentId).map(c => ({ value: c.id.toString(), label: c.nombre })));
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
         };
-        fetchModelo();
-    }
-  }, [modeloId, isEditing]);
+        fetchCategorias();
+    }, []);
+
+    // 2. Carga los datos del modelo si estamos en modo de edición
+    useEffect(() => {
+        if (isEditing && modeloId) {
+            const fetchModelo = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch(`/api/gestionMantenimiento/modelos/${modeloId}`);
+                    if (!res.ok) throw new Error('No se pudo cargar el modelo');
+                    const data = await res.json();
+                    
+                    // Seteamos los valores iniciales. El cambio en `categoriaId`
+                    // disparará el siguiente useEffect para construir el formulario.
+                    form.setValues({
+                        nombre: data.nombre,
+                        categoriaId: data.categoriaId.toString(),
+                        // Las propiedades guardadas se setearán después de construir el schema
+                        propiedades_definidas: data.propiedades_definidas || {}
+                    });
+
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchModelo();
+        }
+    }, [modeloId, isEditing]);
+
+    // 3. Efecto principal: Reacciona al cambio de categoría para construir el formulario.
+    useEffect(() => {
+        const categoriaId = form.values.categoriaId;
+        if (!categoriaId) {
+            form.setFieldValue('propiedades_definidas', []);
+            return;
+        };
+
+        const fetchAndBuildSchema = async () => {
+            setLoading(true);
+            try {
+                // Obtenemos la categoría con TODA su jerarquía
+                const res = await fetch(`/api/gestionMantenimiento/categorias/${categoriaId}`);
+                if (!res.ok) throw new Error('No se pudo cargar la estructura de la categoría');
+                const categoriaCompleta = await res.json();
+                
+                // Transformamos la estructura de la categoría en el schema para el formulario
+                const schema = transformCategoriaToFormSchema(categoriaCompleta);
+                
+                // Actualizamos el campo 'propiedades_definidas' para que AtributoConstructor lo renderice.
+                // En modo edición, las propiedades guardadas ya están en el form, AtributoConstructor las tomará.
+                // En modo creación, las propiedades se inicializan vacías.
+                console.log(schema);
+                
+                form.setFieldValue('definicion', schema);
+
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAndBuildSchema();
+    }, [form.values.categoriaId]);
 
 
-  const handleCategoriaChange = async (value) => {
-    setFormData(prev => ({ ...prev, categoriaId: value, propiedades_definidas: {} }));
-    const res = await fetch(`/api/gestionMantenimiento/categorias/${value}`);
-    const data = await res.json();
-    setSelectedCategoria(data);
-    const merged = mergeFormDefinitions(data);
-    setMergedSchema(merged);
-  };
+    const handleSubmit = async (values) => {
+        setLoading(true);
+        setError('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    const url = isEditing ? `/api/gestionMantenimiento/modelos-activos/${modeloId}` : '/api/gestionMantenimiento/modelos-activos';
-    const method = isEditing ? 'PUT' : 'POST';
-
-    try {
-        const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
-        if (!response.ok) throw new Error('Error al guardar el modelo');
-        alert(`Modelo ${isEditing ? 'actualizado' : 'creado'} con éxito.`);
-        router.push('/superuser/flota/modelos');
-    } catch (err) {
-        setError(err.message);
-    } finally {
-        setLoading(false);
-    }
-  };
-  
-  if (loading && isEditing) return <Loader />;
-
-  return (
-    <Paper withBorder shadow="md" p="xl" radius="md" maw={800} mx="auto">
-      <Title order={2} mb="xl" ta="center">{isEditing ? 'Editar Modelo de Activo' : 'Crear Nuevo Modelo'}</Title>
-      <form onSubmit={handleSubmit}>
-        <TextInput label="Nombre del Modelo" placeholder="Ej: Silverado 2024" value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.currentTarget.value})} required />
-        <Select
-          label="Categoría"
-          placeholder="Seleccione la categoría a la que pertenece este modelo"
-          data={categorias}
-          value={formData.categoriaId}
-          onChange={handleCategoriaChange}
-          searchable
-          mt="md"
-          required
-          disabled={isEditing}
-        />
+        // Aquí puedes añadir una función que limpie las 'key' aleatorias del payload antes de enviarlo
+        const payload = { nombre: values.nombre, categoriaId: values.categoriaId, especificaciones: values.definicion };
+        // console.log('Payload a enviar:', payload);
+        // setLoading(false);
+        // return
         
-        {mergedSchema && (
-            <RenderDynamicForm 
-                schema={mergedSchema.atributos_especificos}
-                onUpdate={(data) => setFormData({...formData, propiedades_definidas: data})}
-                initialData={formData.propiedades_definidas}
-            />
-        )}
-        
-        <Group justify="flex-end" mt="xl">
-          <Button variant="default" onClick={() => router.back()}>Cancelar</Button>
-          <Button type="submit" loading={loading}>{isEditing ? 'Guardar Cambios' : 'Crear Modelo'}</Button>
-        </Group>
-      </form>
-    </Paper>
-  );
+
+        const url = isEditing ? `/api/gestionMantenimiento/modelos-activos/${modeloId}` : '/api/gestionMantenimiento/modelos-activos';
+        const method = isEditing ? 'PUT' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error al guardar el modelo');
+            }
+            alert(`Modelo ${isEditing ? 'actualizado' : 'creado'} con éxito.`);
+            router.push('/superuser/flota/modelos');
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    return (
+        <Paper withBorder shadow="md" p="xl" radius="md" maw={800} mx="auto">
+          
+            <Title order={2} mb="xl" ta="center">{isEditing ? 'Editar Modelo de Activo' : 'Crear Nuevo Modelo'}</Title>
+            <form onSubmit={form.onSubmit(handleSubmit)}>
+            <LoadingOverlay visible={loading} />
+                <TextInput
+                    label="Nombre del Modelo"
+                    placeholder="Ej: Silverado 2024"
+                    required
+                    {...form.getInputProps('nombre')}
+                />
+                <Select
+                    label="Categoría"
+                    placeholder="Seleccione una categoría"
+                    data={categorias}
+                    searchable
+                    mt="md"
+                    required
+                    disabled={isEditing}
+                    {...form.getInputProps('categoriaId')}
+                />
+                
+                <Collapse in={!!form.values.categoriaId}>
+                    <Box mt="xl">
+                        <Title order={4} mb="sm">Propiedades Específicas del Modelo</Title>
+                        <Text size="sm" c="dimmed" mb="md">
+                            Completa los valores para las propiedades heredadas de la categoría y sus sub-categorías.
+                        </Text>
+                        <AtributoConstructor
+                            form={form}
+                            fieldName="propiedades_definidas" // El constructor trabajará sobre este campo
+                            level="modelo"
+                            from="Modelo"
+                        />
+                    </Box>
+                </Collapse>
+                
+                {error && <Alert color="red" title="Error" mt="md">{error}</Alert>}
+
+                <Group justify="flex-end" mt="xl">
+                    <Button variant="default" onClick={() => router.back()}>Cancelar</Button>
+                    <Button type="submit" loading={loading}>{isEditing ? 'Guardar Cambios' : 'Crear Modelo'}</Button>
+                </Group>
+            </form>
+        </Paper>
+    );
 }

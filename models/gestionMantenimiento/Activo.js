@@ -17,7 +17,7 @@ const Activo = sequelize.define('Activo', {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'GG_Modelos',
+            model: 'Modelos',
             key: 'id'
         },
     },
@@ -32,7 +32,7 @@ const Activo = sequelize.define('Activo', {
         defaultValue: 'Operativo',
     }
 }, {
-    tableName: 'GG_Activos',
+    tableName: 'Activos',
     timestamps: true,
     underscored: true,
 });

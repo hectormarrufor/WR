@@ -11,7 +11,7 @@ const CategoriaGrupos = sequelize.define('CategoriaGrupos', {
     categoriaId: {
         type: DataTypes.INTEGER,
         references: {
-            model: 'GG_Categorias',
+            model: 'Categorias',
             key: 'id'
         },
         allowNull: false
@@ -19,13 +19,13 @@ const CategoriaGrupos = sequelize.define('CategoriaGrupos', {
     grupoId: {
         type: DataTypes.INTEGER,
         references: {
-            model: 'GG_Grupos',
+            model: 'Grupos',
             key: 'id'
         },
         allowNull: false
     }
 }, {
-    tableName: 'GG_CategoriaGrupos',
+    tableName: 'CategoriaGrupos',
     timestamps: false
 });
 

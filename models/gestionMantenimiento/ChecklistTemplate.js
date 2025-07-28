@@ -21,7 +21,7 @@ const ChecklistTemplate = sequelize.define('ChecklistTemplate', {
         allowNull: false,
     }
 }, {
-    tableName: 'checklist_templates',
+    tableName: 'checklistTemplates',
     timestamps: true,
 });
 

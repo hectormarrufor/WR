@@ -30,7 +30,7 @@ export default function ListaModelos() {
     >
       <Table.Td>{modelo.nombre}</Table.Td>
       <Table.Td>
-        <Badge color="blue">{modelo.CategoriaActivo?.nombre || 'N/A'}</Badge>
+        <Badge color="blue">{modelo.categoria?.nombre || 'N/A'}</Badge>
       </Table.Td>
     </Table.Tr>
   ));

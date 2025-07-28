@@ -12,7 +12,7 @@ const ModeloComponentes = sequelize.define('ModeloComponentes', {
     ensamblajeId: {
         type: DataTypes.INTEGER,
         references: {
-            model: 'GG_Modelos',
+            model: 'Modelos',
             key: 'id'
         },
         allowNull: false
@@ -21,13 +21,13 @@ const ModeloComponentes = sequelize.define('ModeloComponentes', {
     componenteId: {
         type: DataTypes.INTEGER,
         references: {
-            model: 'GG_Modelos',
+            model: 'Modelos',
             key: 'id'
         },
         allowNull: false
     }
 }, {
-    tableName: 'GG_ModeloComponentes',
+    tableName: 'ModeloComponentes',
     timestamps: false,
 });
 

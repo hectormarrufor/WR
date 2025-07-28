@@ -23,20 +23,19 @@ const Categoria = sequelize.define('Categoria', {
         type: DataTypes.INTEGER,
         allowNull: true,
         references: {
-            model: 'GG_Categorias', // Se referencia a sí mismo
+            model: 'Categorias', // Se referencia a sí mismo
             key: 'id'
         },
     }
 }, {
-  tableName: 'GG_Categorias',
+  tableName: 'Categorias',
   timestamps: true,
-  underscored: true,
 });
 
 Categoria.associate = (models) => {
     // Relación Many-to-Many con Grupo
     Categoria.belongsToMany(models.Grupo, {
-        through: 'GG_CategoriaGrupos',
+        through: 'CategoriaGrupos',
         foreignKey: 'categoriaId',
         otherKey: 'grupoId',
         as: 'gruposBase'
