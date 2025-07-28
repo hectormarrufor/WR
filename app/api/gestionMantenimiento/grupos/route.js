@@ -63,19 +63,26 @@ export async function POST(request) {
 
 export async function GET() {
      try {
-        // Obtenemos TODOS los grupos, sin filtrar por parentId
-        const grupos = await Grupo.findAll({
-            order: [['nombre', 'ASC']],
-            // Incluimos la asociación con el modelo padre para obtener su nombre
-            include: [{
-                model: Grupo,
-                as: 'parent',
-                attributes: ['id', 'nombre'], // Solo traemos los atributos que necesitamos del padre
-            }],
-        });
-        return NextResponse.json(grupos);
-    } catch (error) {
-        console.error('Error al obtener los grupos:', error);
-        return NextResponse.json({ error: 'Error al obtener los grupos', details: error.message }, { status: 500 });
-    }
+    const grupos = await Grupo.findAll({
+      order: [['nombre', 'ASC']],
+      include: [
+        {
+          model: Grupo,
+          as: 'parent',
+          attributes: ['id', 'nombre'],
+        },
+      ],
+    });
+
+    // 🔧 Serializamos manualmente cada grupo
+    const plainGrupos = grupos.map((grupo) => grupo.toJSON());
+
+    return NextResponse.json(plainGrupos);
+  } catch (error) {
+    console.error('Error al obtener los grupos:', error);
+    return NextResponse.json(
+      { error: 'Error al obtener los grupos', details: error.message },
+      { status: 500 }
+    );
+  }
 }

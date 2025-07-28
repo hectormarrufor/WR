@@ -1,25 +1,27 @@
 // app/superuser/flota/_components/AtributoConstructor.js
 'use client';
 
-import { useState, memo, useCallback } from 'react'; // Importamos memo y useCallback
+import { useState } from 'react';
 import {
   TextInput, Select, Button, Group, Box, Paper, Text, ActionIcon, Collapse,
   TagsInput, NumberInput, Checkbox, SimpleGrid, SegmentedControl, useMantineTheme
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconTrash, IconPlus, IconArrowDown, IconArrowUp } from '@tabler/icons-react';
-import {theme as THEME} from '@/theme'; // Asegúrate de que la ruta sea correcta
+import { theme as THEME } from '@/theme';
 
+
+// Helper para acceder a valores anidados en el objeto del formulario
 const getDeep = (obj, path) => path.split('.').filter(Boolean).reduce((acc, part) => acc && acc[part], obj);
 
-// --- Componente AtributoField "Memoizado" ---
-// Envolvemos el componente con React.memo. Ahora solo se renderizará de nuevo si sus props cambian.
-const MemoizedAtributoField = memo(function AtributoField({ attribute, path, onRemove, onUpdate, level }) {
+// --- Componente para Atributos Simples (string, number, boolean) ---
+function AtributoField({ attribute, path, onRemove, onUpdate, level }) {
   const [showDetails, setShowDetails] = useState(true);
   const theme = useMantineTheme(THEME);
-  const paperColor = theme.colors.gray[Math.min(level, 9)];
+  
+  // Se aplica el color de fondo basado en el nivel
+  const paperColor = theme.colors.gray[level ];
 
-  // ... (el resto del código de AtributoField es idéntico al de la versión anterior)
   const handleUpdate = (field, value) => {
     onUpdate(path, { ...attribute, [field]: value });
   };
@@ -72,33 +74,31 @@ const MemoizedAtributoField = memo(function AtributoField({ attribute, path, onR
       </Collapse>
     </Paper>
   );
-});
+}
 
-// --- El Constructor Principal (también memoizado) ---
-export default memo(function AtributoConstructor({ form, pathPrefix = '', availableGroups = [], level = 0 }) {
+// --- El Constructor Principal ---
+export default function AtributoConstructor({ form, pathPrefix = '', availableGroups = [], level = 0, from }) {
   const theme = useMantineTheme();
-  const paperColor = theme.colors.gray[Math.min(level, 9)];
+  // Se define el color para todos los elementos en este nivel de profundidad.
+  const paperColor = theme.colors.gray[level];
 
-  // --- OPTIMIZACIÓN: Funciones envueltas en useCallback ---
-  // Estas funciones ahora mantendrán la misma referencia entre renders,
-  // a menos que sus dependencias (form, pathPrefix) cambien.
-  const addAttribute = useCallback(() => {
+  const addAttribute = () => {
     const definicionPath = `${pathPrefix}definicion`;
     const currentDefinicion = getDeep(form.values, definicionPath) || [];
-    form.setFieldValue(definicionPath, [...currentDefinicion, { key: `attr_${Date.now()}`, id: '', label: '', dataType: 'string', inputType: 'text', selectOptions: [], defaultValue: '', min: undefined, max: undefined, mode: 'none', refId: null, subGrupo: null, definicion: [] }]);
-  }, [form, pathPrefix]);
+    form.setFieldValue(definicionPath, [...currentDefinicion, { key: `attr_${Date.now()}`, dataType: 'string', inputType: 'text' }]);
+  };
 
-  const removeAttribute = useCallback((index) => {
+  const removeAttribute = (index) => {
     const definicionPath = `${pathPrefix}definicion`;
     const currentDefinicion = getDeep(form.values, definicionPath) || [];
     form.setFieldValue(definicionPath, currentDefinicion.filter((_, i) => i !== index));
-  }, [form, pathPrefix]);
+  };
   
-  const updateAttribute = useCallback((index, newValue) => {
+  const updateAttribute = (index, newValue) => {
     form.setFieldValue(`${pathPrefix}definicion.${index}`, newValue);
-  }, [form, pathPrefix]);
+  }
 
-  const handleModeChange = useCallback((index, mode) => {
+  const handleModeChange = (index, mode) => {
     const attributePath = `${pathPrefix}definicion.${index}`;
     const attribute = getDeep(form.values, attributePath);
     if (mode === 'define') {
@@ -106,14 +106,13 @@ export default memo(function AtributoConstructor({ form, pathPrefix = '', availa
     } else {
       updateAttribute(index, { ...attribute, mode, refId: null, subGrupo: null });
     }
-  }, [updateAttribute, pathPrefix, form.values]);
+  }
 
   const definicion = getDeep(form.values, `${pathPrefix}definicion`) || [];
 
   const fields = definicion.map((item, index) => {
     
     if (item.dataType === 'object') {
-      //... (código para 'object' sin cambios)
       return (
         <Paper key={item.key} withBorder p="md" mt="sm" shadow="xs" bg={paperColor}>
             <Group justify="space-between">
@@ -124,17 +123,17 @@ export default memo(function AtributoConstructor({ form, pathPrefix = '', availa
               <TextInput label="Label del Objeto" placeholder="Ej: Aceite" required value={item.label} onChange={(e) => updateAttribute(index, { ...item, label: e.currentTarget.value })}/>
               <TextInput label="ID del Objeto (en JSON)" placeholder="Ej: aceite" required value={item.id} onChange={(e) => updateAttribute(index, { ...item, id: e.currentTarget.value })}/>
             </SimpleGrid>
+            {/* Llamada recursiva, incrementando el nivel de profundidad */}
             <AtributoConstructor form={form} pathPrefix={`${pathPrefix}definicion.${index}.`} availableGroups={availableGroups} level={level + 1} />
         </Paper>
       );
     }
     
     if (item.dataType === 'grupo') {
-      //... (código para 'grupo' sin cambios)
       return (
         <Paper key={item.key} withBorder p="md" mt="sm" shadow="xs" bg={paperColor}>
             <Group justify="space-between">
-                <Text fw={700} c="blue">Atributo de Grupo: {item.label || ''}</Text>
+                <Text fw={700} c="blue">Atributo de {from}: {item.label || ''}</Text>
                  <ActionIcon color="red" onClick={() => removeAttribute(index)}><IconTrash size={16} /></ActionIcon>
             </Group>
              <SimpleGrid cols={2} mt="xs">
@@ -146,8 +145,10 @@ export default memo(function AtributoConstructor({ form, pathPrefix = '', availa
               <Select label="Seleccionar un grupo existente" placeholder="Elija un grupo" data={availableGroups.map(g => ({ value: g.id.toString(), label: g.nombre }))} value={item.refId} onChange={(v) => updateAttribute(index, { ...item, refId: v })} mt="xs"/>
             </Collapse>
             <Collapse in={item.mode === 'define'}>
-              <Paper withBorder p="md" mt="md" bg={theme.colors.gray[Math.min(level + 1, 9)]}>
+              {/* El contenedor del sub-grupo también incrementa el nivel */}
+              <Paper withBorder p="md" mt="md" bg={theme.colors.gray[level ]}>
                   <TextInput label="Nombre del Nuevo Sub-Grupo" placeholder="Ej: MOTOR_VEHICULO" required value={item.subGrupo?.nombre || ''} onChange={(e) => updateAttribute(index, { ...item, subGrupo: { ...item.subGrupo, nombre: e.currentTarget.value } })}/>
+                  {/* Llamada recursiva, incrementando el nivel de profundidad */}
                   <AtributoConstructor form={form} pathPrefix={`${pathPrefix}definicion.${index}.subGrupo.`} availableGroups={availableGroups} level={level + 1}/>
               </Paper>
             </Collapse>
@@ -155,8 +156,8 @@ export default memo(function AtributoConstructor({ form, pathPrefix = '', availa
       );
     }
     
-    // Usamos el componente memoizado para los atributos simples
-    return <MemoizedAtributoField key={item.key} attribute={item} path={`${pathPrefix}definicion.${index}`} onRemove={() => removeAttribute(index)} onUpdate={updateAttribute} level={level} />;
+    // Para atributos simples, pasamos el nivel actual al componente AtributoField
+    return <AtributoField key={item.key} attribute={item} path={`${pathPrefix}definicion.${index}`} onRemove={() => removeAttribute(index)} onUpdate={(path, value) => form.setFieldValue(path, value)} level={level} />;
   });
 
   return (
@@ -168,4 +169,4 @@ export default memo(function AtributoConstructor({ form, pathPrefix = '', availa
       </Button>
     </Box>
   );
-});
+}

@@ -91,203 +91,207 @@ export default function CrearGrupoPage() {
         },
     });
 
+    useEffect(() => {
+        console.log( form.values);
+    }, [form.values]);
+
     const handleSubmit = async (values) => {
         setLoading(true);
         setError(null);
 
-        // const payload = transformFormValuesToPayload(values);
-        const payload = {
-            "nombre": "VEHICULO",
-            "definicion": {
-                "motor": {
-                    "id": "motor",
-                    "label": "Motor",
-                    "dataType": "grupo",
-                    "inputType": "text",
-                    "selectOptions": [],
-                    "defaultValue": "",
-                    "refId": null,
-                    "definicion": [],
-                    "tempKey": "sub_1753538301260"
-                },
-                "marca": {
-                    "id": "marca",
-                    "label": "Marca",
-                    "dataType": "string",
-                    "inputType": "text",
-                    "selectOptions": [],
-                    "defaultValue": "",
-                    "refId": null,
-                    "definicion": []
-                },
-                "modelo": {
-                    "id": "modelo",
-                    "label": "Modelo",
-                    "dataType": "string",
-                    "inputType": "text",
-                    "selectOptions": [],
-                    "defaultValue": "",
-                    "refId": null,
-                    "definicion": []
-                },
-                "placa": {
-                    "id": "placa",
-                    "label": "Placa",
-                    "dataType": "string",
-                    "inputType": "text",
-                    "selectOptions": [],
-                    "defaultValue": "",
-                    "refId": null,
-                    "definicion": []
-                },
-                "color": {
-                    "id": "color",
-                    "label": "Color",
-                    "dataType": "string",
-                    "inputType": "select",
-                    "selectOptions": [
-                        "verde",
-                        "gris",
-                        "negro",
-                        "blanco",
-                        "naranja",
-                        "amarillo",
-                        "azul",
-                        "rojo",
-                        "beige"
-                    ],
-                    "defaultValue": "",
-                    "refId": null,
-                    "definicion": []
-                },
-                "transmision": {
-                    "id": "transmision",
-                    "label": "Transmision",
-                    "dataType": "grupo",
-                    "inputType": "text",
-                    "selectOptions": [],
-                    "defaultValue": "",
-                    "refId": null,
-                    "definicion": [],
-                    "tempKey": "sub_1753538790995"
-                }
-            },
-            "subGrupos": [
-                {
-                    "tempKey": "sub_1753538301260",
-                    "nombre": "MOTOR_VEHICULO",
-                    "definicion": {
-                        "aceite": {
-                            "id": "aceite",
-                            "label": "Propiedades de aceite",
-                            "dataType": "object",
-                            "inputType": "text",
-                            "selectOptions": [],
-                            "defaultValue": "",
-                            "refId": null,
-                            "definicion": {
-                                "litros": {
-                                    "id": "litros",
-                                    "label": "Cantidad de litros",
-                                    "dataType": "number",
-                                    "inputType": "text",
-                                    "selectOptions": [],
-                                    "defaultValue": "",
-                                    "min": "",
-                                    "max": "",
-                                    "refId": null,
-                                    "definicion": []
-                                },
-                                "tipo": {
-                                    "id": "tipo",
-                                    "label": "Tipo de aceite",
-                                    "dataType": "string",
-                                    "inputType": "select",
-                                    "selectOptions": [
-                                        "mineral",
-                                        "semi-sintetico",
-                                        "sintetico"
-                                    ],
-                                    "defaultValue": "",
-                                    "refId": null,
-                                    "definicion": []
-                                },
-                                "viscosidad": {
-                                    "id": "viscosidad",
-                                    "label": "Viscosidad del aceite",
-                                    "dataType": "string",
-                                    "inputType": "select",
-                                    "selectOptions": [
-                                        "15w40",
-                                        "20w50",
-                                        "10w30",
-                                        "5w40",
-                                        "10w40"
-                                    ],
-                                    "defaultValue": "",
-                                    "refId": null,
-                                    "definicion": []
-                                },
-                                "cantidadFiltros": {
-                                    "id": "cantidadFiltros",
-                                    "label": "Cantidad de filtros de aceite",
-                                    "dataType": "number",
-                                    "inputType": "text",
-                                    "selectOptions": [],
-                                    "defaultValue": "",
-                                    "min": 1,
-                                    "max": 2,
-                                    "refId": null,
-                                    "definicion": []
-                                }
-                            }
-                        },
-                        "cantidadCorreas": {
-                            "id": "cantidadCorreas",
-                            "label": "Cantidad de correas",
-                            "dataType": "number",
-                            "inputType": "text",
-                            "selectOptions": [],
-                            "defaultValue": "",
-                            "refId": null,
-                            "definicion": []
-                        }
-                    },
-                    "subGrupos": []
-                },
-                {
-                    "tempKey": "sub_1753538790995",
-                    "nombre": "TRANSMISION_VEHICULO",
-                    "definicion": {
-                        "nroMarchas": {
-                            "id": "nroMarchas",
-                            "label": "Numero de marchas",
-                            "dataType": "number",
-                            "inputType": "text",
-                            "selectOptions": [],
-                            "defaultValue": "",
-                            "refId": null,
-                            "definicion": []
-                        },
-                        "tipo": {
-                            "id": "tipo",
-                            "label": "Tipo",
-                            "dataType": "string",
-                            "inputType": "select",
-                            "selectOptions": [
-                                "sincronica",
-                                "automatica"
-                            ],
-                            "defaultValue": "",
-                            "refId": null,
-                            "definicion": []
-                        }
-                    },
-                    "subGrupos": []
-                }
-            ]
+        const payload = transformFormValuesToPayload(values);
+        // const payload = {
+        //     "nombre": "VEHICULO",
+        //     "definicion": {
+        //         "motor": {
+        //             "id": "motor",
+        //             "label": "Motor",
+        //             "dataType": "grupo",
+        //             "inputType": "text",
+        //             "selectOptions": [],
+        //             "defaultValue": "",
+        //             "refId": null,
+        //             "definicion": [],
+        //             "tempKey": "sub_1753538301260"
+        //         },
+        //         "marca": {
+        //             "id": "marca",
+        //             "label": "Marca",
+        //             "dataType": "string",
+        //             "inputType": "text",
+        //             "selectOptions": [],
+        //             "defaultValue": "",
+        //             "refId": null,
+        //             "definicion": []
+        //         },
+        //         "modelo": {
+        //             "id": "modelo",
+        //             "label": "Modelo",
+        //             "dataType": "string",
+        //             "inputType": "text",
+        //             "selectOptions": [],
+        //             "defaultValue": "",
+        //             "refId": null,
+        //             "definicion": []
+        //         },
+        //         "placa": {
+        //             "id": "placa",
+        //             "label": "Placa",
+        //             "dataType": "string",
+        //             "inputType": "text",
+        //             "selectOptions": [],
+        //             "defaultValue": "",
+        //             "refId": null,
+        //             "definicion": []
+        //         },
+        //         "color": {
+        //             "id": "color",
+        //             "label": "Color",
+        //             "dataType": "string",
+        //             "inputType": "select",
+        //             "selectOptions": [
+        //                 "verde",
+        //                 "gris",
+        //                 "negro",
+        //                 "blanco",
+        //                 "naranja",
+        //                 "amarillo",
+        //                 "azul",
+        //                 "rojo",
+        //                 "beige"
+        //             ],
+        //             "defaultValue": "",
+        //             "refId": null,
+        //             "definicion": []
+        //         },
+        //         "transmision": {
+        //             "id": "transmision",
+        //             "label": "Transmision",
+        //             "dataType": "grupo",
+        //             "inputType": "text",
+        //             "selectOptions": [],
+        //             "defaultValue": "",
+        //             "refId": null,
+        //             "definicion": [],
+        //             "tempKey": "sub_1753538790995"
+        //         }
+        //     },
+        //     "subGrupos": [
+        //         {
+        //             "tempKey": "sub_1753538301260",
+        //             "nombre": "MOTOR_VEHICULO",
+        //             "definicion": {
+        //                 "aceite": {
+        //                     "id": "aceite",
+        //                     "label": "Propiedades de aceite",
+        //                     "dataType": "object",
+        //                     "inputType": "text",
+        //                     "selectOptions": [],
+        //                     "defaultValue": "",
+        //                     "refId": null,
+        //                     "definicion": {
+        //                         "litros": {
+        //                             "id": "litros",
+        //                             "label": "Cantidad de litros",
+        //                             "dataType": "number",
+        //                             "inputType": "text",
+        //                             "selectOptions": [],
+        //                             "defaultValue": "",
+        //                             "min": "",
+        //                             "max": "",
+        //                             "refId": null,
+        //                             "definicion": []
+        //                         },
+        //                         "tipo": {
+        //                             "id": "tipo",
+        //                             "label": "Tipo de aceite",
+        //                             "dataType": "string",
+        //                             "inputType": "select",
+        //                             "selectOptions": [
+        //                                 "mineral",
+        //                                 "semi-sintetico",
+        //                                 "sintetico"
+        //                             ],
+        //                             "defaultValue": "",
+        //                             "refId": null,
+        //                             "definicion": []
+        //                         },
+        //                         "viscosidad": {
+        //                             "id": "viscosidad",
+        //                             "label": "Viscosidad del aceite",
+        //                             "dataType": "string",
+        //                             "inputType": "select",
+        //                             "selectOptions": [
+        //                                 "15w40",
+        //                                 "20w50",
+        //                                 "10w30",
+        //                                 "5w40",
+        //                                 "10w40"
+        //                             ],
+        //                             "defaultValue": "",
+        //                             "refId": null,
+        //                             "definicion": []
+        //                         },
+        //                         "cantidadFiltros": {
+        //                             "id": "cantidadFiltros",
+        //                             "label": "Cantidad de filtros de aceite",
+        //                             "dataType": "number",
+        //                             "inputType": "text",
+        //                             "selectOptions": [],
+        //                             "defaultValue": "",
+        //                             "min": 1,
+        //                             "max": 2,
+        //                             "refId": null,
+        //                             "definicion": []
+        //                         }
+        //                     }
+        //                 },
+        //                 "cantidadCorreas": {
+        //                     "id": "cantidadCorreas",
+        //                     "label": "Cantidad de correas",
+        //                     "dataType": "number",
+        //                     "inputType": "text",
+        //                     "selectOptions": [],
+        //                     "defaultValue": "",
+        //                     "refId": null,
+        //                     "definicion": []
+        //                 }
+        //             },
+        //             "subGrupos": []
+        //         },
+        //         {
+        //             "tempKey": "sub_1753538790995",
+        //             "nombre": "TRANSMISION_VEHICULO",
+        //             "definicion": {
+        //                 "nroMarchas": {
+        //                     "id": "nroMarchas",
+        //                     "label": "Numero de marchas",
+        //                     "dataType": "number",
+        //                     "inputType": "text",
+        //                     "selectOptions": [],
+        //                     "defaultValue": "",
+        //                     "refId": null,
+        //                     "definicion": []
+        //                 },
+        //                 "tipo": {
+        //                     "id": "tipo",
+        //                     "label": "Tipo",
+        //                     "dataType": "string",
+        //                     "inputType": "select",
+        //                     "selectOptions": [
+        //                         "sincronica",
+        //                         "automatica"
+        //                     ],
+        //                     "defaultValue": "",
+        //                     "refId": null,
+        //                     "definicion": []
+        //                 }
+        //             },
+        //             "subGrupos": []
+        //         }
+        //     ]
 
-        }
+        // }
         console.log("Payload a enviar:", JSON.stringify(payload, null, 2));
 
         try {
@@ -321,7 +325,7 @@ export default function CrearGrupoPage() {
                     required
                     {...form.getInputProps('nombre')}
                 />
-                <AtributoConstructor form={form} availableGroups={availableGroups} />
+                <AtributoConstructor form={form} availableGroups={availableGroups} from="Grupo" />
                 {error && (<Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red" mt="xl">{error}</Alert>)}
                 <Button type="submit" fullWidth mt="xl">
                     Crear Grupo

@@ -2,49 +2,43 @@
 import db from '@/models';
 import { NextResponse } from 'next/server';
 
-// GET para obtener todas las categorías (útil para el siguiente nivel: Modelos)
+// GET all categories
 export async function GET(request) {
     try {
         const categorias = await db.Categoria.findAll({
             include: [{
-                model: db.Grupo,
-                as: 'grupos',
+                model: db.Categoria,
+                as: 'subCategorias',
                 attributes: ['id', 'nombre'],
-                through: { attributes: [] } // No incluir la tabla intermedia en el resultado
-            }],
-            order: [['nombre', 'ASC']],
+            }]
         });
         return NextResponse.json(categorias);
     } catch (error) {
-        console.error('Error al obtener categorías:', error);
+        console.error('Error fetching categories:', error);
+        // Return a 500 error with a message
         return NextResponse.json({ message: 'Error al obtener categorías', error: error.message }, { status: 500 });
     }
 }
 
-
-// POST para crear una nueva categoría
+// POST a new category
 export async function POST(request) {
     const transaction = await db.sequelize.transaction();
     try {
-        const { nombre, definicion, gruposBaseIds } = await request.json();
+        const body = await request.json();
+        const { grupoIds, ...categoriaData } = body;
 
-        if (!nombre || !definicion || !gruposBaseIds || !Array.isArray(gruposBaseIds) || gruposBaseIds.length === 0) {
-            return NextResponse.json({ message: 'Nombre, definición y al menos un grupo base son requeridos.' }, { status: 400 });
+        if (!grupoIds || grupoIds.length === 0) {
+            return NextResponse.json({ message: 'Se requiere al menos un grupo base.' }, { status: 400 });
         }
 
-        // 1. Crear la categoría
-        const nuevaCategoria = await db.Categoria.create({
-            nombre,
-            definicion,
-        }, { transaction });
+        const nuevaCategoria = await db.Categoria.create(categoriaData, { transaction });
 
-        // 2. Asociar la categoría con sus grupos base
-        await nuevaCategoria.setGrupos(gruposBaseIds, { transaction });
+        // Asociar la categoría con los grupos seleccionados
+        await nuevaCategoria.setGrupos(grupoIds, { transaction });
 
         await transaction.commit();
 
-        // Obtener la categoría creada con sus asociaciones para devolverla
-        const categoriaCreada = await db.Categoria.findByPk(nuevaCategoria.id, {
+        const result = await db.Categoria.findByPk(nuevaCategoria.id, {
              include: [{
                 model: db.Grupo,
                 as: 'grupos',
@@ -53,16 +47,10 @@ export async function POST(request) {
             }]
         });
 
-        return NextResponse.json(categoriaCreada, { status: 201 });
-
+        return NextResponse.json(result, { status: 201 });
     } catch (error) {
         await transaction.rollback();
-        console.error('Error al crear la categoría:', error);
-
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return NextResponse.json({ message: 'Ya existe una categoría con este nombre.' }, { status: 409 });
-        }
-
-        return NextResponse.json({ message: 'Error al crear la categoría', error: error.message }, { status: 500 });
+        console.error('Error creating category:', error);
+        return NextResponse.json({ message: 'Error al crear la categoría', error: error.message }, { status: 400 });
     }
 }

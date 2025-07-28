@@ -18,7 +18,7 @@ export default function CategoriasListPage() {
             try {
                 const response = await fetch('/api/gestionMantenimiento/categorias');
                 if (!response.ok) {
-                    throw new Error('Error al cargar las categorías');
+                    throw new Error(`Error al cargar las categorías: ${response.statusText}`);
                 }
                 const data = await response.json();
                 setCategorias(data);

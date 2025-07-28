@@ -10,6 +10,7 @@ import { IconDeviceFloppy } from '@tabler/icons-react';
 // --- Función Helper para transformar el JSON de la API al estado del formulario ---
 function transformPayloadToFormValues(payload) {
     if (!payload) return null;
+    console.log("datos de payload: ", payload);
 
     function processDefinition(definicion) {
         if (!definicion || Object.keys(definicion).length === 0) return [];
@@ -75,6 +76,7 @@ export default function EditarGrupoPage() {
                 const grupoRes = await fetch(`/api/gestionMantenimiento/grupos/${id}`);
                 const grupoData = await grupoRes.json();
                 if (!grupoRes.ok) throw new Error(grupoData.error || 'No se pudo cargar el grupo');
+                console.log("GrupoData: ", grupoData);
                 
                 // Transformar y poblar el formulario
                 const formValues = transformPayloadToFormValues(grupoData);
@@ -89,6 +91,11 @@ export default function EditarGrupoPage() {
 
         fetchGrupoData();
     }, [id]);
+
+    useEffect(() => {
+        console.log(form.values);
+        console.log(availableGroups);
+    }, [form.values, availableGroups]); // Para depurar los valores del formulario y grupos disponibles
 
     // Usamos la misma función de transformación que en la página de creación
     function transformFormValuesToPayload(values) {
