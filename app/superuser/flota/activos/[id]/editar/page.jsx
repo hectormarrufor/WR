@@ -1,24 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { Loader, Paper, Title, Alert } from '@mantine/core';
-import ModeloActivoForm from '../../../modelos/components/ModeloActivoForm';
-// Importamos el formulario de creación que ya es inteligente
+import { useParams, useRouter } from 'next/navigation';
+import { Loader, Title, Alert, Box } from '@mantine/core';
+import ModeloActivoForm from '../../../components/ModeloActivoForm'; // La ruta al nuevo componente
+import BackButton from '@/app/components/BackButton';
 
-export default function EditarActivoPage() {
+export default function EditarModeloPage() {
     const { id } = useParams();
+    const router = useRouter();
     const [initialData, setInitialData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
         if (id) {
-            const fetchActivo = async () => {
+            const fetchModelo = async () => {
                 setLoading(true);
                 try {
-                    const response = await fetch(`/api/gestionMantenimiento/activos/${id}`);
-                    if (!response.ok) throw new Error('No se pudo cargar el activo para editar');
+                    // Usamos el GET detallado que ya trae toda la jerarquía
+                    const response = await fetch(`/api/gestionMantenimiento/modelos/${id}`);
+                    if (!response.ok) throw new Error('No se pudo cargar el modelo para editar');
                     const data = await response.json();
                     setInitialData(data);
                 } catch (err) {
@@ -27,7 +29,7 @@ export default function EditarActivoPage() {
                     setLoading(false);
                 }
             };
-            fetchActivo();
+            fetchModelo();
         }
     }, [id]);
 
@@ -40,18 +42,17 @@ export default function EditarActivoPage() {
     }
 
     if (!initialData) {
-        return <Alert color="yellow" title="Aviso">No se encontraron datos para el activo.</Alert>;
+        return <Alert color="yellow" title="Aviso">No se encontraron datos para el modelo.</Alert>;
     }
     
-    // Aquí reutilizamos el formulario de creación, pasándole los datos iniciales.
-    // Necesitarás modificar ligeramente tu `CrearActivoPage` para aceptar `initialData` como prop.
     return (
-         <Paper withBorder shadow="md" p="xl" radius="md" mt={30}>
-            <Title order={2} ta="center" mb="xl">Editar Activo: {initialData.codigoActivo}</Title>
-            {/* Aquí deberías tener un componente formulario separado para máxima reutilización */}
-            {/* Por ahora, asumimos que puedes adaptar CrearActivoPage o crear un nuevo componente */}
-            <p>Formulario de edición iría aquí, precargado con los datos.</p>
-             {/* <ActivoForm initialData={initialData} isEditing={true} /> */}
-         </Paper>
+        <Box>
+            <Group justify="space-between" mb="xl">
+                <Title order={2}>Editar Modelo: {initialData.nombre}</Title>
+                <BackButton />
+            </Group>
+            {/* Aquí renderizamos el formulario, pasándole los datos iniciales */}
+            <ModeloActivoForm initialData={initialData} isEditing={true} />
+        </Box>
     );
 }
