@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader, Title, Alert, Box } from '@mantine/core';
-import ModeloActivoForm from '../../../components/ModeloActivoForm'; // La ruta al nuevo componente
 import BackButton from '@/app/components/BackButton';
+import ModeloActivoForm from '../../components/ModeloActivoForm';
+
 
 export default function EditarModeloPage() {
     const { id } = useParams();
