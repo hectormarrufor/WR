@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Loader, Paper, Title, Alert } from '@mantine/core';
+import ModeloActivoForm from '../../../modelos/components/ModeloActivoForm';
 // Importamos el formulario de creación que ya es inteligente
-import CrearActivoPage from '../../crear/page';
 
 export default function EditarActivoPage() {
     const { id } = useParams();

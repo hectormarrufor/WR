@@ -1,8 +1,0 @@
-.container {
-    margin-top: 1.5rem;
-}
-.objectContainer {
-    background-color: var(--mantine-color-gray-0);
-    border: 1px dashed var(--mantine-color-gray-3);
-    border-radius: var(--mantine-radius-md);
-}

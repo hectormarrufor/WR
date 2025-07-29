@@ -36,23 +36,6 @@ Modelo.associate = (models) => {
         foreignKey: 'categoriaId',
         as: 'categoria'
     });
-
-    // Relación de composición (Many-to-Many con sigo mismo)
-    // Un modelo (ensamblaje) puede estar compuesto de muchos otros modelos (componentes)
-    Modelo.belongsToMany(models.Modelo, {
-        through: 'ModeloComponentes',
-        as: 'componentes', // ej: los componentes de una Silverado
-        foreignKey: 'ensamblajeId', // El ID del modelo que se está armando
-        otherKey: 'componenteId' // El ID del modelo que forma parte del ensamblaje
-    });
-
-    // La relación inversa es útil también
-    Modelo.belongsToMany(models.Modelo, {
-        through: 'ModeloComponentes',
-        as: 'ensamblajes', // ej: en qué ensamblajes se usa un Motor Vortec
-        foreignKey: 'componenteId',
-        otherKey: 'ensamblajeId'
-    });
 };
 
 module.exports = Modelo;

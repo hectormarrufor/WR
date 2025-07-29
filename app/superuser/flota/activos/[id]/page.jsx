@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Paper, Title, Text, Group, Button, Loader, Alert, Grid, Badge, Divider } from '@mantine/core';
 import { IconTool, IconClipboardCheck, IconPencil } from '@tabler/icons-react';
-import RenderActivoDetails from '../../../../components/RenderActivoDetails'; // Asegúrate de que la ruta sea correcta
+import Renderactivodetails from '../components/RenderActivoDetails';
 
 export default function DetalleActivoPage() {
     const { id } = useParams();
