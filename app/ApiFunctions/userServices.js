@@ -71,7 +71,7 @@ export async function iniciarSesion(user, contrasena) {
     const response = await fetch('/api/users/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: user, contrasena: contrasena }),
+      body: JSON.stringify({ user, contrasena }),
     });
     if (response.ok) {
       const data = await response.json();
@@ -88,14 +88,15 @@ export async function iniciarSesion(user, contrasena) {
   }
 }
 
-export async function cerrarSesion(redirect, checkAuth) {
+export async function cerrarSesion(redirect) {
   try {
     const response = await fetch('/api/users/logout', {
       method: 'POST',
     });
 
     if (response.ok) {
-      await checkAuth();
+      localStorage.removeItem('token'); // Elimina el token del almacenamiento local
+      console.log('Sesión cerrada correctamente');
       // Redirige al usuario a la página de inicio de sesión
       redirect('/');
     } else {

@@ -1,25 +1,51 @@
 // components/rrhh/PuestoForm.jsx
 'use client';
 
-import React, { useEffect } from 'react';
-import { TextInput, Button, Group, Box, Paper, Title, Grid } from '@mantine/core';
+import React, { useEffect, useState } from 'react';
+import { TextInput, Button, Group, Box, Paper, Title, Grid, Select } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 
 export function PuestoForm({ initialData = null }) {
   const router = useRouter();
+  const [departamentos, setDepartamentos] = useState([])
 
   const form = useForm({
     initialValues: {
       nombre: '',
       descripcion: '',
+      departamentoId: '', // Si tu modelo Puesto tiene un campo para departamento
     },
     validate: {
       nombre: (value) => (value ? null : 'El nombre del puesto es requerido'),
       descripcion: (value) => (value ? null : 'La descripción es requerida'),
     },
   });
+
+  useEffect(() => {
+    // cargar departamentos para el select si es necesario
+    // Aquí podrías hacer una llamada a la API para obtener los departamentos
+    (async () => {
+      try {
+        const response = await fetch('/api/rrhh/departamentos');
+        if (!response.ok) {
+          throw new Error('Error al cargar departamentos', response.statusText);
+          return;
+        }
+        const data = await response.json();
+        setDepartamentos(data);
+      } catch (error) {
+        console.error('Error al cargar departamentos:', error);
+        notifications.show({
+          title: 'Error',
+          message: `No se pudieron cargar los departamentos: ${error.message}`,
+          color: 'red',
+        });
+        return;
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cargar datos iniciales si se está editando
   useEffect(() => {
@@ -80,6 +106,17 @@ export function PuestoForm({ initialData = null }) {
         </Title>
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Grid gutter="md">
+            <Grid.Col span={12}>
+              <Select
+                label="Departamento"
+                placeholder="Selecciona un departamento"
+                data={departamentos.map((dept) => ({
+                  value: dept.id.toString(),
+                  label: dept.nombre,
+                }))}
+                {...form.getInputProps('departamentoId')}
+              />
+            </Grid.Col>
             <Grid.Col span={12}>
               <TextInput
                 label="Nombre del Puesto"

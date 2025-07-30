@@ -9,17 +9,6 @@ const sequelize = require('../../sequelize');
       primaryKey: true,
       autoIncrement: true,
     },
-    // --- NUEVO CAMPO ---
-    departamentoId: {
-      type: DataTypes.INTEGER,
-      allowNull: true, // Puede ser nulo si un empleado no está asignado inicialmente
-      references: {
-        model: 'Departamentos', // Nombre de la tabla del modelo Departamento
-        key: 'id',
-      },
-      comment: 'ID del departamento al que pertenece el empleado.'
-    },
-    // --- FIN DEL NUEVO CAMPO ---
     cedula: {
       type: DataTypes.STRING(15),
       allowNull: false,
@@ -81,14 +70,6 @@ const sequelize = require('../../sequelize');
   });
 
   Empleado.associate = (models) => {
-    // --- NUEVA ASOCIACIÓN ---
-    // Un Empleado pertenece a un Departamento
-    Empleado.belongsTo(models.Departamento, {
-      foreignKey: 'departamentoId',
-      as: 'departamento',
-    });
-    // --- FIN DE LA NUEVA ASOCIACIÓN ---
-
     // Un Empleado puede tener varios Puestos (a través de la tabla intermedia EmpleadoPuesto)
     Empleado.belongsToMany(models.Puesto, {
       through: 'EmpleadoPuesto',
@@ -98,9 +79,9 @@ const sequelize = require('../../sequelize');
     });
 
     // Un Empleado puede ser el Supervisor de muchas Operaciones de Campo
-    Empleado.hasMany(models.OperacionCampo, { foreignKey: 'supervisorId', as: 'operacionesSupervisadas' });
+    // Empleado.hasMany(models.OperacionCampo, { foreignKey: 'supervisorId', as: 'operacionesSupervisadas' });
     // Un Empleado puede ser el Mecánico asignado a muchas Operaciones de Campo
-    Empleado.hasMany(models.OperacionCampo, { foreignKey: 'mecanicoId', as: 'operacionesMecanico' });
+    // Empleado.hasMany(models.OperacionCampo, { foreignKey: 'mecanicoId', as: 'operacionesMecanico' });
     // Y así sucesivamente para cada rol en OperacionCampo, Mudanza, etc.
   };
 

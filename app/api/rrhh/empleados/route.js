@@ -38,13 +38,46 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  try {
-    const body = await request.json();
-    const nuevoEmpleado = await db.Empleado.create(body);
+ // Usamos una transacción para asegurar que o todo se crea, o no se crea nada.
+    const transaction = await db.sequelize.transaction();
+    try {
+        const body = await request.json();
+        // 1. Separamos los IDs de los puestos del resto de los datos del empleado.
+        const { puestos, ...empleadoData } = body;
 
-    return NextResponse.json(nuevoEmpleado, { status: 201 });
-  } catch (error) {
-    console.error('Error creating employee:', error);
-    return NextResponse.json({ message: 'Error al crear empleado', error: error.message }, { status: 400 });
-  }
+        // 2. Creamos el empleado dentro de la transacción.
+        const nuevoEmpleado = await db.Empleado.create(empleadoData, { transaction });
+
+        // 3. Si el frontend envió un array de puestosIds, los asociamos.
+        if (puestos && puestos.length > 0) {
+            // ✨ ¡AQUÍ ESTÁ LA MAGIA! ✨
+            // 'addPuestos' es un método que Sequelize añade automáticamente.
+            // Su nombre viene del alias 'as: "puestos"' en tu modelo Empleado.
+            await nuevoEmpleado.addPuestos(puestos, { transaction });
+        }
+
+        // 4. Si todo salió bien, confirmamos la transacción.
+        await transaction.commit();
+
+        // 5. Devolvemos el empleado recién creado con sus puestos ya asociados.
+        const result = await db.Empleado.findByPk(nuevoEmpleado.id, {
+            include: [{
+                model: db.Puesto,
+                as: 'puestos',
+                attributes: ['id', 'nombre'],
+                through: { attributes: [] } // Para no incluir la data de la tabla intermedia
+            }]
+        });
+
+        return NextResponse.json(result, { status: 201 });
+
+    } catch (error) {
+        // Si algo falla, revertimos todos los cambios.
+        await transaction.rollback();
+        console.error('Error al crear el empleado:', error);
+        return NextResponse.json({
+            message: 'Error al crear el empleado',
+            error: error.message
+        }, { status: 500 });
+    }
 }

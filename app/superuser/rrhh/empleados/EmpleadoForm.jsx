@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   TextInput, Button, Group, Box, Paper, Title, Grid, Select, Textarea, NumberInput,
+  MultiSelect,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
@@ -12,6 +13,7 @@ import '@mantine/dates/styles.css';
 
 export function EmpleadoForm({ initialData = null }) {
   const [puestos, setPuestos] = useState([])
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const form = useForm({
@@ -22,11 +24,11 @@ export function EmpleadoForm({ initialData = null }) {
       telefono: '',
       email: '',
       direccion: '',
-      fechaContratacion: null,
+      fechaIngreso: null,
       fechaNacimiento: null,
       fechaRetorno: null,
       estado: 'Activo',
-      puesto: '',
+      puestos: [],
       sueldo: 0,
       genero: '',
       notas: '',
@@ -37,7 +39,7 @@ export function EmpleadoForm({ initialData = null }) {
       apellido: (value) => value ? null : 'El apellido es requerido',
       telefono: (value) => (/^\d{4}\d{7}$/.test(value) ? null : 'Formato inválido (ej. 0412-1234567)'),
       email: (value) => (/^\S+@\S+\.\S+$/.test(value) ? null : 'Email inválido'),
-      fechaContratacion: (value) => value ? null : 'Fecha de contratación requerida',
+      fechaIngreso: (value) => value ? null : 'Fecha de contratación requerida',
       sueldo: (value) => value > 0 ? null : 'Sueldo debe ser mayor a 0',
       estado: (value) => value ? null : 'Estado requerido',
       fechaRetorno: (value, values) =>
@@ -50,7 +52,7 @@ export function EmpleadoForm({ initialData = null }) {
     if (initialData) {
       form.setValues({
         ...initialData,
-        fechaContratacion: initialData.fechaContratacion ? new Date(initialData.fechaContratacion) : null,
+        fechaIngreso: initialData.fechaIngreso ? new Date(initialData.fechaIngreso) : null,
         fechaNacimiento: initialData.fechaNacimiento ? new Date(initialData.fechaNacimiento) : null,
         fechaRetorno: initialData.fechaRetorno ? new Date(initialData.fechaRetorno) : null,
       });
@@ -62,16 +64,17 @@ export function EmpleadoForm({ initialData = null }) {
       try {
         const puestos = await fetch('/api/rrhh/puestos/');
         const res = await puestos.json();
-        setPuestos(res.map(puesto => puesto.nombre))
+        setPuestos(res.map(puesto => {return ({puesto: puesto.nombre, id: puesto.id})}));
       } catch (error) {
         notifications.show({title: `no se pudo obtener los puestos: ${error.message}`})
       }
     })();
   }, [])
   const handleSubmit = async (values) => {
+    setIsLoading(true);
     const payload = {
       ...values,
-      fechaContratacion: values.fechaContratacion?.toISOString().split('T')[0] ?? null,
+      fechaIngreso: values.fechaIngreso?.toISOString().split('T')[0] ?? null,
       fechaNacimiento: values.fechaNacimiento?.toISOString().split('T')[0] ?? null,
       fechaRetorno: values.fechaRetorno?.toISOString().split('T')[0] ?? null,
     };
@@ -104,6 +107,9 @@ export function EmpleadoForm({ initialData = null }) {
         color: 'red',
       });
     }
+    finally{
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -130,10 +136,10 @@ export function EmpleadoForm({ initialData = null }) {
               <TextInput label="Email" placeholder="juan@example.com" {...form.getInputProps('email')} />
             </Grid.Col>
             <Grid.Col span={12}>
-              <Select 
-              label="Puesto"  
-              data={puestos}
-              {...form.getInputProps('puesto')} 
+              <MultiSelect 
+              label="Puestos"  
+              data={puestos.map(p => ({ value: p.id.toString(), label: p.puesto }))}
+              {...form.getInputProps('puestos')} 
               />
             </Grid.Col>
             <Grid.Col span={12}>
@@ -143,7 +149,7 @@ export function EmpleadoForm({ initialData = null }) {
               <TextInput label="Dirección" placeholder="Calle, ciudad, país" {...form.getInputProps('direccion')} />
             </Grid.Col>
             <Grid.Col span={6}>
-              <DateInput label="Fecha de Contratación" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaContratacion')} />
+              <DateInput label="Fecha de Contratación" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaIngreso')} />
             </Grid.Col>
             <Grid.Col span={6}>
               <DateInput label="Fecha de Nacimiento" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaNacimiento')} />
@@ -188,7 +194,7 @@ export function EmpleadoForm({ initialData = null }) {
             <Button variant="default" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" loading={isLoading} color="blue">
               {initialData ? 'Actualizar Empleado' : 'Registrar Empleado'}
             </Button>
           </Group>

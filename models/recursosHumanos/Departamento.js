@@ -17,21 +17,15 @@ const Departamento = sequelize.define('Departamento', {
         type: DataTypes.TEXT,
         allowNull: true,
     },
-    codigo: {
-        type: DataTypes.STRING,
-        unique: true,
-        allowNull: true,
-    }
 }, {
     tableName: 'Departamentos',
     timestamps: true,
 });
 
 Departamento.associate = (models) => {
-    // Un Departamento tiene muchos Empleados
-    Departamento.hasMany(models.Empleado, {
+  Departamento.hasMany(models.Puesto, {
         foreignKey: 'departamentoId',
-        as: 'empleados',
+        as: 'puestos'
     });
 };
 

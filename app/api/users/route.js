@@ -1,34 +1,40 @@
-// app/api/clientes/route.js
-import Client from '../../../models/user';
-import sequelize from '../../../sequelize';
+// app/api/users/route.js
+import { User } from '@/models';
 
-// GET /api/clientes - Obtener todos los clientes
+// GET /api/users - Obtener todos los usuarios
 export async function GET() {
   try {
-    const clientes = await Client.findAll();
-    return Response.json(clientes);
+    const usuarios = await User.findAll();
+    return Response.json(usuarios, { status: 200 });
   } catch (error) {
-    console.error('Error al obtener clientes:', error);
-    return Response.json({ error: 'Error al obtener clientes' }, { status: 500 });
+    console.log(`\x1b[32m\x1b[41m [ERROR]: Error al obtener usuarios: ${error.message} \x1b[0m`);
+    return Response.json({ error:  `Error al obtener usuarios: ${error.message}` }, { status: 500 });
   }
 }
 
-// POST /api/clientes - Crear un nuevo cliente
+// POST /api/users - Crear un nuevo usuario
 export async function POST(request) {
   
   try {
-    const cliente = await request.json();
-    const {type} = cliente;
-    console.log("CLIENTE", cliente)
+    const usuario = await request.json();
+    const {user, password, empleadoId, isAdmin} = usuario;
     // Validación básica
-    if (!cliente.email) {
-      console.error("se requiere al menos un email")
-      throw new Error('Nombre y email son requeridos');
+    if (!user) {
+      console.log(`\x1b[41m [ERROR]: Se reguiere ingresar un usuario \x1b[0m`);
+      throw new Error('Usuario es requerido');
     }
-    let nuevoCliente = await Client.create(cliente);
+    if (!password) {
+      console.log(`\x1b[41m [ERROR]: Se reguiere ingresar una contraseña \x1b[0m`);
+      throw new Error('Contraseña es requerida');
+    }
+    if (!empleadoId && !isAdmin) {
+      console.log(`\x1b[41m [ERROR]: El id de empleado es requerido \x1b[0m`);
+      throw new Error('El empleadoId es requerido');
+    }
+    let nuevoUsuario = await User.create(usuario);
    
-    return Response.json(nuevoCliente, { status: 201 });
+    return Response.json(nuevoUsuario, { status: 201 });
   } catch (error) {
-    return Response.json({ error: `Error al crear cliente: ${error}`  }, { status: 500 });
+    return Response.json({ error: `Error al crear usuario: ${error}`  }, { status: 500 });
   }
 }

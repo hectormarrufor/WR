@@ -6,9 +6,12 @@ export async function GET(request) {
   try {
     const departamentos = await db.Departamento.findAll({
       include: [{
-        model: db.Empleado,
-        as: 'empleados',
-        attributes: ['id', 'nombre', 'apellido'] // Solo traer datos necesarios de los empleados
+        model: db.Puesto,
+        as: 'puestos',
+        include: [{
+          model: db.Empleado,
+          as: 'empleados',
+        }],
       }],
       order: [['nombre', 'ASC']],
     });

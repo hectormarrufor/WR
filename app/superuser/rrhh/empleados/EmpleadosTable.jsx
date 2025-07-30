@@ -9,6 +9,7 @@ import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation'; // o 'next/router'
 import BackButton from '../../../components/BackButton';
+import CrearUsuarioModal from './CrearUsuarioModal';
 
 function calcularEdad(fechaNacimiento) {
   if (!fechaNacimiento) return null;
@@ -88,6 +89,7 @@ export default function EmpleadosTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const router = useRouter();
+  const [crearUsuarioModalOpened, { open: openCrearUsuarioModal, close: closeCrearUsuarioModal }] = useDisclosure(false);
 
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
@@ -190,6 +192,16 @@ export default function EmpleadosTable() {
         >
           Eliminar
         </Menu.Item>
+        <Menu.Item
+          leftSection={<IconPlus size={18} />}
+          color="blue"
+          onClick={() => {
+            setSelectedEmpleado(row.original);
+            openCrearUsuarioModal(selectedEmpleado);
+          }}
+        >
+          Crear cuenta en sistema
+        </Menu.Item>
       </Menu>
     ),
     renderTopToolbarCustomActions: () => (
@@ -256,6 +268,12 @@ export default function EmpleadosTable() {
           </Button>
         </Flex>
       </Modal>
+      <CrearUsuarioModal
+        empleado={selectedEmpleado}
+        opened={crearUsuarioModalOpened}
+        onClose={closeCrearUsuarioModal}
+        onUserCreated={fetchData} // Refrescar la lista de empleados al crear un usuario   
+      />
     </>
   );
 }

@@ -2,10 +2,10 @@
     height: 140px;
     padding: var(--mantine-spacing-md);
     border-radius: var(--mantine-radius-md); /* Bordes redondeados */
-    box-shadow: var(--mantine-shadow-xs); /* Sombra inicial sutil */
+    box-shadow: var(--mantine-shadow-md) !important;
     border: 1px solid var(--mantine-color-gray-2); /* Borde de bajo contraste */
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    background-color: white;
+    background-color: rgb(218, 218, 218);
 }
 
 /* Contenedor interno del botón de Mantine */
@@ -27,10 +27,10 @@
 
 .superuser-button:disabled,
 .superuser-button[data-disabled] {
-    background-color: var(--mantine-color-gray-0) !important;
+    background-color: var(--mantine-color-gray-1) !important;
     color: var(--mantine-color-gray-5) !important;
     border-color: var(--mantine-color-gray-2) !important;
-    box-shadow: none !important;
+    box-shadow: var(--mantine-shadow-xl) !important;
     transform: none !important;
 }
 

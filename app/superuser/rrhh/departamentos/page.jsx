@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FaPlus } from 'react-icons/fa';
 import DepartamentosTable from './components/DepartamentosTable';
-import SectionTitle from '../../../components/SectionTitle';
+import {SectionTitle} from '../../../components/SectionTitle';
 import DeleteModal from '../../DeleteModal'; // Reutilizamos el modal de eliminación
 
 export default function DepartamentosPage() {

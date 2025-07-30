@@ -3,15 +3,7 @@ const sequelize = require('../sequelize');
 const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  lastname: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  email: {
+  user: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
@@ -20,13 +12,19 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  type: {
-    type: DataTypes.ENUM('administracion', 'almacen', 'ventas', 'compras', 'contabilidad', 'gerencia', "seguridad", "calidad", "admin"),
-    allowNull: false,
+  isAdmin: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   },
-  phone: {
-    type: DataTypes.STRING,
-  },
+  empleadoId: { // ✨ NUEVO CAMPO
+    type: DataTypes.INTEGER,
+    allowNull: true, // Puede haber usuarios que no son empleados (ej. admin)
+    unique: true, // Un empleado solo puede tener un usuario
+    references: {
+      model: 'Empleados',
+      key: 'id'
+    }
+  }
 }
   // , {
   // hooks: {
@@ -60,5 +58,15 @@ User.prototype.toJSON = function () {
   delete values.password;
   return values;
 };
+
+User.associate = (models) => {
+  User.belongsTo(models.Empleado, {
+    foreignKey: 'empleadoId',
+    as: 'empleado' // Un usuario pertenece a un empleado
+  });
+
+
+};
+
 
 module.exports = User;

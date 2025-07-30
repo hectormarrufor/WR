@@ -20,14 +20,18 @@ const Grupo = require('./gestionMantenimiento/Grupo');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
-    User,
     BcvPrecioHistorico,
     ConfiguracionGeneral,
     Activo,
     Categoria,
     CategoriaGrupos,
     Modelo,
-    Grupo
+    Grupo,
+    Departamento,
+    Puesto,
+    EmpleadoPuesto,
+    User,
+    Empleado
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

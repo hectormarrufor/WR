@@ -17,10 +17,6 @@ const Puesto = sequelize.define('Puesto', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  requisitos: {
-    type: DataTypes.JSONB,
-    allowNull: true,
-  },
   esCampo: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
@@ -35,19 +31,32 @@ const Puesto = sequelize.define('Puesto', {
     allowNull: false,
     defaultValue: 'Oficina',
   },
-  // 🗑️ Eliminamos horarioOficinaDetalle, ahora es global
+   departamentoId: { // ✨ NUEVO CAMPO
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'Departamentos',
+            key: 'id'
+        }
+    }
 }, {
   tableName: 'Puestos',
   timestamps: true,
 });
 
 Puesto.associate = (models) => {
-  Puesto.belongsToMany(models.Empleado, {
-    through: 'EmpleadoPuesto',
-    foreignKey: 'puestoId',
-    otherKey: 'empleadoId',
-    as: 'empleados',
-  });
+    // Un Puesto puede tener muchos Empleados
+    Puesto.belongsToMany(models.Empleado, {
+        through: 'EmpleadoPuesto',
+        foreignKey: 'puestoId',
+        as: 'empleados'
+    });
+
+    // Un Puesto pertenece a un Departamento
+  Puesto.belongsTo(models.Departamento, {
+        foreignKey: 'departamentoId',
+        as: 'departamento'
+    });
 };
 
 module.exports = Puesto;
