@@ -27,7 +27,6 @@ const page = () => {
 
  const handleSubmit = async (values) => {
         try {
-          console.log('Intentando iniciar sesión con:', values);
             // Llama a la función centralizada de login
             await login(values.user, values.password);
             // La redirección ahora la maneja el propio hook

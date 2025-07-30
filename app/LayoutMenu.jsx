@@ -5,11 +5,6 @@ import { cerrarSesion } from './ApiFunctions/userServices';
 
 const LayoutMenu = ({ classes, router}) => {
     const { isAuthenticated , logout, nombre} = useAuth();
-    useEffect(() => {
-      console.log(`\x1b[41m isAuthenticated: ${isAuthenticated} \x1b[0m`);
- 
-    }, [isAuthenticated])
-     // Asumiendo que tienes un hook useAuth para manejar la autenticación
     return (
         <Group ml="xl" gap={0} visibleFrom="md">
             {!isAuthenticated && <UnstyledButton className={classes.control} onClick={() => router.push('/')}>Inicio</UnstyledButton>}

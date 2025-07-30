@@ -39,7 +39,6 @@ async function getGrupoCompleto(id) {
 
 export async function GET(request, { params }) {
     const { id } = params;
-    console.log(`\x1b[44m [DEBUG]: ${id} \x1b[0m`);
     
     try {
         const grupoCompleto = await getGrupoCompleto(id);

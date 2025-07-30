@@ -81,14 +81,12 @@ export function FacturasTable() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    console.log('Iniciando Fetch')
     try {
       const response = await fetch('/api/contratos/facturacion'); // API para obtener todas las facturas
       if (!response.ok) {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
       const result = await response.json();
-      console.log(result);
       if (result.length === 0) throw new Error("No hay facturas registradas aun")
       setData(result);
     } catch (err) {

@@ -96,7 +96,6 @@ export async function cerrarSesion(redirect) {
 
     if (response.ok) {
       localStorage.removeItem('token'); // Elimina el token del almacenamiento local
-      console.log('Sesión cerrada correctamente');
       // Redirige al usuario a la página de inicio de sesión
       redirect('/');
     } else {

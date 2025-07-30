@@ -13,10 +13,14 @@ export function AuthProvider({ children }) {
 
     // Esta función ahora se puede llamar desde cualquier lugar
     const fetchUser = async () => {
+        console.log(`\x1b[32m FETCHING USER \x1b[0m`);
+        
         try {
             const response = await fetch('/api/users/session');
             if (response.ok) {
                 const data = await response.json();
+                console.log(`\x1b[44m [DEBUG] DATA FETCHED FROM AuthProvider: ${JSON.stringify(data)} \x1b[0m`);
+                
                 setUser(data);
             } else {
                 setUser(null);
@@ -75,12 +79,8 @@ export function AuthProvider({ children }) {
             router.push('/login'); // Redirigimos al login
         }
     };
-    console.log(user);
     
-
-    const value = { nombre: user?.nombre, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout };
-    console.log("AuthContext value:", value); // Para depuración
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return <AuthContext.Provider value={{ userId: user?.id, nombre: user?.nombre, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {

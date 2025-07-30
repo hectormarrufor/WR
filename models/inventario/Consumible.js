@@ -1,57 +1,67 @@
-// models/inventario/Consumible.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
-
 const Consumible = sequelize.define('Consumible', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  nombre: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
-  },
-  descripcion: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  unidadMedida: { // Ej. "Unidad", "Litro", "Metro", "Kg"
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  stockActual: { // <-- Nuevo campo para el control de inventario
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0.00,
-  },
-  stockMinimo: { // Para alertas de bajo stock
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0.00,
-  },
-  precioUnitarioPromedio: { // Opcional: Para valoración de inventario
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0.00,
-  },
-  ubicacionAlmacen: { // Ej. "Estante A1", "Caja 5"
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    nombre: { // Ej: "Aceite 15W40 Venoco", "Filtro WIX 51515"
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+    },
+    sku: { // "Stock Keeping Unit" o código de parte
+        type: DataTypes.STRING,
+        unique: true,
+    },
+    // ✨ CAMPO CLAVE 1: Para diferenciar y renderizar formularios distintos
+    tipo: { 
+        type: DataTypes.ENUM('Aceite', 'Filtro', 'Correa', 'Repuesto', 'Otro'),
+        allowNull: false,
+    },
+    // ✨ CAMPO CLAVE 2: Para guardar detalles específicos (viscosidad, tamaño, etc.)
+    especificaciones: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: {},
+    },
+    stock: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    stockMinimo: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00
+    },
+    unidadMedida: { // Ej: "Litros", "Unidad", "Metros"
+        type: DataTypes.STRING,
+    },
+    costoPromedio: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    }
 }, {
-  tableName: 'Consumibles',
-  timestamps: true,
+    tableName: 'Consumibles',
+    timestamps: true,
+    underscored: true,
 });
 
 Consumible.associate = (models) => {
-  Consumible.hasMany(models.ConsumibleUsado, { foreignKey: 'consumibleId', as: 'consumiblesUsados' });
-  Consumible.hasMany(models.DetalleOrdenCompra, { foreignKey: 'consumibleId', as: 'detallesOrdenCompra' });
-  Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId', as: 'entradas' });
-  Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId', as: 'salidas' });
-  Consumible.hasMany(models.TrabajoExtra, { foreignKey: 'consumibleId', as: 'trabajosExtraAsociados' });
+    // Un consumible puede tener muchas entradas y salidas de inventario
+    Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId', as: 'entradas' });
+    Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId', as: 'salidas' });
+
+    // ✨ ASOCIACIÓN CLAVE: Un consumible es compatible con muchos modelos (y viceversa)
+    Consumible.belongsToMany(models.Modelo, {
+        through: 'CompatibilidadModeloConsumible', // La nueva tabla intermedia
+        foreignKey: 'consumibleId',
+        otherKey: 'modeloId',
+        as: 'modelosCompatibles'
+    });
 };
 
 module.exports = Consumible;

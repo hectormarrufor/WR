@@ -46,8 +46,6 @@ export default function CategoriasListPage() {
                     throw new Error(`Error al cargar las categorías: ${response.statusText}`);
                 }
                 const data = await response.json();
-                console.log(data);
-                
                 setCategorias(data);
             } catch (error) {
                 notifications.show({

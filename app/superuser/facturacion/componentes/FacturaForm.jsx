@@ -58,7 +58,6 @@ export function FacturaForm({ facturaId = null }) {
         operacionesRes.json(),
       ]);
 
-      console.log(clientesData, contratosData, operacionesData);
       
 
       setClientes(clientesData.map(c => ({

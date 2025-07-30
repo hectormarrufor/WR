@@ -25,6 +25,10 @@ const User = sequelize.define('User', {
       key: 'id'
     }
   }
+},
+{
+    tableName: 'Usuarios',
+    timestamps: true,
 }
   // , {
   // hooks: {

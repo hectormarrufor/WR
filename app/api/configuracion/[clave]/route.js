@@ -15,6 +15,3 @@ async function GET({ params }) {
 
 }
 
-// Para usarlo en una respuesta API o lógica de negocio
-// const horario = await getHorarioOficina();
-// console.log(`El horario de oficina es de ${horario.inicio} a ${horario.fin}`);

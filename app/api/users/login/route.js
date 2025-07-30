@@ -39,7 +39,11 @@ export async function POST(req) {
             headers: { 'Set-Cookie': cookie }, // Establece el encabezado Set-Cookie
         });
     } catch (error) {
-        console.error("error al iniciar sesion", error);
-        throw error
+        console.log(`\x1b[41m [ERROR]: Error al iniciar sesion: ${error.message} \x1b[0m`);
+        return NextResponse.json(
+            { message: error.message || 'Error al iniciar sesión' },
+            { status: 401 }
+        );
+        
     }
 }

@@ -36,6 +36,12 @@ Modelo.associate = (models) => {
         foreignKey: 'categoriaId',
         as: 'categoria'
     });
+    Modelo.belongsToMany(models.Consumible, {
+        through: 'CompatibilidadModeloConsumible', // Tabla intermedia
+        foreignKey: 'modeloId',
+        otherKey: 'consumibleId',
+        as: 'consumiblesCompatibles'
+    })
 };
 
 module.exports = Modelo;

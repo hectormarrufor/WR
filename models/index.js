@@ -17,21 +17,35 @@ const Categoria = require('./gestionMantenimiento/Categoria');
 const CategoriaGrupos = require('./gestionMantenimiento/CategoriaGrupos');
 const Modelo = require('./gestionMantenimiento/Modelo');
 const Grupo = require('./gestionMantenimiento/Grupo');
+const Consumible = require('./inventario/Consumible');
+const CompatibilidadModeloConsumible = require('./inventario/CompatibilidadModeloConsumible');
+const EntradaInventario = require('./inventario/EntradaInventario');
+const SalidaInventario = require('./inventario/SalidaInventario');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
     BcvPrecioHistorico,
     ConfiguracionGeneral,
+
+    //FLOTA
     Activo,
     Categoria,
     CategoriaGrupos,
     Modelo,
     Grupo,
+
+    //RECURSOS HUMANOS
     Departamento,
     Puesto,
     EmpleadoPuesto,
     User,
-    Empleado
+    Empleado,
+
+    //INVENTARIO
+    Consumible,
+    CompatibilidadModeloConsumible,
+    EntradaInventario,
+    SalidaInventario,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

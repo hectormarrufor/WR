@@ -151,7 +151,7 @@ export function PuestosTable() {
       <SimpleGrid cols={3}>
         <BackButton onClick={() => router.back()}/>
         <Title order={2} ta="center" mb="lg">
-          Listado de Empleados
+          Listado de Puestos
         </Title>
         <Box></Box>
       </SimpleGrid>

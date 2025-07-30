@@ -1,11 +1,17 @@
-import { ConsumibleForm } from "../../componentes/ConsumibleForm";
+'use client';
+import { Paper, Title } from '@mantine/core';
+import BackButton from '@/app/components/BackButton';
+import ConsumibleForm from '../ConsumibleForm';
 
-
-export const metadata = {
-  title: 'Nuevo Consumible',
-  description: 'Formulario para registrar un nuevo consumible en inventario.',
-};
 
 export default function NuevoConsumiblePage() {
-  return <ConsumibleForm />;
+    return (
+        <Paper withBorder p="xl" mt={30}>
+            <Group justify="space-between" mb="xl">
+                 <Title order={2}>Crear Nuevo Consumible</Title>
+                 <BackButton />
+            </Group>
+            <ConsumibleForm />
+        </Paper>
+    );
 }

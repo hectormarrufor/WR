@@ -19,7 +19,6 @@ export async function GET(request) {
         });
 
         if (existingPrice) {
-            console.log(`Precio BCV para ${fechaActual} ya existe: ${existingPrice.monto}. Retornando registro existente.`);
             return NextResponse.json({ 
                 message: 'Precio BCV para hoy ya existe', 
                 precio: parseFloat(existingPrice.monto), // Convertir a número para el retorno
@@ -30,7 +29,6 @@ export async function GET(request) {
         }
 
         // 2. Si no existe, proceder con el scraping
-        console.log(`No se encontró precio BCV para ${fechaActual}. Realizando fetch...`);
         const agent = new https.Agent({
             rejectUnauthorized: false, 
         });
@@ -39,7 +37,6 @@ export async function GET(request) {
         const $ = cheerio.load(data);
 
         const dolarText = $('div#dolar .recuadrotsmc .centrado').first().text().trim();
-        console.log("Precio BCV scrapeado: ", dolarText);
 
         // Limpiar y parsear el valor a un número
         // Asegúrate de que el formato de moneda sea consistente: elimina puntos de miles y usa punto para decimales.
@@ -59,7 +56,6 @@ export async function GET(request) {
             monto: precioBCV,
         });
 
-        console.log(`Nuevo precio BCV ${precioBCV} guardado exitosamente para la fecha ${fechaActual} y hora ${horaActual}.`);
 
         return NextResponse.json({ 
             message: 'Precio BCV obtenido y guardado exitosamente', 

@@ -58,7 +58,6 @@ export default function CrearActivoPage() {
                 const res = await fetch(`/api/gestionMantenimiento/modelos-activos/${modeloId}`);
                 if (!res.ok) throw new Error('No se pudo cargar la estructura del modelo');
                 const data = await res.json();
-                console.log('Modelo Schema:', data);
                 setModeloSchema(Object.values(data.especificaciones)); // Pasamos el array de especificaciones
             } catch (err) {
                 setError(err.message);

@@ -207,7 +207,6 @@ export function FacturaProveedorForm({ facturaId }) {
     try {
       const method = facturaId ? 'PUT' : 'POST';
       const url = facturaId ? `/api/compras/facturas-proveedor/${facturaId}` : '/api/compras/facturas-proveedor';
-      console.log(url)
       const response = await fetch(url, {
         method: method,
         headers: {

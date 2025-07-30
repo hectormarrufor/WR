@@ -1,75 +1,66 @@
-// models/inventario/SalidaInventario.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
-  const SalidaInventario = sequelize.define('SalidaInventario', {
+
+const SalidaInventario = sequelize.define('SalidaInventario', {
     id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
     },
     consumibleId: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'Consumibles',
-        key: 'id',
-      },
-      allowNull: false,
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'Consumibles', key: 'id' }
+    },
+    activoId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'Activos', key: 'id' }
     },
     cantidad: {
-      type: DataTypes.DECIMAL(15, 3),
-      allowNull: false,
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
     },
-    fechaSalida: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      allowNull: false,
+    fecha: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
     },
-    tipoSalida: {
-      type: DataTypes.ENUM('Venta', 'Despacho', 'Ajuste Negativo', 'Transferencia', 'Descarte'),
-      allowNull: false,
+    justificacion: {
+        type: DataTypes.TEXT,
+        allowNull: true, // Puede ser opcional, dependiendo de tus reglas de negocio
+        comment: 'Motivo de la salida del inventario (ej: Mantenimiento Preventivo, Reparación de Falla).'
     },
-    documentoReferencia: { // Nro de factura de venta, guía de despacho, etc.
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    entregadoPorId: { // Quién gestionó la salida
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'Empleados',
-        key: 'id',
-      },
-      allowNull: true,
-    },
-    recibidoPor: { // Quién recibió la salida (si aplica, ej. cliente)
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    destinoSalida: { // Ej: "Cliente X", "Almacén B", "Descarte por Daño"
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    notas: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    // Si la salida es por venta de servicios, vincularla a un Contrato/Factura de Venta
-    contratoServicioId: { // Si se vende como parte de un contrato de servicio
+
+    // // ✨ NUEVO CAMPO 2: Para enlazar con el módulo de Mantenimiento (a futuro) ✨
+    // mantenimientoId: {
+    //     type: DataTypes.INTEGER,
+    //     allowNull: true, // Se hará obligatorio cuando se use desde una orden de trabajo
+    //     comment: 'Enlaza esta salida a una orden de mantenimiento específica.'
+    // },
+    // Este campo es para el futuro, para enlazar con una tarea de mantenimiento específica.
+    tareaMantenimientoId: {
         type: DataTypes.INTEGER,
-        references: {
-            model: 'ContratosServicio',
-            key: 'id'
-        },
-        allowNull: true
+        allowNull: true,
     },
-  }, {
+    costoAlMomento: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+    }
+}, {
     tableName: 'SalidasInventario',
     timestamps: true,
-  });
+    underscored: true,
+});
 
-  SalidaInventario.associate = (models) => {
-    SalidaInventario.belongsTo(models.Consumible, { foreignKey: 'consumibleId', as: 'consumible' });
-    SalidaInventario.belongsTo(models.Empleado, { foreignKey: 'entregadoPorId', as: 'entregadoPor' });
-    SalidaInventario.belongsTo(models.ContratoServicio, { foreignKey: 'contratoServicioId', as: 'contratoServicio' });
-  };
+SalidaInventario.associate = (models) => {
+    SalidaInventario.belongsTo(models.Consumible, {
+        foreignKey: 'consumibleId',
+        as: 'consumible'
+    });
+    SalidaInventario.belongsTo(models.Activo, {
+        foreignKey: 'activoId',
+        as: 'activo'
+    });
+};
 
-  module.exports = SalidaInventario;
+module.exports = SalidaInventario;
