@@ -16,6 +16,13 @@ export function FacturaProveedorForm({ facturaId }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+   const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    // Este efecto solo se ejecuta en el cliente, después del primer renderizado.
+    setIsClient(true);
+  }, []);
+  // ✨ --- FIN DE LA SOLUCIÓN --- ✨
+
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [proveedores, setProveedores] = useState([]);
@@ -107,7 +114,7 @@ export function FacturaProveedorForm({ facturaId }) {
 
   useEffect(() => {
     fetchDependencies();
-  }, []);
+  }, [isClient, fetchDependencies]);
 
   const handleOrdenCompraChange = async (ocId, isInitialLoad = false) => {
     form.setFieldValue('ordenCompraId', ocId);

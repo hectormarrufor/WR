@@ -19,6 +19,8 @@ export default function OperacionCampoDetailPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  
+
   // Controla la pestaña activa usando el query param 'tab'
 
   const handleTabChange = (value) => {
