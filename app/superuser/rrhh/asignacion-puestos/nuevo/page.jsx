@@ -4,6 +4,7 @@
 import { Container } from '@mantine/core';
 import { AsignacionPuestoForm } from '../AsignacionPuestoForm';
 
+
 export default function NuevaAsignacionPuestoPage() {
   return (
     <Container size="xl" py="xl">
