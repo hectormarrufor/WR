@@ -1,4 +1,4 @@
-import { SalidaForm } from "../../../componentes/SalidaForm";
+import SalidaForm from "../../SalidasForm";
 
 
 export const metadata = {
