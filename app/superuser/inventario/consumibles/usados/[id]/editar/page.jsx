@@ -4,11 +4,6 @@ import ConsumibleForm from "../../../ConsumibleForm";
 
 
 
-export const metadata = {
-  title: 'Editar Uso de Consumible',
-  description: 'Formulario para ver y editar campos auxiliares de un registro de uso de consumible existente.',
-};
-
 export default function EditarConsumibleUsadoPage({ params }) {
   const { id } = params;
   const [initialData, setInitialData] = useState({});

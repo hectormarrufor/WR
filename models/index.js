@@ -21,10 +21,10 @@ const Consumible = require('./inventario/Consumible');
 const CompatibilidadModeloConsumible = require('./inventario/CompatibilidadModeloConsumible');
 const EntradaInventario = require('./inventario/EntradaInventario');
 const SalidaInventario = require('./inventario/SalidaInventario');
-const Inspeccion = require('./gestionMantenimiento/inspeccion');
 const Hallazgo = require('./gestionMantenimiento/Hallazgo');
 const Mantenimiento = require('./gestionMantenimiento/mantenimiento');
 const TareaMantenimiento = require('./gestionMantenimiento/tareaMantenimiento');
+const Inspeccion = require('./gestionMantenimiento/inspeccion');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
