@@ -49,7 +49,7 @@ function transformPayloadToFormValues(payload) {
 export default function EditarGrupoPage() {
     const router = useRouter();
     const params = useParams();
-    const { id } = use(params);
+    const { id } = params;
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);

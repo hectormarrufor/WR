@@ -9,7 +9,7 @@ import { MudanzaForm } from '../../../../mudanzas/componentes/MudanzaForm';
 
 export default function EditMudanzaPage() {
   const params = useParams();
-  const { id: renglonId } = use(params); // Este 'id' es el renglonContratoId
+  const { id: renglonId } = params; // Este 'id' es el renglonContratoId
   const [mudanzaData, setMudanzaData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

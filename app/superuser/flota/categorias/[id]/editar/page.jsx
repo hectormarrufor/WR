@@ -12,7 +12,7 @@ import BackButton from '@/app/components/BackButton';
 export default function EditarCategoriaPage() {
     const router = useRouter();
     const params = useParams();
-    const { id } = use(params);
+    const { id } = params;
 
     const [nombre, setNombre] = useState('');
     const [grupos, setGrupos] = useState([]); // Todos los grupos disponibles
