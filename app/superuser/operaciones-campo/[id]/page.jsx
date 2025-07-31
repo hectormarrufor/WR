@@ -1,7 +1,7 @@
 // Este componente AHORA es un Server Component. No usa hooks.
 import { Suspense } from 'react';
 import { Container, Center, Loader, Text } from '@mantine/core';
-import OperacionCampoDetailContent from '../componentes/OperacionCampoDetailContent'; // Asumimos que creas este archivo
+import OperacionCampoDetailContent from '../componentes/OperacionCampolDetailContent';
 
 export default function OperacionCampoDetailPage({ params }) {
   return (
