@@ -33,7 +33,6 @@ const TareaMantenimiento = sequelize.define('TareaMantenimiento', {
 }, {
     tableName: 'TareasMantenimiento',
     timestamps: true,
-    underscored: true,
 });
 
 TareaMantenimiento.associate = (models) => {

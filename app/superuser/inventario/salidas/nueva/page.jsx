@@ -1,6 +1,6 @@
 'use client';
 import { Paper, Title } from '@mantine/core';
-import SalidaForm from '../_components/SalidaForm';
+import SalidaForm from '../SalidasForm';
 
 export default function NuevaSalidaPage() {
     return (

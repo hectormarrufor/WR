@@ -49,7 +49,6 @@ const Mantenimiento = sequelize.define('Mantenimiento', {
 }, {
     tableName: 'Mantenimientos', // MNT por "Mantenimiento"
     timestamps: true,
-    underscored: true,
 });
 
 Mantenimiento.associate = (models) => {

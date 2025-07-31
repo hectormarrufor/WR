@@ -34,7 +34,6 @@ const Activo = sequelize.define('Activo', {
 }, {
     tableName: 'Activos',
     timestamps: true,
-    underscored: true,
 });
 
 Activo.associate = (models) => {
