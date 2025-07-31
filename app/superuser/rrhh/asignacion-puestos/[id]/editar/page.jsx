@@ -1,13 +1,13 @@
 // app/superuser/rrhh/asignacion-puestos/[id]/editar/page.js
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { Container, Text, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { AsignacionPuestoForm } from '../../AsignacionPuestoForm';
 
 export default function EditarAsignacionPuestoPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const [asignacionData, setAsignacionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

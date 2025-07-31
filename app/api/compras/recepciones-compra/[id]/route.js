@@ -5,7 +5,7 @@ import db from '../../../../../models';
 
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const recepcionCompra = await db.RecepcionCompra.findByPk(id, {
       include: [
@@ -29,7 +29,7 @@ export async function GET(request, { params }) {
 // export async function PUT(request, { params }) { ... }
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const transaction = await db.sequelize.transaction();
   try {
     const recepcionCompra = await db.RecepcionCompra.findByPk(id, {

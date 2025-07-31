@@ -1,7 +1,7 @@
 // app/superuser/inventario/salidas/[id]/page.js
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, use } from 'react';
 import {
   Title, Text, Paper, Group, Divider, Grid,
   ActionIcon, Tooltip, LoadingOverlay, Button, Center
@@ -11,7 +11,7 @@ import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 
 export default function SalidaInventarioDetailPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const router = useRouter();
   const [salida, setSalida] = useState(null);
   const [loading, setLoading] = useState(true);

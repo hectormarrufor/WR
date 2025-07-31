@@ -38,7 +38,7 @@ async function getGrupoCompleto(id) {
 }
 
 export async function GET(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     
     try {
         const grupoCompleto = await getGrupoCompleto(id);
@@ -57,7 +57,7 @@ export async function PUT(request, { params }) {
     const t = await sequelize.transaction();
     try {
         const body = await request.json();
-        const grupoId = params.id;
+        const grupoId = await params.id;
 
         // Estrategia: Destruir hijos viejos y recrear la estructura.
         // Es más simple y seguro que una comparación compleja.

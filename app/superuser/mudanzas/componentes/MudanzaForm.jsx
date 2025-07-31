@@ -1,7 +1,7 @@
 // components/mudanzas/MudanzaForm.jsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import { useForm } from '@mantine/form';
 import {
   TextInput, Select, Button, Group, Box, Paper, Title, Grid, Textarea,
@@ -16,7 +16,7 @@ import { DatePickerInput } from '@mantine/dates';
 export function MudanzaForm({ initialData = null }) {
   const router = useRouter();
   const params = useParams();
-  const { id: renglonIdFromUrl } = params;
+  const { id: renglonIdFromUrl } = use(params);
 
   const [loadingRenglon, setLoadingRenglon] = useState(true);
   const [renglonInfo, setRenglonInfo] = useState(null);

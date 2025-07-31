@@ -122,7 +122,7 @@ async function actualizarModeloRecursivo(modeloId, modeloData, transaction) {
 // =============================================
 
 export async function GET(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
 
     try {
         const modelo = await db.Modelo.findByPk(id, {
@@ -161,7 +161,7 @@ export async function GET(request, { params }) {
  * PUT para actualizar un modelo y su jerarquía.
  */
 export async function PUT(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     const transaction = await db.sequelize.transaction();
     try {
         const body = await request.json();
@@ -188,7 +188,7 @@ export async function PUT(request, { params }) {
  * DELETE para eliminar un modelo de forma segura.
  */
 export async function DELETE(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     const transaction = await db.sequelize.transaction();
     try {
         const modeloAEliminar = await db.Modelo.findByPk(id, { transaction });

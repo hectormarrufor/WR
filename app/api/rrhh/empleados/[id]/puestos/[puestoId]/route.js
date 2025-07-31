@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../../../models';
 
 export async function DELETE(request, { params }) {
-  const { empleadoId, puestoId } = params;
+  const { empleadoId, puestoId } = await params;
   try {
     const empleadoPuesto = await db.EmpleadoPuesto.findOne({
       where: {

@@ -34,7 +34,7 @@ async function poblarComponentesRecursivo(especificaciones, visited = new Set())
  * GET para obtener un activo específico y la estructura completa de su modelo.
  */
 export async function GET(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     try {
         const activo = await db.Activo.findByPk(id, {
             include: [{
@@ -69,7 +69,7 @@ export async function GET(request, { params }) {
  * PUT para actualizar un activo.
  */
 export async function PUT(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     const transaction = await db.sequelize.transaction();
     try {
         const body = await request.json();
@@ -101,7 +101,7 @@ export async function PUT(request, { params }) {
  * DELETE para eliminar un activo.
  */
 export async function DELETE(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     const transaction = await db.sequelize.transaction();
     try {
         const activoAEliminar = await db.Activo.findByPk(id, { transaction });

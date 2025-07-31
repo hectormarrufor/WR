@@ -1,11 +1,11 @@
 // app/superuser/rrhh/departamentos/[id]/editar/page.jsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import DepartamentoForm from '../../components/DepartamentoForm';
 import {SectionTitle} from '../../../../../components/SectionTitle';
 
 export default function EditarDepartamentoPage({ params }) {
-    const { id } = params;
+    const { id } = use(params);
     const [departamento, setDepartamento] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

@@ -1,7 +1,7 @@
 // app/superuser/operaciones-campo/[id]/page.js
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, use } from 'react';
 import { Container, Title, Text, Center, Loader, Tabs, Paper, Flex, Badge, Group, ActionIcon, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useRouter, useSearchParams } from 'next/navigation'; // Importa useSearchParams
@@ -12,7 +12,7 @@ import { TrabajosExtraTable } from '../componentes/TrabajosExtraTable';
 import { OrdenesCompraOperacionTable } from '../componentes/OrdenesCompraOperacionTable';
 
 export default function OperacionCampoDetailPage({ params }) {
-  const { id } = params; // ID de la operación
+  const { id } = use(params); // ID de la operación
   const router = useRouter();
   const searchParams = useSearchParams();
   const [operacionData, setOperacionData] = useState(null);

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../models';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const puesto = await db.Puesto.findByPk(id);
     if (!puesto) {
@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const body = await request.json();
     const puesto = await db.Puesto.findByPk(id);
@@ -32,7 +32,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const puesto = await db.Puesto.findByPk(id);
     if (!puesto) {

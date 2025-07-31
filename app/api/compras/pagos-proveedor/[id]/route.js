@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../models';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const pagoProveedor = await db.PagoProveedor.findByPk(id, {
       include: [
@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
 // No hay PUT para pagos por complejidad de reversión/auditoría
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const transaction = await db.sequelize.transaction();
   try {
     const pagoProveedor = await db.PagoProveedor.findByPk(id, {

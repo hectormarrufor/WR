@@ -1,13 +1,13 @@
 // app/superuser/rrhh/puestos/[id]/editar/page.js
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { Container, Text, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { PuestoForm } from '../../PuestoForm';
 
 export default function EditarPuestoPage({ params }) {
-  const { id } = params; // El ID del puesto viene de los parámetros de la URL
+  const { id } = use(params); // El ID del puesto viene de los parámetros de la URL
   const [puestoData, setPuestoData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../models';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const proveedor = await db.Proveedor.findByPk(id, {
       include: [{ model: db.OrdenCompra, as: 'ordenesCompra' }],
@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const body = await request.json();
     const proveedor = await db.Proveedor.findByPk(id);
@@ -34,7 +34,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const proveedor = await db.Proveedor.findByPk(id);
     if (!proveedor) {

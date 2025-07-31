@@ -1,7 +1,7 @@
 // app/superuser/facturacion/[id]/page.js
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, use } from 'react';
 import {
   Title, Text, Paper, Group, Badge, Divider, Grid,
   ActionIcon, Tooltip, LoadingOverlay, Button, Modal, Card, Table, Flex
@@ -13,7 +13,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { PagoFacturaForm } from '../componentes/PagoFacturaForm';
 
 export default function FacturaDetailPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const router = useRouter();
   const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);

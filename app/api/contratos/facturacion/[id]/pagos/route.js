@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../../models';
 
 export async function POST(request, { params }) {
-  const { id: facturaId } = params; // El ID de la factura es el parámetro de la URL
+  const { id: facturaId } = await params; // El ID de la factura es el parámetro de la URL
   const transaction = await db.sequelize.transaction();
   try {
     const body = await request.json();
@@ -62,7 +62,7 @@ export async function POST(request, { params }) {
 }
 
 export async function GET(request, { params }) {
-  const { id: facturaId } = params;
+  const { id: facturaId } = await params;
   try {
     const pagos = await db.PagoFactura.findAll({
       where: { facturaId: facturaId },

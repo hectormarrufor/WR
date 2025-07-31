@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../models';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const factura = await db.Factura.findByPk(id, {
       include: [
@@ -26,7 +26,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const transaction = await db.sequelize.transaction(); // Iniciar transacción
   try {
     const body = await request.json();
@@ -108,7 +108,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const transaction = await db.sequelize.transaction(); // Iniciar transacción
   try {
     const factura = await db.Factura.findByPk(id, {

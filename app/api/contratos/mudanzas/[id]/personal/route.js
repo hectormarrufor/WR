@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../../models';
 
 export async function GET(request, { params }) {
-  const { mudanzaId } = params;
+  const { mudanzaId } = await params;
   try {
     const mudanza = await db.Mudanza.findByPk(mudanzaId);
     if (!mudanza) {
@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const { mudanzaId } = params;
+  const { mudanzaId } = await params;
   try {
     const body = await request.json(); // Espera { empleadoId: 1, rolEnMudanza: 'Chofer' }
     const { empleadoId, rolEnMudanza } = body;

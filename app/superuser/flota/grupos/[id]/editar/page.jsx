@@ -1,6 +1,6 @@
 // app/superuser/flota/grupos/[id]/editar/page.jsx
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useForm } from '@mantine/form';
 import { TextInput, Button, Box, Title, Paper, LoadingOverlay, Alert } from '@mantine/core';
 import { useRouter, useParams } from 'next/navigation';
@@ -49,7 +49,7 @@ function transformPayloadToFormValues(payload) {
 export default function EditarGrupoPage() {
     const router = useRouter();
     const params = useParams();
-    const { id } = params;
+    const { id } = use(params);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);

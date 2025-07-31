@@ -1,11 +1,11 @@
 'use client'
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import ConsumibleForm from "../../../ConsumibleForm";
 
 
 
 export default function EditarConsumibleUsadoPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const [initialData, setInitialData] = useState({});
   useEffect(() => {
     // Aquí podrías cargar datos iniciales si es necesario

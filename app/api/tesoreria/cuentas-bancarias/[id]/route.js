@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../models';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const cuenta = await db.CuentaBancaria.findByPk(id, {
       include: [
@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const body = await request.json();
     const cuenta = await db.CuentaBancaria.findByPk(id);
@@ -39,7 +39,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const cuenta = await db.CuentaBancaria.findByPk(id);
     if (!cuenta) {

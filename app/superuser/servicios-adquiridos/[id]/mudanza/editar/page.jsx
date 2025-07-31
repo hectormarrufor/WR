@@ -1,7 +1,7 @@
 // src/app/superuser/servicios-adquiridos/[id]/mudanzas/editar/page.jsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import { Container, Title, Center, Loader, Text, Box } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
@@ -9,7 +9,7 @@ import { MudanzaForm } from '../../../../mudanzas/componentes/MudanzaForm';
 
 export default function EditMudanzaPage() {
   const params = useParams();
-  const { id: renglonId } = params; // Este 'id' es el renglonContratoId
+  const { id: renglonId } = use(params); // Este 'id' es el renglonContratoId
   const [mudanzaData, setMudanzaData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

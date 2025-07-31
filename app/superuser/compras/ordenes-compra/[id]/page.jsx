@@ -1,7 +1,7 @@
 // app/superuser/compras/ordenes-compra/[id]/page.js
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, use } from 'react';
 import {
   Title, Text, Paper, Group, Divider, Grid,
   ActionIcon, Tooltip, LoadingOverlay, Button, Center, Badge
@@ -24,7 +24,7 @@ const getEstadoColor = (estado) => {
 };
 
 export default function OrdenCompraDetailPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const router = useRouter();
   const [ordenCompra, setOrdenCompra] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../models';
 
 export async function GET(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const departamento = await db.Departamento.findByPk(id, {
       include: [{
@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const body = await request.json();
     const departamento = await db.Departamento.findByPk(id);
@@ -38,7 +38,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const departamento = await db.Departamento.findByPk(id);
     if (!departamento) {

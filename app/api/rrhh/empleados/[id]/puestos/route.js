@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../../models';
 
 export async function GET(request, { params }) {
-  const { empleadoId } = params;
+  const { empleadoId } = await params;
   try {
     const empleado = await db.Empleado.findByPk(empleadoId);
     if (!empleado) {
@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const { empleadoId } = params;
+  const { empleadoId } = await params;
   try {
     const body = await request.json(); // Espera { puestoId: 1, fechaAsignacion: 'YYYY-MM-DD' }
     const { puestoId, fechaAsignacion } = body;

@@ -1,7 +1,7 @@
 // app/superuser/flota/categorias/[id]/editar/page.jsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Button, TextInput, Paper, Title, MultiSelect, Box, LoadingOverlay, Alert } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useRouter, useParams } from 'next/navigation';
@@ -12,7 +12,7 @@ import BackButton from '@/app/components/BackButton';
 export default function EditarCategoriaPage() {
     const router = useRouter();
     const params = useParams();
-    const { id } = params;
+    const { id } = use(params);
 
     const [nombre, setNombre] = useState('');
     const [grupos, setGrupos] = useState([]); // Todos los grupos disponibles
