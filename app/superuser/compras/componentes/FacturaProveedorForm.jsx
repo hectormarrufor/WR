@@ -15,7 +15,6 @@ import { IconTrash, IconInfoCircle } from '@tabler/icons-react';
 export function FacturaProveedorForm({ facturaId }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialOrdenCompraId = searchParams.get('ordenCompraId'); // Si viene de un link desde la OC
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +25,7 @@ export function FacturaProveedorForm({ facturaId }) {
   const form = useForm({
     initialValues: {
       proveedorId: null,
-      ordenCompraId: initialOrdenCompraId || null,
+      ordenCompraId: null,
       numeroFactura: '',
       fechaEmision: new Date(),
       fechaVencimiento: new Date(new Date().setMonth(new Date().getMonth() + 1)), // 1 mes después
@@ -89,9 +88,9 @@ export function FacturaProveedorForm({ facturaId }) {
         if (facturaData.ordenCompraId) {
           await handleOrdenCompraChange(facturaData.ordenCompraId.toString(), true);
         }
-      } else if (initialOrdenCompraId) {
+      } else if (searchParams) {
           // Si viene de una OC pre-seleccionada, cargar sus detalles
-          await handleOrdenCompraChange(initialOrdenCompraId, true);
+          await handleOrdenCompraChange(searchParams.get('ordenCompraId'), true);
       }
 
     } catch (err) {
@@ -104,7 +103,7 @@ export function FacturaProveedorForm({ facturaId }) {
     } finally {
       setLoading(false);
     }
-  }, [facturaId, form, initialOrdenCompraId]);
+  }, [facturaId, form, searchParams]);
 
   useEffect(() => {
     fetchDependencies();

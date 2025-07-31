@@ -20,7 +20,6 @@ export default function OperacionCampoDetailPage({ params }) {
   const [error, setError] = useState(null);
 
   // Controla la pestaña activa usando el query param 'tab'
-  const currentTab = searchParams.get('tab') || 'general'; // 'general' es la pestaña por defecto
 
   const handleTabChange = (value) => {
     router.replace(`/superuser/operaciones-campo/${id}?tab=${value}`, undefined, { shallow: true });
@@ -150,7 +149,7 @@ export default function OperacionCampoDetailPage({ params }) {
       </Paper>
 
       {/* Pestañas para sub-módulos */}
-      <Tabs value={currentTab} onChange={handleTabChange} defaultValue="general" variant="outline">
+      <Tabs value={searchParams.get('tab') || 'general'} onChange={handleTabChange} defaultValue="general" variant="outline">
         <Tabs.List>
           <Tabs.Tab value="general" leftSection={<IconClipboardList size={20} />}>
             General

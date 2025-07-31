@@ -15,7 +15,6 @@ import { IconTrash } from '@tabler/icons-react';
 export function RecepcionCompraForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialOrdenCompraId = searchParams.get('ordenCompraId'); // Si viene de un link desde la OC
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,7 +24,7 @@ export function RecepcionCompraForm() {
 
   const form = useForm({
     initialValues: {
-      ordenCompraId: initialOrdenCompraId || null,
+      ordenCompraId: null,
       fechaRecepcion: new Date(),
       numeroGuia: '',
       recibidaPorId: null,
@@ -54,6 +53,8 @@ export function RecepcionCompraForm() {
       setOrdenesCompraPendientes(ocData.map(oc => ({ value: oc.id.toString(), label: `${oc.numeroOrden} (${oc.proveedor.nombre}) - ${oc.estado}` })));
       setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
 
+      const initialOrdenCompraId = searchParams.get('ordenCompraId');
+
       // Si hay una OC pre-seleccionada, cargar sus detalles
       if (initialOrdenCompraId) {
         const ocDetailsRes = await fetch(`/api/compras/ordenes-compra/${initialOrdenCompraId}`);
@@ -80,7 +81,7 @@ export function RecepcionCompraForm() {
     } finally {
       setLoading(false);
     }
-  }, [initialOrdenCompraId, form]);
+  }, [searchParams, form]);
 
   useEffect(() => {
     fetchDependencies();
