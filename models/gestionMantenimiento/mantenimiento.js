@@ -22,7 +22,6 @@ const Mantenimiento = sequelize.define('Mantenimiento', {
     codigoOM: {
         type: DataTypes.STRING,
         unique: true,
-        comment: 'Código único para la Orden de Mantenimiento'
     },
     tipo: {
         type: DataTypes.ENUM('Preventivo', 'Correctivo', 'Predictivo', 'Mejora'),
@@ -44,7 +43,6 @@ const Mantenimiento = sequelize.define('Mantenimiento', {
     },
     descripcion: {
         type: DataTypes.TEXT,
-        comment: 'Descripción general del trabajo a realizar.'
     }
 }, {
     tableName: 'Mantenimientos', // MNT por "Mantenimiento"

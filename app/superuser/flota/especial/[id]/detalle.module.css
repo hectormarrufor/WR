@@ -1,8 +1,0 @@
-.tree :global(.mantine-Tree-node) {
-  padding-top: var(--mantine-spacing-xs);
-  padding-bottom: var(--mantine-spacing-xs);
-}
-
-.tree :global(.mantine-Tree-nodeLabel) {
-  width: 100%;
-}

@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import DepartamentoForm from '../../components/DepartamentoForm';
-import SectionTitle from '../../../../../components/SectionTitle';
+import {SectionTitle} from '../../../../../components/SectionTitle';
 
 export default function EditarDepartamentoPage({ params }) {
     const { id } = params;

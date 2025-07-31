@@ -1,5 +1,5 @@
 'use client';
-import { Paper, Title } from '@mantine/core';
+import { Group, Paper, Title } from '@mantine/core';
 import BackButton from '@/app/components/BackButton';
 import ConsumibleForm from '../ConsumibleForm';
 
