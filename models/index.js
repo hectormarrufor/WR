@@ -24,7 +24,7 @@ const SalidaInventario = require('./inventario/SalidaInventario');
 const Hallazgo = require('./gestionMantenimiento/Hallazgo');
 const Mantenimiento = require('./gestionMantenimiento/mantenimiento');
 const TareaMantenimiento = require('./gestionMantenimiento/tareaMantenimiento');
-const Inspeccion = require('./gestionMantenimiento/inspeccion');
+const Inspeccion = require('./gestionMantenimiento/Inspeccion');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
