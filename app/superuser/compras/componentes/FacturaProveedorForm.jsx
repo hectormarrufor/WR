@@ -1,41 +1,37 @@
 // components/compras/FacturaProveedorForm.jsx
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import {
   TextInput, Button, Group, Box, Select, NumberInput, Textarea,
-  Loader, Center, Title, Paper, Divider, ActionIcon, Flex, Text, Tooltip
+  Loader, Center, Title, Paper, Divider, ActionIcon, Text
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { IconTrash, IconInfoCircle } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 
-export function FacturaProveedorForm({ facturaId }) {
+// Este es el componente interno que contiene TODA la lógica y usa el hook.
+function FacturaProveedorFormContent({ facturaId }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-   const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    // Este efecto solo se ejecuta en el cliente, después del primer renderizado.
-    setIsClient(true);
-  }, []);
-  // ✨ --- FIN DE LA SOLUCIÓN --- ✨
+  const initialOrdenCompraId = searchParams.get('ordenCompraId');
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [proveedores, setProveedores] = useState([]);
-  const [ordenesCompra, setOrdenesCompra] = useState([]); // Todas las OC para seleccionar
-  const [ocItemsForFactura, setOcItemsForFactura] = useState([]); // Items de la OC que se pueden facturar
+  const [ordenesCompra, setOrdenesCompra] = useState([]);
+  const [ocItemsForFactura, setOcItemsForFactura] = useState([]);
+  const [error, setError] = useState(null);
 
   const form = useForm({
     initialValues: {
       proveedorId: null,
-      ordenCompraId: null,
+      ordenCompraId: initialOrdenCompraId || null,
       numeroFactura: '',
       fechaEmision: new Date(),
-      fechaVencimiento: new Date(new Date().setMonth(new Date().getMonth() + 1)), // 1 mes después
+      fechaVencimiento: new Date(new Date().setMonth(new Date().getMonth() + 1)),
       fechaRecepcionFactura: new Date(),
       notas: '',
       detalles: [],
@@ -50,12 +46,47 @@ export function FacturaProveedorForm({ facturaId }) {
     },
   });
 
+  const handleOrdenCompraChange = useCallback(async (ocId, isInitialLoad = false) => {
+    form.setFieldValue('ordenCompraId', ocId);
+    setOcItemsForFactura([]);
+    if (ocId) {
+      try {
+        const response = await fetch(`/api/compras/ordenes-compra/${ocId}`);
+        if (!response.ok) {
+          throw new Error('No se pudo cargar la Orden de Compra.');
+        }
+        const ocData = await response.json();
+        const itemsPendientes = ocData.detalles.filter(d => !d.facturadoCompletamente);
+        setOcItemsForFactura(itemsPendientes.map(d => ({
+          value: d.id.toString(),
+          label: `${d.consumible.nombre} - Cantidad Pendiente: ${parseFloat(d.cantidad) - parseFloat(d.cantidadFacturada)}`,
+          consumibleId: d.consumibleId.toString(),
+          consumibleNombre: d.consumible.nombre,
+          cantidadPendiente: parseFloat(d.cantidad) - parseFloat(d.cantidadFacturada),
+          precioUnitarioOC: parseFloat(d.precioUnitario),
+          detalleOrdenCompraId: d.id.toString(),
+        })));
+
+        if (!isInitialLoad && itemsPendientes.length > 0) {
+          form.setFieldValue('proveedorId', ocData.proveedorId.toString());
+        }
+      } catch (err) {
+        notifications.show({
+          title: 'Error',
+          message: `Error al cargar detalles de la OC: ${err.message}`,
+          color: 'red',
+        });
+        setOcItemsForFactura([]);
+      }
+    }
+  }, [form]);
+
   const fetchDependencies = useCallback(async () => {
     setLoading(true);
     try {
       const [provRes, ocRes] = await Promise.all([
         fetch('/api/compras/proveedores'),
-        fetch('/api/compras/ordenes-compra?estado=Recibida Parcial&estado=Recibida Completa&estado=Aprobada&estado=Enviada'), // OCs que puedan ser facturadas
+        fetch('/api/compras/ordenes-compra?estado=Recibida Parcial&estado=Recibida Completa&estado=Aprobada&estado=Enviada'),
       ]);
 
       const [provData, ocData] = await Promise.all([
@@ -67,7 +98,6 @@ export function FacturaProveedorForm({ facturaId }) {
       setOrdenesCompra(ocData.map(oc => ({ value: oc.id.toString(), label: `${oc.numeroOrden} (${oc.proveedor.nombre}) - ${oc.estado}` })));
 
       if (facturaId) {
-        // Cargar datos de la factura existente para edición
         const facturaRes = await fetch(`/api/compras/facturas-proveedor/${facturaId}`);
         if (!facturaRes.ok) throw new Error('No se pudo cargar la factura.');
         const facturaData = await facturaRes.json();
@@ -88,79 +118,30 @@ export function FacturaProveedorForm({ facturaId }) {
             detalleOrdenCompraId: d.detalleOrdenCompraId ? d.detalleOrdenCompraId.toString() : null,
             detalleRecepcionCompraId: d.detalleRecepcionCompraId ? d.detalleRecepcionCompraId.toString() : null,
             notas: d.notas || '',
-            consumibleNombre: d.consumible.nombre, // Para display
+            consumibleNombre: d.consumible.nombre,
           })),
         });
-        // Si hay una OC asociada, cargar sus items para asegurar que se puedan seleccionar
         if (facturaData.ordenCompraId) {
           await handleOrdenCompraChange(facturaData.ordenCompraId.toString(), true);
         }
-      } else if (searchParams) {
-          // Si viene de una OC pre-seleccionada, cargar sus detalles
-          await handleOrdenCompraChange(searchParams.get('ordenCompraId'), true);
+      } else if (initialOrdenCompraId) {
+        await handleOrdenCompraChange(initialOrdenCompraId, true);
       }
-
     } catch (err) {
       notifications.show({
         title: 'Error de Carga',
         message: `No se pudieron cargar los datos necesarios: ${err.message}`,
         color: 'red',
       });
-      setError(err); // Considerar usar un estado de error
+      setError(err);
     } finally {
       setLoading(false);
     }
-  }, [facturaId, form, searchParams]);
+  }, [facturaId, form, initialOrdenCompraId, handleOrdenCompraChange]);
 
   useEffect(() => {
     fetchDependencies();
-  }, [isClient, fetchDependencies]);
-
-  const handleOrdenCompraChange = async (ocId, isInitialLoad = false) => {
-    form.setFieldValue('ordenCompraId', ocId);
-    setOcItemsForFactura([]);
-    if (ocId) {
-      try {
-        const response = await fetch(`/api/compras/ordenes-compra/${ocId}`);
-        if (!response.ok) {
-          throw new Error('No se pudo cargar la Orden de Compra.');
-        }
-        const ocData = await response.json();
-        // Filtrar los detalles de OC que aún no han sido facturados completamente
-        const itemsPendientes = ocData.detalles.filter(d => !d.facturadoCompletamente);
-        setOcItemsForFactura(itemsPendientes.map(d => ({
-            value: d.id.toString(),
-            label: `${d.consumible.nombre} - Cantidad Pendiente: ${parseFloat(d.cantidad) - parseFloat(d.cantidadFacturada)}`,
-            consumibleId: d.consumibleId.toString(),
-            consumibleNombre: d.consumible.nombre,
-            cantidadPendiente: parseFloat(d.cantidad) - parseFloat(d.cantidadFacturada),
-            precioUnitarioOC: parseFloat(d.precioUnitario),
-            detalleOrdenCompraId: d.id.toString(), // Guardar el ID del DetalleOC
-        })));
-
-        if (!isInitialLoad && itemsPendientes.length > 0) { // Si no es carga inicial y hay items
-            form.setFieldValue('proveedorId', ocData.proveedorId.toString()); // Sugerir proveedor de la OC
-            // Puedes auto-llenar los detalles si la OC es para una factura completa
-            // form.setFieldValue('detalles', itemsPendientes.map(item => ({
-            //     consumibleId: item.consumibleId,
-            //     cantidadFacturada: item.cantidadPendiente,
-            //     precioUnitarioFacturado: item.precioUnitarioOC,
-            //     impuestos: 0,
-            //     detalleOrdenCompraId: item.detalleOrdenCompraId,
-            //     notas: '',
-            // })));
-        }
-
-      } catch (err) {
-        notifications.show({
-          title: 'Error',
-          message: `Error al cargar detalles de la OC: ${err.message}`,
-          color: 'red',
-        });
-        setOcItemsForFactura([]);
-      }
-    }
-  };
+  }, [fetchDependencies]);
 
   const addDetail = () => {
     form.insertListItem('detalles', {
@@ -417,5 +398,18 @@ export function FacturaProveedorForm({ facturaId }) {
         </Group>
       </form>
     </Box>
+  );
+}
+
+export function FacturaProveedorForm({ facturaId }) {
+  return (
+    <Suspense fallback={
+      <Center style={{ height: '400px' }}>
+        <Loader size="lg" />
+        <Text ml="md">Cargando formulario...</Text>
+      </Center>
+    }>
+      <FacturaProveedorFormContent facturaId={facturaId} />
+    </Suspense>
   );
 }

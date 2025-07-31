@@ -1,10 +1,10 @@
 // components/compras/RecepcionCompraForm.jsx
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import {
   TextInput, Button, Group, Box, Select, NumberInput, Textarea,
-  Loader, Center, Title, Paper, Divider, ActionIcon, Flex, Text
+  Loader, Center, Title, Paper, Divider, ActionIcon, Text
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
@@ -12,23 +12,16 @@ import { notifications } from '@mantine/notifications';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IconTrash } from '@tabler/icons-react';
 
-export function RecepcionCompraForm() {
+function RecepcionCompraFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialOrdenCompraId = searchParams.get('ordenCompraId'); // Si viene de un link desde la OC
-
-   const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    // Este efecto solo se ejecuta en el cliente, después del primer renderizado.
-    setIsClient(true);
-  }, []);
-  // ✨ --- FIN DE LA SOLUCIÓN --- ✨
+  const initialOrdenCompraId = searchParams.get('ordenCompraId');
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ordenesCompraPendientes, setOrdenesCompraPendientes] = useState([]);
   const [empleados, setEmpleados] = useState([]);
-  const [selectedOcDetails, setSelectedOcDetails] = useState([]); // Detalles de la OC seleccionada
+  const [selectedOcDetails, setSelectedOcDetails] = useState([]);
 
   const form = useForm({
     initialValues: {
@@ -37,7 +30,7 @@ export function RecepcionCompraForm() {
       numeroGuia: '',
       recibidaPorId: null,
       notas: '',
-      detalles: [], // Items a recibir
+      detalles: [],
     },
     validate: {
       ordenCompraId: (value) => (value ? null : 'La Orden de Compra es requerida'),
@@ -49,7 +42,7 @@ export function RecepcionCompraForm() {
     setLoading(true);
     try {
       const [ocRes, empleadosRes] = await Promise.all([
-        fetch('/api/compras/ordenes-compra?estado=Pendiente&estado=Aprobada&estado=Enviada&estado=Recibida Parcial'), // Solo OCs elegibles para recibir
+        fetch('/api/compras/ordenes-compra?estado=Pendiente&estado=Aprobada&estado=Enviada&estado=Recibida Parcial'),
         fetch('/api/rrhh/empleados'),
       ]);
 
@@ -61,7 +54,6 @@ export function RecepcionCompraForm() {
       setOrdenesCompraPendientes(ocData.map(oc => ({ value: oc.id.toString(), label: `${oc.numeroOrden} (${oc.proveedor.nombre}) - ${oc.estado}` })));
       setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
 
-      // Si hay una OC pre-seleccionada, cargar sus detalles
       if (initialOrdenCompraId) {
         const ocDetailsRes = await fetch(`/api/compras/ordenes-compra/${initialOrdenCompraId}`);
         if (ocDetailsRes.ok) {
@@ -69,15 +61,14 @@ export function RecepcionCompraForm() {
           form.setFieldValue('ordenCompraId', initialOrdenCompraId);
           loadOcDetails(ocDetailsData);
         } else {
-            notifications.show({
-                title: 'Error de Carga',
-                message: `La Orden de Compra pre-seleccionada no pudo ser cargada o no es elegible.`,
-                color: 'red',
-            });
-            form.setFieldValue('ordenCompraId', null); // Limpiar si no es válida
+          notifications.show({
+            title: 'Error de Carga',
+            message: `La Orden de Compra pre-seleccionada no pudo ser cargada o no es elegible.`,
+            color: 'red',
+          });
+          form.setFieldValue('ordenCompraId', null);
         }
       }
-
     } catch (err) {
       notifications.show({
         title: 'Error de Carga',
@@ -91,7 +82,7 @@ export function RecepcionCompraForm() {
 
   useEffect(() => {
     fetchDependencies();
-  }, [isClient, fetchDependencies]);
+  }, [fetchDependencies]);
 
 
   const loadOcDetails = (ocData) => {
@@ -319,5 +310,18 @@ export function RecepcionCompraForm() {
         </Group>
       </form>
     </Box>
+  );
+}
+
+export function RecepcionCompraForm() {
+  return (
+    <Suspense fallback={
+      <Center style={{ height: '400px' }}>
+        <Loader size="lg" />
+        <Text ml="md">Cargando formulario...</Text>
+      </Center>
+    }>
+      <RecepcionCompraFormContent />
+    </Suspense>
   );
 }
