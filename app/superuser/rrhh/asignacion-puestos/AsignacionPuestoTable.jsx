@@ -12,13 +12,13 @@ import { useRouter } from 'next/navigation';
 // Definición de las columnas de la tabla
 const getColumns = () => [
   {
-    accessorFn: (row) => `${row.empleado.nombre} ${row.empleado.apellido}`, // Asume que incluye el objeto empleado
+    accessorFn: (row) => `${row.empleado?.nombre} ${row.empleado.apellido}`, // Asume que incluye el objeto empleado
     id: 'nombreEmpleado', // ID único para esta columna
     header: 'Empleado',
     size: 200,
   },
   {
-    accessorFn: (row) => row.puesto.nombre, // Asume que incluye el objeto puesto
+    accessorFn: (row) => row.puesto?.nombre, // Asume que incluye el objeto puesto
     id: 'nombrePuesto',
     header: 'Puesto Asignado',
     size: 200,
