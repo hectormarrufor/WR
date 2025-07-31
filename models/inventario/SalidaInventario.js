@@ -61,6 +61,10 @@ SalidaInventario.associate = (models) => {
         foreignKey: 'activoId',
         as: 'activo'
     });
+    SalidaInventario.belongsTo(models.TareaMantenimiento, {
+        foreignKey: 'tareaMantenimientoId',
+        as: 'tarea'
+    });
 };
 
 module.exports = SalidaInventario;

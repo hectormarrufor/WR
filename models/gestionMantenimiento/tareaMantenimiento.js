@@ -1,68 +1,60 @@
-// models/flota/tareaMantenimiento.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../../sequelize.js'); // Asegúrate que la ruta es correcta
+const sequelize = require('../../sequelize');
 
 const TareaMantenimiento = sequelize.define('TareaMantenimiento', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  mantenimientoId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'Mantenimientos', // Nombre de la tabla de Mantenimientos
-      key: 'id',
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
     },
-  },
-  descripcion: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-  },
-  estado: {
-    type: DataTypes.ENUM('Pendiente', 'En Progreso', 'Completada', 'Cancelada'),
-    defaultValue: 'Pendiente',
-  },
-  fechaInicio: {
-    type: DataTypes.DATE,
-    allowNull: true,
-  },
-  fechaFin: {
-    type: DataTypes.DATE,
-    allowNull: true,
-  },
-  costoEstimado: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-  },
-  costoReal: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-  },
-  hallazgoInspeccionId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'HallazgosInspeccion', // Nombre de la tabla de HallazgosInspeccion
-      key: 'id',
+    mantenimientoId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'Mantenimientos', key: 'id' }
     },
-  },
-  // ¡NUEVO CAMPO! Tipo de mantenimiento a nivel de tarea
-  tipo: {
-    type: DataTypes.ENUM('Preventivo', 'Correctivo', 'Predictivo'),
-    allowNull: false, // Ahora cada tarea debe tener un tipo
-    defaultValue: 'Correctivo', // Valor por defecto si viene de un hallazgo (que suele ser correctivo)
-  },
+    // El técnico o mecánico asignado a esta tarea específica
+    tecnicoId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: { model: 'Empleados', key: 'id' }
+    },
+    descripcion: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        comment: 'Ej: Drenar aceite de motor, Reemplazar filtro primario.'
+    },
+    estado: {
+        type: DataTypes.ENUM('Pendiente', 'En Progreso', 'Completada'),
+        defaultValue: 'Pendiente',
+    },
+    observaciones: {
+        type: DataTypes.TEXT,
+    }
 }, {
-  tableName: 'TareasMantenimiento',
-  timestamps: true,
+    tableName: 'TareasMantenimiento',
+    timestamps: true,
+    underscored: true,
 });
 
 TareaMantenimiento.associate = (models) => {
-  TareaMantenimiento.belongsTo(models.Mantenimiento, { foreignKey: 'mantenimientoId', as: 'mantenimiento' });
-  TareaMantenimiento.belongsTo(models.HallazgoInspeccion, { foreignKey: 'hallazgoInspeccionId', as: 'hallazgoOrigen' });
-   TareaMantenimiento.hasMany(models.ConsumibleUsado, { foreignKey: 'tareaMantenimientoId', as: 'consumiblesUsados' }); // Asegúrate que 'tareaMantenimientoId' es la FK en ConsumibleUsado
+    // Una tarea pertenece a una sola Orden de Mantenimiento
+    TareaMantenimiento.belongsTo(models.Mantenimiento, {
+        foreignKey: 'mantenimientoId',
+        as: 'ordenMantenimiento'
+    });
+
+    // Una tarea es ejecutada por un técnico (Empleado)
+    TareaMantenimiento.belongsTo(models.Empleado, {
+        foreignKey: 'tecnicoId',
+        as: 'tecnico'
+    });
+
+    // Una tarea puede consumir varios repuestos del inventario.
+    // Esto conecta la tarea directamente con la salida justificada.
+    TareaMantenimiento.hasMany(models.SalidaInventario, {
+        foreignKey: 'tareaMantenimientoId',
+        as: 'consumiblesUtilizados'
+    });
 };
 
 module.exports = TareaMantenimiento;

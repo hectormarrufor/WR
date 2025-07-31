@@ -41,7 +41,8 @@ Modelo.associate = (models) => {
         foreignKey: 'modeloId',
         otherKey: 'consumibleId',
         as: 'consumiblesCompatibles'
-    })
+    });
+    
 };
 
 module.exports = Modelo;

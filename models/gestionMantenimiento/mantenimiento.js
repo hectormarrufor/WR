@@ -2,47 +2,80 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const Mantenimiento = sequelize.define('Mantenimiento', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  // --- MODIFICACIÓN POLIMÓRFICA ---
-  // Reemplazamos 'vehiculoId' por estos dos campos genéricos
-  activoId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
-  activoTipo: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  // ------------------------------------
-  
-  // Tus campos existentes se mantienen intactos
-  tipo: { type: DataTypes.ENUM('Preventivo', 'Correctivo'), allowNull: false },
-  fecha: { type: DataTypes.DATEONLY, allowNull: false },
-  descripcion: { type: DataTypes.TEXT, allowNull: false },
-  costo: { type: DataTypes.DECIMAL(10, 2) },
-  estado: { type: DataTypes.ENUM('Programado', 'En Progreso', 'Completado', 'Cancelado'), defaultValue: 'Completado' },
-  usuarioId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: { model: 'Empleados', key: 'id' },
-  },
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    activoId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: { model: 'Activos', key: 'id' }
+    },
+    // El empleado que supervisa o es responsable de la orden
+    responsableId: {
+        type: DataTypes.INTEGER,
+        allowNull: true, 
+        references: { model: 'Empleados', key: 'id' }
+    },
+    // Un código único para la orden de trabajo
+    codigoOM: {
+        type: DataTypes.STRING,
+        unique: true,
+        comment: 'Código único para la Orden de Mantenimiento'
+    },
+    tipo: {
+        type: DataTypes.ENUM('Preventivo', 'Correctivo', 'Predictivo', 'Mejora'),
+        allowNull: false,
+    },
+    estado: {
+        type: DataTypes.ENUM('Pendiente', 'Planificado', 'En Progreso', 'En Espera de Repuestos', 'Completado', 'Cancelado'),
+        defaultValue: 'Pendiente',
+    },
+    prioridad: {
+        type: DataTypes.ENUM('Baja', 'Media', 'Alta', 'Urgente'),
+        defaultValue: 'Media',
+    },
+    fechaInicio: {
+        type: DataTypes.DATE,
+    },
+    fechaFin: {
+        type: DataTypes.DATE,
+    },
+    descripcion: {
+        type: DataTypes.TEXT,
+        comment: 'Descripción general del trabajo a realizar.'
+    }
 }, {
-  tableName: 'Mantenimientos',
-  timestamps: true,
+    tableName: 'Mantenimientos', // MNT por "Mantenimiento"
+    timestamps: true,
+    underscored: true,
 });
 
 Mantenimiento.associate = (models) => {
-  // 1. La asociación a Vehiculo se elimina de aquí.
-  // 2. La asociación a Usuario se mantiene.
-  Mantenimiento.belongsTo(models.Empleado, { foreignKey: 'usuarioId', as: 'usuario' });
+    // Una orden pertenece a un solo Activo
+    Mantenimiento.belongsTo(models.Activo, {
+        foreignKey: 'activoId',
+        as: 'activo'
+    });
+    
+    // Una orden tiene un Empleado responsable
+    Mantenimiento.belongsTo(models.Empleado, {
+        foreignKey: 'responsableId',
+        as: 'responsable'
+    });
 
-  // 3. ¡IMPORTANTE! Las asociaciones con los modelos HIJOS se mantienen exactamente igual.
-  Mantenimiento.hasMany(models.TareaMantenimiento, { foreignKey: 'mantenimientoId', as: 'tareas' });
-  Mantenimiento.hasMany(models.ConsumibleUsado, { foreignKey: 'mantenimientoId', as: 'consumiblesUsados' });
+    // Una orden agrupa varios Hallazgos. Cuando un hallazgo se asocia, se actualiza su FK.
+    Mantenimiento.hasMany(models.Hallazgo, {
+        foreignKey: 'ordenMantenimientoId',
+        as: 'hallazgos'
+    });
+
+    // Una orden se desglosa en varias Tareas
+    Mantenimiento.hasMany(models.TareaMantenimiento, {
+        foreignKey: 'mantenimientoId',
+        as: 'tareas'
+    });
 };
 
 module.exports = Mantenimiento;

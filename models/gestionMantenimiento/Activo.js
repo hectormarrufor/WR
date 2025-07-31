@@ -42,6 +42,15 @@ Activo.associate = (models) => {
         foreignKey: 'modeloId',
         as: 'modelo'
     });
+
+    Activo.hasMany(models.Inspeccion, { 
+        foreignKey: 'activoId', 
+        as: 'inspecciones' 
+    });
+    Activo.hasMany(models.Mantenimiento, { 
+        foreignKey: 'activoId', 
+        as: 'mantenimientos' 
+    });
     // Aquí irían las futuras relaciones con Inspecciones y Mantenimientos
     // Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
     // Activo.hasMany(models.Mantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
