@@ -1,5 +1,6 @@
 import db from '@/models';
 import { NextResponse } from 'next/server';
+import { del } from '@vercel/blob';
 
 // Reutilizamos la función helper que creamos para poblar la jerarquía de modelos.
 // Puedes mover esta función a un archivo de 'utils' para no repetirla.
@@ -8,7 +9,7 @@ async function poblarComponentesRecursivo(especificaciones, visited = new Set())
     for (const attrId in especificacionesPobladas) {
         const atributo = especificacionesPobladas[attrId];
         if (atributo.dataType === 'object' && atributo.definicion) {
-            const defObjeto = Array.isArray(atributo.definicion) ? atributo.definicion.reduce((acc, item) => ({...acc, [item.id]: item}), {}) : atributo.definicion;
+            const defObjeto = Array.isArray(atributo.definicion) ? atributo.definicion.reduce((acc, item) => ({ ...acc, [item.id]: item }), {}) : atributo.definicion;
             atributo.definicion = await poblarComponentesRecursivo(defObjeto, visited);
         }
         if (atributo.dataType === 'grupo' && atributo.refId) {
@@ -65,41 +66,49 @@ export async function GET(request, { params }) {
     }
 }
 
-/**
- * PUT para actualizar un activo.
- */
 export async function PUT(request, { params }) {
     const { id } = await params;
     const transaction = await db.sequelize.transaction();
     try {
         const body = await request.json();
-        const activoAActualizar = await db.Activo.findByPk(id, { transaction });
+        // console.log(body);
 
-        if (!activoAActualizar) {
+        // return NextResponse.json({ message: 'Datos incompletos para actualizar el activo.' }, { status: 400 });
+
+        // 1. Buscamos el activo existente para obtener la URL de la imagen antigua.
+        const activoExistente = await db.Activo.findByPk(id, { transaction });
+        if (!activoExistente) {
             await transaction.rollback();
             return NextResponse.json({ message: 'Activo no encontrado' }, { status: 404 });
         }
 
-        // Actualizamos el activo con los nuevos datos
-        await activoAActualizar.update(body, { transaction });
-        
+        const urlImagenAntigua = activoExistente.imagen;
+
+        // 2. Actualizamos el registro del activo en la base de datos.
+        await activoExistente.update(body, { transaction });
+
+        // 3. ✨ LÓGICA DE REEMPLAZO ✨
+        // Comprobamos si la URL de la imagen ha cambiado Y si existía una imagen antigua.
+        const urlImagenNueva = body.imagen;
+        if (urlImagenNueva !== urlImagenAntigua && urlImagenAntigua) {
+            // Si son diferentes, eliminamos la imagen antigua de Vercel Blob.
+            await del(urlImagenAntigua);
+        }
+
         await transaction.commit();
-        return NextResponse.json(activoAActualizar);
+        console.log(`\x1b[32m [SUCCESS]: Activo ${id} actualizado correctamente. \x1b[0m`);
+        return NextResponse.json({ message: 'Activo actualizado correctamente.' }, { status: 200 });
 
     } catch (error) {
         await transaction.rollback();
-        console.error(`Error al actualizar el activo ${id}:`, error);
-        if (error.name === 'SequelizeUniqueConstraintError') {
-             return NextResponse.json({ message: 'El código de activo ya existe.' }, { status: 409 });
-        }
+        console.log(`\x1b[41m [ERROR]: Error al actualizar activo: ${error.message} \x1b[0m`);
         return NextResponse.json({ message: 'Error al actualizar el activo', error: error.message }, { status: 500 });
+
     }
 }
 
 
-/**
- * DELETE para eliminar un activo.
- */
+
 export async function DELETE(request, { params }) {
     const { id } = await params;
     const transaction = await db.sequelize.transaction();
@@ -110,17 +119,27 @@ export async function DELETE(request, { params }) {
             return NextResponse.json({ message: 'Activo no encontrado' }, { status: 404 });
         }
 
-        // Aquí irían futuras comprobaciones de dependencias (si el activo está en una inspección, etc.)
-        // Por ahora, la eliminación es directa.
-        
+        const urlImagenAEliminar = activoAEliminar.imagen;
+
+        // 1. Eliminamos el registro del activo de la base de datos.
         await activoAEliminar.destroy({ transaction });
+
+        // 2. ✨ LÓGICA DE ELIMINACIÓN DE BLOB ✨
+        // Si el activo tenía una URL de imagen...
+        if (urlImagenAEliminar) {
+            // ...la eliminamos de Vercel Blob.
+            // Esto se hace después de confirmar la transacción de la BD.
+            await del(urlImagenAEliminar);
+        }
+
         await transaction.commit();
-        
-        return new Response(null, { status: 204 }); // Éxito, sin contenido
+        console.log(`\x1b[32m [SUCCESS]: Activo ${id} eliminado correctamente. \x1b[0m`);
+        return NextResponse.json({ message: 'Activo eliminado correctamente.' }, { status: 200 });
 
     } catch (error) {
         await transaction.rollback();
-        console.error(`Error al eliminar el activo ${id}:`, error);
+        console.log(`\x1b[41m [ERROR]: Error al eliminar el activo: ${error.message} \x1b[0m`);
         return NextResponse.json({ message: 'Error al eliminar el activo', error: error.message }, { status: 500 });
+
     }
 }

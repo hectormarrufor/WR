@@ -30,7 +30,11 @@ const Activo = sequelize.define('Activo', {
         type: DataTypes.STRING,
         allowNull: false,
         defaultValue: 'Operativo',
-    }
+    },
+    imagen: {
+        type: DataTypes.TEXT, // Usamos TEXT para almacenar la imagen en formato Base64
+        allowNull: true,
+    },
 }, {
     tableName: 'Activos',
     timestamps: true,
@@ -50,6 +54,7 @@ Activo.associate = (models) => {
         foreignKey: 'activoId', 
         as: 'mantenimientos' 
     });
+
     // Aquí irían las futuras relaciones con Inspecciones y Mantenimientos
     // Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
     // Activo.hasMany(models.Mantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });

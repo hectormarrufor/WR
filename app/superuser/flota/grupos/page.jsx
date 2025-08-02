@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Table, Button, Title, Paper, LoadingOverlay, Alert, Group, Anchor, Text } from '@mantine/core';
-import { IconPencil, IconPlus } from '@tabler/icons-react';
+import { IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -33,6 +33,24 @@ export default function GruposListPage() {
         fetchGrupos();
     }, []);
 
+    const eliminarGrupo = async (id) => {
+        if (!confirm('¿Estás seguro de que quieres eliminar este grupo?')) return;
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/gestionMantenimiento/grupos/${id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'No se pudo eliminar el grupo');
+            }
+            setGrupos(grupos.filter(grupo => grupo.id !== id));
+        } catch (err) {
+            setError(err.message);
+        }
+        setLoading(false);
+    };
+
     const rows = grupos.map((grupo) => (
         <Table.Tr key={grupo.id}>
             <Table.Td>{grupo.id}</Table.Td>
@@ -45,6 +63,15 @@ export default function GruposListPage() {
                     onClick={() => router.push(`/superuser/flota/grupos/${grupo.id}/editar`)}
                 >
                     Editar
+                </Button>
+                <Button 
+                    leftSection={<IconTrash size={14} />} 
+                    mx={10}
+                    color='red'
+                    variant="outline"
+                    onClick={() => eliminarGrupo(grupo.id)}
+                >
+                    Eliminar
                 </Button>
             </Table.Td>
         </Table.Tr>

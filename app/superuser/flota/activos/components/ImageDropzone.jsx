@@ -2,77 +2,129 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Group, Text, Image, SimpleGrid } from '@mantine/core';
+import { Group, Text, Image, Box, Paper, Center, Loader, Stack } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone';
-import { IconUpload, IconPhoto, IconX } from '@tabler/icons-react';
+import { IconUpload, IconPhoto, IconX, IconReload } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import imageCompression from 'browser-image-compression';
 
-// Helper para convertir un archivo a Base64
-const toBase64 = file => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-});
 
 export default function ImageDropzone({ label, form, fieldPath }) {
-    const [files, setFiles] = useState([]);
+const [preview, setPreview] = useState(null);
+    const [compressing, setCompressing] = useState(false);
     const initialValue = form.getInputProps(fieldPath).value;
 
+    // Efecto para mostrar la imagen inicial si estamos editando
     useEffect(() => {
-        // Si hay un valor inicial (editando), lo mostramos
-        if (initialValue && files.length === 0) {
-            setFiles([{ preview: initialValue }]);
+        if (typeof initialValue === 'string' && initialValue.startsWith('http')) {
+            setPreview(initialValue);
         }
     }, [initialValue]);
 
     const handleDrop = async (acceptedFiles) => {
         const file = acceptedFiles[0];
-        if (file) {
-            setFiles([{ ...file, preview: URL.createObjectURL(file) }]);
-            const base64 = await toBase64(file);
-            form.setFieldValue(fieldPath, base64); // Guardamos la imagen en Base64 en el formulario
+        if (!file) return;
+
+        setCompressing(true);
+        notifications.show({
+            id: 'compressing-image',
+            title: 'Procesando imagen',
+            message: 'Comprimiendo la imagen, por favor espera...',
+            loading: true,
+            autoClose: false,
+        });
+
+        const options = {
+            maxSizeMB: 0.2, // Máximo 200KB
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+        };
+
+        try {
+            // ✨ 1. Comprimimos la imagen en el navegador
+            const compressedFile = await imageCompression(file, options);
+            
+            // 2. Creamos una URL local solo para la previsualización
+            const previewUrl = URL.createObjectURL(compressedFile);
+            setPreview(previewUrl);
+
+            // ✨ 3. Guardamos el ARCHIVO COMPRIMIDO en el estado del formulario
+            form.setFieldValue(fieldPath, compressedFile);
+
+            notifications.update({
+                id: 'compressing-image',
+                title: 'Éxito',
+                message: 'Imagen procesada y lista para subir.',
+                color: 'green',
+                autoClose: 3000,
+            });
+
+        } catch (error) {
+            notifications.update({
+                id: 'compressing-image',
+                title: 'No se pudo comprimir la imagen.',
+                message: error.message,
+                color: 'red',
+            });
+            console.error(error);
+        } finally {
+            setCompressing(false);
         }
     };
 
-    const previews = files.map((file, index) => {
-        const imageUrl = file.preview;
-        return <Image key={index} src={imageUrl} onLoad={() => URL.revokeObjectURL(imageUrl)} />;
-    });
-
     return (
-        <Box>
-            <Text size="sm" fw={500}>{label}</Text>
-            <Dropzone
-                onDrop={handleDrop}
-                onReject={(files) => console.log('rejected files', files)}
-                maxSize={5 * 1024 ** 2}
-                accept={IMAGE_MIME_TYPE}
-                mt="xs"
-            >
-                <Group justify="center" gap="xl" mih={180} style={{ pointerEvents: 'none' }}>
-                    <Dropzone.Accept>
-                        <IconUpload size="3.2rem" stroke={1.5} />
-                    </Dropzone.Accept>
-                    <Dropzone.Reject>
-                        <IconX size="3.2rem" stroke={1.5} />
-                    </Dropzone.Reject>
-                    <Dropzone.Idle>
-                        <IconPhoto size="3.2rem" stroke={1.5} />
-                    </Dropzone.Idle>
-                    <div>
-                        <Text size="xl" inline>
-                            Arrastra una imagen o haz clic para seleccionar
-                        </Text>
-                        <Text size="sm" c="dimmed" inline mt={7}>
-                            El archivo no debe exceder los 5MB
-                        </Text>
-                    </div>
-                </Group>
-            </Dropzone>
+        <Box mt={15} withBorder p="md" style={{borderRadius: '8px', backgroundColor: '#f8f9fa', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', border: '1px solid #585858ff'}}>
+            {/* ✨ ZONA DE PREVISUALIZACIÓN Y CAMBIO DE IMAGEN ✨ */}
+            {preview && !compressing && (
+                <Paper withBorder p="sm" mt="xs" radius="md">
+                    <Stack align="center">
+                        <Image src={preview} maw={250} radius="md" />
+                        <Dropzone
+                            onDrop={handleDrop}
+                            maxSize={5 * 1024 ** 2}
+                            accept={IMAGE_MIME_TYPE}
+                            mt="xs"
+                            padding="xs"
+                            radius="md"
+                            style={{ borderWidth: '1px', borderStyle: 'dashed' }}
+                        >
+                            <Group justify="center" gap="xs">
+                                <IconReload size="1.2rem" stroke={1.5} />
+                                <Text size="sm">Haz clic o arrastra un archivo para cambiar la imagen</Text>
+                            </Group>
+                        </Dropzone>
+                    </Stack>
+                </Paper>
+            )}
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} mt={previews.length > 0 ? 'xl' : 0}>
-                {previews}
-            </SimpleGrid>
+            {/* ✨ ZONA DE CARGA INICIAL (SOLO SI NO HAY IMAGEN) ✨ */}
+            {!preview && (
+                <Dropzone
+                    onDrop={handleDrop}
+                    maxSize={5 * 1024 ** 2}
+                    accept={IMAGE_MIME_TYPE}
+                    mt="xs"
+                    loading={compressing}
+                >
+                    <Group justify="center" gap="xl" mih={180} style={{ pointerEvents: 'none' }}>
+                        <Dropzone.Accept><IconUpload size="3.2rem" stroke={1.5} /></Dropzone.Accept>
+                        <Dropzone.Reject><IconX size="3.2rem" stroke={1.5} /></Dropzone.Reject>
+                        <Dropzone.Idle><IconPhoto size="3.2rem" stroke={1.5} /></Dropzone.Idle>
+                        <div>
+                            <Text size="xl" inline>Arrastra una imagen o haz clic</Text>
+                            <Text size="sm" c="dimmed" inline mt={7}>El archivo no debe exceder los 4.5MB</Text>
+                        </div>
+                    </Group>
+                </Dropzone>
+            )}
+            
+            {/* Mostramos un loader centrado mientras se comprime */}
+            {compressing && (
+                 <Center mt="md">
+                    <Loader />
+                    <Text ml="sm">Comprimiendo...</Text>
+                </Center>
+            )}
         </Box>
     );
 }

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader, Paper, Title, Alert } from '@mantine/core';
-// Importamos el formulario de creación que ya es inteligente
-import CrearActivoPage from '../../crear/page';
+import { Paper, Title, Loader, Alert, Group } from '@mantine/core';
+import BackButton from '@/app/components/BackButton';
+import ActivoForm from '../../components/ActivoForm';
+
 
 export default function EditarActivoPage() {
     const { id } = useParams();
@@ -15,7 +16,6 @@ export default function EditarActivoPage() {
     useEffect(() => {
         if (id) {
             const fetchActivo = async () => {
-                setLoading(true);
                 try {
                     const response = await fetch(`/api/gestionMantenimiento/activos/${id}`);
                     if (!response.ok) throw new Error('No se pudo cargar el activo para editar');
@@ -31,27 +31,20 @@ export default function EditarActivoPage() {
         }
     }, [id]);
 
-    if (loading) {
-        return <Loader size="xl" style={{ display: 'block', margin: 'auto', marginTop: '50px' }} />;
-    }
+    if (loading) return <Loader size="xl" />;
+    if (error) return <Alert color="red" title="Error">{error}</Alert>;
 
-    if (error) {
-        return <Alert color="red" title="Error">{error}</Alert>;
-    }
-
-    if (!initialData) {
-        return <Alert color="yellow" title="Aviso">No se encontraron datos para el activo.</Alert>;
-    }
-    
-    // Aquí reutilizamos el formulario de creación, pasándole los datos iniciales.
-    // Necesitarás modificar ligeramente tu `CrearActivoPage` para aceptar `initialData` como prop.
     return (
-         <Paper withBorder shadow="md" p="xl" radius="md" mt={30}>
-            <Title order={2} ta="center" mb="xl">Editar Activo: {initialData.codigoActivo}</Title>
-            {/* Aquí deberías tener un componente formulario separado para máxima reutilización */}
-            {/* Por ahora, asumimos que puedes adaptar CrearActivoPage o crear un nuevo componente */}
-            <p>Formulario de edición iría aquí, precargado con los datos.</p>
-             {/* <ActivoForm initialData={initialData} isEditing={true} /> */}
-         </Paper>
+        <Paper withBorder p="xl" mt={30}>
+            <Group justify="space-between" mb="xl">
+                <Title order={2}>Editar Activo: {initialData?.codigoActivo}</Title>
+                <BackButton />
+            </Group>
+            {initialData ? (
+                <ActivoForm initialData={initialData} isEditing={true} />
+            ) : (
+                <Alert color="yellow">No se encontraron datos para el activo.</Alert>
+            )}
+        </Paper>
     );
 }

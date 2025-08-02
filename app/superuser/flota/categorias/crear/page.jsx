@@ -75,7 +75,7 @@ export default function CrearCategoriaPage() {
                 if (!response.ok) throw new Error('No se pudieron cargar los grupos');
                 const data = await response.json();
                 console.log(data);
-                setGrupos(data.filter(g => !g.parentId).map(g => ({ value: g.id.toString(), label: g.nombre, definicion: g.definicion })));
+                setGrupos(data.map(g => ({ value: g.id.toString(), label: g.nombre, definicion: g.definicion })));
             } catch (err) {
                 setError(err.message);
                 notifications.show({

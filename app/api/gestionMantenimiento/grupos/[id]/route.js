@@ -57,7 +57,8 @@ export async function PUT(request, { params }) {
     const t = await sequelize.transaction();
     try {
         const body = await request.json();
-        const grupoId = await params.id;
+        const { id } = await params;
+        const grupoId = id;
 
         // Estrategia: Destruir hijos viejos y recrear la estructura.
         // Es más simple y seguro que una comparación compleja.
@@ -111,5 +112,28 @@ export async function PUT(request, { params }) {
         console.error('Error al actualizar el grupo:', error);
         const detail = error.parent?.detail || 'Un nombre de grupo ya existe.';
         return NextResponse.json({ error: `Conflicto: ${detail}`, details: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request, { params }) {
+    const { id } = await params;
+    const t = await sequelize.transaction();
+    try {
+        // Primero, eliminamos todos los subgrupos relacionados
+        await Grupo.destroy({ where: { parentId: id }, transaction: t });
+        
+        // Luego, eliminamos el grupo principal
+        const deletedCount = await Grupo.destroy({ where: { id }, transaction: t });
+        
+        if (deletedCount === 0) {
+            return NextResponse.json({ error: 'Grupo no encontrado' }, { status: 404 });
+        }
+        
+        await t.commit();
+        return NextResponse.json({ message: 'Grupo eliminado exitosamente' });
+    } catch (error) {
+        await t.rollback();
+        console.error('Error al eliminar el grupo:', error);
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
     }
 }

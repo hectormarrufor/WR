@@ -1,112 +1,71 @@
-// app/superuser/flota/components/RenderActivoForm.jsx
 'use client';
 
-import { TextInput, Select, MultiSelect, NumberInput, Textarea, Accordion, Box, Grid, Title, Paper } from '@mantine/core';
-import ImageDropzone from './ImageDropzone';
+import { TextInput, Select, MultiSelect, NumberInput, Textarea, Accordion, Box, Grid, Title, Paper, TagsInput } from '@mantine/core';
 
-function RenderActivoForm({ schema, form, pathPrefix = 'datosPersonalizados' }) {
-    // Protección por si el schema no es un array
-    if (!Array.isArray(schema)) {
-        return null;
-    }
+// Este componente es recursivo para manejar la jerarquía de componentes (ej. Motor dentro de Camioneta)
+export default function RenderActivoForm({ schema, form, pathPrefix = 'datosPersonalizados' }) {
+    if (!schema) return null;
+
+    // Convertimos el objeto de especificaciones a un array para poder mapearlo
+    const schemaArray = Array.isArray(schema) ? schema : Object.values(schema);
 
     const renderInput = (attr) => {
-        // La ruta al campo en el objeto del formulario, ej: 'datosPersonalizados.motor.aceite.tipo'
         const fieldPath = `${pathPrefix}.${attr.id}`;
+        
+        // ✨ LÓGICA CLAVE: Determinamos si el campo debe estar bloqueado ✨
+        // Un campo se bloquea si tiene un `defaultValue` que no sea nulo o vacío.
+        const isLocked = attr.defaultValue !== null && attr.defaultValue !== undefined && attr.defaultValue !== '';
 
-        switch (attr.inputType) {
-            case 'select':
-                return <Select
-                    label={attr.label}
-                    placeholder={`Seleccione ${attr.label.toLowerCase()}`}
-                    data={attr.selectOptions || []}
-                    {...form.getInputProps(fieldPath)}
-                />;
-            case 'multiSelect':
-                return <MultiSelect
-                    label={attr.label}
-                    placeholder={`Seleccione una o más opciones`}
-                    data={attr.selectOptions || []}
-                    searchable
-                    {...form.getInputProps(fieldPath)}
-                />;
-            case 'textarea':
-                return <Textarea
-                    label={attr.label}
-                    placeholder={`Ingrese ${attr.label.toLowerCase()}`}
-                    autosize
-                    minRows={3}
-                    {...form.getInputProps(fieldPath)}
-                />;
-            case 'image':
-                return <ImageDropzone
-                    label={attr.label}
-                    form={form}
-                    fieldPath={fieldPath}
-                />;
-            case 'number':
-                return <NumberInput
-                    label={attr.label}
-                    placeholder={`Ingrese ${attr.label.toLowerCase()}`}
-                    min={attr.min}
-                    max={attr.max}
-                    {...form.getInputProps(fieldPath)}
-                />;
-            default: // 'text', 'string', etc.
-                return <TextInput
-                    label={attr.label}
-                    placeholder={`Ingrese ${attr.label.toLowerCase()}`}
-                    {...form.getInputProps(fieldPath)}
-                />;
+        // Ahora, en cada componente, añadimos la propiedad `disabled={isLocked}`.
+        if (attr.inputType === 'multiSelect') {
+            return <Select data={attr.selectOptions || []} searchable multiple label={attr.label} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
         }
+        if (attr.inputType === 'select') {
+            return <Select data={attr.selectOptions || []} searchable label={attr.label} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
+        }
+        if (attr.inputType === 'number') {
+            return <NumberInput label={attr.label} min={attr.min} max={attr.max} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
+        }
+        return <TextInput label={attr.label} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
     };
 
-    // 1. Filtramos los atributos simples (que no son ni grupo ni objeto anidado)
-    const topLevelAttributes = schema.filter(attr => attr.dataType !== 'grupo' && attr.dataType !== 'object');
-    
-    // 2. Filtramos los atributos que son objetos anidados (como 'aceite')
-    const objectAttributes = schema.filter(attr => attr.dataType === 'object' && attr.definicion);
-    
-    // 3. Filtramos los atributos que son componentes completos (como 'motor')
-    const componentAttributes = schema.filter(attr => attr.dataType === 'grupo' && attr.componente);
+    const topLevelAttributes = schemaArray.filter(attr => attr.dataType !== 'grupo' && attr.dataType !== 'object');
+    const objectAttributes = schemaArray.filter(attr => attr.dataType === 'object');
+    const componentAttributes = schemaArray.filter(attr => attr.dataType === 'grupo' && attr.componente);
 
     return (
         <Box>
-            {/* Renderiza los atributos simples en una cuadrícula */}
             <Grid>
                 {topLevelAttributes.map(attr => (
-                    <Grid.Col span={{ base: 12, md: 6 }} key={attr.key || attr.id}>
+                    <Grid.Col span={{ base: 12, md: 6 }} key={attr.id}>
                         {renderInput(attr)}
                     </Grid.Col>
                 ))}
             </Grid>
 
-            {/* ✨ NUEVA LÓGICA: Renderiza los objetos anidados dentro de un recuadro */}
             {objectAttributes.map(attr => (
-                <Paper withBorder p="md" mt="lg" radius="md" key={attr.key || attr.id}>
+                <Paper withBorder p="md" mt="lg" radius="md" key={attr.id}>
                     <Title order={6} mb="xs">{attr.label}</Title>
-                    {/* Llamada recursiva para las propiedades del objeto */}
                     <RenderActivoForm
-                        schema={Object.values(attr.definicion)}
+                        schema={attr.definicion}
                         form={form}
-                        pathPrefix={`${pathPrefix}.${attr.id}`} // ej: datosPersonalizados.motor.aceite
+                        pathPrefix={`${pathPrefix}.${attr.id}`}
                     />
                 </Paper>
             ))}
 
-            {/* Renderiza los componentes anidados en un acordeón (esto ya estaba bien) */}
             {componentAttributes.length > 0 && (
                 <Accordion variant="separated" mt="xl">
                     {componentAttributes.map(attr => (
-                        <Accordion.Item value={attr.id} key={attr.key || attr.id}>
+                        <Accordion.Item value={attr.id} key={attr.id}>
                             <Accordion.Control>
-                                <Title order={5}>{`Datos de ${attr.label}`}</Title>
+                                <Title order={5}>{`Datos de ${attr.label} (${attr.componente.nombre})`}</Title>
                             </Accordion.Control>
                             <Accordion.Panel>
                                 <RenderActivoForm
-                                    schema={Object.values(attr.componente.especificaciones)}
+                                    schema={attr.componente.especificaciones}
                                     form={form}
-                                    pathPrefix={`${pathPrefix}.${attr.id}`} // ej: datosPersonalizados.motor
+                                    pathPrefix={`${pathPrefix}.${attr.id}`}
                                 />
                             </Accordion.Panel>
                         </Accordion.Item>
@@ -116,5 +75,3 @@ function RenderActivoForm({ schema, form, pathPrefix = 'datosPersonalizados' }) 
         </Box>
     );
 }
-
-export default RenderActivoForm;
