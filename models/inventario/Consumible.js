@@ -51,14 +51,7 @@ const Consumible = sequelize.define('Consumible', {
         allowNull: false,
         defaultValue: 0.00
     },
-     grupoCompatibilidadId: {
-        type: DataTypes.INTEGER,
-        allowNull: true, // Un consumible puede no pertenecer a ningún grupo
-        references: {
-            model: 'GruposCompatibilidad',
-            key: 'id'
-        }
-    }
+     
 }, {
     tableName: 'Consumibles',
     timestamps: true,
