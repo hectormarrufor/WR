@@ -25,14 +25,14 @@ export async function POST(req) {
         const token = jwt.sign(
             { id: usuario.id, nombre: usuario.empleado?.nombre || "Admin", departamentos: usuario.empleado?.puestos.map(puesto => puesto.departamento) || "", isAdmin: usuario.isAdmin, puestos: usuario.empleado?.puestos || "", isAuthenticated: true},
             process.env.JWT_SECRET,
-            { expiresIn: '336h' }
+            { expiresIn: '1y' }
         );
         const cookie = serialize('token', token, {
             httpOnly: true, // La cookie no es accesible desde JavaScript
             // secure: process.env.NODE_ENV !== 'development',  Solo se envía a través de HTTPS en producción
             sameSite: 'strict', // Protege contra ataques CSRF
             path: '/', // La cookie es válida para todas las rutas
-            maxAge: 60 * 60, // 1 hora (el mismo tiempo que el token)
+            maxAge: 60 * 60 * 24 * 365 // 1 año
         });
         return NextResponse.json({ message: 'Inicio de sesión exitoso' }, {
             status: 200,

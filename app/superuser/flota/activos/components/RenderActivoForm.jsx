@@ -1,6 +1,34 @@
 'use client';
 
 import { TextInput, Select, MultiSelect, NumberInput, Textarea, Accordion, Box, Grid, Title, Paper, TagsInput } from '@mantine/core';
+import { IconPlus } from '@tabler/icons-react';
+
+// ✨ NUEVO COMPONENTE PARA EL FORMULARIO DE ACTIVO ✨
+function ActivoConsumibleSelect({ attribute, form, fieldPath, modeloId }) {
+    const [opciones, setOpciones] = useState([]);
+
+    useEffect(() => {
+        if (modeloId) {
+            // Pedimos a la API los consumibles que ya sabemos que son compatibles con este modelo
+            fetch(`/api/gestionMantenimiento/modelos-activos/${modeloId}/consumibles-compatibles?atributoId=${attribute.id}`)
+                .then(res => res.json())
+                .then(data => {
+                    setOpciones(data.map(c => ({
+                        value: c.id.toString(),
+                        label: `${c.nombre} (Marca: ${c.marca})`
+                    })));
+                });
+        }
+    }, [modeloId, attribute.id]);
+
+    return (
+        <Select
+            label={attribute.label}
+            data={opciones}
+            {...form.getInputProps(fieldPath)}
+        />
+    );
+}
 
 // Este componente es recursivo para manejar la jerarquía de componentes (ej. Motor dentro de Camioneta)
 export default function RenderActivoForm({ schema, form, pathPrefix = 'datosPersonalizados' }) {
@@ -11,22 +39,26 @@ export default function RenderActivoForm({ schema, form, pathPrefix = 'datosPers
 
     const renderInput = (attr) => {
         const fieldPath = `${pathPrefix}.${attr.id}`;
-        
+
+        // ✨ LÓGICA INTELIGENTE: Si el atributo es un consumible, usa el Select especial ✨
+        if (attr.consumibleType) {
+            return <ActivoConsumibleSelect attribute={attr} form={form} fieldPath={fieldPath} modeloId={form.values.modeloId} />;
+        }
         // ✨ LÓGICA CLAVE: Determinamos si el campo debe estar bloqueado ✨
         // Un campo se bloquea si tiene un `defaultValue` que no sea nulo o vacío.
         const isLocked = attr.defaultValue !== null && attr.defaultValue !== undefined && attr.defaultValue !== '';
 
         // Ahora, en cada componente, añadimos la propiedad `disabled={isLocked}`.
         if (attr.inputType === 'multiSelect') {
-            return <Select data={attr.selectOptions || []} searchable multiple label={attr.label} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
+            return <Select data={attr.selectOptions || []} searchable multiple label={attr.label}  {...form.getInputProps(fieldPath)} />;
         }
         if (attr.inputType === 'select') {
-            return <Select data={attr.selectOptions || []} searchable label={attr.label} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
+            return <Select data={attr.selectOptions || []} searchable label={attr.label} {...form.getInputProps(fieldPath)} />;
         }
         if (attr.inputType === 'number') {
-            return <NumberInput label={attr.label} min={attr.min} max={attr.max} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
+            return <NumberInput label={attr.label} min={attr.min} max={attr.max}  {...form.getInputProps(fieldPath)} />;
         }
-        return <TextInput label={attr.label} disabled={isLocked} {...form.getInputProps(fieldPath)} />;
+        return <TextInput label={attr.label}  {...form.getInputProps(fieldPath)} />;
     };
 
     const topLevelAttributes = schemaArray.filter(attr => attr.dataType !== 'grupo' && attr.dataType !== 'object');

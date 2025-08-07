@@ -1,17 +1,117 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   TextInput, Select, Button, Group, Box, Paper, Text, ActionIcon, Collapse,
   TagsInput, NumberInput, Checkbox, SimpleGrid, SegmentedControl, useMantineTheme, Title,
-  Switch
+  Switch,
+  MultiSelect,
+  Modal,
+  Grid
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconTrash, IconPlus, IconArrowDown, IconArrowUp, IconSettings, IconForms } from '@tabler/icons-react';
 import { theme as THEME } from '@/theme';
+import ConsumibleForm from '../../inventario/consumibles/ConsumibleForm';
+
 
 
 const getDeep = (obj, path) => path.split('.').filter(Boolean).reduce((acc, part) => acc && acc[part], obj);
+
+// --- Componente para RELLENAR Atributos (Modo Modelo/Activo) ---
+function AtributoInput({ attribute, path, onUpdate, from }) {
+  const [consumibles, setConsumibles] = useState([]);
+  const [modalOpened, setModalOpened] = useState(false);
+  const compatibilidadMode = attribute.compatibilidad?.mode || 'directa';
+
+  const fetchConsumibles = async () => {
+    if (attribute.consumibleType) {
+      const response = await fetch(`/api/inventario/consumibles?tipo=${attribute.consumibleType}`);
+      const data = await response.json();
+      setConsumibles(data.map(c => ({
+        value: c.id.toString(),
+        label: `${c.nombre} (Marca: ${c.marca || 'N/A'}, Código: ${c.codigoParte || 'N/A'})`
+      })));
+    }
+  };
+
+  useEffect(() => {
+    fetchConsumibles();
+  }, [attribute.consumibleType]);
+
+  const handleConsumibleCreado = async (nuevoConsumible) => {
+    await fetchConsumibles();
+    setModalOpened(false);
+    const currentSelection = attribute.compatibilidad?.consumibleIds || [];
+    const newSelection = [...currentSelection, nuevoConsumible.id.toString()];
+     onUpdate(path, {
+          ...attribute,
+          compatibilidad: { ...attribute.compatibilidad, mode: 'directa', consumibleIds: newSelection }
+      });
+  };
+
+
+  // MODO MODELO: Permite seleccionar el GRUPO GENÉRICO requerido.
+  if (from === 'Modelo' && attribute.consumibleType) {
+    return (
+       <Paper withBorder p="sm" mt="xs" radius="sm">
+      <Text fw={500} size="sm">{attribute.label}</Text>
+      <Text size="xs" c="dimmed">Define las especificaciones o repuestos compatibles para este atributo.</Text>
+      
+      {attribute.consumibleType === 'Correa' && (
+        <TagsInput
+          label="Código Universal de Correa"
+          description="Añade el código de parte universal (ej: 6pk1035)"
+          placeholder="Escribe un código y presiona Enter"
+          defaultValue={attribute.compatibilidad?.codigos || []}
+          onBlur={(e) => onUpdate(path, { ...attribute, compatibilidad: { mode: 'porCodigo', codigos: e.currentTarget.value.split(',').map(s => s.trim()) }})}
+          mt="sm"
+        />
+      )}
+      
+      {(attribute.consumibleType === 'Filtro' || attribute.consumibleType === 'Repuesto' || attribute.consumibleType === 'Neumatico') && (
+        <Group align="flex-end" grow mt="sm">
+            <MultiSelect
+                label="Consumibles Específicos Compatibles"
+                description="Selecciona los ítems de tu inventario que son compatibles."
+                data={consumibles} searchable placeholder="Busca y selecciona..."
+                value={attribute.compatibilidad?.consumibleIds || []}
+                onChange={(values) => onUpdate(path, { ...attribute, compatibilidad: { mode: 'directa', consumibleIds: values }})}
+            />
+            <ActionIcon size="lg" variant="filled" onClick={() => setModalOpened(true)}><IconPlus /></ActionIcon>
+        </Group>
+      )}
+
+      {attribute.consumibleType === 'Aceite' && (
+        <Grid mt="sm">
+            <Grid.Col span={6}>
+                <Select label="Tipo de Aceite Requerido" data={['Mineral', 'Semi-sintético', 'Sintético']} defaultValue={attribute.compatibilidad?.propiedades?.tipoAceite || ''} onChange={(value) => onUpdate(path, { ...attribute, compatibilidad: { mode: 'porPropiedades', propiedades: {...attribute.compatibilidad?.propiedades, tipoAceite: value}}})} />
+            </Grid.Col>
+            <Grid.Col span={6}>
+                <TextInput label="Viscosidad Requerida" placeholder="Ej: 15W40" defaultValue={attribute.compatibilidad?.propiedades?.viscosidad || ''} onBlur={(e) => onUpdate(path, { ...attribute, compatibilidad: { mode: 'porPropiedades', propiedades: {...attribute.compatibilidad?.propiedades, viscosidad: e.currentTarget.value}}})} />
+            </Grid.Col>
+        </Grid>
+      )}
+
+      <Modal opened={modalOpened} onClose={() => setModalOpened(false)} title={`Crear Nuevo ${attribute.consumibleType}`} size="xl">
+        <ConsumibleForm initialData={{ tipo: attribute.consumibleType, stock: 0 }} onSuccess={handleConsumibleCreado} />
+      </Modal>
+    </Paper>
+    );
+  }
+  switch (attribute.inputType) {
+    case 'select':
+      return <Select label={attribute.label} data={attribute.selectOptions || []} defaultValue={attribute.defaultValue} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value })} />;
+    case 'multiSelect':
+      return <TagsInput label={attribute.label} description="Presione Enter para agregar un valor." placeholder="Añadir..." defaultValue={attribute.defaultValue || []} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value.split(',') })} />;
+    case 'image':
+      return <Text size="sm" c="dimmed">Campo de Imagen (se mostrará en el formulario de Activos)</Text>;
+    case 'number':
+      return <NumberInput label={attribute.label} min={attribute.min} max={attribute.max} defaultValue={attribute.defaultValue} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value })} />;
+    default:
+      return <TextInput label={attribute.label} defaultValue={attribute.defaultValue} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value })} />;
+  }
+}
 
 // --- Componente para DEFINIR Atributos (Modo Grupo/Categoría) ---
 function AtributoField({ attribute, path, onUpdate, level }) {
@@ -36,74 +136,32 @@ function AtributoField({ attribute, path, onUpdate, level }) {
     }
     onUpdate(path, { ...attribute, ...newValues });
   }
-
-  const renderSelectOptionsInput = () => {
-    if ((attribute.inputType === 'select' || attribute.inputType === 'multiSelect') && !attribute.isGenerator) {
-      return <TagsInput label="Opciones del Select" description="Presione Enter para agregar una opción." placeholder="Ej: Opción 1..." defaultValue={attribute.selectOptions || []} onBlur={(e) => handleUpdate('selectOptions', e.currentTarget.value.split(','))} mt="xs" />;
-    }
-    return null;
-  };
-
-  const renderDefaultValueInput = () => {
-    if (attribute.inputType === 'select' || attribute.inputType === 'multiSelect') return null;
-    switch (attribute.dataType) {
-      case 'string': return <TextInput label="Valor por Defecto" defaultValue={attribute.defaultValue || ''} onBlur={(e) => handleUpdate('defaultValue', e.currentTarget.value)} mt="xs" />;
-      case 'number': return <NumberInput label="Valor por Defecto" defaultValue={attribute.defaultValue || ''} onBlur={(e) => handleUpdate('defaultValue', e.currentTarget.value)} mt="xs" />;
-      case 'boolean': return <Checkbox label="Valor por Defecto (marcado = true)" defaultChecked={attribute.defaultValue || false} onChange={(e) => handleUpdate('defaultValue', e.currentTarget.checked)} mt="xs" />;
-      default: return null;
-    }
-  }
-
-  const renderRangeInputs = () => {
-    if (attribute.dataType === 'number') {
-      return <Group grow mt="xs"><NumberInput label="Valor Mínimo" defaultValue={attribute.min} onBlur={(e) => handleUpdate('min', e.currentTarget.value)} /><NumberInput label="Valor Máximo" defaultValue={attribute.max} onBlur={(e) => handleUpdate('max', e.currentTarget.value)} /></Group>;
-    }
-    return null;
-  }
-
-
+  
   return (
     <Collapse in={showDetails}>
       <SimpleGrid cols={2} mt="xs">
-        <TextInput label="Label del Campo" placeholder="Ej: Tipo de Aceite" required defaultValue={attribute.label} onBlur={(e) => handleUpdate('label', e.currentTarget.value)} />
-        <TextInput label="ID del Atributo (en JSON)" placeholder="Ej: tipoAceite" required defaultValue={attribute.id} onBlur={(e) => handleUpdate('id', e.currentTarget.value)} />
+        <TextInput label="Label del Campo" required defaultValue={attribute.label} onBlur={(e) => handleUpdate('label', e.currentTarget.value)} />
+        <TextInput label="ID del Atributo (en JSON)" required defaultValue={attribute.id} onBlur={(e) => handleUpdate('id', e.currentTarget.value)} />
       </SimpleGrid>
       <SimpleGrid cols={2} mt="xs">
-        <Select label="Tipo de Dato" placeholder="Seleccione un tipo" required value={attribute.dataType} onChange={handleDataTypeChange} data={['string', 'number', 'boolean', 'object', 'grupo', 'Generador']} />
-        {attribute.dataType === 'string' && (<Select label="Tipo de Input" placeholder="Seleccione un input" value={attribute.inputType} onChange={(value) => handleUpdate('inputType', value)} data={['text', 'textarea', 'select', 'multiSelect']} />)}
+        <Select label="Tipo de Dato" required value={attribute.dataType} onChange={handleDataTypeChange} data={['string', 'number', 'boolean', 'object', 'grupo', 'Generador']} />
+        {attribute.dataType === 'string' && (<Select label="Tipo de Input" value={attribute.inputType} onChange={(value) => handleUpdate('inputType', value)} data={['text', 'textarea', 'select', 'multiSelect', 'image']} />)}
       </SimpleGrid>
-      {attribute.dataType === 'Generador' && (
-        <Paper withBorder p="sm" mt="md" radius="sm">
-          <Title order={6} mb="xs">Configuración del Generador</Title>
-          <TextInput label="Prefijo para ID" placeholder="Ej: filtroAceite" defaultValue={attribute.generates?.prefix} onBlur={(e) => handleUpdate('generates', { ...attribute.generates, prefix: e.currentTarget.value })} />
-          <TextInput label="Etiqueta base" placeholder="Ej: Filtro de Aceite #" mt="xs" defaultValue={attribute.generates?.label} onBlur={(e) => handleUpdate('generates', { ...attribute.generates, label: e.currentTarget.value })} />
-          <Text fw={500} size="sm" mt="md" mb="xs">Esquema del Campo a Generar:</Text>
-          <Select label="Tipo de Dato" data={['string', 'number', 'boolean']} value={attribute.generates?.schema?.dataType} onChange={(v) => handleUpdate('generates', { ...attribute.generates, schema: { ...attribute.generates.schema, dataType: v } })} />
-          <Select label="Tipo de Input" mt="xs" data={['text', 'textarea', 'select', 'multiSelect']} value={attribute.generates?.schema?.inputType} onChange={(v) => handleUpdate('generates', { ...attribute.generates, schema: { ...attribute.generates.schema, inputType: v } })} />
-        </Paper>
-      )}
-      {renderSelectOptionsInput()}
-      {renderDefaultValueInput()}
-      {renderRangeInputs()}
+      {/* ✨ El selector de tipo de consumible ahora está aquí, en la definición */}
+      <Select
+        label="Tipo de Consumible (Opcional)"
+        placeholder="Enlazar a un tipo de consumible"
+        clearable
+        data={['Aceite', 'Filtro', 'Correa', 'Neumatico', 'Repuesto']}
+        value={attribute.consumibleType || ''}
+        onChange={(value) => handleUpdate('consumibleType', value)}
+        mt="xs"
+      />
     </Collapse>
   );
 }
 
-// --- Componente para RELLENAR Atributos (Modo Modelo/Activo) ---
-function AtributoInput({ attribute, path, onUpdate }) {
-  switch (attribute.inputType) {
-    case 'select':
-      return <Select label={attribute.label} data={attribute.selectOptions || []} defaultValue={attribute.defaultValue} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value })} />;
-    case 'multiSelect':
-      return <TagsInput label={attribute.label} description="Presione Enter para agregar un valor." placeholder="Añadir..." defaultValue={attribute.defaultValue || []} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value.split(',') })} />;
-    case 'image':
-      return <Text size="sm" c="dimmed">Campo de Imagen (se mostrará en el formulario de Activos)</Text>;
-    case 'number':
-      return <NumberInput label={attribute.label} min={attribute.min} max={attribute.max} defaultValue={attribute.defaultValue} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value })} />;
-    default:
-      return <TextInput label={attribute.label} defaultValue={attribute.defaultValue} onBlur={(e) => onUpdate(path, { ...attribute, defaultValue: e.currentTarget.value })} />;
-  }
-}
+
 
 
 export default function AtributoConstructor({ form, pathPrefix = '', availableGroups = [], level = 0, from }) {
@@ -221,7 +279,7 @@ export default function AtributoConstructor({ form, pathPrefix = '', availableGr
         </Group>
 
         <Collapse in={renderMode === 'define'}>
-          <AtributoField attribute={item} path={currentPath} onRemove={() => removeAttribute(index)} onUpdate={updateAttribute} level={level} />
+          <AtributoField attribute={item} path={currentPath} onUpdate={updateAttribute} level={level} />
         </Collapse>
         <Collapse in={renderMode === 'input'}>
           <Box mt="md">
@@ -229,18 +287,15 @@ export default function AtributoConstructor({ form, pathPrefix = '', availableGr
               <NumberInput
                 label={item.label}
                 description="Introduce un número para generar los campos correspondientes."
-                min={item.min ? Number(item.min) : undefined}
-                max={item.max ? Number(item.max) : undefined}
                 defaultValue={item.defaultValue || 0}
                 onChange={(value) => handleGeneratorChange(value, index)}
               />
             ) : (
-              <AtributoInput attribute={item} path={currentPath} onUpdate={updateAttribute} />
+              // ✨ Ahora AtributoValorizador se encarga de todo el modo "input"
+              <AtributoInput attribute={item} path={currentPath} onUpdate={updateAttribute} from={from} />
             )}
-            
           </Box>
         </Collapse>
-
       </Paper>
     );
   });

@@ -9,6 +9,11 @@ const Kilometraje = sequelize.define('Kilometraje', {
         primaryKey: true,
         autoIncrement: true,
     },
+    activoId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: { model: 'Activos', key: 'id' }
+        },
     fecha_registro: {
         type: DataTypes.DATE,
         allowNull: false,
@@ -19,11 +24,10 @@ const Kilometraje = sequelize.define('Kilometraje', {
         allowNull: false,
     },
 }, {
-    tableName: 'kilometrajes',
+    tableName: 'Kilometrajes',
     timestamps: true,
 });
 
 Kilometraje.belongsTo(Activo, { foreignKey: 'activoId' });
-Activo.hasMany(Kilometraje, { foreignKey: 'activoId', as: 'historial_kilometrajes' });
 
 module.exports = Kilometraje;

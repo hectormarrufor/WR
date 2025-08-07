@@ -26,7 +26,7 @@ const Activo = sequelize.define('Activo', {
         allowNull: false,
         defaultValue: {},
     },
-    estadoOperativo: {
+     estadoOperativo: {
         type: DataTypes.STRING,
         allowNull: false,
         defaultValue: 'Operativo',
@@ -50,9 +50,22 @@ Activo.associate = (models) => {
         foreignKey: 'activoId', 
         as: 'inspecciones' 
     });
+    Activo.hasMany(models.Hallazgo, { 
+        foreignKey: 'activoId', 
+        as: 'hallazgos' 
+    });
     Activo.hasMany(models.Mantenimiento, { 
         foreignKey: 'activoId', 
         as: 'mantenimientos' 
+    });
+    Activo.hasMany(models.Kilometraje, {
+        foreignKey: 'activoId', // Asegúrate de que el nombre de la FK sea consistente
+        as: 'kilometrajes'
+    });
+
+    Activo.hasMany(models.Horometro, {
+        foreignKey: 'activoId',
+        as: 'horometros'
     });
 
     // Aquí irían las futuras relaciones con Inspecciones y Mantenimientos

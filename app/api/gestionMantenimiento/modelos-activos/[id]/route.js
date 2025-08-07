@@ -1,5 +1,6 @@
 import db from '@/models';
 import { NextResponse } from 'next/server';
+import { Op } from 'sequelize';
 
 /**
  * Función recursiva para buscar y anidar los detalles completos de los modelos componentes.
@@ -53,67 +54,116 @@ async function poblarComponentesRecursivo(especificaciones, visited = new Set())
     }
     return especificacionesPobladas;
 }
-// --- Función Helper para PUT (similar a la de creación) ---
+
+
+// --- Función Helper para PUT (CON LA LÓGICA INTEGRADA) ---
 async function actualizarModeloRecursivo(modeloId, modeloData, transaction) {
     const { nombre, categoriaId, especificaciones } = modeloData;
 
     const modeloAActualizar = await db.Modelo.findByPk(modeloId, { transaction });
     if (!modeloAActualizar) {
-        throw new Error(`Modelo con ID ${modeloId} no encontrado para actualizar.`);
+        throw new Error(`Modelo con ID ${modeloId} no encontrado.`);
     }
 
     const especificacionesParaGuardar = Array.isArray(especificaciones)
-        ? especificaciones.reduce((acc, attr) => {
-            const { key, ...rest } = attr;
-            acc[rest.id] = rest;
-            return acc;
-        }, {})
+        ? especificaciones.reduce((acc, attr) => { const { key, ...rest } = attr; acc[rest.id] = rest; return acc; }, {})
         : especificaciones;
+    
+    // ✨ INICIO DE LA INTEGRACIÓN: Creamos un Set para recolectar los IDs de consumibles
+    let consumiblesCompatiblesIds = new Set();
 
-    // Iteramos para encontrar y actualizar/crear los modelos componentes.
+    // Iteramos para encontrar y actualizar componentes Y recolectar compatibilidades.
     for (const attrId in especificacionesParaGuardar) {
         const atributo = especificacionesParaGuardar[attrId];
+        
+        // Lógica de recursividad para componentes (la que ya tenías)
         if (atributo.dataType === 'grupo' && atributo.subGrupo) {
             const componenteCategoriaId = atributo.refId;
-            let componenteIdAActualizar = null;
-            
-            // Verificamos si el componente ya existe en las especificaciones originales.
-            if (modeloAActualizar.especificaciones[attrId] && modeloAActualizar.especificaciones[attrId].refId) {
-                componenteIdAActualizar = modeloAActualizar.especificaciones[attrId].refId;
-            }
+            let componenteIdAActualizar = modeloAActualizar.especificaciones[attrId]?.refId;
 
             let componenteActualizado;
             if (componenteIdAActualizar) {
-                 // Si ya existe, lo actualizamos recursivamente.
-                componenteActualizado = await actualizarModeloRecursivo(componenteIdAActualizar, {
+                // La llamada recursiva ahora devuelve los IDs de sus propios hijos
+                const { idsRecolectados } = await actualizarModeloRecursivo(componenteIdAActualizar, {
                     nombre: atributo.subGrupo.nombre,
                     categoriaId: componenteCategoriaId,
                     especificaciones: atributo.subGrupo.definicion,
                 }, transaction);
+                // Añadimos los IDs del hijo a la lista del padre
+                idsRecolectados.forEach(id => consumiblesCompatiblesIds.add(id));
+                componenteActualizado = { id: componenteIdAActualizar }; // Solo necesitamos el ID para continuar
             } else {
-                // Si no existe, lo creamos (esto permite añadir nuevos componentes al editar).
-                // Nota: reutilizar `crearModeloRecursivo` de la ruta POST sería ideal aquí.
-                // Por simplicidad, asumimos que el PUT solo modifica existentes.
-                // Para crear, se necesitaría una lógica de creación aquí.
-                 componenteActualizado = await db.Modelo.create({
+                // Lógica para crear un nuevo componente si no existía
+                componenteActualizado = await db.Modelo.create({
                     nombre: atributo.subGrupo.nombre,
                     categoriaId: componenteCategoriaId,
-                    especificaciones: atributo.subGrupo.definicion.reduce((acc, attr) => ({...acc, [attr.id]: attr}),{}),
-                 }, { transaction });
+                    especificaciones: Array.isArray(atributo.subGrupo.definicion) ? atributo.subGrupo.definicion.reduce((acc, attr) => ({...acc, [attr.id]: attr}),{}) : {},
+                }, { transaction });
             }
             
             especificacionesParaGuardar[attrId].refId = componenteActualizado.id;
             delete especificacionesParaGuardar[attrId].subGrupo;
         }
+
+        // ✨ NUEVA LÓGICA: Procesamos la compatibilidad del atributo actual
+        if (atributo.compatibilidad) {
+            if (atributo.compatibilidad.mode === 'directa' && atributo.compatibilidad.consumibleIds) {
+                atributo.compatibilidad.consumibleIds.forEach(id => consumiblesCompatiblesIds.add(parseInt(id)));
+            }
+            if (atributo.compatibilidad.mode === 'porCodigo' && atributo.compatibilidad.codigos) {
+                const consumiblesPorCodigo = await db.Consumible.findAll({
+                    where: { codigoParte: { [Op.in]: atributo.compatibilidad.codigos } },
+                    attributes: ['id'],
+                    transaction
+                });
+                consumiblesPorCodigo.forEach(c => consumiblesCompatiblesIds.add(c.id));
+            }
+        }
     }
 
+    // Actualizamos el JSONB del modelo actual
     await modeloAActualizar.update({
         nombre,
         categoriaId,
         especificaciones: especificacionesParaGuardar,
     }, { transaction });
 
-    return modeloAActualizar;
+    // ✨ Devolvemos el modelo actualizado Y el set de IDs recolectados
+    return { modeloActualizado: modeloAActualizar, idsRecolectados: consumiblesCompatiblesIds };
+}
+
+
+// --- RUTA PUT PRINCIPAL ---
+export async function PUT(request, { params }) {
+    const { id } = params;
+    const transaction = await db.sequelize.transaction();
+    try {
+        const body = await request.json();
+        
+        // 1. Llamamos a la función recursiva. Ella se encargará de actualizar todo el árbol.
+        const { modeloActualizado, idsRecolectados } = await actualizarModeloRecursivo(id, body, transaction);
+        
+        // 2. ✨ Usamos los IDs recolectados para sincronizar la tabla de compatibilidad
+        await modeloActualizado.setConsumiblesCompatibles(Array.from(idsRecolectados), { transaction });
+        
+        await transaction.commit();
+        
+        // 3. Devolvemos el modelo principal actualizado, ahora con sus compatibilidades correctas.
+        const resultadoFinal = await db.Modelo.findByPk(modeloActualizado.id, {
+            include: ['consumiblesCompatibles']
+        });
+
+        return NextResponse.json(resultadoFinal);
+
+    } catch (error) {
+        await transaction.rollback();
+        console.error(`Error al actualizar el modelo ${id}:`, error);
+        return NextResponse.json({
+            message: 'Error al actualizar el modelo',
+            error: error.message,
+            stack: error.stack
+        }, { status: 500 });
+    }
 }
 
 
@@ -157,31 +207,7 @@ export async function GET(request, { params }) {
     }
 }
 
-/**
- * PUT para actualizar un modelo y su jerarquía.
- */
-export async function PUT(request, { params }) {
-    const { id } = await params;
-    const transaction = await db.sequelize.transaction();
-    try {
-        const body = await request.json();
-        
-        // Llamamos a la función recursiva de actualización.
-        const modeloActualizado = await actualizarModeloRecursivo(id, body, transaction);
-        
-        await transaction.commit();
-        return NextResponse.json(modeloActualizado);
 
-    } catch (error) {
-        await transaction.rollback();
-        console.error(`Error al actualizar el modelo ${id}:`, error);
-        return NextResponse.json({
-            message: 'Error al actualizar el modelo',
-            error: error.message,
-            stack: error.stack
-        }, { status: 500 });
-    }
-}
 
 
 /**

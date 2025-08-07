@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { Button, TextInput, Paper, Title, MultiSelect, Box, LoadingOverlay, Alert } from '@mantine/core';
+import { Button, TextInput, Paper, Title, MultiSelect, Box, LoadingOverlay, Alert, Group } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useRouter, useParams } from 'next/navigation';
 import AtributoConstructor from '../../../components/AtributoConstructor';

@@ -23,10 +23,6 @@ const Mantenimiento = sequelize.define('Mantenimiento', {
         type: DataTypes.STRING,
         unique: true,
     },
-    tipo: {
-        type: DataTypes.ENUM('Preventivo', 'Correctivo', 'Predictivo', 'Mejora'),
-        allowNull: false,
-    },
     estado: {
         type: DataTypes.ENUM('Pendiente', 'Planificado', 'En Progreso', 'En Espera de Repuestos', 'Completado', 'Cancelado'),
         defaultValue: 'Pendiente',

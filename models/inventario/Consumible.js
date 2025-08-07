@@ -16,9 +16,16 @@ const Consumible = sequelize.define('Consumible', {
         type: DataTypes.STRING,
         unique: true,
     },
-    // ✨ CAMPO CLAVE 1: Para diferenciar y renderizar formularios distintos
+    marca: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    codigoParte: { // "Part Number"
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
     tipo: { 
-        type: DataTypes.ENUM('Aceite', 'Filtro', 'Correa', 'Repuesto', 'Otro'),
+        type: DataTypes.ENUM('Aceite', 'Filtro', 'Correa', 'Repuesto', 'Caucho', 'Otro'),
         allowNull: false,
     },
     // ✨ CAMPO CLAVE 2: Para guardar detalles específicos (viscosidad, tamaño, etc.)
@@ -43,6 +50,14 @@ const Consumible = sequelize.define('Consumible', {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0.00
+    },
+     grupoCompatibilidadId: {
+        type: DataTypes.INTEGER,
+        allowNull: true, // Un consumible puede no pertenecer a ningún grupo
+        references: {
+            model: 'GruposCompatibilidad',
+            key: 'id'
+        }
     }
 }, {
     tableName: 'Consumibles',
@@ -54,14 +69,13 @@ Consumible.associate = (models) => {
     // Un consumible puede tener muchas entradas y salidas de inventario
     Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId', as: 'entradas' });
     Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId', as: 'salidas' });
-
-    // ✨ ASOCIACIÓN CLAVE: Un consumible es compatible con muchos modelos (y viceversa)
     Consumible.belongsToMany(models.Modelo, {
-        through: 'CompatibilidadModeloConsumible', // La nueva tabla intermedia
+        through: models.Compatibilidad, // La misma tabla intermedia
         foreignKey: 'consumibleId',
         otherKey: 'modeloId',
         as: 'modelosCompatibles'
     });
+ 
 };
 
 module.exports = Consumible;

@@ -1,11 +1,33 @@
 import db from '@/models';
 import { NextResponse } from 'next/server';
+import { Op } from 'sequelize';
 
-export async function GET() {
+export async function GET(request) {
+    const { searchParams } = new URL(request.url);
+    const tipo = searchParams.get('tipo');
+    const codigoParte = searchParams.get('codigoParte');
+    const grupoId = searchParams.get('grupoId'); // ✨ Nuevo parámetro de filtro
+
     try {
-        const consumibles = await db.Consumible.findAll({ order: [['nombre', 'ASC']] });
+        const whereClause = {};
+
+        if (tipo) {
+            whereClause.tipo = tipo;
+        }
+        if (codigoParte) {
+            whereClause.codigoParte = codigoParte;
+        }
+        if (grupoId) {
+            whereClause.grupoCompatibilidadId = grupoId; // ✨ Añadimos el filtro por grupo
+        }
+
+        const consumibles = await db.Consumible.findAll({
+            where: whereClause,
+            order: [['nombre', 'ASC']]
+        });
         return NextResponse.json(consumibles);
     } catch (error) {
+        console.error("Error al obtener consumibles:", error);
         return NextResponse.json({ message: 'Error al obtener consumibles' }, { status: 500 });
     }
 }

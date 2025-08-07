@@ -12,6 +12,10 @@ const Categoria = sequelize.define('Categoria', {
     allowNull: false,
     unique: true,
   },
+  acronimo: {
+    type: DataTypes.STRING,
+    unique: true,
+  },
   descripcion: {
     type: DataTypes.TEXT,
   },

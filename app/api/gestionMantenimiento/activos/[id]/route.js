@@ -41,7 +41,31 @@ export async function GET(request, { params }) {
             include: [{
                 model: db.Modelo,
                 as: 'modelo',
-            }]
+            },
+
+            {
+                model: db.Kilometraje,
+                as: 'kilometrajes',
+                attributes: ['id', 'fecha_registro', 'valor'],
+                order: [['fecha_registro', 'DESC']],
+                limit: 1 // Solo queremos el último registro de kilometraje
+            },
+            {
+                model: db.Horometro,
+                as: 'horometros',
+                attributes: ['id', 'fecha_registro', 'valor'],
+                order: [['fecha_registro', 'DESC']],
+                limit: 1 // Solo queremos el último registro de horómetro
+            },
+            {
+                model: db.Hallazgo,
+                as: 'hallazgos',
+                // Solo queremos los hallazgos que aún no se han resuelto.
+                where: { estado: 'Pendiente' },
+                required: false, // Importante: si no hay hallazgos pendientes, el activo se debe mostrar igual.
+                include: [{ model: db.Inspeccion, as: 'inspeccion' }] // Traemos la inspección asociada al hallazgo
+            }
+            ]
         });
 
         if (!activo) {

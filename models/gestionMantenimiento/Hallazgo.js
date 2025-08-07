@@ -22,20 +22,19 @@ const Hallazgo = sequelize.define('Hallazgo', {
         allowNull: true,
     },
     descripcion: {
-        type: DataTypes.STRING,
-        allowNull: false,
+        type: DataTypes.TEXT,
     },
-    tipo: {
-        type: DataTypes.ENUM('Preventivo', 'Correctivo', 'Mejora', 'Seguridad'),
-        defaultValue: 'Correctivo',
+    observacionInspector: {
+        type: DataTypes.TEXT,
+        allowNull: true
     },
     estado: {
         type: DataTypes.ENUM('Pendiente', 'Asignado', 'Resuelto', 'Cerrado'),
         defaultValue: 'Pendiente',
     },
-    prioridad: {
-        type: DataTypes.ENUM('Baja', 'Media', 'Alta', 'Urgente'),
-        defaultValue: 'Media',
+    severidad: {
+        type: DataTypes.ENUM('Advertencia', 'Critico'),
+        allowNull: false,
     },
     origen: { // Para saber si lo creó un usuario o el sistema
         type: DataTypes.ENUM('Manual', 'Sistema'),

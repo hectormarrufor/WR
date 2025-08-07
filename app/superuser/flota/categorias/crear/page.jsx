@@ -10,6 +10,17 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import BackButton from '@/app/components/BackButton';
 import { useForm } from '@mantine/form';
 
+// ✨ NUEVA FUNCIÓN HELPER: Genera un acrónimo de 3 letras
+const generarAcronimo = (nombre) => {
+    if (!nombre) return '';
+    // Elimina palabras comunes, toma las primeras 3 letras, y las pone en mayúsculas.
+    const palabras = nombre.replace(/de|la|el/gi, '').trim().split(' ');
+    if (palabras.length >= 3) {
+        return (palabras[0][0] + palabras[1][0] + palabras[2][0]).toUpperCase();
+    }
+    return nombre.substring(0, 3).toUpperCase();
+};
+
 function transformPayloadToFormValues(payload) {
     if (!payload) return null;
     console.log("datos de payload: ", payload);
@@ -60,10 +71,12 @@ export default function CrearCategoriaPage() {
     const form = useForm({
         initialValues: {
             nombre: '',
+            acronimo: '',
             definicion: [],
         },
         validate: {
             nombre: (value) => (value.trim().length > 2 ? null : 'El nombre debe tener al menos 3 caracteres'),
+            acronimo: (value) => (value.trim().length === 3 ? null : 'El acrónimo debe tener 3 caracteres'),
         },
     });
 
@@ -89,6 +102,20 @@ export default function CrearCategoriaPage() {
         }
         fetchGrupos();
     }, []);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            const nombreCategoria = form.values.nombre;
+            if (nombreCategoria) {
+                const acronimoSugerido = generarAcronimo(nombreCategoria);
+                form.setFieldValue('acronimo', acronimoSugerido);
+            }
+        }, 500); // Espera 500ms después de la última pulsación
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [form.values.nombre]);
 
     // 2. ¡AQUÍ OCURRE LA MAGIA! Este hook se ejecuta cada vez que cambia la selección de grupos.
      // 2. ¡AQUÍ OCURRE LA MAGIA! Este hook se ejecuta cada vez que cambia la selección de grupos.
@@ -185,6 +212,7 @@ export default function CrearCategoriaPage() {
                 nombre: form.values.nombre,
                 definicion: form.values.definicion, // Esta es la definición final, potencialmente modificada por el usuario.
                 gruposBaseIds: selectedGrupos.map(id => parseInt(id)),
+                acronimo: form.values.acronimo
             };
             console.log("Payload de creación:", payload);
             // setIsSubmitting(false);
@@ -240,6 +268,14 @@ export default function CrearCategoriaPage() {
                 placeholder="Ej: CAMIONETA, CHUTO, UNIDAD_SNUBBING"
                 value={form.values.nombre}
                 onChange={(event) => form.setFieldValue('nombre', event.currentTarget.value.toUpperCase().replace(' ', '_'))}
+                required
+                mb="md"
+            />
+            <TextInput
+                label="Acronimo (Importante para definir códigos de activos)"
+                placeholder="Ej: CAM (Camioneta), CHT (Chuto), SNU (UNIDAD_SNUBBING) "
+                value={form.values.acronimo}
+                onChange={(event) => form.setFieldValue('acronimo', event.currentTarget.value.toUpperCase().replace(' ', '_'))}
                 required
                 mb="md"
             />

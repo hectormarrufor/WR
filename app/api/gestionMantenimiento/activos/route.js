@@ -17,7 +17,22 @@ export async function GET(request) {
                     as: 'categoria',
                     attributes: ['id', 'nombre']
                 }]
-            }],
+            },
+            {
+                model: db.Kilometraje,
+                as: 'kilometrajes',
+                attributes: ['id', 'fecha_registro', 'valor'],
+                order: [['fecha_registro', 'DESC']],
+                limit: 1 // Solo queremos el último registro de kilometraje
+            },
+            {
+                model: db.Horometro,
+                as: 'horometros',
+                attributes: ['id', 'fecha_registro', 'valor'],
+                order: [['fecha_registro', 'DESC']],
+                limit: 1 // Solo queremos el último registro de horómetro
+            }
+            ],
             order: [['codigoActivo', 'ASC']]
         });
         return NextResponse.json(activos);
@@ -54,9 +69,9 @@ export async function POST(request) {
     } catch (error) {
         await transaction.rollback();
         console.error('Error al crear el activo:', error);
-        
+
         if (error.name === 'SequelizeUniqueConstraintError') {
-             return NextResponse.json({ message: 'El código de activo ya existe.' }, { status: 409 });
+            return NextResponse.json({ message: 'El código de activo ya existe.' }, { status: 409 });
         }
 
         return NextResponse.json({ message: 'Error al crear el activo', error: error.message }, { status: 500 });

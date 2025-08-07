@@ -8,6 +8,11 @@ const Horometro = sequelize.define('Horometro', {
         primaryKey: true,
         autoIncrement: true,
     },
+    activoId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: { model: 'Activos', key: 'id' }
+        },
     fecha_registro: {
         type: DataTypes.DATE,
         allowNull: false,
@@ -18,11 +23,10 @@ const Horometro = sequelize.define('Horometro', {
         allowNull: false,
     },
 }, {
-    tableName: 'horometros',
+    tableName: 'Horometros',
     timestamps: true,
 });
 
 Horometro.belongsTo(Activo, { foreignKey: 'activoId' });
-Activo.hasMany(Horometro, { foreignKey: 'activoId', as: 'historial_horometros' });
 
 module.exports = Horometro;

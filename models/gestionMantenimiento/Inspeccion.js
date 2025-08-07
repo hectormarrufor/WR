@@ -15,15 +15,25 @@ const Inspeccion = sequelize.define('Inspeccion', {
     inspectorId: { // El empleado que realiza la inspección
         type: DataTypes.INTEGER,
         allowNull: false,
-        references: { model: 'Empleados', key: 'id' }
+        references: { model: 'Usuarios', key: 'id' }
     },
     fecha: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
     },
-    kilometrajeActual: {
+    kilometrajeId: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
+        references: { model: 'Kilometrajes', key: 'id' }
+    },
+    horometroId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: { model: 'Horometros', key: 'id' }
+    },
+    resultadosChecklist: {
+        type: DataTypes.JSONB,
+        allowNull: true,
     },
     observacionesGenerales: {
         type: DataTypes.TEXT,
@@ -32,8 +42,10 @@ const Inspeccion = sequelize.define('Inspeccion', {
 
 Inspeccion.associate = (models) => {
     Inspeccion.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
-    Inspeccion.belongsTo(models.Empleado, { foreignKey: 'inspectorId', as: 'inspector' });
+    Inspeccion.belongsTo(models.User, { foreignKey: 'inspectorId', as: 'inspector' });
     Inspeccion.hasMany(models.Hallazgo, { foreignKey: 'inspeccionId', as: 'hallazgos' });
+    Inspeccion.belongsTo(models.Kilometraje, { foreignKey: 'kilometrajeId', as: 'kilometraje' });
+    Inspeccion.belongsTo(models.Horometro, { foreignKey: 'horometroId', as: 'horometro' });
 };
 
 module.exports = Inspeccion;

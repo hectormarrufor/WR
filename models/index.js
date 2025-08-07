@@ -18,13 +18,17 @@ const CategoriaGrupos = require('./gestionMantenimiento/CategoriaGrupos');
 const Modelo = require('./gestionMantenimiento/Modelo');
 const Grupo = require('./gestionMantenimiento/Grupo');
 const Consumible = require('./inventario/Consumible');
-const CompatibilidadModeloConsumible = require('./inventario/CompatibilidadModeloConsumible');
 const EntradaInventario = require('./inventario/EntradaInventario');
 const SalidaInventario = require('./inventario/SalidaInventario');
 const Hallazgo = require('./gestionMantenimiento/Hallazgo');
 const Mantenimiento = require('./gestionMantenimiento/mantenimiento');
 const TareaMantenimiento = require('./gestionMantenimiento/tareaMantenimiento');
 const Inspeccion = require('./gestionMantenimiento/Inspeccion');
+const Kilometraje = require('./gestionMantenimiento/Kilometraje');
+const Horometro = require('./gestionMantenimiento/Horometro');
+const Requisicion = require('./gestionMantenimiento/Requisicion');
+const RequisicionDetalle = require('./gestionMantenimiento/RequisicionDetalle');
+const Compatibilidad = require('./inventario/Compatibilidad');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -37,12 +41,16 @@ const db = {
     CategoriaGrupos,
     Modelo,
     Grupo,
+    Kilometraje,
+    Horometro,
 
     //GESTION MANTENIMIENTO
     Inspeccion,
     Hallazgo,
     Mantenimiento,
     TareaMantenimiento,
+    Requisicion,
+    RequisicionDetalle,
 
     //RECURSOS HUMANOS
     Departamento,
@@ -53,9 +61,9 @@ const db = {
 
     //INVENTARIO
     Consumible,
-    CompatibilidadModeloConsumible,
     EntradaInventario,
     SalidaInventario,
+    Compatibilidad,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---
