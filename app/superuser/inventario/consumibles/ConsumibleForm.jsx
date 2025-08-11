@@ -30,7 +30,7 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
 
   // Observamos el valor del campo 'tipo' para el renderizado condicional
   const tipoConsumible = form.values.tipo;
-  const isEditing = initialData.id ? true : false;
+  const isEditing = initialData?.id ? true : false;
 
   const handleSubmit = async (values) => {
     setLoading(true);
