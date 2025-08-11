@@ -1,5 +1,4 @@
 // app/api/gestionMantenimiento/categorias/route.js
-import { generarAcronimo } from '@/app/superuser/flota/categorias/crear/page';
 import db from '@/models';
 import { NextResponse } from 'next/server';
 
@@ -11,6 +10,15 @@ import { NextResponse } from 'next/server';
  * @param {import('sequelize').Transaction} transaction - La transacción de Sequelize.
  * @returns {Promise<object>} - La instancia de la categoría creada.
  */
+const generarAcronimo = (nombre) => {
+    if (!nombre) return '';
+    // Elimina palabras comunes, toma las primeras 3 letras, y las pone en mayúsculas.
+    const palabras = nombre.replace(/de|la|el/gi, '').trim().split(' ');
+    if (palabras.length >= 3) {
+        return (palabras[0][0] + palabras[1][0] + palabras[2][0]).toUpperCase();
+    }
+    return nombre.substring(0, 3).toUpperCase();
+};
 async function crearCategoriaRecursiva(categoriaData, parentId, grupoBaseIdParaAsociar, transaction) {
     const { nombre, definicion, acronimo } = categoriaData;
 
