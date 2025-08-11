@@ -301,7 +301,6 @@ export default function CrearCategoriaPage() {
                     <AtributoConstructor
                         initialData={initialDefinition} // Le pasamos la definición fusionada como estado inicial
                         onDefinitionChange={setFinalDefinition} // Nos devuelve la definición final para enviarla a la API
-                        level="categoria"
                         form={form} // Pasamos el formulario para manejar la validación y el estado
                         from="Categoria"
                     />

@@ -218,7 +218,6 @@ export default function ModeloActivoForm({ modeloId = null }) {
                         <AtributoConstructor
                             form={form}
                             fieldName="propiedades_definidas" // El constructor trabajará sobre este campo
-                            level="modelo"
                             from="Modelo"
                         />
                     </Box>

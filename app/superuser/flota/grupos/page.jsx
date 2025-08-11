@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, Button, Title, Paper, LoadingOverlay, Alert, Group, Anchor, Text } from '@mantine/core';
-import { IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { Table, Button, Title, Paper, LoadingOverlay, Alert, Group, Anchor, Text, ActionIcon, Modal, FileButton } from '@mantine/core';
+import { IconDownload, IconPencil, IconPlus, IconTrash, IconUpload } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,6 +12,8 @@ export default function GruposListPage() {
     const [grupos, setGrupos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [modalImportOpened, setModalImportOpened] = useState(false);
+    const [fileToImport, setFileToImport] = useState(null);
 
     useEffect(() => {
         const fetchGrupos = async () => {
@@ -32,6 +34,45 @@ export default function GruposListPage() {
 
         fetchGrupos();
     }, []);
+
+    const handleExport = (grupoId) => {
+        // Simplemente redirigimos a la API de exportación y el navegador se encarga de la descarga
+        window.location.href = `/api/gestionMantenimiento/grupos/${grupoId}/export`;
+    };
+
+    // Función para importar un grupo
+    const handleImport = async () => {
+        if (!fileToImport) {
+            notifications.show({ title: 'Error', message: 'Por favor, selecciona un archivo.', color: 'red' });
+            return;
+        }
+
+        setLoading(true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const jsonContent = JSON.parse(event.target.result);
+                const response = await fetch('/api/gestionMantenimiento/grupos/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jsonContent)
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message);
+
+                notifications.show({ title: 'Éxito', message: data.message, color: 'green' });
+                setModalImportOpened(false);
+                setFileToImport(null);
+                fetchGrupos(); // Recargar la lista
+            } catch (error) {
+                notifications.show({ title: 'Error de Importación', message: error.message, color: 'red' });
+            } finally {
+                setLoading(false);
+            }
+        };
+        reader.readAsText(fileToImport);
+    };
 
     const eliminarGrupo = async (id) => {
         if (!confirm('¿Estás seguro de que quieres eliminar este grupo?')) return;
@@ -57,15 +98,15 @@ export default function GruposListPage() {
             <Table.Td>{grupo.nombre}</Table.Td>
             <Table.Td>{Object.keys(grupo.definicion).length}</Table.Td>
             <Table.Td>
-                <Button 
-                    leftSection={<IconPencil size={14} />} 
+                <Button
+                    leftSection={<IconPencil size={14} />}
                     variant="outline"
                     onClick={() => router.push(`/superuser/flota/grupos/${grupo.id}/editar`)}
                 >
                     Editar
                 </Button>
-                <Button 
-                    leftSection={<IconTrash size={14} />} 
+                <Button
+                    leftSection={<IconTrash size={14} />}
                     mx={10}
                     color='red'
                     variant="outline"
@@ -73,6 +114,9 @@ export default function GruposListPage() {
                 >
                     Eliminar
                 </Button>
+                <ActionIcon variant="subtle" color="green" onClick={() => handleExport(grupo.id)}>
+                    <IconDownload size={18} />
+                </ActionIcon>
             </Table.Td>
         </Table.Tr>
     ));
@@ -81,17 +125,22 @@ export default function GruposListPage() {
         <Paper withBorder shadow="md" p={30} mt={30} radius="md">
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Grupos de Activos</Title>
-                <Button
-                    component={Link}
-                    href="/superuser/flota/grupos/crear"
-                    leftSection={<IconPlus size={14} />}
-                >
-                    Crear Nuevo Grupo
-                </Button>
+                <Group>
+                    <Button
+                        component={Link}
+                        href="/superuser/flota/grupos/crear"
+                        leftSection={<IconPlus size={14} />}
+                    >
+                        Crear Nuevo Grupo
+                    </Button>
+                    <Button variant="outline" leftSection={<IconUpload size={16} />} onClick={() => setModalImportOpened(true)}>
+                        Importar Grupo
+                    </Button>
+                </Group>
             </Group>
-            
+
             <LoadingOverlay visible={loading} />
-            
+
             {error && <Alert color="red" title="Error">{error}</Alert>}
 
             <Table striped highlightOnHover withTableBorder withColumnBorders>
@@ -113,6 +162,21 @@ export default function GruposListPage() {
                     )}
                 </Table.Tbody>
             </Table>
+             <Modal opened={modalImportOpened} centered onClose={() => setModalImportOpened(false)} title="Importar Grupo desde Archivo JSON">
+                <Text size="sm" c="dimmed" mb="md">
+                    Selecciona un archivo JSON que haya sido exportado previamente desde este sistema.
+                </Text>
+                <Group>
+                    <FileButton onChange={setFileToImport} accept="application/json">
+                        {(props) => <Button {...props}>Seleccionar Archivo</Button>}
+                    </FileButton>
+                    {fileToImport && <Text size="sm">{fileToImport.name}</Text>}
+                </Group>
+                <Group justify="flex-end" mt="lg">
+                    <Button variant="default" onClick={() => setModalImportOpened(false)}>Cancelar</Button>
+                    <Button onClick={handleImport} disabled={!fileToImport}>Importar</Button>
+                </Group>
+            </Modal>
         </Paper>
     );
 }

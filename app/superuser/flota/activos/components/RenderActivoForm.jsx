@@ -5,29 +5,89 @@ import { IconPlus } from '@tabler/icons-react';
 
 // ✨ NUEVO COMPONENTE PARA EL FORMULARIO DE ACTIVO ✨
 function ActivoConsumibleSelect({ attribute, form, fieldPath, modeloId }) {
+    const [consumibles, setConsumibles] = useState([]);
     const [opciones, setOpciones] = useState([]);
+     const selectedConsumible = form.getInputProps(fieldPath).value;
+
+    // ... (otros estados)
 
     useEffect(() => {
-        if (modeloId) {
-            // Pedimos a la API los consumibles que ya sabemos que son compatibles con este modelo
-            fetch(`/api/gestionMantenimiento/modelos-activos/${modeloId}/consumibles-compatibles?atributoId=${attribute.id}`)
-                .then(res => res.json())
-                .then(data => {
-                    setOpciones(data.map(c => ({
-                        value: c.id.toString(),
-                        label: `${c.nombre} (Marca: ${c.marca})`
-                    })));
-                });
-        }
-    }, [modeloId, attribute.id]);
+        const fetchCompatibles = async () => {
+            if (!attribute.compatibilidad) return;
+
+            setLoading(true);
+            const { mode, codigos, consumibleIds, propiedades } = attribute.compatibilidad;
+            let query = `tipo=${attribute.consumibleType}`;
+
+            if (mode === 'porCodigo' && codigos?.length > 0) {
+                // Necesitarás adaptar tu API para que acepte un array de códigos
+                query += `&codigoParte=${codigos.join(',')}`;
+            } else if (mode === 'directa' && consumibleIds?.length > 0) {
+                query += `&ids=${consumibleIds.join(',')}`;
+            } else if (mode === 'porPropiedades' && propiedades) {
+                query += `&especificaciones=${JSON.stringify(propiedades)}`;
+            } else {
+                setLoading(false);
+                return;
+            }
+
+            const response = await fetch(`/api/inventario/consumibles?${query}`);
+            const data = await response.json();
+            setConsumibles(data.map(c => ({ value: c.id.toString(), label: `${c.nombre} (Marca: ${c.marca})` })));
+            setLoading(false);
+        };
+        fetchCompatibles();
+    }, [attribute]);
 
     return (
-        <Select
-            label={attribute.label}
-            data={opciones}
-            {...form.getInputProps(fieldPath)}
-        />
+        <>
+            <Select
+                label={attribute.label}
+                data={opciones}
+                {...form.getInputProps(fieldPath)}
+            />
+            <Collapse in={!!selectedConsumible}>
+                    <Paper withBorder p="xs" mt="xs" radius="sm">
+                        <Text size="xs" fw={500}>Datos de Instalación (Opcional, para piezas ya instaladas)</Text>
+                        <Group grow mt="xs">
+                            <DateInput
+                                label="Fecha de Instalación"
+                                valueFormat="DD/MM/YYYY"
+                                // El path ahora apunta a un objeto: ej. datosPersonalizados.filtroAceite_1.fechaInstalacion
+                                {...form.getInputProps(`${fieldPath}.fechaInstalacion`)}
+                            />
+                            <NumberInput
+                                label="KM de Instalación"
+                                {...form.getInputProps(`${fieldPath}.kmInstalacion`)}
+                            />
+                        </Group>
+                    </Paper>
+                </Collapse>
+        </>
     );
+    // const [opciones, setOpciones] = useState([]);
+
+    // useEffect(() => {
+    //     if (modeloId) {
+    //         // Pedimos a la API los consumibles que ya sabemos que son compatibles con este modelo
+    //         fetch(`/api/gestionMantenimiento/modelos-activos/${modeloId}/consumibles-compatibles?atributoId=${attribute.id}`)
+    //             .then(res => res.json())
+    //             .then(data => {
+    //                 setOpciones(data.map(c => ({
+    //                     value: c.id.toString(),
+    //                     label: `${c.nombre} (Marca: ${c.marca})`
+    //                 })));
+    //             });
+    //     }
+    // }, [modeloId, attribute.id]);
+
+    // return (
+    //     <Select
+    //         label={attribute.label}
+    //         data={opciones}
+    //         {...form.getInputProps(fieldPath)}
+    //     />
+    // );
 }
 
 // Este componente es recursivo para manejar la jerarquía de componentes (ej. Motor dentro de Camioneta)

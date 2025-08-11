@@ -59,6 +59,7 @@ export default function ListarConsumiblesPage() {
             <Table.Td><Badge color="blue">{item.tipo}</Badge></Table.Td>
             <Table.Td>{item.sku || 'N/A'}</Table.Td>
             <Table.Td fw={700}>{parseFloat(item.stock).toFixed(2)} {item.unidadMedida}</Table.Td>
+            <Table.Td fw={700}>{item.costoPromedio}</Table.Td>
             <Table.Td>
                 <Group gap="xs">
                     <ActionIcon variant="subtle" color="blue" onClick={() => router.push(`/superuser/inventario/consumibles/${item.id}/editar`)}>
@@ -84,7 +85,7 @@ export default function ListarConsumiblesPage() {
             <Table.ScrollContainer minWidth={600}>
                 <Table verticalSpacing="sm" highlightOnHover>
                     <Table.Thead>
-                        <Table.Tr><Table.Th>Nombre</Table.Th><Table.Th>Tipo</Table.Th><Table.Th>SKU</Table.Th><Table.Th>Stock Actual</Table.Th><Table.Th>Acciones</Table.Th></Table.Tr>
+                        <Table.Tr><Table.Th>Nombre</Table.Th><Table.Th>Tipo</Table.Th><Table.Th>SKU</Table.Th><Table.Th>Stock Actual</Table.Th><Table.Th>Costo promedio ponderado</Table.Th><Table.Th>Acciones</Table.Th></Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>{rows.length > 0 ? rows : <Table.Tr><Table.Td colSpan={5}><Text ta="center">No hay consumibles definidos.</Text></Table.Td></Table.Tr>}</Table.Tbody>
                 </Table>

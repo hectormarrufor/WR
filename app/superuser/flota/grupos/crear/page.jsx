@@ -92,7 +92,7 @@ export default function CrearGrupoPage() {
     });
 
     useEffect(() => {
-        console.log( form.values);
+        console.log(form.values);
     }, [form.values]);
 
     const handleSubmit = async (values) => {
@@ -303,11 +303,12 @@ export default function CrearGrupoPage() {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Algo salió mal');
             notifications.show({
-                title: 'Grupo creado'});
+                title: 'Grupo creado'
+            });
             router.push('/superuser/flota/grupos');
         } catch (err) {
             setError(err.message);
-            notifications.show({title: 'Error al crear grupo', message: err.message, color: 'red'});
+            notifications.show({ title: 'Error al crear grupo', message: err.message, color: 'red' });
             console.error('Error al crear el grupo:', err);
         } finally {
             setLoading(false);
@@ -322,8 +323,11 @@ export default function CrearGrupoPage() {
                 <TextInput
                     label="Nombre del Grupo Principal"
                     placeholder="Ej: VEHICULO"
-                    required
-                    {...form.getInputProps('nombre')}
+                    value={form.values.nombre}
+                    onChange={(event) =>
+                        form.setFieldValue('nombre', event.currentTarget.value.toUpperCase())
+                    }
+
                 />
                 <AtributoConstructor form={form} availableGroups={availableGroups} from="Grupo" />
                 {error && (<Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red" mt="xl">{error}</Alert>)}
