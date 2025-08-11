@@ -1,4 +1,5 @@
 // app/api/gestionMantenimiento/categorias/route.js
+import { generarAcronimo } from '@/app/superuser/flota/categorias/crear/page';
 import db from '@/models';
 import { NextResponse } from 'next/server';
 
@@ -11,7 +12,7 @@ import { NextResponse } from 'next/server';
  * @returns {Promise<object>} - La instancia de la categoría creada.
  */
 async function crearCategoriaRecursiva(categoriaData, parentId, grupoBaseIdParaAsociar, transaction) {
-    const { nombre, definicion } = categoriaData;
+    const { nombre, definicion, acronimo } = categoriaData;
 
     const definicionParaGuardar = definicion.reduce((acc, attr) => {
         const { key, ...rest } = attr;
@@ -24,6 +25,7 @@ async function crearCategoriaRecursiva(categoriaData, parentId, grupoBaseIdParaA
         nombre: nombre,
         definicion: definicionParaGuardar,
         parentId: parentId,
+        acronimo: acronimo,
     }, { transaction });
 
     // 2. ✨ ¡NUEVA LÓGICA! Asociar el grupo base si se proporcionó un ID.
@@ -40,6 +42,7 @@ async function crearCategoriaRecursiva(categoriaData, parentId, grupoBaseIdParaA
             
             // Construimos el nombre, por ej: "MOTOR_VEHICULO_CAMIONETA"
             const subCategoriaNombre = `${atributo.subGrupo.nombre}_${nombre}`;
+            const subCategoriaAcronimo = generarAcronimo(subCategoriaNombre);
 
             // ✨ ¡AQUÍ ESTÁ LA CLAVE! El 'refId' del atributo es el ID del grupo base
             // que corresponde a esta subcategoría.
@@ -49,6 +52,7 @@ async function crearCategoriaRecursiva(categoriaData, parentId, grupoBaseIdParaA
             const subCategoriaCreada = await crearCategoriaRecursiva({
                 nombre: subCategoriaNombre,
                 definicion: atributo.subGrupo.definicion,
+                acronimo: subCategoriaAcronimo,
             }, nuevaCategoria.id, subCategoriaGrupoBaseId, transaction);
             
             // Actualizamos el refId en la definición del padre con el ID de la subcategoría creada.
@@ -70,7 +74,7 @@ export async function POST(request) {
     const transaction = await db.sequelize.transaction();
     try {
         const body = await request.json();
-        const { nombre, definicion, gruposBaseIds } = body;
+        const { nombre, definicion, gruposBaseIds, acronimo } = body;
 
         if (!nombre || !gruposBaseIds || !gruposBaseIds.length) {
             return NextResponse.json({ message: 'Nombre y al menos un grupo base son requeridos.' }, { status: 400 });
@@ -78,7 +82,7 @@ export async function POST(request) {
 
         // Inicia la creación para la categoría principal. Su ID de grupo base es null aquí,
         // porque se asocia con un array de grupos justo después.
-        const categoriaPrincipal = await crearCategoriaRecursiva({ nombre, definicion }, null, null, transaction);
+        const categoriaPrincipal = await crearCategoriaRecursiva({ nombre, definicion, acronimo }, null, null, transaction);
 
         // Asocia los grupos base (puede ser más de uno) a la categoría PRINCIPAL.
         await categoriaPrincipal.addGruposBase(gruposBaseIds, { transaction });

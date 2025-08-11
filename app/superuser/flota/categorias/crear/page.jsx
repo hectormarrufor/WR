@@ -11,7 +11,7 @@ import BackButton from '@/app/components/BackButton';
 import { useForm } from '@mantine/form';
 
 // ✨ NUEVA FUNCIÓN HELPER: Genera un acrónimo de 3 letras
-const generarAcronimo = (nombre) => {
+export const generarAcronimo = (nombre) => {
     if (!nombre) return '';
     // Elimina palabras comunes, toma las primeras 3 letras, y las pone en mayúsculas.
     const palabras = nombre.replace(/de|la|el/gi, '').trim().split(' ');

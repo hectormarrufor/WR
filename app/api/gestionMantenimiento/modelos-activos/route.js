@@ -4,107 +4,78 @@ import db from '@/models'; // Asegúrate que tu alias @ apunta a la raíz del pr
 import { NextResponse } from 'next/server';
 
 /**
- * Función recursiva para crear un modelo (componente o ensamblaje).
- * @param {object} modeloData - Los datos del modelo a crear { nombre, especificaciones }.
- * @param {number} categoriaId - El ID de la categoría a la que pertenece este modelo.
- * @param {import('sequelize').Transaction} transaction - La transacción de Sequelize.
- * @returns {Promise<object>} - La instancia del modelo creado.
+ * Función recursiva para procesar la definición de un modelo y crear los sub-modelos anidados.
+ * @param {object} especificaciones - El objeto de especificaciones del modelo.
+ * @param {number} categoriaId - El ID de la categoría del modelo.
+ * @param {object} transaction - La transacción de Sequelize.
+ * @returns {Promise<object>} - El objeto de especificaciones procesado para guardar en DB.
  */
-async function crearModeloRecursivo(modeloData, categoriaId, transaction) {
-    const { nombre, especificaciones } = modeloData;
+async function procesarDefinicionParaGuardar(especificaciones, categoriaId, transaction) {
+    const especificacionesProcesadas = {};
 
-    // 1. Limpiamos las especificaciones para la BD, convirtiendo el array en un objeto JSONB.
-    const especificacionesParaGuardar = especificaciones.reduce((acc, attr) => {
-        const { key, ...rest } = attr; // Excluimos la 'key' del frontend
-        acc[rest.id] = rest;
-        return acc;
-    }, {});
+    for (const key in especificaciones) {
+        if (Object.prototype.hasOwnProperty.call(especificaciones, key)) {
+            const atributo = { ...especificaciones[key] };
 
-    // 2. Crear el modelo actual (ej: "Kaiceng" o "Motor Kaiceng").
-    const nuevoModelo = await db.Modelo.create({
-        nombre: nombre,
-        categoriaId: categoriaId,
-        especificaciones: especificacionesParaGuardar, // Guardamos una versión inicial
-    }, { transaction });
+            // Si es un atributo de tipo 'grupo' en modo 'define', creamos un nuevo modelo para él
+            if (atributo.dataType === 'grupo' && atributo.mode === 'define' && atributo.subGrupo) {
+                const nombreSubModelo = atributo.subGrupo.nombre;
 
-    // 3. Iteramos para encontrar y crear los modelos componentes (sub-modelos).
-    for (const attrId in especificacionesParaGuardar) {
-        const atributo = especificacionesParaGuardar[attrId];
+                // Buscamos si ya existe un modelo con ese nombre para evitar duplicados
+                let subModelo = await db.Modelo.findOne({
+                    where: { nombre: nombreSubModelo },
+                    transaction
+                });
 
-        // Si el atributo es un 'grupo', significa que es un modelo componente a crear.
-        if (atributo.dataType === 'grupo' && atributo.subGrupo) {
+                if (!subModelo) {
+                    const subEspecificacionesProcesadas = await procesarDefinicionParaGuardar(atributo.subGrupo.definicion, categoriaId, transaction);
+                    subModelo = await db.Modelo.create({
+                        nombre: nombreSubModelo,
+                        categoriaId, // Asignamos la misma categoría del padre
+                        especificaciones: subEspecificacionesProcesadas,
+                    }, { transaction });
+                }
+
+                // Reemplazamos el objeto anidado por una referencia al nuevo modelo
+                atributo.refId = subModelo.id;
+                atributo.mode = 'select';
+                delete atributo.subGrupo;
+            }
+
+            // Procesamos la definición anidada si es un objeto
+            if (atributo.dataType === 'object' && atributo.definicion) {
+                atributo.definicion = await procesarDefinicionParaGuardar(atributo.definicion, categoriaId, transaction);
+            }
             
-            // El 'refId' del atributo es el ID de la CATEGORÍA del componente.
-            const componenteCategoriaId = atributo.refId;
-
-            // Llamada recursiva para crear el modelo componente.
-            const componenteCreado = await crearModeloRecursivo(
-                {
-                    nombre: atributo.subGrupo.nombre, // ej: "Motor Kaiceng"
-                    especificaciones: atributo.subGrupo.definicion,
-                },
-                componenteCategoriaId, // La categoría a la que pertenece el motor
-                transaction
-            );
-            
-            // ✨ ¡Lógica Clave! Actualizamos el 'refId' en las especificaciones del ensamblaje
-            // para que apunte al ID del MODELO componente recién creado.
-            especificacionesParaGuardar[attrId].refId = componenteCreado.id;
-            
-            // Limpiamos los datos del sub-grupo que ya no son necesarios en el JSON final.
-            delete especificacionesParaGuardar[attrId].subGrupo;
-            delete especificacionesParaGuardar[attrId].mode;
+            // Eliminamos propiedades temporales como 'key'
+            delete atributo.key;
+            especificacionesProcesadas[key] = atributo;
         }
     }
-
-    // 4. Actualizamos el modelo actual con las especificaciones finales.
-    await nuevoModelo.update({ especificaciones: especificacionesParaGuardar }, { transaction });
-
-    return nuevoModelo;
+    return especificacionesProcesadas;
 }
-
-// --- Ruta POST ---
 
 export async function POST(request) {
     const transaction = await db.sequelize.transaction();
     try {
         const body = await request.json();
-        const { nombre, categoriaId, especificaciones } = body;
+        const { nombre, categoriaId, definicion } = body;
 
-        if (!nombre || !categoriaId) {
-            return NextResponse.json({ message: 'El nombre y la categoría son requeridos.' }, { status: 400 });
-        }
+        const especificacionesProcesadas = await procesarDefinicionParaGuardar(definicion, categoriaId, transaction);
 
-        // Inicia el proceso de creación recursiva para el modelo principal.
-        const modeloPrincipal = await crearModeloRecursivo(
-            { nombre, especificaciones },
+        const nuevoModelo = await db.Modelo.create({
+            nombre,
             categoriaId,
-            transaction
-        );
+            especificaciones: especificacionesProcesadas,
+        }, { transaction });
 
-        // Si todo fue exitoso, confirma la transacción.
         await transaction.commit();
-
-        // Devuelve el modelo principal creado.
-        const result = await db.Modelo.findByPk(modeloPrincipal.id, {
-            include: [
-                { model: db.Categoria, as: 'categoria' },
-                // Puedes incluir los componentes si lo necesitas, pero la especificación ya tiene los IDs.
-                // { model: db.Modelo, as: 'componentes' }
-            ]
-        });
-
-        return NextResponse.json(result, { status: 201 });
-
+        
+        return NextResponse.json(nuevoModelo, { status: 201 });
     } catch (error) {
-        // Si algo falla, revierte todos los cambios.
         await transaction.rollback();
-        console.error('Error al crear el modelo:', error);
-        return NextResponse.json({
-            message: 'Error al crear el modelo',
-            error: error.message,
-            stack: error.stack
-        }, { status: 500 });
+        console.error("Error al crear el modelo:", error);
+        return NextResponse.json({ message: error.message }, { status: 400 });
     }
 }
 export async function GET(request) {

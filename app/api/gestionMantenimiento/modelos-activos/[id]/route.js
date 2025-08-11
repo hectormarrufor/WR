@@ -1,13 +1,58 @@
+// app/api/gestionMantenimiento/modelos/[id]/route.js
 import db from '@/models';
 import { NextResponse } from 'next/server';
 import { Op } from 'sequelize';
 
 /**
- * Función recursiva para buscar y anidar los detalles completos de los modelos componentes.
- * @param {object} especificaciones - El objeto de especificaciones del modelo padre.
- * @param {Set} visited - Un Set para rastrear los IDs de modelos visitados y evitar bucles infinitos.
- * @returns {Promise<object>} - El objeto de especificaciones con los componentes poblados.
+ * Función recursiva para procesar la definición de un modelo y crear/actualizar los sub-modelos anidados.
+ * @param {object} especificaciones - El objeto de especificaciones del modelo.
+ * @param {number} categoriaId - El ID de la categoría del modelo.
+ * @param {object} transaction - La transacción de Sequelize.
+ * @returns {Promise<object>} - El objeto de especificaciones procesado para guardar en DB.
  */
+async function procesarDefinicionParaGuardar(especificaciones, categoriaId, transaction) {
+    const especificacionesProcesadas = {};
+
+    for (const key in especificaciones) {
+        if (Object.prototype.hasOwnProperty.call(especificaciones, key)) {
+            const atributo = { ...especificaciones[key] };
+
+            if (atributo.dataType === 'grupo' && atributo.mode === 'define' && atributo.subGrupo) {
+                const nombreSubModelo = atributo.subGrupo.nombre;
+                let subModelo = await db.Modelo.findOne({
+                    where: { nombre: nombreSubModelo },
+                    transaction
+                });
+
+                if (!subModelo) {
+                    const subEspecificacionesProcesadas = await procesarDefinicionParaGuardar(atributo.subGrupo.definicion, categoriaId, transaction);
+                    subModelo = await db.Modelo.create({
+                        nombre: nombreSubModelo,
+                        categoriaId,
+                        especificaciones: subEspecificacionesProcesadas,
+                    }, { transaction });
+                } else {
+                    const subEspecificacionesProcesadas = await procesarDefinicionParaGuardar(atributo.subGrupo.definicion, categoriaId, transaction);
+                    await subModelo.update({
+                        especificaciones: subEspecificacionesProcesadas,
+                    }, { transaction });
+                }
+
+                atributo.refId = subModelo.id;
+                atributo.mode = 'select';
+                delete atributo.subGrupo;
+            }
+
+            if (atributo.dataType === 'object' && atributo.definicion) {
+                atributo.definicion = await procesarDefinicionParaGuardar(atributo.definicion, categoriaId, transaction);
+            }
+            
+            delete atributo.key;
+            especificacionesProcesadas[key] = atributo;
+        }
+    }
+    return especificacionesProcesadas;
+}
 async function poblarComponentesRecursivo(especificaciones, visited = new Set()) {
     // Hacemos una copia para no modificar el objeto original en el ciclo.
     const especificacionesPobladas = JSON.parse(JSON.stringify(especificaciones));
@@ -133,80 +178,63 @@ async function actualizarModeloRecursivo(modeloId, modeloData, transaction) {
 }
 
 
-// --- RUTA PUT PRINCIPAL ---
-export async function PUT(request, { params }) {
-    const { id } = params;
-    const transaction = await db.sequelize.transaction();
-    try {
-        const body = await request.json();
-        
-        // 1. Llamamos a la función recursiva. Ella se encargará de actualizar todo el árbol.
-        const { modeloActualizado, idsRecolectados } = await actualizarModeloRecursivo(id, body, transaction);
-        
-        // 2. ✨ Usamos los IDs recolectados para sincronizar la tabla de compatibilidad
-        await modeloActualizado.setConsumiblesCompatibles(Array.from(idsRecolectados), { transaction });
-        
-        await transaction.commit();
-        
-        // 3. Devolvemos el modelo principal actualizado, ahora con sus compatibilidades correctas.
-        const resultadoFinal = await db.Modelo.findByPk(modeloActualizado.id, {
-            include: ['consumiblesCompatibles']
-        });
-
-        return NextResponse.json(resultadoFinal);
-
-    } catch (error) {
-        await transaction.rollback();
-        console.error(`Error al actualizar el modelo ${id}:`, error);
-        return NextResponse.json({
-            message: 'Error al actualizar el modelo',
-            error: error.message,
-            stack: error.stack
-        }, { status: 500 });
-    }
-}
-
-
-// =============================================
-// --- ENDPOINTS DE LA API ---
-// =============================================
-
 export async function GET(request, { params }) {
-    const { id } = await params;
-
+    const { id } = params;
     try {
         const modelo = await db.Modelo.findByPk(id, {
             include: [{
                 model: db.Categoria,
                 as: 'categoria',
+                attributes: ['id', 'nombre', 'acronimo']
             }]
         });
 
         if (!modelo) {
             return NextResponse.json({ message: 'Modelo no encontrado' }, { status: 404 });
         }
-
-        // Inicia el proceso de poblado recursivo desde las especificaciones del modelo principal.
+        
         const especificacionesPobladas = await poblarComponentesRecursivo(modelo.especificaciones);
-
-        // Preparamos la respuesta final con el modelo y sus especificaciones ya pobladas.
         const resultadoFinal = {
             ...modelo.toJSON(),
             especificaciones: especificacionesPobladas,
         };
 
         return NextResponse.json(resultadoFinal);
-
     } catch (error) {
         console.error(`Error al obtener el modelo ${id}:`, error);
-        return NextResponse.json({
-            message: 'Error al obtener el modelo',
-            error: error.message,
-            stack: error.stack
-        }, { status: 500 });
+        return NextResponse.json({ message: 'Error en el servidor' }, { status: 500 });
     }
 }
 
+export async function PUT(request, { params }) {
+    const { id } = params;
+    const transaction = await db.sequelize.transaction();
+    try {
+        const body = await request.json();
+        const { nombre, categoriaId, definicion } = body;
+
+        const modeloExistente = await db.Modelo.findByPk(id, { transaction });
+        if (!modeloExistente) {
+            throw new Error(`Modelo con ID ${id} no encontrado.`);
+        }
+
+        const especificacionesProcesadas = await procesarDefinicionParaGuardar(definicion, categoriaId, transaction);
+
+        await modeloExistente.update({
+            nombre,
+            categoriaId,
+            especificaciones: especificacionesProcesadas,
+        }, { transaction });
+        
+        await transaction.commit();
+
+        return NextResponse.json({ message: "Modelo actualizado exitosamente." });
+    } catch (error) {
+        await transaction.rollback();
+        console.error(`Error al actualizar el modelo ${id}:`, error);
+        return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+}
 
 
 

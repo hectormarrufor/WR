@@ -15,23 +15,23 @@ export default function GruposListPage() {
     const [error, setError] = useState(null);
     const [modalImportOpened, setModalImportOpened] = useState(false);
     const [fileToImport, setFileToImport] = useState(null);
-
-    useEffect(() => {
-        const fetchGrupos = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch('/api/gestionMantenimiento/grupos');
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'No se pudieron cargar los grupos');
-                }
-                setGrupos(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
+    
+    const fetchGrupos = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/gestionMantenimiento/grupos');
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'No se pudieron cargar los grupos');
             }
-        };
+            setGrupos(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+    useEffect(() => {
 
         fetchGrupos();
     }, []);

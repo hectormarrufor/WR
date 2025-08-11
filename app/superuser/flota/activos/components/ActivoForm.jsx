@@ -8,22 +8,38 @@ import { notifications } from '@mantine/notifications';
 import RenderActivoForm from './RenderActivoForm';
 import ImageDropzone from './ImageDropzone';
 
-// Función helper para extraer los valores por defecto del esquema del modelo
+/**
+ * Función helper para extraer los valores por defecto del esquema del modelo.
+ * Ahora maneja correctamente la estructura de objeto de la definición.
+ * @param {object} schema - El objeto de la definición del modelo.
+ * @returns {object} - Un objeto de valores por defecto.
+ */
 function extractDefaultValues(schema) {
-    if (!schema) return {};
-    const defaults = {};
-    const schemaArray = Array.isArray(schema) ? schema : Object.values(schema);
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return {};
 
-    for (const attr of schemaArray) {
-        if (!attr || !attr.id) continue;
-        if (attr.defaultValue !== null && attr.defaultValue !== undefined && attr.defaultValue !== '') {
-            defaults[attr.id] = attr.defaultValue;
-        }
-        if (attr.dataType === 'object' && attr.definicion) {
-            defaults[attr.id] = extractDefaultValues(attr.definicion);
-        }
-        if (attr.dataType === 'grupo' && attr.componente?.especificaciones) {
-            defaults[attr.id] = extractDefaultValues(attr.componente.especificaciones);
+    const defaults = {};
+
+    for (const key in schema) {
+        if (Object.prototype.hasOwnProperty.call(schema, key)) {
+            const attr = schema[key];
+            if (!attr || !attr.id) continue;
+
+            // Lógica para valores simples
+            if (attr.defaultValue !== null && attr.defaultValue !== undefined && attr.defaultValue !== '') {
+                defaults[attr.id] = attr.defaultValue;
+            }
+
+            // Lógica para objetos anidados
+            if (attr.dataType === 'object' && attr.definicion) {
+                defaults[attr.id] = extractDefaultValues(attr.definicion);
+            }
+            
+            // Lógica para grupos anidados
+            if (attr.dataType === 'grupo' && attr.componente?.especificaciones) {
+                // Si el grupo anidado tiene una especificación, la procesamos
+                const subGrupoSpecs = attr.componente.especificaciones;
+                defaults[attr.id] = extractDefaultValues(subGrupoSpecs);
+            }
         }
     }
     return defaults;
@@ -43,7 +59,6 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
             codigoActivo: initialData?.codigoActivo || '',
             imagen: initialData?.imagen || null,
             datosPersonalizados: initialData?.datosPersonalizados || {},
-            // ✨ CAMPOS AÑADIDOS PARA LECTURAS INICIALES ✨
             kilometrajeInicial: '',
             horometroInicial: '',
         },
@@ -54,7 +69,11 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
         },
     });
 
-   const handleModeloChange = async (modeloId) => {
+    useEffect(() => {
+        console.log(form.values);
+    }, [form.values]);
+
+    const handleModeloChange = async (modeloId) => {
         form.setFieldValue('modeloId', modeloId);
         form.setFieldValue('datosPersonalizados', {});
         form.setFieldValue('codigoActivo', '');
@@ -62,10 +81,10 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
         if (modeloId) {
             setLoading(true);
             try {
-                // ✨ LLAMADAS A LAS APIS CORREGIDAS ✨
+                // Se modificó la llamada para garantizar que la categoría se incluya
                 const [modeloRes, codigoRes] = await Promise.all([
                     fetch(`/api/gestionMantenimiento/modelos-activos/${modeloId}`),
-                    fetch(`/api/gestionMantenimiento/activos/next-code?modeloId=${modeloId}`) // Pasamos el modeloId
+                    fetch(`/api/gestionMantenimiento/activos/next-code?modeloId=${modeloId}`)
                 ]);
                 
                 if (!modeloRes.ok || !codigoRes.ok) {
@@ -75,13 +94,15 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
                 const modeloData = await modeloRes.json();
                 const codigoData = await codigoRes.json();
 
+                // Aquí se procesan los datos correctamente
                 const defaultData = extractDefaultValues(modeloData.especificaciones);
                 form.setFieldValue('datosPersonalizados', defaultData);
                 form.setFieldValue('codigoActivo', codigoData.nextCode);
                 
+                // Se setea el esquema para RenderActivoForm
                 setSelectedModeloSchema(modeloData.especificaciones);
             } catch (error) {
-                 notifications.show({ title: 'Error', message: error.message, color: 'red' });
+                notifications.show({ title: 'Error', message: error.message, color: 'red' });
             } finally {
                 setLoading(false);
             }
@@ -91,7 +112,8 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
     };
 
     useEffect(() => {
-        fetch('/api/gestionMantenimiento/modelos-activos') // Ajustado a la ruta correcta de modelos
+        // La URL de la API de modelos debe ser ajustada
+        fetch('/api/gestionMantenimiento/modelos-activos')
             .then(res => res.json())
             .then(data => {
                 setModelos(data.map(m => ({ value: m.id.toString(), label: m.nombre })));
@@ -103,24 +125,13 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
             });
     }, [isEditing, initialData]);
 
-    // ✨ --- INICIO DE LA CORRECCIÓN DEFINITIVA --- ✨
     const handleSubmit = async (values) => {
-        // console.log(values);
-        // return
-         setIsSubmitting(true);
+        setIsSubmitting(true);
         let finalPayload = { ...values };
 
         try {
-            console.log("[HANDLE SUBMIT] Iniciando envío. Tipo de 'imagen':", typeof values.imagen, values.imagen);
-
-            // ✨ --- LA CORRECCIÓN INFALIBLE ESTÁ AQUÍ --- ✨
-            // En lugar de `instanceof File`, comprobamos si tiene el método `arrayBuffer`.
-            // Esto es mucho más robusto.
             if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
-                
-                console.log("[HANDLE SUBMIT] Se detectó un objeto tipo File/Blob. Procediendo a subir...");
                 notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
-
                 const imagenFile = values.imagen;
                 const fileExtension = imagenFile.name.split('.').pop();
                 const uniqueFilename = `${values.codigoActivo.replace(/\s+/g, '_')}.${fileExtension}`;
@@ -131,16 +142,11 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
                 });
                 
                 if (!response.ok) throw new Error('Falló la subida de la imagen.');
-
                 const newBlob = await response.json();
                 finalPayload.imagen = newBlob.url;
                 notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
-            
-            } else {
-                 console.log("[HANDLE SUBMIT] No se detectó un archivo nuevo. Se saltará la subida.");
             }
 
-            // Enviamos el payload final
             const url = isEditing ? `/api/gestionMantenimiento/activos/${initialData.id}` : '/api/gestionMantenimiento/activos';
             const method = isEditing ? 'PUT' : 'POST';
 
@@ -163,7 +169,6 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
             setIsSubmitting(false);
         }
     };
-    // ✨ --- FIN DE LA CORRECCIÓN DEFINITIVA --- ✨
 
     if (loading && !isEditing) return <Loader />;
 
@@ -184,7 +189,6 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
                     <TextInput label="Código del Activo" required {...form.getInputProps('codigoActivo')} />
                 </Group>
                 
-                {/* ✨ NUEVOS CAMPOS: Solo visibles al crear */}
                 {!isEditing && (
                     <Paper withBorder p="md" mt="md">
                         <Title order={5} mb="sm">Lecturas Iniciales</Title>

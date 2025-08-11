@@ -28,7 +28,7 @@ export async function GET(request) {
         
         const categoria = modelo.categoria;
         const acronimo = categoria.acronimo?.toUpperCase();
-
+        console.log("CATEGORIA: ", categoria);
         if (!acronimo) {
             throw new Error(`La categoría "${categoria.nombre}" no tiene un acrónimo definido.`);
         }

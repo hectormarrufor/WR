@@ -161,7 +161,7 @@ export default function ModeloActivoForm({ modeloId = null }) {
         setError('');
 
         // Aquí puedes añadir una función que limpie las 'key' aleatorias del payload antes de enviarlo
-        const payload = { nombre: values.nombre, categoriaId: values.categoriaId, especificaciones: values.definicion };
+        const payload = { nombre: values.nombre, categoriaId: values.categoriaId, definicion: values.definicion };
         // console.log('Payload a enviar:', payload);
         // setLoading(false);
         // return
