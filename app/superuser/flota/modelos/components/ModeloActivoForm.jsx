@@ -66,6 +66,10 @@ export default function ModeloActivoForm({ modeloId = null }) {
         },
     });
 
+    useEffect(() => {
+        console.log(form.values);
+    }, [form.values]);
+
     // 1. Carga la lista de categorías para el Select
     useEffect(() => {
       setLoading(true);

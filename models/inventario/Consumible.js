@@ -25,7 +25,7 @@ const Consumible = sequelize.define('Consumible', {
         allowNull: true,
     },
     tipo: { 
-        type: DataTypes.ENUM('Aceite', 'Filtro', 'Correa', 'Repuesto', 'Caucho', 'Otro'),
+        type: DataTypes.ENUM('Aceite', 'Filtro', 'Correa', 'Neumatico', 'Manguera', 'Bateria', 'Bombillo', 'Sensor', 'Bujia', 'Pastillas de Freno', 'Repuesto', 'Otro'),
         allowNull: false,
     },
     // ✨ CAMPO CLAVE 2: Para guardar detalles específicos (viscosidad, tamaño, etc.)

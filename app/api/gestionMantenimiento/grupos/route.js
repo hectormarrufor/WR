@@ -4,7 +4,7 @@ import { Grupo } from '@/models';
 import sequelize from '@/sequelize';
 
 // --- LÓGICA DE CREACIÓN RECURSIVA CORREGIDA ---
-async function crearGrupoRecursivo(grupoData, parentId = null, transaction) {
+export async function crearGrupoRecursivo(grupoData, parentId = null, transaction) {
     // Desestructuramos para asegurar que usamos los datos del nivel actual
     const { nombre, definicion, subGrupos } = grupoData;
 

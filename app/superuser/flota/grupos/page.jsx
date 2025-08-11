@@ -6,6 +6,7 @@ import { Table, Button, Title, Paper, LoadingOverlay, Alert, Group, Anchor, Text
 import { IconDownload, IconPencil, IconPlus, IconTrash, IconUpload } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { notifications } from '@mantine/notifications';
 
 export default function GruposListPage() {
     const router = useRouter();

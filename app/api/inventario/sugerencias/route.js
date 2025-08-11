@@ -26,7 +26,7 @@ export async function GET(request) {
             // Esta es una consulta más compleja para buscar dentro del JSONB
             const [data] = await sequelize.query(`
                 SELECT DISTINCT(especificaciones->>'viscosidad') AS viscosidad
-                FROM "IConsumibles"
+                FROM "Consumibles"
                 WHERE especificaciones->>'viscosidad' IS NOT NULL
                 ORDER BY viscosidad ASC;
             `);
@@ -36,7 +36,7 @@ export async function GET(request) {
             // Esta es una consulta más compleja para buscar dentro del JSONB
             const [data] = await sequelize.query(`
                 SELECT DISTINCT(especificaciones->>'medida') AS medida
-                FROM "IConsumibles"
+                FROM "Consumibles"
                 WHERE especificaciones->>'medida' IS NOT NULL
                 ORDER BY medida ASC;
             `);

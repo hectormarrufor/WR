@@ -5,7 +5,7 @@ import { useForm } from '@mantine/form';
 import { TextInput, Button, Box, Title, Paper, LoadingOverlay, Alert } from '@mantine/core';
 import { useRouter, useParams } from 'next/navigation';
 import AtributoConstructor from '../../../components/AtributoConstructor';
-import { IconDeviceFloppy } from '@tabler/icons-react';
+import { IconAlertCircle, IconDeviceFloppy } from '@tabler/icons-react';
 
 // --- Función Helper para transformar el JSON de la API al estado del formulario ---
 function transformPayloadToFormValues(payload) {

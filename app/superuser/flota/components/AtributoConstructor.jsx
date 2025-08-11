@@ -266,7 +266,7 @@ export function AtributoField({ attribute, path, onUpdate, level }) {
         <Select
           label="Tipo de Consumible"
           placeholder="Selecciona el tipo de repuesto"
-          data={['Aceite', 'Filtro', 'Correa', 'Neumatico', 'Manguera', 'Bateria', 'Bombillo', 'Sensor', 'Bujia', 'Pastillas de Freno', 'Otro']}
+          data={['Aceite', 'Filtro', 'Correa', 'Neumatico', 'Manguera', 'Bateria', 'Bombillo', 'Sensor', 'Bujia', 'Pastillas de Freno', 'Repuesto', 'Otro']}
           value={attribute.consumibleType || ''}
           onChange={(value) => onUpdate(path, { ...attribute, consumibleType: value })}
         />
