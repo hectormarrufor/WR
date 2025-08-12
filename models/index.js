@@ -29,6 +29,8 @@ const Horometro = require('./gestionMantenimiento/Horometro');
 const Requisicion = require('./gestionMantenimiento/Requisicion');
 const RequisicionDetalle = require('./gestionMantenimiento/RequisicionDetalle');
 const Compatibilidad = require('./inventario/Compatibilidad');
+const MedidaNeumatico = require('./inventario/MedidaNeumatico');
+const Marca = require('./inventario/Marca');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -64,6 +66,8 @@ const db = {
     EntradaInventario,
     SalidaInventario,
     Compatibilidad,
+    MedidaNeumatico,
+    Marca,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

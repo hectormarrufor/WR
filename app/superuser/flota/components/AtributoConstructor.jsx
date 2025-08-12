@@ -138,7 +138,10 @@ function AtributoValorizador({ attribute, path, onUpdate, from }) {
         <Stack>
           <Group grow>
             <Select label="Tipo de Aceite Requerido" data={['Mineral', 'Semi-sintético', 'Sintético']} value={getDeep(attribute, 'compatibilidad.propiedades.tipoAceite') || ''} onChange={(value) => onUpdate(path, { ...attribute, compatibilidad: { mode: 'porPropiedades', propiedades: { ...getDeep(attribute, 'compatibilidad.propiedades'), tipoAceite: value } } })} />
-            <Select label="Viscosidad Requerida" placeholder="Ej: 15W40" data={viscosidades} searchable creatable getCreateLabel={(query) => `+ Añadir "${query}"`} onCreate={(query) => { const newItem = { value: query, label: query }; setViscosidades((current) => [...current, newItem]); return newItem; }} value={getDeep(attribute, 'compatibilidad.propiedades.viscosidad') || ''} onChange={(value) => onUpdate(path, { ...attribute, compatibilidad: { mode: 'porPropiedades', propiedades: { ...getDeep(attribute, 'compatibilidad.propiedades'), viscosidad: value } } })} />
+            <Select label="Viscosidad Requerida" placeholder="Ej: 15W40" 
+            data={viscosidades} searchable 
+            value={getDeep(attribute, 'compatibilidad.propiedades.viscosidad') || ''} 
+            onChange={(value) => onUpdate(path, { ...attribute, compatibilidad: { mode: 'porPropiedades', propiedades: { ...getDeep(attribute, 'compatibilidad.propiedades'), viscosidad: value } } })} />
           </Group>
           <NumberInput label="Cantidad de Aceite (Litros)" description="Valor predeterminado para el cambio" placeholder="Ej: 8.5" precision={2} min={0} step={0.1} value={getDeep(attribute, 'defaultValue.cantidadLitros') || ''} onChange={(value) => onUpdate(path, { ...attribute, defaultValue: { ...getDeep(attribute, 'defaultValue'), cantidadLitros: value } })} />
           <Grid>
