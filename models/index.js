@@ -31,6 +31,10 @@ const RequisicionDetalle = require('./gestionMantenimiento/RequisicionDetalle');
 const Compatibilidad = require('./inventario/Compatibilidad');
 const MedidaNeumatico = require('./inventario/MedidaNeumatico');
 const Marca = require('./inventario/Marca');
+const CostParameters = require('./estimacion/CostParameters');
+const CostEstimate = require('./estimacion/CostEstimate');
+const FixedExpense = require('./gastos/FixedExpense');
+const Flete = require('./operaciones/Flete');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -68,6 +72,16 @@ const db = {
     Compatibilidad,
     MedidaNeumatico,
     Marca,
+
+    //ESTIMACION
+    CostParameters,
+    CostEstimate,
+
+    //Gastos
+    FixedExpense,
+
+    //FLETES
+    Flete
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

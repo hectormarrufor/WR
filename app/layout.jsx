@@ -59,7 +59,7 @@ export default function RootLayout({ children }) {
   return (
     <html>
       <head>
-        <title>WR Well Services, C.A</title>
+        <title>Transporte DADICA, C.A</title>
         <link rel="icon" href="/favicon.jpg" />
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
       </head>
@@ -87,7 +87,7 @@ export default function RootLayout({ children }) {
                 }}
               >
                 <Group justify="space-between" px={isMobile ? 0 : 100}>
-                  <Image src="/logo.jpg" height={45} alt="logo" p={0} py={10} m={5} />
+                  <Image src="/logo.jpg" height={60} alt="logo" p={0} py={0} m={5} />
                   <Group h="100%" px="md">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                     <Group justify="space-evenly" style={{ flex: 1 }}>
@@ -118,15 +118,15 @@ export default function RootLayout({ children }) {
                 {children}
                 <Image
                   style={{
-                    height: 1000,
-                    opacity: 0.5,
+                    height: 1100,
+                    opacity: 0.2,
                     position: 'fixed',
-                    top: 0,
+                    top: -140,
                     left: 0,
                     objectFit: 'cover',
                     zIndex: -1,
                   }}
-                  src="https://dycowelldrilling.com/wp-content/uploads/2023/02/a-pumpjack-at-an-oil-drilling-site-at-sunset-2022-03-04-02-28-48-utc-scaled.jpg"
+                  src="/fondo.jpg"
                 />
               </AppShell.Main>
             </AppShell>
