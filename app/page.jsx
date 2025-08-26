@@ -49,31 +49,14 @@ export default function LandingPage() {
             >
                 <Carousel.Slide>
                     <Image
-                        src="https://redmine.valoraanalitik.com/wp-content/uploads/2021/01/INDEPENDENCE_26.jpg"
-                        alt="pozo 1"
+                        src="/carrusel1.jpg"
+                        alt="carrusel 1"
                         radius={isMobile ? 0 : theme.radius.md}
                         fit="cover"
                         height={isMobile ? 220 : 400}
                     />
                 </Carousel.Slide>
-                <Carousel.Slide>
-                    <Image
-                        src="https://campetrol.org/wp-content/uploads/2023/02/Taladros-y-Produccion.jpg"
-                        alt="pozo 2"
-                        radius={isMobile ? 0 : theme.radius.md}
-                        fit="cover"
-                        height={isMobile ? 220 : 400}
-                    />
-                </Carousel.Slide>
-                <Carousel.Slide>
-                    <Image
-                        src="https://www.cambioin.com/assets/iblog/post/9449.jpg"
-                        alt="pozo 3"
-                        radius={isMobile ? 0 : theme.radius.md}
-                        fit="cover"
-                        height={isMobile ? 220 : 400}
-                    />
-                </Carousel.Slide>
+                
             </Carousel>
 
             {/* 🛠 Sección de servicios */}
@@ -82,14 +65,14 @@ export default function LandingPage() {
                     <Grid.Col span={isMobile ? 12 : 8}>
                         <Flex direction="column" gap="md" align="center">
                             <Title order={2} size={isMobile ? 'h4' : 'h2'} align="center">
-                                Servicios de explotación de pozos petroleros
+                                Servicios de Transporte y Maquinaria Pesada
                             </Title>
                             <Text size="lg" align="center">
-                                En WR Well Services nos dedicamos a la explotación y mantenimiento integral de pozos petroleros, garantizando eficiencia y seguridad en cada operación. Contamos con maquinaria de vanguardia para cubrir cualquier requerimiento.
+                                En Transporte DADICA, C.A nos dedicamos a ofrecer soluciones integrales de transporte y maquinaria pesada para la industria petrolera y de construcción. Con una flota moderna y un equipo altamente capacitado, garantizamos eficiencia, seguridad y cumplimiento en cada proyecto.
                             </Text>
-                            <Button variant="outline" size="md" onClick={() => router.push('/servicios')}>
+                            {/* <Button variant="outline" size="md" onClick={() => router.push('/servicios')}>
                                 Ver servicios
-                            </Button>
+                            </Button> */}
                             <Button color='red'size="md" onClick={() => router.push('/superuser')}>
                                 Ingresar a la Administracion
                             </Button>
@@ -97,7 +80,7 @@ export default function LandingPage() {
                     </Grid.Col>
                     <Grid.Col span={isMobile ? 12 : 4}>
                         <Image
-                            src="https://live.staticflickr.com/68/198563915_6fe213d84f_z.jpg"
+                            src="https://th.bing.com/th/id/R.384b5dfd0a3ac7c681ccf573206d5538?rik=etDBVMHNTWYoKQ&riu=http%3a%2f%2f4.bp.blogspot.com%2f_pLsfjC-Sws4%2fTCEmMaC7oCI%2fAAAAAAAAACc%2fQ1lJWm9qjWk%2fs1600%2f30-PUBSTR-005-02_Large.jpg&ehk=pVBqUSziWIuTzFjcioNEmculaDsw0GGCNagROLjkO4o%3d&risl=&pid=ImgRaw&r=0"
                             alt="maquinaria"
                             radius="md"
                             fit="cover"
