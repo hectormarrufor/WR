@@ -87,7 +87,9 @@ export default function RootLayout({ children }) {
                 }}
               >
                 <Group justify="space-between" px={isMobile ? 0 : 100}>
-                  <Image src="/logo.jpg" height={60} alt="logo" p={0} py={0} m={5} />
+                  <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
+                    <Image src="/logo.jpg" height={60} alt="logo" p={0} py={0} m={5} />
+                  </UnstyledButton>
                   <Group h="100%" px="md">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                     <Group justify="space-evenly" style={{ flex: 1 }}>

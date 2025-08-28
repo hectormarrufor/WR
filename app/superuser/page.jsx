@@ -77,10 +77,11 @@ export default function SuperUserHome() {
     ];
 
     return (
-        <Stack justify="center" align="center" style={{ minHeight: '100vh', padding: '2rem 0' }} mt={20}>
+        <Stack justify="center" align="center" style={{ minHeight: '93vh', padding: '1rem 0' }} mt={0} p={0}>
             <Card
                 shadow="md"
                 padding="xl"
+                m={0}
                 radius="md"
                 withBorder
                 style={{ width: '100%', maxWidth: 1200, backgroundColor: 'white' }}
