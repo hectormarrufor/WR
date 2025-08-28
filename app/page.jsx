@@ -97,7 +97,7 @@ export default function LandingPage() {
                     py={60}
                     mt={60}
                     shadow="lg"
-                    bg="white"
+                    bg="#fafafabb"
                     withBorder
                 >
                     <Stack align="center" spacing="md">

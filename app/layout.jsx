@@ -2,7 +2,7 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 
-import { AppShell, Burger, createTheme, Group, Image, LoadingOverlay, Text, UnstyledButton } from '@mantine/core';
+import { AppShell, Box, Burger, createTheme, Group, Image, LoadingOverlay, Text, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from './MobileNavbar.module.css';
 import React, { useEffect, useState } from 'react';
@@ -77,29 +77,39 @@ export default function RootLayout({ children }) {
                 zIndex={1001}
                 height={40}
                 withBorder={false}
+                bg="#fafafabd"
                 style={{
                   position: 'fixed',
                   top: showHeader ? 0 : -80, // se oculta hacia arriba
-                  left: 0,
-                  right: 0,
-                  transition: 'top 0.3s ease-in-out',
-                  zIndex: 1000,
-                }}
-              >
-                <Group justify="space-between" px={isMobile ? 0 : 100}>
-                  <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
+                    left: 0,
+                    right: 0,
+                    transition: 'top 0.3s ease-in-out',
+                    zIndex: 1000,
+                    backdropFilter: 'blur(10px)', // efecto blur
+                    WebkitBackdropFilter: 'blur(10px)', // soporte Safari
+                  }}
+                  >
+                  <Group justify="space-between" px={isMobile ? 0 : 100}>
+                    <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
                     <Image src="/logo.jpg" height={60} alt="logo" p={0} py={0} m={5} />
-                  </UnstyledButton>
-                  <Group h="100%" px="md">
+                    </UnstyledButton>
+                    <Group h="100%" px="md">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                     <Group justify="space-evenly" style={{ flex: 1 }}>
                       <LayoutMenu classes={classes} router={router} />
                     </Group>
+                    </Group>
                   </Group>
-                </Group>
-              </AppShell.Header>
-              <AppShell.Navbar py="md" px={4} mt={80}>
-                <UnstyledButton className={classes.control} onClick={() => {
+                  </AppShell.Header>
+                  <AppShell.Navbar py="md" px={4} mt={70} bg="#fafaface"
+                  style={{backdropFilter: 'blur(10px)', // efecto blur
+                  WebkitBackdropFilter: 'blur(10px)', // soporte Safari
+                  transition: 'transform 0.3s ease-in-out',
+                  transform: opened ? 'translateX(0)' : 'translateX(-100%)',
+                  zIndex: 999,
+                }}
+                  >
+                  <UnstyledButton className={classes.control} onClick={() => {
                   toggle();
                   router.push('/')
                 }}>Inicio</UnstyledButton>
@@ -114,13 +124,12 @@ export default function RootLayout({ children }) {
               </AppShell.Navbar>
               <AppShell.Main
                 px={0}
-                mt={showHeader ? isMobile ? 40 : 50 : 0}
+                mt={0}
                 mb={0}
                 pb={0}
                 mx={0}
                 style={{ backgroundColor: "#18120179" }}
               >
-                {children}
                 <Image
                   style={{
                     height: 1100,
@@ -133,6 +142,7 @@ export default function RootLayout({ children }) {
                   }}
                   src="/fondo.jpg"
                 />
+                <Box mt={showHeader ? isMobile ? 54 : 70 : 0}>{children}</Box>
               </AppShell.Main>
             </AppShell>
           </AuthProvider>
