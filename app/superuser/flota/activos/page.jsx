@@ -107,7 +107,7 @@ export default function ListarActivosPage() {
                 </Table>
             </Table.ScrollContainer>
 
-            <Modal opened={modalOpened} onClose={() => setModalOpened(false)} title="Confirmar Eliminación">
+            <Modal opened={modalOpened} centered onClose={() => setModalOpened(false)} title="Confirmar Eliminación">
                 <Text>¿Estás seguro de que deseas eliminar el activo <Text span fw={700}>{activoToDelete?.codigoActivo}</Text>? Esta acción no se puede deshacer.</Text>
                 <Group justify="flex-end" mt="lg">
                     <Button variant="default" onClick={() => setModalOpened(false)}>Cancelar</Button>

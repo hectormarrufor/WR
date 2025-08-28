@@ -49,7 +49,7 @@ export async function GET(request) {
         const correlativo = nextNumber.toString().padStart(4, '0');
 
         // 4. Construimos y devolvemos el código final.
-        const nuevoCodigo = `WRWS-${acronimo}-${correlativo}`;
+        const nuevoCodigo = `DA-${acronimo}-${correlativo}`;
 
         return NextResponse.json({ nextCode: nuevoCodigo });
 

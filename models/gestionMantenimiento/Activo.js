@@ -26,10 +26,14 @@ const Activo = sequelize.define('Activo', {
         allowNull: false,
         defaultValue: {},
     },
-     estadoOperativo: {
+    estadoOperativo: {
         type: DataTypes.STRING,
         allowNull: false,
         defaultValue: 'Operativo',
+    },
+    valor: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
     },
     imagen: {
         type: DataTypes.TEXT, // Usamos TEXT para almacenar la imagen en formato Base64
@@ -46,17 +50,17 @@ Activo.associate = (models) => {
         as: 'modelo'
     });
 
-    Activo.hasMany(models.Inspeccion, { 
-        foreignKey: 'activoId', 
-        as: 'inspecciones' 
+    Activo.hasMany(models.Inspeccion, {
+        foreignKey: 'activoId',
+        as: 'inspecciones'
     });
-    Activo.hasMany(models.Hallazgo, { 
-        foreignKey: 'activoId', 
-        as: 'hallazgos' 
+    Activo.hasMany(models.Hallazgo, {
+        foreignKey: 'activoId',
+        as: 'hallazgos'
     });
-    Activo.hasMany(models.Mantenimiento, { 
-        foreignKey: 'activoId', 
-        as: 'mantenimientos' 
+    Activo.hasMany(models.Mantenimiento, {
+        foreignKey: 'activoId',
+        as: 'mantenimientos'
     });
     Activo.hasMany(models.Kilometraje, {
         foreignKey: 'activoId', // Asegúrate de que el nombre de la FK sea consistente

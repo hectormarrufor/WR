@@ -52,7 +52,7 @@ export default function DetalleActivoPage() {
             <Grid gutter="xl">
                 <Grid.Col span={{ base: 12, md: 4 }}>
                     {activo.imagen ? (
-                        <Image src={activo.imagen} radius="md" />
+                        <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}`} radius="md" />
                     ) : (
                         <Paper withBorder radius="md" p="xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                             <Center>

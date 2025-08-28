@@ -137,6 +137,20 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
     const transaction = await db.sequelize.transaction();
     try {
+        await db.Kilometraje.destroy({
+            where: { activoId: id },
+            transaction
+        });
+
+        await db.Horometro.destroy({
+            where: { activoId: id },
+            transaction
+        });
+        await db.Hallazgo.destroy({
+            where: { activoId: id },
+            transaction
+        });
+        
         const activoAEliminar = await db.Activo.findByPk(id, { transaction });
         if (!activoAEliminar) {
             await transaction.rollback();

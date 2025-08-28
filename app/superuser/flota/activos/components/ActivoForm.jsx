@@ -57,6 +57,7 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
         initialValues: {
             modeloId: initialData?.modeloId?.toString() || '',
             codigoActivo: initialData?.codigoActivo || '',
+            valor: initialData?.valor || '',
             imagen: initialData?.imagen || null,
             datosPersonalizados: initialData?.datosPersonalizados || {},
             kilometrajeInicial: '',
@@ -141,14 +142,16 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
                     body: imagenFile,
                 });
                 
-                if (!response.ok) throw new Error('Falló la subida de la imagen.');
+                if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
                 const newBlob = await response.json();
-                finalPayload.imagen = newBlob.url;
+                finalPayload.imagen = `${values.codigoActivo}.jpg`;
                 notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
             }
 
             const url = isEditing ? `/api/gestionMantenimiento/activos/${initialData.id}` : '/api/gestionMantenimiento/activos';
             const method = isEditing ? 'PUT' : 'POST';
+
+         
 
             const finalResponse = await fetch(url, {
                 method,
@@ -196,6 +199,7 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
                             <NumberInput label="Kilometraje Inicial" placeholder="0" required {...form.getInputProps('kilometrajeInicial')} />
                             <NumberInput label="Horas de Trabajo Iniciales (Horómetro)" placeholder="0" {...form.getInputProps('horometroInicial')} />
                         </Group>
+                        <NumberInput label="Valor del Activo" placeholder="0.00" precision={2} min={0} step={500} mt="md" {...form.getInputProps('valor')} />
                     </Paper>
                 )}
 

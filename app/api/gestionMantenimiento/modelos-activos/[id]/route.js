@@ -179,7 +179,7 @@ async function actualizarModeloRecursivo(modeloId, modeloData, transaction) {
 
 
 export async function GET(request, { params }) {
-    const { id } = params;
+    const { id } = await params;
     try {
         const modelo = await db.Modelo.findByPk(id, {
             include: [{

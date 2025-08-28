@@ -49,7 +49,7 @@ export async function POST(request) {
     const transaction = await db.sequelize.transaction();
     try {
         const body = await request.json();
-        const { modeloId, codigoActivo, datosPersonalizados } = body;
+        const { modeloId, codigoActivo, kilometrajeInicial, horometroInicial, imagen, valor, datosPersonalizados } = body;
 
         if (!modeloId || !codigoActivo) {
             return NextResponse.json({ message: 'El modelo y el código de activo son requeridos.' }, { status: 400 });
@@ -60,9 +60,14 @@ export async function POST(request) {
             modeloId,
             codigoActivo,
             datosPersonalizados,
+            imagen,
+            valor,
             // Puedes añadir otros campos si vienen en el body
         }, { transaction });
+        const activoId = nuevoActivo.id;
 
+        const nuevoKm = await db.Kilometraje.create({ activoId, valor: kilometrajeInicial }, { transaction });
+        const nuevoHorometro = await db.Horometro.create({ activoId, valor: horometroInicial }, { transaction });
         await transaction.commit();
         return NextResponse.json(nuevoActivo, { status: 201 });
 
