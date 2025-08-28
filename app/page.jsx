@@ -41,7 +41,7 @@ export default function LandingPage() {
 
 
     return (
-        <Container size="xl" mx={isMobile && 0} px={isMobile ? 0 : 'xl'} py="xl" mt={0}>
+        <Container size="xl" mx={isMobile && 0} px={isMobile ? 0 : 'xl'} py={0} mt={isMobile ? 0 : 20}>
             {/* 🖼 Carrusel inicial */}
             <Carousel
                 loop
@@ -87,7 +87,7 @@ export default function LandingPage() {
 
             </Carousel>
 
-            <DadicaLanding />
+            <DadicaLanding isMobile = {isMobile}/>
 
 
             {/* 📬 Contacto */}

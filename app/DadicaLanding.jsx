@@ -15,13 +15,13 @@ import {
 } from '@mantine/core';
 import { IconTruck, IconRecycle, IconShieldCheck, IconUsersGroup } from '@tabler/icons-react';
 
-export default function DadicaLanding() {
+export default function DadicaLanding({isMobile}) {
     return (
         <Box bg="#f5f5f5" py="xl">
             <Container size="lg">
                 {/* Encabezado */}
                 <Card withBorder radius="md" p="xl" mb="xl" bg="white">
-                    <Grid>
+                    {!isMobile ? <Grid>
                         <Grid.Col span={6}>
                             <Image src="/logo.jpg" alt="Logo DADICA" radius="md" />
                         </Grid.Col>
@@ -31,7 +31,13 @@ export default function DadicaLanding() {
                                 <Text size="md" c="dimmed">Fundada en 2008 | RIF: J-29553660-7</Text>
                             </Stack>
                         </Grid.Col>
-                    </Grid>
+                    </Grid>:
+                    <Stack align="center" spacing="md">
+                        <Image src="/logo.jpg" alt="Logo DADICA" radius="md" />
+                        <Title order={1} tt="uppercase" c="dark">Transporte DADICA C.A.</Title>
+                        <Text size="md" c="dimmed">Fundada en 2008 | RIF: J-29553660-7</Text>
+                    </Stack>
+                }
                 </Card>
 
                 {/* Historia */}
@@ -47,7 +53,7 @@ export default function DadicaLanding() {
                 </Card>
 
                 {/* Misión y Visión */}
-                <Grid mb="xl">
+                {!isMobile ? <Grid mb="xl">
                     <Grid.Col span={6}>
                         <Card withBorder radius="md" p="xl" bg="white">
                             <Title order={3} tt="uppercase">Misión</Title>
@@ -66,7 +72,24 @@ export default function DadicaLanding() {
                             </Text>
                         </Card>
                     </Grid.Col>
-                </Grid>
+                </Grid>:
+                <Stack mb="xl" spacing="xl">
+                    <Card withBorder radius="md" p="xl" bg="white">
+                        <Title order={3} tt="uppercase">Misión</Title>
+                        <Divider my="sm" />
+                        <Text>
+                            Garantizar un servicio seguro y eficiente, cuidando al trabajador y al medio ambiente, con enfoque en industrias clave.
+                        </Text>
+                    </Card>
+                    <Card withBorder radius="md" p="xl" bg="white">
+                        <Title order={3} tt="uppercase">Visión</Title>
+                        <Divider my="sm" />
+                        <Text>
+                            Consolidarse como empresa líder en transporte de cargas especiales, siendo referente en la región.
+                        </Text>
+                    </Card>
+                </Stack>
+            }
 
                 {/* Servicios */}
                 <Card withBorder radius="md" p="xl" mb="xl" bg="white">
