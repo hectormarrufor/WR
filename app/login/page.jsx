@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const page = () => {
   const router = useRouter();
+  const [hayAdmin, setHayAdmin] = useState(true);
   const {login, isAuthenticated} = useAuth(); // Asegúrate de importar el hook useAuth correctamente
   const form = useForm({
     initialValues: {
@@ -24,6 +25,29 @@ const page = () => {
         value.length < 4 ? 'La contraseña debe tener al menos 4 caracteres' : null,
     },
   });
+
+  useEffect(() => {
+    const fetchAdminUser = async () => {
+      try {
+        const response = await fetch('/api/users'); // Ajusta la ruta según tu backend
+        const users = await response.json();
+        console.log('Usuarios obtenidos:', users);
+        const adminUser = users.find(user => user.isAdmin);
+        if (adminUser) {
+          setHayAdmin(true);
+        }
+       
+      } catch (error) {
+        notifications.show({
+          title: 'Error buscando admin',
+          message: error.message,
+          color: 'red',
+        });
+      }
+    };
+
+    fetchAdminUser();
+  }, []);
 
  const handleSubmit = async (values) => {
         try {
@@ -82,7 +106,7 @@ const page = () => {
               <Button type="submit" fullWidth>
                 Iniciar Sesion
               </Button>
-              <Button fullWidth onClick={async () => {
+              {!hayAdmin && <Button fullWidth onClick={async () => {
                 try {
                   await crearUsuario(defaultUser)
                   notifications.show({title:"usuario creado"})
@@ -92,7 +116,7 @@ const page = () => {
                 }
               }}>
                 Registrar
-              </Button>
+              </Button>}
               {/* {isAuthenticated && <Button fullWidth onClick={() => cerrarSesion(router.push, checkAuth)}>
                 Close session
               </Button>} */}
