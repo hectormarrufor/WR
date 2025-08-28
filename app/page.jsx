@@ -15,6 +15,7 @@ import {
     Paper,
     Box,
     SimpleGrid,
+    Stack,
 } from '@mantine/core';
 
 import { Carousel } from '@mantine/carousel';
@@ -23,6 +24,8 @@ import { useMediaQuery } from '@mantine/hooks';
 import { useRef } from 'react';
 import Autoplay from 'embla-carousel-autoplay';
 import { useRouter } from 'next/navigation';
+import DadicaLanding from './DadicaLanding';
+import { IconMail } from '@tabler/icons-react';
 
 export default function LandingPage() {
     const router = useRouter();
@@ -30,8 +33,15 @@ export default function LandingPage() {
     const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
     const autoplay = useRef(Autoplay({ delay: 4000 }));
 
+    const handleMailto = () => {
+        const subject = encodeURIComponent('Solicitud de servicios');
+        const body = encodeURIComponent('Hola, estoy interesado en sus servicios. Por favor contáctenme.');
+        window.location.href = `mailto:transportedadica@gmail.com?subject=${subject}&body=${body}`;
+    };
+
+
     return (
-        <Container size="xl" mx={isMobile && 0 } px={isMobile ? 0 : 'xl'} py="xl" mt={isMobile ? 40 : 70}>
+        <Container size="xl" mx={isMobile && 0} px={isMobile ? 0 : 'xl'} py="xl" mt={isMobile ? 40 : 0}>
             {/* 🖼 Carrusel inicial */}
             <Carousel
                 loop
@@ -53,63 +63,63 @@ export default function LandingPage() {
                         alt="carrusel 1"
                         radius={isMobile ? 0 : theme.radius.md}
                         fit="cover"
-                        height={isMobile ? 220 : 400}
+                        height={isMobile ? 220 : 500}
                     />
                 </Carousel.Slide>
-                
+                <Carousel.Slide>
+                    <Image
+                        src="/carrusel2.jpg"
+                        alt="carrusel 2"
+                        radius={isMobile ? 0 : theme.radius.md}
+                        fit="cover"
+                        height={isMobile ? 220 : 500}
+                    />
+                </Carousel.Slide>
+                <Carousel.Slide>
+                    <Image
+                        src="/carrusel3.jpg"
+                        alt="carrusel 3"
+                        radius={isMobile ? 0 : theme.radius.md}
+                        fit="cover"
+                        height={isMobile ? 220 : 500}
+                    />
+                </Carousel.Slide>
+
             </Carousel>
 
-            {/* 🛠 Sección de servicios */}
-            <Paper radius={isMobile ? 0 : theme.radius.md} px={isMobile? 20 : 100} py={50} my={isMobile && 20}>
-                <Grid gutter="xl" align="center">
-                    <Grid.Col span={isMobile ? 12 : 8}>
-                        <Flex direction="column" gap="md" align="center">
-                            <Title order={2} size={isMobile ? 'h4' : 'h2'} align="center">
-                                Servicios de Transporte y Maquinaria Pesada
-                            </Title>
-                            <Text size="lg" align="center">
-                                En Transporte DADICA, C.A nos dedicamos a ofrecer soluciones integrales de transporte y maquinaria pesada para la industria petrolera y de construcción. Con una flota moderna y un equipo altamente capacitado, garantizamos eficiencia, seguridad y cumplimiento en cada proyecto.
-                            </Text>
-                            {/* <Button variant="outline" size="md" onClick={() => router.push('/servicios')}>
-                                Ver servicios
-                            </Button> */}
-                            <Button color='red'size="md" onClick={() => router.push('/superuser')}>
-                                Ingresar a la Administracion
-                            </Button>
-                        </Flex>
-                    </Grid.Col>
-                    <Grid.Col span={isMobile ? 12 : 4}>
-                        <Image
-                            src="https://th.bing.com/th/id/R.384b5dfd0a3ac7c681ccf573206d5538?rik=etDBVMHNTWYoKQ&riu=http%3a%2f%2f4.bp.blogspot.com%2f_pLsfjC-Sws4%2fTCEmMaC7oCI%2fAAAAAAAAACc%2fQ1lJWm9qjWk%2fs1600%2f30-PUBSTR-005-02_Large.jpg&ehk=pVBqUSziWIuTzFjcioNEmculaDsw0GGCNagROLjkO4o%3d&risl=&pid=ImgRaw&r=0"
-                            alt="maquinaria"
-                            radius="md"
-                            fit="cover"
-                        />
-                    </Grid.Col>
-                </Grid>
-            </Paper>
+            <DadicaLanding />
 
 
             {/* 📬 Contacto */}
-            <Paper radius={isMobile ? 0 : theme.radius.md} px={isMobile? 20 : 100} py={50} my={isMobile && 20} mt={50}>
-                <SimpleGrid cols={isMobile ? 1 : 2}>
-                    <Flex direction="column" align="start" justify="space-around">
-                        <Title order={3}>¿Interesado en nuestros servicios?</Title>
-                        <Text mb="md">Escríbenos y te contactaremos en breve</Text>
-                        {!isMobile && <Button mt="md" onClick={() => alert('Mensaje enviado')}>
-                            Enviar mensaje
-                        </Button>}
-                    </Flex>
-                    <Box >
-                        <TextInput label="Nombre" placeholder="Tu nombre" required mb="sm" />
-                        <TextInput label="Correo" placeholder="tucorreo@ejemplo.com" required mb="sm" />
-                        <TextInput label="Mensaje" placeholder="Cuéntanos qué necesitas" required multiline mb="sm" />
-                        {isMobile && <Button mt="md" onClick={() => alert('Mensaje enviado')}>
-                            Enviar mensaje
-                        </Button>}
-                    </Box>
-                </SimpleGrid>
+            <Paper
+                radius={isMobile ? 0 : theme.radius.lg}
+                px={isMobile ? 24 : 80}
+                py={60}
+                mt={60}
+                shadow="lg"
+                bg="white"
+                withBorder
+            >
+                <Stack align="center" spacing="md">
+                    <Title order={3} tt="uppercase" c="dark">
+                        ¿Interesado en nuestros servicios?
+                    </Title>
+                    <Text size="md" ta="center" c="dimmed" maw={500}>
+                        Escríbenos y te contactaremos en breve. Estamos listos para ayudarte con soluciones logísticas confiables y eficientes.
+                    </Text>
+                    <Button
+                        leftSection={<IconMail size={18} />}
+                        onClick={handleMailto}
+                        variant="gradient"
+                        gradient={{ from: 'blue', to: 'cyan' }}
+                        size="md"
+                    >
+                        Enviar correo
+                    </Button>
+                </Stack>
             </Paper>
+
+
         </Container>
     );
 }
