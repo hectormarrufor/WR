@@ -41,7 +41,7 @@ export default function LandingPage() {
 
 
     return (
-        <Container size="xl" mx={isMobile && 0} px={isMobile ? 0 : 'xl'} py="xl" mt={isMobile ? 40 : 0}>
+        <Container size="xl" mx={isMobile && 0} px={isMobile ? 0 : 'xl'} py="xl" mt={0}>
             {/* 🖼 Carrusel inicial */}
             <Carousel
                 loop
