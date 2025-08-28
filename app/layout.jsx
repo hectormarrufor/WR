@@ -113,13 +113,16 @@ export default function RootLayout({ children }) {
               <AppShell.Main
                 px={0}
                 mt={showHeader ? isMobile ? 40 : 50 : 0}
-                mx={isMobile ? 0 : 10}
+                mb={0}
+                pb={0}
+                mx={0}
+                style={{ backgroundColor: "#18120179" }}
               >
                 {children}
                 <Image
                   style={{
                     height: 1100,
-                    opacity: 0.2,
+                    opacity: 0.8,
                     position: 'fixed',
                     top: -140,
                     left: 0,

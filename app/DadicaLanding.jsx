@@ -17,10 +17,10 @@ import { IconTruck, IconRecycle, IconShieldCheck, IconUsersGroup } from '@tabler
 
 export default function DadicaLanding({isMobile}) {
     return (
-        <Box bg="#f5f5f5" py="xl">
-            <Container size="lg">
+        <Box m={0} p={0} >
+           
                 {/* Encabezado */}
-                <Card withBorder radius="md" p="xl" mb="xl" bg="white">
+                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" mx={0} bg="white">
                     {!isMobile ? <Grid>
                         <Grid.Col span={6}>
                             <Image src="/logo.jpg" alt="Logo DADICA" radius="md" />
@@ -41,7 +41,7 @@ export default function DadicaLanding({isMobile}) {
                 </Card>
 
                 {/* Historia */}
-                <Card withBorder radius="md" p="xl" mb="xl" bg="white">
+                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" bg="white">
                     <Title order={2} align="center" tt="uppercase">Quienes Somos</Title>
                     <Divider my="sm" />
                     <Text size="lg" align="center" mt="md">
@@ -55,7 +55,7 @@ export default function DadicaLanding({isMobile}) {
                 {/* Misión y Visión */}
                 {!isMobile ? <Grid mb="xl">
                     <Grid.Col span={6}>
-                        <Card withBorder radius="md" p="xl" bg="white">
+                        <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
                             <Title order={3} tt="uppercase">Misión</Title>
                             <Divider my="sm" />
                             <Text>
@@ -64,7 +64,7 @@ export default function DadicaLanding({isMobile}) {
                         </Card>
                     </Grid.Col>
                     <Grid.Col span={6}>
-                        <Card withBorder radius="md" p="xl" bg="white">
+                        <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
                             <Title order={3} tt="uppercase">Visión</Title>
                             <Divider my="sm" />
                             <Text>
@@ -74,14 +74,14 @@ export default function DadicaLanding({isMobile}) {
                     </Grid.Col>
                 </Grid>:
                 <Stack mb="xl" spacing="xl">
-                    <Card withBorder radius="md" p="xl" bg="white">
+                    <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
                         <Title order={3} tt="uppercase">Misión</Title>
                         <Divider my="sm" />
                         <Text>
                             Garantizar un servicio seguro y eficiente, cuidando al trabajador y al medio ambiente, con enfoque en industrias clave.
                         </Text>
                     </Card>
-                    <Card withBorder radius="md" p="xl" bg="white">
+                    <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
                         <Title order={3} tt="uppercase">Visión</Title>
                         <Divider my="sm" />
                         <Text>
@@ -92,7 +92,7 @@ export default function DadicaLanding({isMobile}) {
             }
 
                 {/* Servicios */}
-                <Card withBorder radius="md" p="xl" mb="xl" bg="white">
+                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" bg="white">
                     <Title order={2} tt="uppercase">Servicios Ofrecidos</Title>
                     <Divider my="sm" />
                     <List
@@ -107,7 +107,7 @@ export default function DadicaLanding({isMobile}) {
                 </Card>
 
                 {/* Flota */}
-                <Card withBorder radius="md" p="xl" mb="xl" bg="white">
+                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" bg="white">
                     <Title order={2} tt="uppercase">Flota y Equipamiento</Title>
                     <Divider my="sm" />
                     <Group gap="xs" wrap="wrap">
@@ -121,7 +121,7 @@ export default function DadicaLanding({isMobile}) {
                 </Card>
 
                 {/* Seguridad */}
-                <Card withBorder radius="md" p="xl" mb="xl" bg="white">
+                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" bg="white">
                     <Title order={2} tt="uppercase">Seguridad y Permisología</Title>
                     <Divider my="sm" />
                     <Text>
@@ -130,9 +130,9 @@ export default function DadicaLanding({isMobile}) {
                 </Card>
 
                 {/* Sostenibilidad y RSE */}
-                <Grid mb="xl">
+                {!isMobile ? <Grid mb="xl">
                     <Grid.Col span={6}>
-                        <Card withBorder radius="md" p="xl" bg="white">
+                        <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
                             <Group>
                                 <IconRecycle size={32} />
                                 <Title order={3} tt="uppercase">Sostenibilidad</Title>
@@ -144,7 +144,7 @@ export default function DadicaLanding({isMobile}) {
                         </Card>
                     </Grid.Col>
                     <Grid.Col span={6}>
-                        <Card withBorder radius="md" p="xl" bg="white">
+                        <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
                             <Group>
                                 <IconUsersGroup size={32} />
                                 <Title order={3} tt="uppercase">Responsabilidad Social</Title>
@@ -156,9 +156,33 @@ export default function DadicaLanding({isMobile}) {
                         </Card>
                     </Grid.Col>
                 </Grid>
+                :
+                <Stack mb="xl" spacing="xl">
+                    <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
+                        <Group>
+                            <IconRecycle size={32} />
+                            <Title order={3} tt="uppercase">Sostenibilidad</Title>
+                        </Group>
+                        <Divider my="sm" />
+                        <Text>
+                            Protocolos de mantenimiento, capacitación en conducción segura, reducción de emisiones y gestión de residuos.
+                        </Text>
+                    </Card>
+                    <Card  radius={!isMobile ? "md" : 0} p="xl" bg="white">
+                        <Group>
+                            <IconUsersGroup size={32} />
+                            <Title order={3} tt="uppercase">Responsabilidad Social</Title>
+                        </Group>
+                        <Divider my="sm" />
+                        <Text>
+                            Educación vial, sensibilización ambiental y participación comunitaria. Compromiso con la transparencia y el desarrollo sostenible.
+                        </Text>
+                    </Card>
+                </Stack>
+            }
 
                 {/* Experiencia */}
-                <Card withBorder radius="md" p="xl" mb="xl" bg="white">
+                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" bg="white">
                     <Title order={2} tt="uppercase">Experiencia en la Industria</Title>
                     <Divider my="sm" />
                     <Text>
@@ -167,7 +191,7 @@ export default function DadicaLanding({isMobile}) {
                 </Card>
 
                 {/* Beneficios */}
-                <Card withBorder radius="md" p="xl" mb="xl" bg="white">
+                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" bg="white">
                     <Title order={2} tt="uppercase">Beneficios</Title>
                     <Divider my="sm" />
                     <List
@@ -181,12 +205,7 @@ export default function DadicaLanding({isMobile}) {
                     </List>
                 </Card>
 
-                {/* Footer */}
-                <Stack align="center" spacing="xs" mt="xl">
-                    <Text size="sm">Somos su socio estratégico en logística y transporte pesado.</Text>
-                    <Text size="sm">📞 +58 4120756457 | 📧 transportedadica@gmail.com</Text>
-                </Stack>
-            </Container>
+         
         </Box>
     );
 }
