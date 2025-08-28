@@ -23,9 +23,10 @@
 /* Clase para el Paper con fondo translúcido */
 .paper_translucent {
     /* Fondo blanco con 85% de opacidad */
-    background-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(238, 16, 16, 0.85);
     
     /* Efecto de desenfoque para el fondo (vidrio esmerilado) */
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
 }
+

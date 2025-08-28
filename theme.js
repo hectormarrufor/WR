@@ -278,6 +278,22 @@ export const theme = {
           "fontWeight": 700
         }
       }
-    }
+    },
+    "Paper": {
+      "defaultProps": {
+        "radius": 'lg',
+        "shadow": 'md',
+        "bg": '#ffffffb6',
+        "p": 'xl',
+
+      },
+      "styles": (theme) => ({
+        "root": {
+          "transition": 'box-shadow 0.3s ease',
+          "backdropFilter": 'blur(10px)',                // desenfoque tipo vidrio
+          "WebkitBackdropFilter": 'blur(10px)',          // soporte para Safari
+        }}),
+      },
+
   }
-};
+  };

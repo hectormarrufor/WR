@@ -155,9 +155,9 @@ export default function NuevaEstimacionPage() {
 
   return (
     <Container size="md" py="xl">
-      <Title order={2} mb="lg">Estimar nuevo costo de flete</Title>
 
       <Card withBorder shadow="sm" padding="lg">
+        <Title align="center" order={2} mb="lg">Estimar nuevo costo de flete</Title>
         <Title order={4} mb={0}>Nombre de la estimacion:</Title>
         <TextInput value={nombre} onChange={(e) => setNombre(e.target.value)} mb="md" />
         <Divider mb="md" />
