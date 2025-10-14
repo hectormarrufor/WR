@@ -2,6 +2,8 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 
+import Script from 'next/script';
+
 import { AppShell, Box, Burger, createTheme, Group, Image, LoadingOverlay, Text, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from './MobileNavbar.module.css';
@@ -39,10 +41,45 @@ export default function RootLayout({ children }) {
       lastScrollY = currentY;
     };
 
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('Permiso concedido');
+      }
+    });
+
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
 
   }, [])
+
+  const mostrarNotificacion = () => {
+    if (!('Notification' in window)) {
+      alert('Este navegador no soporta notificaciones.');
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      new Notification('🚚 Notificación de prueba', {
+        body: 'Tu camión #12 está listo para salir.',
+        icon: '/icons/icon-192x192.png',
+      });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('🚚 Notificación activada', {
+            body: 'Ahora puedes recibir alertas logísticas.',
+            icon: '/icons/icon-192x192.png',
+          });
+        } else {
+          alert('Permiso de notificación denegado.');
+        }
+      });
+    } else {
+      alert('Las notificaciones están bloqueadas. Revisa los permisos del navegador.');
+    }
+  };
+
 
   // if (isLoading) {
   //   return (
@@ -62,8 +99,12 @@ export default function RootLayout({ children }) {
         <title>Transporte DADICA, C.A</title>
         <link rel="icon" href="/favicon.jpg" />
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+        <link rel="manifest" href="/manifest.json" />
+
       </head>
       <body>
+
+
 
         <MantineProvider theme={theme} forceColorScheme='light'>
           <Notifications />
@@ -81,35 +122,39 @@ export default function RootLayout({ children }) {
                 style={{
                   position: 'fixed',
                   top: showHeader ? 0 : -80, // se oculta hacia arriba
-                    left: 0,
-                    right: 0,
-                    transition: 'top 0.3s ease-in-out',
-                    zIndex: 1000,
-                    backdropFilter: 'blur(10px)', // efecto blur
-                    WebkitBackdropFilter: 'blur(10px)', // soporte Safari
-                  }}
-                  >
-                  <Group justify="space-between" px={isMobile ? 0 : 100}>
-                    <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
+                  left: 0,
+                  right: 0,
+                  transition: 'top 0.3s ease-in-out',
+                  zIndex: 1000,
+                  backdropFilter: 'blur(10px)', // efecto blur
+                  WebkitBackdropFilter: 'blur(10px)', // soporte Safari
+                }}
+              >
+                <Group justify="space-between" px={isMobile ? 0 : 100}>
+                  <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
                     <Image src="/logo.jpg" height={60} alt="logo" p={0} py={0} m={5} />
-                    </UnstyledButton>
-                    <Group h="100%" px="md">
+                  </UnstyledButton>
+                  <Group h="100%" px="md">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                     <Group justify="space-evenly" style={{ flex: 1 }}>
                       <LayoutMenu classes={classes} router={router} />
-                    </Group>
+                      <UnstyledButton className={classes.control} onClick={mostrarNotificacion}>🔔 Mostrar notificacion</UnstyledButton>
+                      
+
                     </Group>
                   </Group>
-                  </AppShell.Header>
-                  <AppShell.Navbar py="md" px={4} mt={70} bg="#fafaface"
-                  style={{backdropFilter: 'blur(10px)', // efecto blur
+                </Group>
+              </AppShell.Header>
+              <AppShell.Navbar py="md" px={4} mt={70} bg="#fafaface"
+                style={{
+                  backdropFilter: 'blur(10px)', // efecto blur
                   WebkitBackdropFilter: 'blur(10px)', // soporte Safari
                   transition: 'transform 0.3s ease-in-out',
                   transform: opened ? 'translateX(0)' : 'translateX(-100%)',
                   zIndex: 999,
                 }}
-                  >
-                  <UnstyledButton className={classes.control} onClick={() => {
+              >
+                <UnstyledButton className={classes.control} onClick={() => {
                   toggle();
                   router.push('/')
                 }}>Inicio</UnstyledButton>
@@ -147,6 +192,19 @@ export default function RootLayout({ children }) {
             </AppShell>
           </AuthProvider>
         </MantineProvider>
+        <Script id="sw-register" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                  .then(reg => console.log('Service Worker registrado:', reg))
+                  .catch(err => console.error('Error al registrar SW:', err));
+              });
+            }
+          `}
+        </Script>
+
+
       </body>
     </html>
 

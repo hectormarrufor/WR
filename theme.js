@@ -283,17 +283,49 @@ export const theme = {
       "defaultProps": {
         "radius": 'lg',
         "shadow": 'md',
-        "bg": '#ffffffb6',
+        "bg": '#ffffff94',
         "p": 'xl',
 
       },
       "styles": (theme) => ({
         "root": {
           "transition": 'box-shadow 0.3s ease',
-          "backdropFilter": 'blur(10px)',                // desenfoque tipo vidrio
-          "WebkitBackdropFilter": 'blur(10px)',          // soporte para Safari
-        }}),
+          "backdropFilter": 'blur(5px)',                // desenfoque tipo vidrio
+          "WebkitBackdropFilter": 'blur(5px)',          // soporte para Safari
+        }
+      }),
+    },
+    "NumberInput": {
+      "defaultProps": {
+        "radius": '50px',
+        "shadow": 'xl',
+        "bg": 'rgba(255, 255, 255, 0)',
       },
 
+    },
+    "TextInput": {
+      "defaultProps": {
+        "radius": '50px',
+        "shadow": 'xl',
+        "bg": 'rgba(255, 255, 255, 0)',
+      },
+    },
+    "Button": {
+      "defaultProps": {
+        "radius": '50px',
+        "shadow": 'xl',
+      },
+      "styles":  (theme) => ({
+        "root": {
+          "transition": 'transform 150ms ease, box-shadow 150ms ease',
+          "boxShadow": 'var(--mantine-shadow-xl)',
+          '&:hover': {
+            "transform": 'scale(1.05)',
+            "boxShadow": '10px 12px 24px rgba(0, 0, 0, 0.47)',
+          },
+        },
+      })
+    },
+
   }
-  };
+};

@@ -8,6 +8,7 @@ import {
   Image,
   Flex
 } from '@mantine/core';
+// import { roundTo, monthsBack, weightedAverage } from '@/app/handlers/mediaPonderadaServicios';
 
 export default function NuevaEstimacionPage() {
   const [modalActivo, setModalActivo] = useState(false);
@@ -157,6 +158,11 @@ export default function NuevaEstimacionPage() {
     <Container size="md" py="xl">
 
       <Card withBorder shadow="sm" padding="lg">
+        {/* <Group position="apart" mb="md">
+          <Button onClick={() => window.alert(monthsBack(3))}>calcular 3 meses atras</Button>
+          <Button onClick={() => window.alert(roundTo((weightedAverage([1, 3, 30])), 3))}>calcular media ponderada</Button>
+        </Group> */}
+
         <Title align="center" order={2} mb="lg">Estimar nuevo costo de flete</Title>
         <Title order={4} mb={0}>Nombre de la estimacion:</Title>
         <TextInput value={nombre} onChange={(e) => setNombre(e.target.value)} mb="md" />
@@ -277,4 +283,4 @@ export default function NuevaEstimacionPage() {
       </Modal>
     </Container>
   );
-}                                                                                                                                                                
+}
