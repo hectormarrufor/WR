@@ -62,31 +62,45 @@ export default function LandingPage() {
                     }}
                 >
                     <Carousel.Slide>
-                        <Image
-                            src="/carrusel1.jpg"
-                            alt="carrusel 1"
-                            radius={isMobile ? 0 : theme.radius.md}
-                            fit="cover"
-                            height={isMobile ? 220 : 500}
-                        />
+                        <Transition transition="fade" duration={500} timingFunction="ease">
+                            {(styles) => <div style={styles}><Image
+                                src="/carrusel1.jpg"
+                                alt="carrusel 1"
+                                radius={isMobile ? 0 : theme.radius.md}
+                                fit="cover"
+                                height={isMobile ? 220 : 500}
+                            /></div>}
+                        </Transition>
+
+
                     </Carousel.Slide>
                     <Carousel.Slide>
-                        <Image
-                            src="/carrusel2.jpg"
-                            alt="carrusel 2"
-                            radius={isMobile ? 0 : theme.radius.md}
-                            fit="cover"
-                            height={isMobile ? 220 : 500}
-                        />
+                        <Transition transition="fade" duration={500} timingFunction="ease">
+                            {(styles) => <div style={styles}><Image
+                                src="/carrusel2.jpg"
+                                alt="carrusel 2"
+                                radius={isMobile ? 0 : theme.radius.md}
+                                fit="cover"
+                                height={isMobile ? 220 : 500}
+                            /></div>}
+                        </Transition>
+
+
+
                     </Carousel.Slide>
                     <Carousel.Slide>
-                        <Image
-                            src="/carrusel3.jpg"
-                            alt="carrusel 3"
-                            radius={isMobile ? 0 : theme.radius.md}
-                            fit="cover"
-                            height={isMobile ? 220 : 500}
-                        />
+                        <Transition transition="fade" duration={500} timingFunction="ease">
+                            {(styles) => <div style={styles}><Image
+                                src="/carrusel3.jpg"
+                                alt="carrusel 3"
+                                radius={isMobile ? 0 : theme.radius.md}
+                                fit="cover"
+                                height={isMobile ? 220 : 500}
+                            /></div>}
+                        </Transition>
+
+
+
                     </Carousel.Slide>
                 </Carousel>
                 <DadicaLanding isMobile={isMobile} />
@@ -126,16 +140,16 @@ export default function LandingPage() {
                         </Text>
                         <Text size="sm" c="lightgray">Somos su socio estratégico en logística y transporte pesado.</Text>
                         <Group gap="xs">
-                            <IconPhone size={16} color="lightgray"/>
+                            <IconPhone size={16} color="lightgray" />
                             <Text size="sm" c="lightgray">+58 412 075 6457</Text>
                         </Group>
                         <Group gap="xs">
-                            <IconMail size={16} color="lightgray"/>
+                            <IconMail size={16} color="lightgray" />
                             <Anchor href="mailto:transportedadica@gmail.com" size="sm">
                                 transportedadica@gmail.com
                             </Anchor>
                         </Group>
-                        
+
                         <Text size="xs" mt="sm" c="lightgray">
                             © {new Date().getFullYear()} Transporte DADICA C.A. | RIF: J-29553660-7
                         </Text>
