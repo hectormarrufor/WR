@@ -7,6 +7,7 @@ import {  crearUsuario, iniciarSesion } from '../ApiFunctions/userServices';
 import { notifications } from '@mantine/notifications';
 import defaultUser from '../../objects/defaultUser';
 import { useAuth } from '@/hooks/useAuth';
+import { pedirPermiso } from '../handlers/notificar';
 
 const page = () => {
   const router = useRouter();
@@ -51,6 +52,7 @@ const page = () => {
 
  const handleSubmit = async (values) => {
         try {
+          pedirPermiso();
             // Llama a la función centralizada de login
             await login(values.user, values.password);
             // La redirección ahora la maneja el propio hook

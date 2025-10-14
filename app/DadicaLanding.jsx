@@ -19,27 +19,6 @@ export default function DadicaLanding({isMobile}) {
     return (
         <Box m={0} p={0} >
            
-                {/* Encabezado */}
-                <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" mx={0} >
-                    {!isMobile ? <Grid>
-                        <Grid.Col span={6}>
-                            <Image src="/logo.png" alt="Logo DADICA" radius="md" />
-                        </Grid.Col>
-                        <Grid.Col span={6}>
-                            <Stack justify="center" h="100%">
-                                <Title order={1} tt="uppercase" c="dark">Transporte DADICA C.A.</Title>
-                                <Text size="md" c="dimmed">Fundada en 2008 | RIF: J-29553660-7</Text>
-                            </Stack>
-                        </Grid.Col>
-                    </Grid>:
-                    <Stack align="center" spacing="md">
-                        <Image src="/logo.png" alt="Logo DADICA" radius="md" />
-                        <Title order={1} tt="uppercase" c="dark">Transporte DADICA C.A.</Title>
-                        <Text size="md" c="dimmed">Fundada en 2008 | RIF: J-29553660-7</Text>
-                    </Stack>
-                }
-                </Card>
-
                 {/* Historia */}
                 <Card  radius={!isMobile ? "md" : 0} p="xl" mb="xl" >
                     <Title order={2} align="center" tt="uppercase">Quienes Somos</Title>

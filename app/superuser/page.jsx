@@ -122,8 +122,8 @@ export default function SuperUserHome() {
                             {menuOptions.map((option, index) => (
                                 option.visible && <Button
                                     w={isMobile ? "100%" : 200}
-                                    h={170}
-                                    p={10}
+                                    h={isMobile ? 100 : 120}
+                                    p={isMobile ? 5 : 10}
                                     key={index}
                                     variant="default"
                                     disabled={option.disabled}

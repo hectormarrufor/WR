@@ -29,6 +29,7 @@ import Autoplay from 'embla-carousel-autoplay';
 import { useRouter } from 'next/navigation';
 import DadicaLanding from './DadicaLanding';
 import { IconMail, IconPhone, IconWorld } from '@tabler/icons-react';
+import Slideshow from './SlideShow';
 
 export default function LandingPage() {
     const router = useRouter();
@@ -42,67 +43,14 @@ export default function LandingPage() {
         window.location.href = `mailto:transportedadica@gmail.com?subject=${subject}&body=${body}`;
     };
 
+    
+
+
 
     return (
         <>
             <Container size="xl" mx={isMobile && 0} px={isMobile ? 0 : 'xl'} py={0} mt={isMobile ? 0 : 20}>
-                {/* 🖼 Carrusel inicial */}
-                <Carousel
-                    loop
-                    withIndicators
-                    plugins={[autoplay.current]}
-                    onMouseEnter={autoplay.current.stop}
-                    onMouseLeave={autoplay.current.reset}
-                    slideSize="100%"
-                    mx={isMobile && 0}
-                    style={{
-                        borderRadius: isMobile ? 0 : theme.radius.md,
-                        overflow: 'hidden',
-                        marginBottom: '2rem',
-                    }}
-                >
-                    <Carousel.Slide>
-                        <Transition transition="fade" duration={500} timingFunction="ease">
-                            {(styles) => <div style={styles}><Image
-                                src="/carrusel1.jpg"
-                                alt="carrusel 1"
-                                radius={isMobile ? 0 : theme.radius.md}
-                                fit="cover"
-                                height={isMobile ? 220 : 500}
-                            /></div>}
-                        </Transition>
-
-
-                    </Carousel.Slide>
-                    <Carousel.Slide>
-                        <Transition transition="fade" duration={500} timingFunction="ease">
-                            {(styles) => <div style={styles}><Image
-                                src="/carrusel2.jpg"
-                                alt="carrusel 2"
-                                radius={isMobile ? 0 : theme.radius.md}
-                                fit="cover"
-                                height={isMobile ? 220 : 500}
-                            /></div>}
-                        </Transition>
-
-
-
-                    </Carousel.Slide>
-                    <Carousel.Slide>
-                        <Transition transition="fade" duration={500} timingFunction="ease">
-                            {(styles) => <div style={styles}><Image
-                                src="/carrusel3.jpg"
-                                alt="carrusel 3"
-                                radius={isMobile ? 0 : theme.radius.md}
-                                fit="cover"
-                                height={isMobile ? 220 : 500}
-                            /></div>}
-                        </Transition>
-
-
-
-                    </Carousel.Slide>
-                </Carousel>
+                <Slideshow/>
                 <DadicaLanding isMobile={isMobile} />
                 {/* 📬 Contacto */}
                 <Paper

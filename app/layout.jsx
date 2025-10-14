@@ -19,6 +19,7 @@ import "./global.css"
 import { useMediaQuery } from '@mantine/hooks';
 import { AuthProvider } from '@/hooks/useAuth';
 import LayoutMenu from './LayoutMenu';
+import { notificar } from './handlers/notificar';
 
 
 
@@ -41,44 +42,13 @@ export default function RootLayout({ children }) {
       lastScrollY = currentY;
     };
 
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        console.log('Permiso concedido');
-      }
-    });
-
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
 
   }, [])
 
-  const mostrarNotificacion = () => {
-    if (!('Notification' in window)) {
-      alert('Este navegador no soporta notificaciones.');
-      return;
-    }
 
-    if (Notification.permission === 'granted') {
-      new Notification('🚚 Notificación de prueba', {
-        body: 'Tu camión #12 está listo para salir.',
-        icon: '/icons/icon-192x192.png',
-      });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          new Notification('🚚 Notificación activada', {
-            body: 'Ahora puedes recibir alertas logísticas.',
-            icon: '/icons/icon-192x192.png',
-          });
-        } else {
-          alert('Permiso de notificación denegado.');
-        }
-      });
-    } else {
-      alert('Las notificaciones están bloqueadas. Revisa los permisos del navegador.');
-    }
-  };
 
 
   // if (isLoading) {
@@ -132,14 +102,13 @@ export default function RootLayout({ children }) {
               >
                 <Group justify="space-between" px={isMobile ? 0 : 100}>
                   <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
-                    <Image src="/logo.png" height={60} alt="logo" p={0} py={0} m={5} />
+                    <Image src="/logo.png" height={40} alt="logo" p={0} py={0} m={5} />
                   </UnstyledButton>
                   <Group h="100%" px="md">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
                     <Group justify="space-evenly" style={{ flex: 1 }}>
                       <LayoutMenu classes={classes} router={router} />
-                      <UnstyledButton className={classes.control} onClick={() => mostrarNotificacion()}>🔔 Mostrar notificacion</UnstyledButton>
-                      
+
 
                     </Group>
                   </Group>
@@ -166,6 +135,7 @@ export default function RootLayout({ children }) {
                   toggle();
                   router.push('/login')
                 }}>Iniciar Sesion</UnstyledButton>
+
               </AppShell.Navbar>
               <AppShell.Main
                 px={0}
@@ -178,16 +148,16 @@ export default function RootLayout({ children }) {
                 <Image
                   style={{
                     height: 1100,
-                    opacity: 0.8,
+                    opacity: 2,
                     position: 'fixed',
-                    top: -140,
+                    top: -220,
                     left: 0,
                     objectFit: 'cover',
                     zIndex: -1,
                   }}
                   src="/fondo.jpg"
                 />
-                <Box mt={showHeader ? isMobile ? 54 : 70 : 0}>{children}</Box>
+                <Box mt={showHeader ? isMobile ? 33 : 35 : 0}>{children}</Box>
               </AppShell.Main>
             </AppShell>
           </AuthProvider>

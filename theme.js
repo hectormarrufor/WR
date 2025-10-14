@@ -283,7 +283,7 @@ export const theme = {
       "defaultProps": {
         "radius": 'lg',
         "shadow": 'md',
-        "bg": '#ffffff94',
+        "bg": '#ffffff70',
         "p": 'xl',
 
       },

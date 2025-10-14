@@ -1,5 +1,5 @@
 .superuser-button {
-    height: 140px;
+    height: 80px;
     padding: var(--mantine-spacing-md);
     border-radius: var(--mantine-radius-md); /* Bordes redondeados */
     box-shadow: var(--mantine-shadow-md) !important;
