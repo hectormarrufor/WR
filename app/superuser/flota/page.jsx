@@ -1,6 +1,6 @@
 'use client';
 
-import { Container, Title, Text, SimpleGrid, Paper, Group, ThemeIcon, rem, Menu, Button } from '@mantine/core';
+import { Container, Title, Text, SimpleGrid, Paper, Group, ThemeIcon, rem, Menu, Button, Flex, Stack } from '@mantine/core';
 import { IconBuildingWarehouse, IconAssembly, IconTruck, IconTool, IconPlus, IconShip, IconRectangleRoundedTop, IconLayersUnion, IconCar4wd, IconCar4wdFilled, IconCar, IconCategory, IconBoxModel } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -15,27 +15,7 @@ const mockdata = [
     description: 'Gestiona cada activo físico individual: vehículos, skids, motores, power packs y más.',
     href: '/superuser/flota/activos', // <-- RUTA CORREGIDA
   },
-  {
-    title: 'Unidades Operativas',
-    icon: IconAssembly,
-    color: 'brown',
-    description: 'Configura y gestiona los equipos funcionales ensamblados, listos para el servicio en campo.',
-    href: '/superuser/flota/unidades-operativas', // <-- RUTA CORREGIDA
-  },
-  {
-    title: 'Vehiculos',
-    icon: IconCar,
-    color: 'red',
-    description: 'Configura y gestiona los vehiculos.',
-    href: '/superuser/flota/vehiculos', // <-- RUTA CORREGIDA
-  },
-  {
-    title: 'Gabarras',
-    icon: IconShip,
-    color: 'orange',
-    description: 'Configura y gestiona las gabarras.',
-    href: '/superuser/flota/gabarras', // <-- RUTA CORREGIDA
-  },
+  
   {
     title: 'Grupos',
     icon: IconLayersUnion,
@@ -71,15 +51,15 @@ export default function FlotaDashboardPage() {
       className={classes.card}
       onClick={() => router.push(item.href)}
     >
-      <Group>
-        <ThemeIcon variant="light" color={item.color} size={48} radius="md">
+      <Flex>
+        <ThemeIcon variant="light" color={item.color} size={48} radius="md" m={10}>
           <item.icon style={{ width: rem(28), height: rem(28) }} stroke={1.5} />
         </ThemeIcon>
-        <div>
+        <Stack ml={10} gap={0}>
           <Text size="xl" fw={700}>{item.title}</Text>
           <Text size="sm" c="dimmed" mt={4}>{item.description}</Text>
-        </div>
-      </Group>
+        </Stack>
+      </Flex>
     </Paper>
   ));
 
@@ -90,33 +70,7 @@ export default function FlotaDashboardPage() {
           Gestión de Flota y Operaciones
         </Title>
         
-        <Menu shadow="md" width={280}>
-          <Menu.Target>
-            <Button leftSection={<IconPlus size={18} />}>
-              Añadir Nuevo Activo
-            </Button>
-          </Menu.Target>
-
-          <Menu.Dropdown>
-            <Menu.Label>Selecciona el tipo de activo a registrar</Menu.Label>
-            <Menu.Item
-              leftSection={<IconTruck style={{ width: rem(16), height: rem(16) }} />}
-              component={Link}
-              href="/superuser/flota/activos/vehiculos/crear" // <-- RUTA CORREGIDA
-            >
-              Registrar Vehículo
-              <Text size="xs" c="dimmed">Camionetas, chutos, chasis autopropulsados, etc.</Text>
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<IconTool style={{ width: rem(16), height: rem(16) }} />}
-              component={Link}
-              href="/superuser/flota/activos/componentes/crear" // <-- RUTA CORREGIDA
-            >
-              Registrar Componente Mayor
-              <Text size="xs" c="dimmed">Skids de bombeo, power packs, carretes, cabrias, etc.</Text>
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        
       </Group>
       
       <Text c="dimmed" ta="left" mb="xl">
