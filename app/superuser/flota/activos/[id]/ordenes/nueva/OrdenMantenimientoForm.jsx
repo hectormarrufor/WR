@@ -7,6 +7,7 @@ import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
+import PaddedPaper from '@/app/superuser/flota/components/PaddedPaper';
 
 // --- Sub-componente SugerenciasConsumibles (CON LA CORRECCIÓN) ---
 function SugerenciasConsumibles({ activoId, descripcionTarea, onConsumibleSelect }) {
@@ -43,7 +44,7 @@ function SugerenciasConsumibles({ activoId, descripcionTarea, onConsumibleSelect
     if (sugerencias.length === 0) return null;
 
     return (
-        <Paper withBorder p="sm" mt="md" radius="sm">
+        <PaddedPaper>
             <Text fw={500} size="sm">Sugerencias de Repuestos:</Text>
             {sugerencias.map((sug, index) => (
                 <Group key={index} grow mt="xs">
@@ -67,7 +68,7 @@ function SugerenciasConsumibles({ activoId, descripcionTarea, onConsumibleSelect
                     />
                 </Group>
             ))}
-        </Paper>
+        </PaddedPaper>
     );
 }
 
@@ -118,7 +119,7 @@ export default function OrdenMantenimientoForm() {
 
                 setHallazgos(hallazgosData);
                 setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
-                
+
                 const descripciones = hallazgosData.map(h => h.descripcion).join('; ');
                 form.setFieldValue('descripcion', `Atender los siguientes hallazgos: ${descripciones}.`);
 
@@ -157,14 +158,14 @@ export default function OrdenMantenimientoForm() {
     };
 
     const tareasFields = form.values.tareas.map((tarea, index) => (
-        <Paper withBorder p="md" mt="md" key={index}>
+        <Paper withBorder p="sm" mt="md" key={index}>
             <Group justify="space-between">
                 <Text fw={500}>Tarea #{index + 1}</Text>
                 <ActionIcon color="red" onClick={() => form.removeListItem('tareas', index)}><IconTrash size={16} /></ActionIcon>
             </Group>
             <TextInput label="Descripción de la Tarea" required {...form.getInputProps(`tareas.${index}.descripcion`)} />
             <Select label="Asignar a Técnico" data={empleados} searchable clearable mt="sm" {...form.getInputProps(`tareas.${index}.tecnicoId`)} />
-            
+
             <SugerenciasConsumibles
                 activoId={activoId}
                 descripcionTarea={tarea.descripcion}
@@ -173,16 +174,16 @@ export default function OrdenMantenimientoForm() {
                     form.setFieldValue(`tareas.${index}.consumibles`, [...currentConsumibles, consumible]);
                 }}
             />
-             {(tarea.consumibles && tarea.consumibles.length > 0) && (
+            {(tarea.consumibles && tarea.consumibles.length > 0) && (
                 <Box mt="sm" pt="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
                     <Text size="sm" fw={500}>Repuestos Solicitados para esta Tarea:</Text>
                     {tarea.consumibles.map((cons, consIndex) => (
                         <Paper withBorder p="xs" radius="sm" mt={5} key={cons.consumibleId}>
-                             <Group justify="space-between">
+                            <Group justify="space-between">
                                 <Text size="sm">{cons.nombre} (Cant: {cons.cantidad})</Text>
-                                <ActionIcon 
-                                    color="red" 
-                                    size="xs" 
+                                <ActionIcon
+                                    color="red"
+                                    size="xs"
                                     variant="subtle"
                                     onClick={() => {
                                         const updatedConsumibles = tarea.consumibles.filter((_, i) => i !== consIndex);
@@ -202,35 +203,37 @@ export default function OrdenMantenimientoForm() {
     if (loading) return <Loader />;
 
     return (
-        <Paper component="form" onSubmit={form.onSubmit(handleSubmit)}>
-            <Title order={4} mb="md">Hallazgos Seleccionados</Title>
-            <Box mb="lg">
-                {hallazgos.map(h => <Text key={h.id}>• {h.descripcion} (<Badge color={h.severidad === 'Critico' ? 'red' : 'yellow'} size="sm">{h.severidad}</Badge>)</Text>)}
-            </Box>
-            
+        <Paper component="form" onSubmit={form.onSubmit(handleSubmit)} p='sm'>
+            <Paper>
+                <Title order={4} mb="md">Hallazgos Seleccionados:</Title>
+                <Box mb="lg">
+                    {hallazgos.map(h => <Text key={h.id}>• {h.descripcion} (<Badge color={h.severidad === 'Critico' ? 'red' : 'yellow'} size="sm">{h.severidad}</Badge>)</Text>)}
+                </Box>
+            </Paper>
+
             <Grid>
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <TextInput label="Creada por" value={`${nombre || ''} ${apellido || ''}`} readOnly />
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, md: 6 }}>
-                     <TextInput label="Código de Orden (Opcional)" placeholder="Se generará automáticamente si se deja vacío" {...form.getInputProps('codigoOM')} />
-                </Grid.Col>
-                 <Grid.Col span={{ base: 12, md: 6 }}>
-                    <Select label="Responsable de la Orden" placeholder="Seleccione un supervisor" data={empleados} searchable required {...form.getInputProps('responsableId')} />
-                </Grid.Col>
-                 <Grid.Col span={{ base: 12, md: 6 }}>
-                     <Select label="Prioridad" data={['Baja', 'Media', 'Alta', 'Urgente']} required {...form.getInputProps('prioridad')} />
+                    <TextInput label="Código de Orden (Opcional)" placeholder="Se generará automáticamente si se deja vacío" {...form.getInputProps('codigoOM')} />
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, md: 6 }}>
-                     <DateInput label="Fecha de Inicio Planificada" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaInicio')} />
+                    <Select label="Responsable de la Orden" placeholder="Seleccione un supervisor" data={empleados} searchable required {...form.getInputProps('responsableId')} />
                 </Grid.Col>
-                 <Grid.Col span={{ base: 12, md: 6 }}>
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Select label="Prioridad" data={['Baja', 'Media', 'Alta', 'Urgente']} required {...form.getInputProps('prioridad')} />
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <DateInput label="Fecha de Inicio Planificada" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaInicio')} />
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, md: 6 }}>
                     <DateInput label="Fecha de Fin Planificada" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaFin')} />
                 </Grid.Col>
             </Grid>
-            
+
             <Textarea label="Descripción General de la Orden" mt="md" autosize minRows={3} required {...form.getInputProps('descripcion')} />
-            
+
             <Box mt="xl">
                 <Title order={4}>Plan de Tareas</Title>
                 {tareasFields}

@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Checkbox, Button, Group, Text, Paper, Title, Badge, Stack, Box } from '@mantine/core';
 import { IconTool } from '@tabler/icons-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function HallazgosPendientes({ hallazgos, activoId }) {
+    const { nombre } = useAuth();
     const router = useRouter();
     const [selectedHallazgos, setSelectedHallazgos] = useState([]);
 
@@ -28,15 +30,16 @@ export default function HallazgosPendientes({ hallazgos, activoId }) {
                         <Group>
                             <Checkbox value={hallazgo.id.toString()} />
                             <Box style={{ flex: 1 }}>
-                                <Group justify="space-between">
-                                    <Text fw={500}>{hallazgo.descripcion}</Text>
-                                    <Badge color={hallazgo.severidad === 'Critico' ? 'red' : 'yellow'}>{hallazgo.severidad}</Badge>
+                                <Group justify="space-between" m={0} p={0}>
+                                    <Title order={5} >{hallazgo.descripcion}</Title>
+                                    <Badge color={hallazgo.severidad === 'Critico' ? 'red' : 'orange'}>{hallazgo.severidad}</Badge>
                                 </Group>
+                                {hallazgo.observacionInspector && <Text size="sm">{hallazgo.observacionInspector}</Text>}
                                 <Text size="xs" c="dimmed">
                                     Reportado el {new Date(hallazgo.createdAt).toLocaleDateString()}
-                                    {hallazgo.inspeccionId ? ` (Inspección #${hallazgo.inspeccionId})` : ' (Generado por sistema)'}
+                                    {hallazgo.inspeccionId ? ` (Inspección #${hallazgo.inspeccionId}) por: ${nombre}` : ' (Generado por sistema)'}
+                                    
                                 </Text>
-                                {hallazgo.observacionInspector && <Text size="sm" mt="xs">{hallazgo.descripcion}: "{hallazgo.observacionInspector}"</Text>}
                             </Box>
                         </Group>
                     </Paper>

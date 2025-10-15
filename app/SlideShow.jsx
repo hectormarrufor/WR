@@ -22,17 +22,24 @@ const Slideshow = () => {
     }, []);
 
     return (
-        <div className="slide-container">
-            <Fade duration={3000} transitionDuration={1000} arrows={false}>
+        <div className="slide-container" style={{
+
+            //   overflow: 'hidden',
+            // clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+            clipPath: 'polygon(0% 70%, 50% 94%, 100% 70%, 100% 0%, 0% 0%)',
+            zIndex: 99,
+            position: 'relative',
+        }}>
+            <Fade duration={6000} transitionDuration={1000} arrows={false}>
                 {slideImages.map((image, index) => (
                     <Image
                         src={image}
                         alt={`Slide ${index + 1}`}
-                        radius={isMobile ? 0 : "md" }
+                        radius={0}
                         fit="cover"
-                        height={ isMobile ? 200 : 450}
+                        height={isMobile ? 200 : 450}
                         width="100%"
-                        style={{ aspectRatio: '2 / 1', objectFit: 'cover' }}
+                        style={{ aspectRatio: '2 / 1', objectFit: 'cover', objectPosition: 'center 70%', }}
                         mb={isMobile ? 0 : 20}
                         p={0}
                     />

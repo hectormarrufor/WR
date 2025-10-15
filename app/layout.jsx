@@ -143,7 +143,7 @@ export default function RootLayout({ children }) {
                 mb={0}
                 pb={0}
                 mx={0}
-                style={{ backgroundColor: "#18120179" }}
+                style={{ backgroundColor: "#00b4d402" }}
               >
                 <Image
                   style={{
@@ -155,7 +155,7 @@ export default function RootLayout({ children }) {
                     objectFit: 'cover',
                     zIndex: -1,
                   }}
-                  src="/fondo.jpg"
+                  src="/fondoclaro.jpg"
                 />
                 <Box mt={showHeader ? isMobile ? 33 : 35 : 0}>{children}</Box>
               </AppShell.Main>

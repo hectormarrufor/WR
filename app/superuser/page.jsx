@@ -1,7 +1,7 @@
 // app/superuser/page.js
 'use client';
 
-import { Button, Card, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge, Flex, LoadingOverlay, Loader, Center } from '@mantine/core';
+import { Button, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge, Flex, LoadingOverlay, Loader, Center } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import './superuser.css';
 import { useAuth } from '@/hooks/useAuth';
+import PaddedPaper from './flota/components/PaddedPaper';
 
 export default function SuperUserHome() {
     const [isLoading, setIsLoading] = useState(true);
@@ -77,22 +78,14 @@ export default function SuperUserHome() {
     ];
 
     return (
-        <Stack justify="center" align="center" style={{ minHeight: '93vh', padding: '1rem 0' }} mt={0} p={0}>
-            <Card
-                shadow="md"
-                padding="xl"
-                m={0}
-                radius="md"
-                withBorder
-                style={{ width: '100%', maxWidth: 1200, backgroundColor: 'white' }}
-            >
+            <PaddedPaper>
                 {isLoading ?
                     <Center>
                         <Loader />
                     </Center>
                     : <>
 
-                        <Title order={1} align="center" mb={0} c="blue.8">
+                        <Title order={1} align="center" c="blue.8">
                             PANEL DE ADMINISTRACIÓN
                         </Title>
 
@@ -139,7 +132,6 @@ export default function SuperUserHome() {
                             ))}
                         </Flex>
                     </>}
-            </Card>
-        </Stack>
+            </PaddedPaper>
     );
 }

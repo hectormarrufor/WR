@@ -273,7 +273,7 @@ export const theme = {
     "Title": {
       "styles": {
         "root": {
-          "color": "#004080",
+          "color": "#000000ff",
           "textTransform": "uppercase",
           "fontWeight": 700
         }
@@ -281,10 +281,10 @@ export const theme = {
     },
     "Paper": {
       "defaultProps": {
-        "radius": 'lg',
+        "radius": 'sm',
         "shadow": 'md',
         "bg": '#ffffff70',
-        "p": 'xl',
+        "p": 'sm',
 
       },
       "styles": (theme) => ({

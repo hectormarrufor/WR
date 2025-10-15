@@ -35,9 +35,7 @@ const Inspeccion = sequelize.define('Inspeccion', {
         type: DataTypes.JSONB,
         allowNull: true,
     },
-    observacionesGenerales: {
-        type: DataTypes.TEXT,
-    }
+   
 }, { tableName: 'Inspecciones', timestamps: true });
 
 Inspeccion.associate = (models) => {

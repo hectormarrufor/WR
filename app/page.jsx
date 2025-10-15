@@ -49,12 +49,18 @@ export default function LandingPage() {
 
     return (
         <>
-            <Container size="xl" mx={isMobile && 0} px={isMobile ? 0 : 'xl'} py={0} mt={isMobile ? 0 : 20}>
-                <Slideshow/>
+            <Box
+                mx={0}
+                px={0}
+                py={0}
+                mt={isMobile ? 0 : 0}
+                style={{ width: '100vw', boxSizing: 'border-box', overflowX: 'hidden' }}
+            >
+                <Slideshow />
                 <DadicaLanding isMobile={isMobile} />
                 {/* 📬 Contacto */}
                 <Paper
-                    radius={isMobile ? 0 : theme.radius.lg}
+                    radius={0}
                     px={isMobile ? 24 : 80}
                     py={60}
                     mt={60}
@@ -79,8 +85,8 @@ export default function LandingPage() {
                         </Button>
                     </Stack>
                 </Paper>
-            </Container>
-            <Box bg="#383838ff" p={0} py={15} m={0} mt={60}>
+            </Box>
+            <Box bg="#383838ff" p={0} py={15} m={0} mt={60} style={{ width: '100vw', boxSizing: 'border-box', overflowX: 'auto' }}>
                 <Container size="lg">
                     <Stack align="center" spacing="xs">
                         <Text size="sm" tt="uppercase" fw={700} c="lightgray">
@@ -105,6 +111,5 @@ export default function LandingPage() {
                 </Container>
             </Box>
         </>
-
     );
 }

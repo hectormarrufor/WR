@@ -2,14 +2,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from '@mantine/form';
-import { Paper, Title, Text, Loader, Alert, NumberInput, Group, Button, SegmentedControl, Textarea, Box, Collapse, ActionIcon, TextInput } from '@mantine/core';
+import { Paper, Title, Text, Loader, Alert, NumberInput, Group, Button, SegmentedControl, Textarea, Box, Collapse, ActionIcon, TextInput, Center } from '@mantine/core';
 import { useAuth } from '@/hooks/useAuth';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
+import PaddedPaper from '@/app/superuser/flota/components/PaddedPaper';
 
 export default function NuevaInspeccionPage() {
     const { id: activoId } = useParams();
-    const { userId } = useAuth();
+    const { userId, nombre } = useAuth();
     const router = useRouter();
     const [activo, setActivo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -18,7 +19,6 @@ export default function NuevaInspeccionPage() {
         initialValues: {
             kilometrajeActual: '',
             horometroActual: '',
-            observacionesGenerales: '',
             hallazgos: []
         },
         validate: {
@@ -41,16 +41,15 @@ export default function NuevaInspeccionPage() {
 
     const handleSubmit = async (values) => {
         const hallazgosReportados = values.hallazgos.filter(h => h.severidad === 'Advertencia' || h.severidad === 'Critico');
-        
+
         const payload = {
             activoId: parseInt(activoId),
             userId: userId,
             kilometrajeActual: values.kilometrajeActual,
             horometroActual: values.horometroActual,
-            observacionesGenerales: values.observacionesGenerales,
             hallazgosReportados
         };
-        
+
         try {
             const response = await fetch('/api/gestionMantenimiento/inspecciones', {
                 method: 'POST',
@@ -117,30 +116,34 @@ export default function NuevaInspeccionPage() {
     if (!activo) return <Alert color="red">Activo no encontrado</Alert>;
 
     return (
-        <Paper component="form" onSubmit={form.onSubmit(handleSubmit)} withBorder p="xl" mt={30}>
-            <Title order={2}>Nueva Inspección (Formato Libre) para: {activo.codigoActivo}</Title>
-            <Text c="dimmed">Modelo: {activo.modelo.nombre}</Text>
-            <Paper withBorder p="md" mt="xl">
-                <Title order={4} mb="md">Lecturas Actuales</Title>
-                <Group grow>
-                    <NumberInput label="Kilometraje Actual" required {...form.getInputProps('kilometrajeActual')} />
-                    <NumberInput label="Horómetro Actual" {...form.getInputProps('horometroActual')} />
-                </Group>
-            </Paper>
-            <Paper withBorder p="md" mt="lg">
-                <Title order={4} mb="md">Reporte de Hallazgos</Title>
-                {hallazgosFields.length > 0 ? hallazgosFields : <Text c="dimmed" ta="center" p="md">No se han reportado problemas. Haz clic en "Añadir Hallazgo" si encuentras alguno.</Text>}
-                <Button 
-                    mt="md" 
-                    variant="outline" 
-                    leftSection={<IconPlus size={16} />} 
-                    onClick={() => form.insertListItem('hallazgos', { descripcion: '', severidad: 'Advertencia', observacionInspector: '' })}
-                >
-                    Añadir Hallazgo
-                </Button>
-            </Paper>
-            <Textarea label="Observaciones Generales de la Inspección" mt="lg" {...form.getInputProps('observacionesGenerales')} />
-            <Button type="submit" mt="xl" size="md">Finalizar y Guardar Inspección</Button>
-        </Paper>
+        <PaddedPaper>
+            <Box component="form" onSubmit={form.onSubmit(handleSubmit)} p={0} m={0}>
+                <Title order={2}>Nueva Inspección para: {activo.codigoActivo}</Title>
+                <Title order={4}>{activo.modelo.nombre}, placa {activo.datosPersonalizados.placa}</Title>
+                <Center>
+                    <Title order={5}>Inspeccion realizada por: {nombre}</Title>
+                </Center>
+                <Paper withBorder p="md" mt="xl">
+                    <Title order={4} mb="md">Lecturas Actuales</Title>
+                    <Group grow>
+                        <NumberInput label="Kilometraje Actual" required {...form.getInputProps('kilometrajeActual')} />
+                        <NumberInput label="Horómetro Actual" {...form.getInputProps('horometroActual')} />
+                    </Group>
+                </Paper>
+                <Paper withBorder p="md" mt="lg">
+                    <Title order={4} mb="md">Reporte de Hallazgos</Title>
+                    {hallazgosFields.length > 0 ? hallazgosFields : <Text c="dimmed" ta="center" p="md">No se han reportado problemas. Haz clic en "Añadir Hallazgo" si encuentras alguno.</Text>}
+                    <Button
+                        mt="md"
+                        variant="outline"
+                        leftSection={<IconPlus size={16} />}
+                        onClick={() => form.insertListItem('hallazgos', { descripcion: '', severidad: 'Advertencia', observacionInspector: '' })}
+                    >
+                        Añadir Hallazgo
+                    </Button>
+                </Paper>
+                <Button type="submit" mt="xl" size="md">Finalizar y Guardar Inspección</Button>
+            </Box>
+        </PaddedPaper>
     );
 }

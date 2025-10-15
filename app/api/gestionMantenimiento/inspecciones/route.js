@@ -10,7 +10,6 @@ export async function POST(request) {
             userId,
             kilometrajeActual,
             horometroActual,
-            observacionesGenerales,
             hallazgosReportados
         } = body;
 
@@ -56,7 +55,6 @@ export async function POST(request) {
             inspectorId: userId,
             kilometrajeId: nuevoKmId,
             horometroId: nuevoHorometroId,
-            observacionesGenerales
         }, { transaction });
 
         if (hallazgosReportados && hallazgosReportados.length > 0) {

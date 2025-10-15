@@ -32,8 +32,8 @@ export default function RenderActivoDetails({ schema, data }) {
         <Box>
             {/* 1. Renderiza los atributos simples en una cuadrícula */}
             <SimpleGrid cols={{ base: 1, sm: 3, md: 4 }} spacing="lg" mb="xl">
-                {simpleAttributes.map(attr => (
-                        <DetailItem label={attr.label} value={data[attr.id]} />
+                {simpleAttributes.map((attr, x) => (
+                        <DetailItem key={x} label={attr.label} value={data[attr.id]} />
                 ))}
             </SimpleGrid>
 

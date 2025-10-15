@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useForm } from '@mantine/form';
 import { TextInput, PasswordInput, Paper, Title, Container, Button, Group, Image } from '@mantine/core'
 import { useRouter } from 'next/navigation';
-import {  crearUsuario, iniciarSesion } from '../ApiFunctions/userServices';
+import { crearUsuario, iniciarSesion } from '../ApiFunctions/userServices';
 import { notifications } from '@mantine/notifications';
 import defaultUser from '../../objects/defaultUser';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,7 +12,7 @@ import { pedirPermiso } from '../handlers/notificar';
 const page = () => {
   const router = useRouter();
   const [hayAdmin, setHayAdmin] = useState(true);
-  const {login, isAuthenticated} = useAuth(); // Asegúrate de importar el hook useAuth correctamente
+  const { login, isAuthenticated } = useAuth(); // Asegúrate de importar el hook useAuth correctamente
   const form = useForm({
     initialValues: {
       user: '',
@@ -37,7 +37,7 @@ const page = () => {
         if (adminUser) {
           setHayAdmin(true);
         }
-       
+
       } catch (error) {
         notifications.show({
           title: 'Error buscando admin',
@@ -50,31 +50,31 @@ const page = () => {
     fetchAdminUser();
   }, []);
 
- const handleSubmit = async (values) => {
-        try {
-          pedirPermiso();
-            // Llama a la función centralizada de login
-            await login(values.user, values.password);
-            // La redirección ahora la maneja el propio hook
-        } catch (error) {
-            notifications.show({
-                title: 'Error de Autenticación',
-                message: error.message,
-                color: 'red',
-            });
-        }
-    };
-
-    if (isAuthenticated) {
-        // Si ya está autenticado, redirige a la página de inicio
-        notifications.show({
-            title: 'Sesión Activa',
-            message: 'Ya estás autenticado, redirigiendo...',
-            color: 'blue',
-        });
-        router.push('/superuser');
+  const handleSubmit = async (values) => {
+    try {
+      pedirPermiso();
+      // Llama a la función centralizada de login
+      await login(values.user, values.password);
+      // La redirección ahora la maneja el propio hook
+    } catch (error) {
+      notifications.show({
+        title: 'Error de Autenticación',
+        message: error.message,
+        color: 'red',
+      });
     }
-     
+  };
+
+  if (isAuthenticated) {
+    // Si ya está autenticado, redirige a la página de inicio
+    notifications.show({
+      title: 'Sesión Activa',
+      message: 'Ya estás autenticado, redirigiendo...',
+      color: 'blue',
+    });
+    router.push('/superuser');
+  }
+
 
   return (
     <>
@@ -111,10 +111,10 @@ const page = () => {
               {!hayAdmin && <Button fullWidth onClick={async () => {
                 try {
                   await crearUsuario(defaultUser)
-                  notifications.show({title:"usuario creado"})
+                  notifications.show({ title: "usuario creado" })
                   router.push('/');
                 } catch (error) {
-                  notifications.show({title: error})
+                  notifications.show({ title: error })
                 }
               }}>
                 Registrar

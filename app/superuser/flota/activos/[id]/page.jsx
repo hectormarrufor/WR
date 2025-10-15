@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Paper, Title, Text, Group, Button, Loader, Alert, Grid, Badge, Divider, Image, Center } from '@mantine/core';
+import { Paper, Title, Text, Group, Button, Loader, Alert, Grid, Badge, Divider, Image, Center, Stack } from '@mantine/core';
 import { IconTool, IconClipboardCheck, IconPencil, IconPhotoOff } from '@tabler/icons-react';
 import RenderActivoDetails from '../components/RenderActivoDetails';
 import HallazgosPendientes from './inspecciones/HallazgosPendientes';
+import PaddedPaper from '../../components/PaddedPaper';
 
 export default function DetalleActivoPage() {
     const { id } = useParams();
@@ -13,6 +14,14 @@ export default function DetalleActivoPage() {
     const [activo, setActivo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsMobile(window.innerWidth <= 768);
+        }
+    }, []);
 
     useEffect(() => {
         if (id) {
@@ -39,14 +48,10 @@ export default function DetalleActivoPage() {
     if (!activo) return <Alert color="yellow" title="Aviso">No se encontraron datos para el activo.</Alert>;
 
     return (
-        <Paper withBorder shadow="md" p="xl" radius="md" mt={30}>
-            <Group justify="space-between" mb="md">
-                <Title order={2}>Ficha Técnica: {activo.codigoActivo}</Title>
-                <Button leftSection={<IconPencil size={18} />} onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
-                    Editar Activo
-                </Button>
-            </Group>
-            <Text c="dimmed" m="sm">Modelo Base: {activo.modelo.nombre}</Text>
+        <PaddedPaper>
+            <Title order={2}>Detalles del activo {activo.codigoActivo}</Title>
+            <Title order={4} mb={20}>Modelo: {activo.modelo.nombre}</Title>
+
 
             {/* ✨ SECCIÓN DE DETALLES PRINCIPALES CON IMAGEN ✨ */}
             <Grid gutter="xl">
@@ -66,7 +71,7 @@ export default function DetalleActivoPage() {
                     <Paper withBorder p="md" radius="md" h="100%">
                         <Group mt="xs">
                             <Title order={4}>Estado Operativo General: </Title>
-                            <Badge size="lg" color={activo.estadoOperativo === 'Operativo' ? 'teal' : 'red'}>
+                            <Badge size="lg" color={activo.estadoOperativo === 'Operativo' ? 'teal' : activo.estadoOperativo === 'Advertencia' ? 'orange' : 'red'}>
                                 {activo.estadoOperativo}
                             </Badge>
                         </Group>
@@ -77,6 +82,40 @@ export default function DetalleActivoPage() {
                     </Paper>
                 </Grid.Col>
             </Grid>
+            <Paper py={20} px={30} my={30} align="center" withBorder radius="md">
+                <Title order={4}  p={0}>Acciones Rápidas</Title>
+                <Divider my={5} />
+                {/* Botones en fila o columna según sea móvil o no */}
+
+                {!isMobile ?
+
+                    <Group justify="space-between" mt="sm" mb="md">
+                        <Button leftSection={<IconClipboardCheck size={18} />} size="md" onClick={() => router.push(`${id}/inspecciones/nueva`)}>
+                            Realizar Inspección
+                        </Button>
+                        <Button leftSection={<IconTool size={18} />} size="md" disabled>
+                            Ver Mantenimientos
+                        </Button>
+                        <Button leftSection={<IconPencil size={18} />} onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
+                            Editar Activo
+                        </Button>
+                    </Group>
+
+                    :
+                    <Stack mt="xl" mb="md" spacing="md">
+
+                        <Button fullWidth leftSection={<IconClipboardCheck size={18} />} size="md" onClick={() => router.push(`${id}/inspecciones/nueva`)}>
+                            Realizar Inspección
+                        </Button>
+                        <Button fullWidth leftSection={<IconTool size={18} />} size="md" disabled>
+                            Ver Mantenimientos
+                        </Button>
+                        <Button fullWidth leftSection={<IconPencil size={18} />} onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
+                            Editar Activo
+                        </Button>
+                    </Stack>
+                }
+            </Paper>
 
 
             <Paper p="lg" withBorder radius="md" mt={10}>
@@ -85,16 +124,6 @@ export default function DetalleActivoPage() {
                     data={activo.datosPersonalizados}
                 />
             </Paper>
-
-            <Divider my="xl" label="Acciones de Mantenimiento" labelPosition="center" />
-            <Group justify="center">
-                <Button leftSection={<IconClipboardCheck size={18} />} variant="outline" size="md" onClick={() => router.push(`${id}/inspecciones/nueva`)}>
-                    Realizar Inspección
-                </Button>
-                <Button leftSection={<IconTool size={18} />} variant="outline" size="md" disabled>
-                    Ver Mantenimientos
-                </Button>
-            </Group>
-        </Paper>
+        </PaddedPaper>
     );
 }
