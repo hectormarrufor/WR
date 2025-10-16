@@ -39,7 +39,7 @@ const Slideshow = () => {
                     color: '#fff',
                     padding: isMobile ? '8px 10px' : '14px 20px',
                     borderRadius: 8,
-                    maxWidth: isMobile ? '50%' : '30%',
+                    maxWidth: isMobile ? '70%' : '30%',
                     fontWeight: 700,
                     fontSize: isMobile ? 16 : 28,
                     lineHeight: 1.05,
@@ -76,7 +76,7 @@ const Slideshow = () => {
                         alt={`Slide ${index + 1}`}
                         radius={0}
                         fit="cover"
-                        height={isMobile ? 200 : 450}
+                        height={isMobile ? 300 : 450}
                         width="100%"
                         style={{ aspectRatio: '2 / 1', objectFit: 'cover', objectPosition: 'center 70%', }}
                         mb={isMobile ? 0 : 20}

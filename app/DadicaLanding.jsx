@@ -23,27 +23,27 @@ export default function DadicaLanding({ isMobile }) {
 
 
             <Card pt={180} radius={0} mb="sm" >
-                {isMobile ? 
-                <Stack spacing="md" justify="center" align="center">
-                    <Center flex={1}>
-                        <Image
-                            src="/logo.png"
-                            alt="Logo de la empresa"
-                            width="100vw"
-                            height={75}
-                            mb="md"
-                        />
-                    </Center>
-                    <Box mx={isMobile ? 20 : "xl"} mb={40} flex={1}>
-                        <Title order={6} style={{ textAlign: 'justify' }}>
-                            Empresa venezolana fundada en 2008, especializada en transporte de carga pesada con cobertura nacional. Ofrece soluciones logísticas seguras y eficientes, respaldadas por un equipo profesional altamente calificado.
-                        </Title>
-                        <Title order={6} mt="md" style={{ textAlign: 'justify' }}>
-                            En Transporte DADICA, C.A nos dedicamos a ofrecer soluciones integrales de transporte y maquinaria pesada para la industria petrolera y de construcción. Con una flota moderna y un equipo altamente capacitado, garantizamos eficiencia, seguridad y cumplimiento en cada proyecto.
-                        </Title>
-                    </Box>
+                {isMobile ?
+                    <Stack spacing="md" justify="center" align="center">
+                        <Center flex={1}>
+                            <Image
+                                src="/logo.png"
+                                alt="Logo de la empresa"
+                                width="100vw"
+                                height={75}
+                                mb="md"
+                            />
+                        </Center>
+                        <Box mx={isMobile ? 20 : "xl"} mb={40} flex={1}>
+                            <Title order={6} style={{ textAlign: 'justify' }}>
+                                Empresa venezolana fundada en 2008, especializada en transporte de carga pesada con cobertura nacional. Ofrece soluciones logísticas seguras y eficientes, respaldadas por un equipo profesional altamente calificado.
+                            </Title>
+                            <Title order={6} mt="md" style={{ textAlign: 'justify' }}>
+                                En Transporte DADICA, C.A nos dedicamos a ofrecer soluciones integrales de transporte y maquinaria pesada para la industria petrolera y de construcción. Con una flota moderna y un equipo altamente capacitado, garantizamos eficiencia, seguridad y cumplimiento en cada proyecto.
+                            </Title>
+                        </Box>
 
-                </Stack> :
+                    </Stack> :
                     <Flex justify="center" mx="xl" px="xl">
                         <Box mx="xl" p={30} flex={1}>
                             <Title order={6} style={{ textAlign: 'justify' }}>
@@ -107,7 +107,7 @@ export default function DadicaLanding({ isMobile }) {
                 </Stack>
             }
 
-            /* Servicios */
+
             <Card radius={0} p="xl" mb="sm" >
                 <Title order={2} tt="uppercase">Servicios Ofrecidos</Title>
                 <Divider my="sm" />
@@ -115,7 +115,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/plataforma.jpg" alt="Gestión de carga" width={160} height={100} fit="contain" />
+                                <Image src="/plataforma.jpg" alt="Gestión de carga" width={160} height={200} fit="cover" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Gestión de carga</Title>
                         </Card>
@@ -124,7 +124,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/retro.jpg" alt="Preparación y mantenimiento de locaciones" width={160} height={100} fit="contain" />
+                                <Image src="/retro.jpg" alt="Preparación y mantenimiento de locaciones" width={160} height={200} fit="cover" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Preparación y mantenimiento de locaciones</Title>
                         </Card>
@@ -133,7 +133,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/vaccum.jpg" alt="Recolección y transporte de residuos" width={160} height={100} fit="contain" />
+                                <Image src="/vaccum.jpg" alt="Recolección y transporte de residuos" width={160} height={200} fit="cover" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Recolección y transporte de residuos</Title>
                         </Card>
@@ -142,7 +142,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/lowboy.jpg" alt="Transporte de equipos pesados" width={160} height={100} fit="contain" />
+                                <Image src="/lowboy.jpg" alt="Transporte de equipos pesados" width={160} height={200} fit="cover" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Transporte de equipos pesados</Title>
                         </Card>
@@ -152,14 +152,38 @@ export default function DadicaLanding({ isMobile }) {
             <Card radius={0} p="xl" mb="sm" >
                 <Title order={2} tt="uppercase">Flota y Equipamiento</Title>
                 <Divider my="sm" />
-                <Group gap="xs" wrap="wrap">
-                    <Badge>16 Chutos</Badge>
-                    <Badge>5 Volteos / 1 Volqueta</Badge>
-                    <Badge>3 Lowboys</Badge>
-                    <Badge>8 Bateas</Badge>
-                    <Badge>Montacargas</Badge>
-                    <Badge>Vacuum / Fénix Trailers</Badge>
-                </Group>
+                <Box pos="relative" h={300} w="100%" >
+                    <Box
+                        pos="absolute"
+                        top={0}
+                        left={0}
+                        w="100%"
+                        h="100%"
+                        bg="rgba(255, 255, 255, 0.6)"
+                        style={{ borderRadius: 'var(--mantine-radius-md)' }}
+                    />
+
+                    <Image src="/flota.jpg" height={300} width="100%" fit="cover" radius="md" />
+
+                    <Center
+                        pos="absolute"
+                        top={0}
+                        left={0}
+                        w="100%"
+                        h="100%"
+                        style={{ pointerEvents: 'none' }} // evita que interfiera con clics si es decorativo
+                    >
+                        <Group gap="xl" wrap="wrap" justify="center">
+                            <Badge><Title order={5}>16 Chutos</Title></Badge>
+                            <Badge><Title order={5}>5 Volteos / 1 Volqueta</Title></Badge>
+                            <Badge><Title order={5}>3 Lowboys</Title></Badge>
+                            <Badge><Title order={5}>8 Bateas</Title></Badge>
+                            <Badge><Title order={5}>Montacargas</Title></Badge>
+                            <Badge><Title order={5}>Vacuum / Fénix Trailers</Title></Badge>
+                        </Group>
+                    </Center>
+                </Box>
+
             </Card>
 
             {/* Seguridad */}
