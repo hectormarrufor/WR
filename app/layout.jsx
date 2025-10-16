@@ -4,7 +4,7 @@ import '@mantine/notifications/styles.css';
 
 import Script from 'next/script';
 
-import { AppShell, Box, Burger, createTheme, Group, Image, LoadingOverlay, Text, UnstyledButton } from '@mantine/core';
+import { AppShell, Box, Burger, createTheme, Group, Image, LoadingOverlay, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from './MobileNavbar.module.css';
 import React, { useEffect, useState } from 'react';
@@ -100,7 +100,7 @@ export default function RootLayout({ children }) {
                   WebkitBackdropFilter: 'blur(10px)', // soporte Safari
                 }}
               >
-                <Group justify="space-between" px={isMobile ? 0 : 100}>
+                <Group justify='space-between' px={isMobile ? 0 : 40}>
                   <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
                     <Image src="/logo.png" height={40} alt="logo" p={0} py={0} m={5} />
                   </UnstyledButton>
@@ -126,15 +126,15 @@ export default function RootLayout({ children }) {
                 <UnstyledButton className={classes.control} onClick={() => {
                   toggle();
                   router.push('/')
-                }}>Inicio</UnstyledButton>
+                }}><Title order={6}>Inicio</Title></UnstyledButton>
                 <UnstyledButton className={classes.control} onClick={() => {
                   toggle();
                   router.push('/superuser')
-                }}> Panel de administracion</UnstyledButton>
+                }}><Title order={6}>Panel de administracion</Title></UnstyledButton>
                 <UnstyledButton className={classes.control} onClick={() => {
                   toggle();
                   router.push('/login')
-                }}>Iniciar Sesion</UnstyledButton>
+                }}><Title order={6}>Iniciar Sesion</Title></UnstyledButton>
 
               </AppShell.Navbar>
               <AppShell.Main
