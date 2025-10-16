@@ -107,22 +107,48 @@ export default function DadicaLanding({ isMobile }) {
                 </Stack>
             }
 
-            {/* Servicios */}
+            /* Servicios */
             <Card radius={0} p="xl" mb="sm" >
                 <Title order={2} tt="uppercase">Servicios Ofrecidos</Title>
                 <Divider my="sm" />
-                <List
-                    spacing="xs"
-                    icon={<ThemeIcon color="blue" radius="xl"><IconTruck size={16} /></ThemeIcon>}
-                >
-                    <List.Item>Gestión de carga</List.Item>
-                    <List.Item>Preparación y mantenimiento de locaciones</List.Item>
-                    <List.Item>Recolección y transporte de residuos</List.Item>
-                    <List.Item>Transporte de equipos pesados</List.Item>
-                </List>
-            </Card>
+                <Grid>
+                    <Grid.Col span={isMobile ? 12 : 3}>
+                        <Card radius="md" p="sm" withBorder>
+                            <Center>
+                                <Image src="/images/gestion-carga.jpg" alt="Gestión de carga" width={160} height={100} fit="contain" />
+                            </Center>
+                            <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Gestión de carga</Title>
+                        </Card>
+                    </Grid.Col>
 
-            {/* Flota */}
+                    <Grid.Col span={isMobile ? 12 : 3}>
+                        <Card radius="md" p="sm" withBorder>
+                            <Center>
+                                <Image src="/images/preparacion-locaciones.jpg" alt="Preparación y mantenimiento de locaciones" width={160} height={100} fit="contain" />
+                            </Center>
+                            <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Preparación y mantenimiento de locaciones</Title>
+                        </Card>
+                    </Grid.Col>
+
+                    <Grid.Col span={isMobile ? 12 : 3}>
+                        <Card radius="md" p="sm" withBorder>
+                            <Center>
+                                <Image src="/images/recoleccion-residuos.jpg" alt="Recolección y transporte de residuos" width={160} height={100} fit="contain" />
+                            </Center>
+                            <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Recolección y transporte de residuos</Title>
+                        </Card>
+                    </Grid.Col>
+
+                    <Grid.Col span={isMobile ? 12 : 3}>
+                        <Card radius="md" p="sm" withBorder>
+                            <Center>
+                                <Image src="/images/transporte-equipos.jpg" alt="Transporte de equipos pesados" width={160} height={100} fit="contain" />
+                            </Center>
+                            <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Transporte de equipos pesados</Title>
+                        </Card>
+                    </Grid.Col>
+                </Grid>
+            </Card>
             <Card radius={0} p="xl" mb="sm" >
                 <Title order={2} tt="uppercase">Flota y Equipamiento</Title>
                 <Divider my="sm" />
