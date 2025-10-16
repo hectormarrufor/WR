@@ -115,7 +115,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/images/gestion-carga.jpg" alt="Gestión de carga" width={160} height={100} fit="contain" />
+                                <Image src="/plataforma.jpg" alt="Gestión de carga" width={160} height={100} fit="contain" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Gestión de carga</Title>
                         </Card>
@@ -124,7 +124,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/images/preparacion-locaciones.jpg" alt="Preparación y mantenimiento de locaciones" width={160} height={100} fit="contain" />
+                                <Image src="/retro.jpg" alt="Preparación y mantenimiento de locaciones" width={160} height={100} fit="contain" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Preparación y mantenimiento de locaciones</Title>
                         </Card>
@@ -133,7 +133,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/images/recoleccion-residuos.jpg" alt="Recolección y transporte de residuos" width={160} height={100} fit="contain" />
+                                <Image src="/vaccum.jpg" alt="Recolección y transporte de residuos" width={160} height={100} fit="contain" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Recolección y transporte de residuos</Title>
                         </Card>
@@ -142,7 +142,7 @@ export default function DadicaLanding({ isMobile }) {
                     <Grid.Col span={isMobile ? 12 : 3}>
                         <Card radius="md" p="sm" withBorder>
                             <Center>
-                                <Image src="/images/transporte-equipos.jpg" alt="Transporte de equipos pesados" width={160} height={100} fit="contain" />
+                                <Image src="/lowboy.jpg" alt="Transporte de equipos pesados" width={160} height={100} fit="contain" />
                             </Center>
                             <Title order={6} mt="sm" style={{ textAlign: 'center' }}>Transporte de equipos pesados</Title>
                         </Card>
