@@ -10,6 +10,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation'; // o 'next/router'
 import BackButton from '../../../components/BackButton';
 import CrearUsuarioModal from './CrearUsuarioModal';
+import EditUsuarioModal from './EditUsuarioModal';
 
 function calcularEdad(fechaNacimiento) {
   if (!fechaNacimiento) return null;
@@ -90,6 +91,7 @@ export default function EmpleadosTable() {
   const [error, setError] = useState(null);
   const router = useRouter();
   const [crearUsuarioModalOpened, { open: openCrearUsuarioModal, close: closeCrearUsuarioModal }] = useDisclosure(false);
+  const [editUsuarioModalOpened, { open: openEditUsuarioModal, close: closeEditUsuarioModal }] = useDisclosure(false);
 
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
@@ -192,15 +194,20 @@ export default function EmpleadosTable() {
         >
           Eliminar
         </Menu.Item>
+        
         <Menu.Item
-          leftSection={<IconPlus size={18} />}
+          leftSection={row.original.usuario.user ? <IconEdit size={18}/> :<IconPlus size={18} />}
           color="blue"
           onClick={() => {
             setSelectedEmpleado(row.original);
-            openCrearUsuarioModal(selectedEmpleado);
+            {row.original.usuario.user ? 
+              openEditUsuarioModal(selectedEmpleado)
+              :
+              openCrearUsuarioModal(selectedEmpleado);
+            }
           }}
         >
-          Crear cuenta en sistema
+          {row.original.usuario.user ? "Editar cuenta de usuario" : "Crear cuenta en sistema"}
         </Menu.Item>
       </Menu>
     ),
@@ -273,6 +280,12 @@ export default function EmpleadosTable() {
         opened={crearUsuarioModalOpened}
         onClose={closeCrearUsuarioModal}
         onUserCreated={fetchData} // Refrescar la lista de empleados al crear un usuario   
+      />
+      <EditUsuarioModal
+        usuario={selectedEmpleado?.usuario}
+        opened={editUsuarioModalOpened}
+        onClose={closeEditUsuarioModal}
+        onUpdated={fetchData} // Refrescar la lista de empleados al crear un usuario   
       />
     </>
   );

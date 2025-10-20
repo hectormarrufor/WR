@@ -14,7 +14,7 @@ const PushSubscription = sequelize.define('PushSubscription', {
         allowNull: false,
     },
     usuarioId: {
-        type: DataTypes.UUID, // o INTEGER si usas IDs numéricos
+        type: DataTypes.INTEGER, // o INTEGER si usas IDs numéricos
         allowNull: false,
     },
     rol: {

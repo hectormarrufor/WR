@@ -77,6 +77,7 @@ const sequelize = require('../../sequelize');
       otherKey: 'puestoId',
       as: 'puestos',
     });
+    Empleado.hasOne(models.User, { foreignKey: 'empleadoId', as: 'usuario' });
 
     // Un Empleado puede ser el Supervisor de muchas Operaciones de Campo
     // Empleado.hasMany(models.OperacionCampo, { foreignKey: 'supervisorId', as: 'operacionesSupervisadas' });

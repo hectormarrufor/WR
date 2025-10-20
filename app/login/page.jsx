@@ -32,10 +32,11 @@ const page = () => {
       try {
         const response = await fetch('/api/users'); // Ajusta la ruta según tu backend
         const users = await response.json();
-        console.log('Usuarios obtenidos:', users);
         const adminUser = users.find(user => user.isAdmin);
         if (adminUser) {
           setHayAdmin(true);
+        } else {
+          setHayAdmin(false);
         }
 
       } catch (error) {

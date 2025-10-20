@@ -52,9 +52,62 @@ export async function DELETE(request, { params }) {
     }
 
     // Considera una eliminación lógica (cambiar estado a 'Inactivo') en lugar de física
-    await empleado.update({ estado: 'Inactivo' }); // Asumiendo que tienes un campo 'estado'
+    // await empleado.update({ estado: 'Inactivo' }); // Asumiendo que tienes un campo 'estado'
     // O para eliminación física:
-    // await empleado.destroy();
+    // Eliminar asociaciones many-to-many (por ejemplo puestos) si existen
+
+    if (typeof empleado.setPuestos === 'function') {
+      await empleado.setPuestos([]);
+    }
+
+    // Eliminar o desvincular registros que referencian al empleado en otras tablas
+    const deletes = [];
+
+    // Lista de modelos relacionados a revisar
+    const relatedModels = [
+      { model: db.Mantenimiento, name: 'Mantenimiento' },
+      { model: db.OperacionCampo, name: 'OperacionCampo' },
+    ].filter(item => item.model);
+
+    // Intenta obtener el nombre de la FK desde las asociaciones del modelo
+    function getForeignKey(model) {
+      if (!model || !model.associations) return null;
+      for (const assoc of Object.values(model.associations)) {
+        if (assoc.target === db.Empleado || assoc.source === db.Empleado) {
+          return assoc.foreignKey || assoc.foreignKeyAttribute || assoc.identifierField || null;
+        }
+      }
+      return null;
+    }
+
+    for (const { model, name } of relatedModels) {
+      try {
+        // intenta primero la FK desde la asociación
+        let fk = getForeignKey(model);
+
+        // si no existe, intenta nombres comunes como respaldo
+        if (!fk && model.rawAttributes) {
+          const candidates = ['empleadoId', 'EmpleadoId', 'empleado_id', 'id_empleado', 'creadorId'];
+          fk = candidates.find(c => Object.prototype.hasOwnProperty.call(model.rawAttributes, c));
+        }
+
+        // si aún no hay fk válida, omitir este modelo
+        if (!fk) {
+          console.warn(`No se encontró FK en ${name} para empleado; se omite borrado de registros relacionados.`);
+          continue;
+        }
+
+        const where = {};
+        where[fk] = id;
+        deletes.push(model.destroy({ where }));
+      } catch (e) {
+        // Ignorar errores puntuales (tabla/columna ausente u otros) para no abortar todo el proceso
+        console.warn(`Ocurrió un error al eliminar registros relacionados en ${name}:`, e.message);
+      }
+    }
+
+    if (deletes.length) await Promise.all(deletes);
+    await empleado.destroy();
 
     return NextResponse.json({ message: 'Empleado eliminado (o inactivado) exitosamente' }, { status: 200 });
   } catch (error) {

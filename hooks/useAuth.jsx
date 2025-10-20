@@ -3,7 +3,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
-import { suscribirsePush } from '@/app/handlers/push';
+import { suscribirsePush, unsubscribirsePush } from '@/app/handlers/push';
 
 const AuthContext = createContext(null);
 
@@ -23,6 +23,7 @@ export function AuthProvider({ children }) {
                 console.log(`\x1b[44m [DEBUG] DATA FETCHED FROM AuthProvider: ${JSON.stringify(data)} \x1b[0m`);
 
                 setUser(data);
+                return data;
             } else {
                 setUser(null);
             }
@@ -62,6 +63,7 @@ export function AuthProvider({ children }) {
             setLoading(false);
             // Esto actualizará el estado y re-renderizará todo automáticamente.
             const fetched = await fetchUser();
+            console.log(fetched)
             if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
                 try {
                     const sub = await suscribirsePush();
