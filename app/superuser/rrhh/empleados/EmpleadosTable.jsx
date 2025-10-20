@@ -196,18 +196,18 @@ export default function EmpleadosTable() {
         </Menu.Item>
         
         <Menu.Item
-          leftSection={row.original.usuario.user ? <IconEdit size={18}/> :<IconPlus size={18} />}
+          leftSection={row.original.usuario?.user ? <IconEdit size={18}/> :<IconPlus size={18} />}
           color="blue"
           onClick={() => {
             setSelectedEmpleado(row.original);
-            {row.original.usuario.user ? 
+            {row.original.usuario?.user ? 
               openEditUsuarioModal(selectedEmpleado)
               :
               openCrearUsuarioModal(selectedEmpleado);
             }
           }}
         >
-          {row.original.usuario.user ? "Editar cuenta de usuario" : "Crear cuenta en sistema"}
+          {row.original.usuario?.user ? "Editar cuenta de usuario" : "Crear cuenta en sistema"}
         </Menu.Item>
       </Menu>
     ),
