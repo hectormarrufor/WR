@@ -35,11 +35,13 @@ const CostParameters = require('./estimacion/CostParameters');
 const CostEstimate = require('./estimacion/CostEstimate');
 const FixedExpense = require('./gastos/FixedExpense');
 const Flete = require('./operaciones/Flete');
+const PushSubscription = require('./pushSubscription');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
     BcvPrecioHistorico,
     ConfiguracionGeneral,
+    PushSubscription,
 
     //FLOTA
     Activo,
