@@ -123,18 +123,7 @@ export default function RootLayout({ children }) {
                   zIndex: 999,
                 }}
               >
-                <UnstyledButton className={classes.control} onClick={() => {
-                  toggle();
-                  router.push('/')
-                }}><Title order={6}>Inicio</Title></UnstyledButton>
-                <UnstyledButton className={classes.control} onClick={() => {
-                  toggle();
-                  router.push('/superuser')
-                }}><Title order={6}>Panel de administracion</Title></UnstyledButton>
-                <UnstyledButton className={classes.control} onClick={() => {
-                  toggle();
-                  router.push('/login')
-                }}><Title order={6}>Iniciar Sesion</Title></UnstyledButton>
+                <LayoutMenu classes={classes} router={router} />
 
               </AppShell.Navbar>
               <AppShell.Main
