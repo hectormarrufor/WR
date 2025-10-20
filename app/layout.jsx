@@ -109,7 +109,7 @@ export default function RootLayout({ children }) {
                     <Group justify="space-evenly" style={{ flex: 1 }}>
                       <LayoutMenu classes={classes} router={router} />
 
-
+ 
                     </Group>
                   </Group>
                 </Group>
