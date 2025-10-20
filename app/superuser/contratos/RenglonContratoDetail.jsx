@@ -41,7 +41,7 @@ export function RenglonContratoDetail({ renglon, onEdit }) {
 
   return (
     <Paper
-      withBorder
+       
       shadow="sm"
       p="md"
       radius="md"

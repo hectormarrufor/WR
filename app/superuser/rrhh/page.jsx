@@ -53,7 +53,7 @@ export default function RRHHPage() {
 
     return (
         <Container fluid>
-            <Paper withBorder shadow="md" p={30} mt={70} radius="md">
+            <Paper   shadow="md" p={30} mt={70} radius="md">
                 <Title order={2} ta="center" mb="lg">
                     Módulo de Recursos Humanos
                 </Title>

@@ -35,7 +35,7 @@ export default function EditarActivoPage() {
     if (error) return <Alert color="red" title="Error">{error}</Alert>;
 
     return (
-        <Paper withBorder p="xl" mt={30}>
+        <Paper   p="xl" mt={30}>
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Editar Activo: {initialData?.codigoActivo}</Title>
                 <BackButton />

@@ -115,7 +115,7 @@ export default function EditarCategoriaPage() {
     
     if (error) {
         return (
-            <Paper withBorder p={30} mt={30}>
+            <Paper   p={30} mt={30}>
                 <Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red">
                     {error}
                 </Alert>
@@ -127,7 +127,7 @@ export default function EditarCategoriaPage() {
     }
 
     return (
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md" style={{ position: 'relative' }}>
+        <Paper   shadow="md" p={30} mt={30} radius="md" style={{ position: 'relative' }}>
             <LoadingOverlay visible={isSubmitting} overlayProps={{ radius: "sm", blur: 2 }} />
              <Group justify="space-between" mb="xl">
                 <Title order={2}>

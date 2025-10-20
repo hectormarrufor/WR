@@ -54,7 +54,7 @@ export default function CompatibilidadForm({ form }) {
     };
 
     return (
-        <Paper withBorder p="md" mt="lg">
+        <Paper   p="md" mt="lg">
             <Title order={5}>Compatibilidad Automática</Title>
             <Text size="sm" c="dimmed">Busca automáticamente los modelos que son compatibles con este consumible.</Text>
             
@@ -90,7 +90,7 @@ export default function CompatibilidadForm({ form }) {
                     <Text size="sm" c="dimmed" mt={5}>Aún no se han añadido compatibilidades.</Text>
                 )}
                 {(form.values.compatibilidades || []).map((comp, index) => (
-                    <Paper withBorder p="xs" radius="sm" key={index} mt={5}>
+                    <Paper   p="xs" radius="sm" key={index} mt={5}>
                         <Group justify="space-between">
                             <Text size="sm">
                                 <Text span fw={700}>{comp.modeloNombre || comp.modeloLabel}</Text> &gt; {comp.atributoLabel}

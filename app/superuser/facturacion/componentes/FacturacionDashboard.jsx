@@ -86,19 +86,19 @@ export function FacturacionDashboard() {
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg" mb="xl">
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" padding="lg" radius="md"  >
           <Text fw={700} size="md" c="blue">Total Facturado</Text>
           <Title order={3} c="blue">${parseFloat(reportData.totalFacturado).toFixed(2)}</Title>
         </Card>
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" padding="lg" radius="md"  >
           <Text fw={700} size="md" c="green">Total Recibido (Pagos)</Text>
           <Title order={3} c="green">${parseFloat(reportData.totalPagado).toFixed(2)}</Title>
         </Card>
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" padding="lg" radius="md"  >
           <Text fw={700} size="md" c="orange">Notas de Crédito Emitidas</Text>
           <Title order={3} c="orange">${parseFloat(reportData.totalNotasCredito).toFixed(2)}</Title>
         </Card>
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" padding="lg" radius="md"  >
           <Text fw={700} size="md" c={reportData.saldoNeto > 0 ? 'red' : 'green'}>Saldo Neto Pendiente</Text>
           <Title order={3} c={reportData.saldoNeto > 0 ? 'red' : 'green'}>${parseFloat(reportData.saldoNeto).toFixed(2)}</Title>
         </Card>

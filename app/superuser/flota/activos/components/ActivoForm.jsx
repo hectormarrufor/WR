@@ -176,7 +176,7 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
     if (loading && !isEditing) return <Loader />;
 
     return (
-        <Paper component="form" onSubmit={form.onSubmit(handleSubmit)} withBorder p="xl">
+        <Paper component="form" onSubmit={form.onSubmit(handleSubmit)}   p="xl">
             <Select
                 label="Basado en el Modelo"
                 placeholder="Selecciona un modelo"
@@ -193,7 +193,7 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
                 </Group>
                 
                 {!isEditing && (
-                    <Paper withBorder p="md" mt="md">
+                    <Paper   p="md" mt="md">
                         <Title order={5} mb="sm">Lecturas Iniciales</Title>
                         <Group grow>
                             <NumberInput label="Kilometraje Inicial" placeholder="0" required {...form.getInputProps('kilometrajeInicial')} />

@@ -71,7 +71,7 @@ export default function ContratoDetailPage({ params }) {
   if (error) {
     return (
       <Container size="md" mt="xl">
-        <Paper withBorder shadow="md" p={30} radius="md" ta="center">
+        <Paper   shadow="md" p={30} radius="md" ta="center">
           <Title order={3} color="red">¡Error!</Title>
           <Text color="dimmed" mt="sm">{error}</Text>
           <Button variant="light" onClick={() => router.back()} mt="md">
@@ -85,7 +85,7 @@ export default function ContratoDetailPage({ params }) {
   if (!contrato) {
     return (
       <Container size="md" mt="xl">
-        <Paper withBorder shadow="md" p={30} radius="md" ta="center">
+        <Paper   shadow="md" p={30} radius="md" ta="center">
           <Title order={3}>Contrato No Encontrado</Title>
           <Text color="dimmed" mt="sm">El contrato con ID "{id}" no existe o ha sido eliminado.</Text>
           <Button variant="light" onClick={() => router.back()} mt="md">

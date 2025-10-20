@@ -191,7 +191,7 @@ export default function ModeloActivoForm({ modeloId = null }) {
 
 
     return (
-        <Paper withBorder shadow="md" p="xl" radius="md" maw={800} mx="auto">
+        <Paper   shadow="md" p="xl" radius="md" maw={800} mx="auto">
           
             <Title order={2} mb="xl" ta="center">{isEditing ? 'Editar Modelo de Activo' : 'Crear Nuevo Modelo'}</Title>
             <form onSubmit={form.onSubmit(handleSubmit)}>

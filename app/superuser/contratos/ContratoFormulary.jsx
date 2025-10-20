@@ -468,7 +468,7 @@ export function ContratoForm({ initialData = null }) {
   };
 
   const renglonesFields = form.values.renglones.map((item, index) => (
-    <Paper key={index} withBorder shadow="xs" p="md" mb="sm">
+    <Paper key={index}   shadow="xs" p="md" mb="sm">
       <Group justify="flex-end">
         <ActionIcon
           color="red"
@@ -535,7 +535,7 @@ export function ContratoForm({ initialData = null }) {
 
   return (
     <Box maw={1000} mx="auto">
-      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+      <Paper   shadow="md" p={30} mt={30} radius="md">
         <Title order={2} ta="center" mb="lg">
           {initialData ? 'Editar Contrato' : 'Registrar Nuevo Contrato'}
         </Title>

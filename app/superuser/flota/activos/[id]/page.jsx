@@ -59,7 +59,7 @@ export default function DetalleActivoPage() {
                     {activo.imagen ? (
                         <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}`} radius="md" />
                     ) : (
-                        <Paper withBorder radius="md" p="xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                        <Paper   radius="md" p="xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                             <Center>
                                 <IconPhotoOff size={48} color="var(--mantine-color-gray-5)" />
                                 <Text c="dimmed" ml="sm">Sin imagen</Text>
@@ -68,7 +68,7 @@ export default function DetalleActivoPage() {
                     )}
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, md: 8 }}>
-                    <Paper withBorder p="md" radius="md" h="100%">
+                    <Paper   p="md" radius="md" h="100%">
                         <Group mt="xs">
                             <Title order={4}>Estado Operativo General: </Title>
                             <Badge size="lg" color={activo.estadoOperativo === 'Operativo' ? 'teal' : activo.estadoOperativo === 'Advertencia' ? 'orange' : 'red'}>
@@ -82,7 +82,7 @@ export default function DetalleActivoPage() {
                     </Paper>
                 </Grid.Col>
             </Grid>
-            <Paper py={20} px={30} my={30} align="center" withBorder radius="md">
+            <Paper py={20} px={30} my={30} align="center"   radius="md">
                 <Title order={4}  p={0}>Acciones Rápidas</Title>
                 <Divider my={5} />
                 {/* Botones en fila o columna según sea móvil o no */}
@@ -118,7 +118,7 @@ export default function DetalleActivoPage() {
             </Paper>
 
 
-            <Paper p="lg" withBorder radius="md" mt={10}>
+            <Paper p="lg"   radius="md" mt={10}>
                 <RenderActivoDetails
                     schema={Object.values(activo.modelo.especificaciones)}
                     data={activo.datosPersonalizados}

@@ -100,7 +100,7 @@ export function PuestoForm({ initialData = null }) {
 
   return (
     <Box maw={600} mx="auto">
-      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+      <Paper   shadow="md" p={30} mt={30} radius="md">
         <Title order={2} ta="center" mb="lg">
           {initialData ? 'Editar Puesto' : 'Registrar Nuevo Puesto'}
         </Title>

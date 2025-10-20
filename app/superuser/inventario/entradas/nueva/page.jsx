@@ -66,7 +66,7 @@ export default function NuevaEntradaPage() {
     };
     
     const renglonesFields = form.values.renglones.map((item, index) => (
-        <Paper withBorder p="md" mt="sm" key={index}>
+        <Paper   p="md" mt="sm" key={index}>
             <Group justify="space-between" mb="xs">
                 <Text fw={500}>Renglón #{index + 1}</Text>
                 {index > 0 && <ActionIcon color="red" onClick={() => form.removeListItem('renglones', index)}><IconTrash size={16} /></ActionIcon>}
@@ -84,7 +84,7 @@ export default function NuevaEntradaPage() {
     ));
 
     return (
-        <Paper withBorder p="xl" mt={30}>
+        <Paper   p="xl" mt={30}>
             <Title order={2} mb="xl">Registrar Entradas de Inventario (Lote)</Title>
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 {renglonesFields}

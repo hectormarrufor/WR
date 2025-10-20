@@ -146,7 +146,7 @@ export default function ConsumibleDetailPage({ params }) {
       </Paper>
 
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" mb="xl">
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" padding="lg" radius="md"  >
           <Flex align="center" gap="xs">
             <Text size="xl" fw={700} mb="xs" c="blue">Stock Actual</Text>
             {stockBajo && (
@@ -157,7 +157,7 @@ export default function ConsumibleDetailPage({ params }) {
           </Flex>
           <Title order={3} c="blue">{parseFloat(consumible.stockActual).toFixed(2)} {consumible.unidadMedida}</Title>
         </Card>
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Card shadow="sm" padding="lg" radius="md"  >
           <Text size="xl" fw={700} mb="xs" c="orange">Stock Mínimo</Text>
           <Title order={3} c="orange">{parseFloat(consumible.stockMinimo).toFixed(2)} {consumible.unidadMedida}</Title>
         </Card>

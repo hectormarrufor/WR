@@ -7,7 +7,7 @@ import ActivoForm from '../components/ActivoForm';
 
 export default function CrearActivoPage() {
     return (
-        <Paper withBorder p="xl" mt={30}>
+        <Paper   p="xl" mt={30}>
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Crear Nuevo Activo</Title>
                 <BackButton />

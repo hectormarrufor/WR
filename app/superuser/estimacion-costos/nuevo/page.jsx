@@ -157,7 +157,7 @@ export default function NuevaEstimacionPage() {
   return (
     <Container size="md" py="xl">
 
-      <Card withBorder shadow="sm" padding="lg">
+      <Card   shadow="sm" padding="lg">
         {/* <Group position="apart" mb="md">
           <Button onClick={() => window.alert(monthsBack(3))}>calcular 3 meses atras</Button>
           <Button onClick={() => window.alert(roundTo((weightedAverage([1, 3, 30])), 3))}>calcular media ponderada</Button>
@@ -169,7 +169,7 @@ export default function NuevaEstimacionPage() {
         <Divider mb="md" />
         <Title order={4} mt="xl">Activos seleccionados para estimación</Title>
         {renglones.map((r, index) => (
-          <Card key={r.id} shadow="sm" padding="md" withBorder mb="md">
+          <Card key={r.id} shadow="sm" padding="md"   mb="md">
             <Flex>
               <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${r.imagen}`} height={150} mx={20} radius={10} alt={r.modelo.nombre} />
               <Group>
@@ -228,7 +228,7 @@ export default function NuevaEstimacionPage() {
       </Card>
 
       {result && (
-        <Card mt="xl" withBorder shadow="sm" padding="lg">
+        <Card mt="xl"   shadow="sm" padding="lg">
           <Title order={4} mb="sm">Resultado</Title>
           <Text>🛻 Chuto: ${result.chutoCost.toFixed(2)}</Text>
           <Text>🚚 Lowboy: ${result.lowboyCost.toFixed(2)}</Text>
@@ -270,7 +270,7 @@ export default function NuevaEstimacionPage() {
           {activos
             // .filter(a => a.categoria === categoria)
             .map((a) => (
-              <Card key={a.id} shadow="sm" padding="md" withBorder>
+              <Card key={a.id} shadow="sm" padding="md"  >
                 <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${a.imagen}`} height={100} alt={a.modelo.nombre} />
                 <Text>{a.modelo.nombre}</Text>
                 {a.datosPersonalizados.placa && <Text>Placa: {a.datosPersonalizados.placa}</Text>}

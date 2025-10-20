@@ -84,7 +84,7 @@ export default function CategoriasListPage() {
     ));
 
     return (
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <Paper   shadow="md" p={30} mt={30} radius="md">
             <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Categorías de Activos</Title>

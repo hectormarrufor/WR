@@ -147,7 +147,7 @@ export default function EditarGrupoPage() {
     };
 
     return (
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <Paper   shadow="md" p={30} mt={30} radius="md">
             <Title order={2} mb="xl">Editando Grupo: {form.values.nombre}</Title>
             <LoadingOverlay visible={loading} />
             <form onSubmit={form.onSubmit(handleSubmit)}>

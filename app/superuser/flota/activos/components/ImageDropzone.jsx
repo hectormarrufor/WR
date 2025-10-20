@@ -73,10 +73,10 @@ const [preview, setPreview] = useState(null);
     };
 
     return (
-        <Box mt={15} withBorder p="md" style={{borderRadius: '8px', backgroundColor: '#f8f9fa', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', border: '1px solid #585858ff'}}>
+        <Box mt={15}   p="md" style={{borderRadius: '8px', backgroundColor: '#f8f9fa', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', border: '1px solid #585858ff'}}>
             {/* ✨ ZONA DE PREVISUALIZACIÓN Y CAMBIO DE IMAGEN ✨ */}
             {preview && !compressing && (
-                <Paper withBorder p="sm" mt="xs" radius="md">
+                <Paper   p="sm" mt="xs" radius="md">
                     <Stack align="center">
                         <Image src={preview} maw={250} radius="md" />
                         <Dropzone

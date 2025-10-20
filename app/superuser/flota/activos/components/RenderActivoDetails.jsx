@@ -39,7 +39,7 @@ export default function RenderActivoDetails({ schema, data }) {
 
             {/* 2. Renderiza los atributos de tipo objeto en su propio recuadro */}
             {objectAttributes.map(attr => (
-                <Paper withBorder p="md" mt="lg" radius="md" key={attr.id}>
+                <Paper   p="md" mt="lg" radius="md" key={attr.id}>
                     <Title order={6} mb="xs">{attr.label}</Title>
                     {/* Llamada recursiva para las propiedades del objeto */}
                     <RenderActivoDetails

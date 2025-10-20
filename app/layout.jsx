@@ -88,7 +88,6 @@ export default function RootLayout({ children }) {
               <AppShell.Header
                 zIndex={1001}
                 height={40}
-                withBorder={false}
                 bg="#fafafabd"
                 style={{
                   position: 'fixed',

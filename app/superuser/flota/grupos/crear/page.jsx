@@ -316,7 +316,7 @@ export default function CrearGrupoPage() {
     };
 
     return (
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <Paper   shadow="md" p={30} mt={30} radius="md">
             <LoadingOverlay visible={loading} />
             <Title order={2} mb="xl">Crear Nuevo Grupo</Title>
             <form onSubmit={form.onSubmit(handleSubmit)}>

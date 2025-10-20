@@ -27,7 +27,7 @@ export default function EditarConsumiblePage() {
     if (!initialData) return <Alert color="red">No se encontró el consumible.</Alert>;
 
     return (
-        <Paper withBorder p="xl" mt={30}>
+        <Paper   p="xl" mt={30}>
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Editar Consumible: {initialData.nombre}</Title>
                 <BackButton />

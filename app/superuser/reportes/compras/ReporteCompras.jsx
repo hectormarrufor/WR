@@ -213,19 +213,19 @@ export function ReporteCompras() {
           <Paper shadow="md" p="md" mb="lg">
             <Title order={4} mb="md">Resumen Global</Title>
             <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
-              <Paper withBorder p="sm" radius="md">
+              <Paper   p="sm" radius="md">
                 <Text size="sm" c="dimmed">Total Ordenado</Text>
                 <Text size="xl" fw={700}>${reportData.totalOrdenado.toFixed(2)}</Text>
               </Paper>
-              <Paper withBorder p="sm" radius="md">
+              <Paper   p="sm" radius="md">
                 <Text size="sm" c="dimmed">Total Recibido</Text>
                 <Text size="xl" fw={700}>${reportData.totalRecibido.toFixed(2)}</Text>
               </Paper>
-              <Paper withBorder p="sm" radius="md">
+              <Paper   p="sm" radius="md">
                 <Text size="sm" c="dimmed">Total Facturado</Text>
                 <Text size="xl" fw={700}>${reportData.totalFacturado.toFixed(2)}</Text>
               </Paper>
-              <Paper withBorder p="sm" radius="md">
+              <Paper   p="sm" radius="md">
                 <Text size="sm" c="dimmed">Total Pagado</Text>
                 <Text size="xl" fw={700}>${reportData.totalPagado.toFixed(2)}</Text>
               </Paper>
@@ -357,7 +357,7 @@ export function ReporteCompras() {
                                 <Box mt="md">
                                   <Title order={6}>Recepciones Asociadas</Title>
                                   {oc.recepciones.map(recepcion => (
-                                    <Paper key={recepcion.id} withBorder p="xs" my="xs" bg="white">
+                                    <Paper key={recepcion.id}   p="xs" my="xs" bg="white">
                                       <Text size="sm" fw={500}>Nº Recepción: {recepcion.numeroRecepcion} - Fecha: {new Date(recepcion.fechaRecepcion).toLocaleDateString()}</Text>
                                       <Table withColumnBorders size="xs">
                                         <Table.Thead>
@@ -386,7 +386,7 @@ export function ReporteCompras() {
                                 <Box mt="md">
                                   <Title order={6}>Facturas de Proveedor Asociadas</Title>
                                   {oc.facturas.map(factura => (
-                                    <Paper key={factura.id} withBorder p="xs" my="xs" bg="white">
+                                    <Paper key={factura.id}   p="xs" my="xs" bg="white">
                                       <Text size="sm" fw={500}>Nº Factura: {factura.numeroFactura} - Total: ${factura.montoTotal.toFixed(2)} - Pagado: ${factura.montoPagado.toFixed(2)}</Text>
                                       <Text size="xs" c="dimmed">Estado: <Badge color={getEstadoOCColor(factura.estado)} size="xs">{factura.estado}</Badge></Text>
                                       {factura.pagos.length > 0 && (

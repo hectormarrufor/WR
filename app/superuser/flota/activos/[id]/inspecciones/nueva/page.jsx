@@ -67,7 +67,7 @@ export default function NuevaInspeccionPage() {
     const hallazgosFields = form.values.hallazgos.map((item, index) => {
         const severidad = item.severidad || 'Operativo'; // Default to Operativo
         return (
-            <Paper withBorder p="md" mt="sm" key={index}>
+            <Paper   p="md" mt="sm" key={index}>
                 <Group justify="space-between" mb="xs">
                     <Text fw={500}>Hallazgo #{index + 1}</Text>
                     <ActionIcon color="red" onClick={() => form.removeListItem('hallazgos', index)}><IconTrash size={16} /></ActionIcon>
@@ -123,14 +123,14 @@ export default function NuevaInspeccionPage() {
                 <Center>
                     <Title order={5}>Inspeccion realizada por: {nombre}</Title>
                 </Center>
-                <Paper withBorder p="md" mt="xl">
+                <Paper   p="md" mt="xl">
                     <Title order={4} mb="md">Lecturas Actuales</Title>
                     <Group grow>
                         <NumberInput label="Kilometraje Actual" required {...form.getInputProps('kilometrajeActual')} />
                         <NumberInput label="Horómetro Actual" {...form.getInputProps('horometroActual')} />
                     </Group>
                 </Paper>
-                <Paper withBorder p="md" mt="lg">
+                <Paper   p="md" mt="lg">
                     <Title order={4} mb="md">Reporte de Hallazgos</Title>
                     {hallazgosFields.length > 0 ? hallazgosFields : <Text c="dimmed" ta="center" p="md">No se han reportado problemas. Haz clic en "Añadir Hallazgo" si encuentras alguno.</Text>}
                     <Button

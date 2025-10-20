@@ -131,7 +131,7 @@ function AtributoValorizador({ attribute, path, onUpdate, from }) {
   }
 
   return (
-    <Paper withBorder p="sm" mt="xs" radius="sm">
+    <Paper   p="sm" mt="xs" radius="sm">
       <Text fw={500} size="sm">{attribute.label}</Text>
       <Text size="xs" c="dimmed" mb="sm">Define las especificaciones o repuestos compatibles.</Text>
       {attribute.consumibleType === 'Aceite' && (
@@ -200,7 +200,7 @@ export default function AtributoConstructor({ form, pathPrefix = '', availableGr
     const renderMode = item.renderMode || 'define';
     if (item.dataType === 'object' || item.dataType === 'grupo') {
       return (
-        <Paper key={item.key} withBorder p="md" mt="sm" shadow="xs" bg={paperColor}>
+        <Paper key={item.key}   p="md" mt="sm" shadow="xs" bg={paperColor}>
           <Group justify="space-between">
             <Text fw={700} c={item.dataType === 'object' ? 'cyan' : 'blue'}>{item.dataType === 'object' ? 'Atributo de Objeto: ' : `Atributo de ${from}: `}{item.label || ''}</Text>
             <ActionIcon color="red" onClick={() => removeAttribute(index)}><IconTrash size={16} /></ActionIcon>
@@ -237,7 +237,7 @@ export default function AtributoConstructor({ form, pathPrefix = '', availableGr
             </>
           )}
           <Collapse in={item.dataType === 'object' || item.mode === 'define'}>
-            <Paper withBorder p="md" mt="md" bg={theme.colors.gray[level + 2]}>
+            <Paper   p="md" mt="md" bg={theme.colors.gray[level + 2]}>
               {item.dataType === 'grupo' && item.mode === 'define' && (
                 <TextInput
                   label={`Nombre del Nuevo Sub-${from}`}
@@ -261,7 +261,7 @@ export default function AtributoConstructor({ form, pathPrefix = '', availableGr
       );
     }
     return (
-      <Paper key={item.key} withBorder p="md" mt="sm" shadow="xs" bg={paperColor}>
+      <Paper key={item.key}   p="md" mt="sm" shadow="xs" bg={paperColor}>
         <Group justify="space-between">
           <Text fw={500}>{item.label || 'Nuevo Atributo'}</Text>
           <Group gap="xs">
@@ -277,7 +277,7 @@ export default function AtributoConstructor({ form, pathPrefix = '', availableGr
           </Group>
         </Group>
         <Collapse in={renderMode === 'define'}>
-          <Paper withBorder p="sm" mt="md" radius="sm">
+          <Paper   p="sm" mt="md" radius="sm">
             <AtributoField attribute={item} path={currentPath} onUpdate={updateAttribute} />
           </Paper>
         </Collapse>

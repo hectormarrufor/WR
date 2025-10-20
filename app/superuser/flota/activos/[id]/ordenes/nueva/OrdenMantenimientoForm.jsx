@@ -158,7 +158,7 @@ export default function OrdenMantenimientoForm() {
     };
 
     const tareasFields = form.values.tareas.map((tarea, index) => (
-        <Paper withBorder p="sm" mt="md" key={index}>
+        <Paper   p="sm" mt="md" key={index}>
             <Group justify="space-between">
                 <Text fw={500}>Tarea #{index + 1}</Text>
                 <ActionIcon color="red" onClick={() => form.removeListItem('tareas', index)}><IconTrash size={16} /></ActionIcon>
@@ -178,7 +178,7 @@ export default function OrdenMantenimientoForm() {
                 <Box mt="sm" pt="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
                     <Text size="sm" fw={500}>Repuestos Solicitados para esta Tarea:</Text>
                     {tarea.consumibles.map((cons, consIndex) => (
-                        <Paper withBorder p="xs" radius="sm" mt={5} key={cons.consumibleId}>
+                        <Paper   p="xs" radius="sm" mt={5} key={cons.consumibleId}>
                             <Group justify="space-between">
                                 <Text size="sm">{cons.nombre} (Cant: {cons.cantidad})</Text>
                                 <ActionIcon

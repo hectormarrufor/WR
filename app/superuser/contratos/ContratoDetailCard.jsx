@@ -27,7 +27,7 @@ export function ContratoDetailCard({ contrato }) {
   }
 
   return (
-    <Paper withBorder shadow="md" p="xl" radius="md">
+    <Paper   shadow="md" p="xl" radius="md">
       <Group justify="space-between" mb="md" align="flex-start">
         <Stack gap={4}>
           <Title order={3}>{contrato.numeroContrato}</Title>

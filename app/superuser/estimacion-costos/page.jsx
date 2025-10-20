@@ -9,7 +9,7 @@ export default function EstimacionCostosMenu() {
  
   return (
     <Stack py={isMobile? 0 : "xl"}  h="80vh"  justify='center' align='center' w="100%" >
-      <Paper justify="center" shadow="sm" padding={isMobile? 0 : "lg"} w={isMobile? "100%" : "40%"} withBorder>
+      <Paper justify="center" shadow="sm" padding={isMobile? 0 : "lg"} w={isMobile? "100%" : "40%"}  >
         <Title order={2} mb="lg">Módulo de estimación de costos</Title>
         <Stack>
           <Button component={Link} href="/superuser/estimacion-costos/nuevo">Estimar nuevo costo</Button>

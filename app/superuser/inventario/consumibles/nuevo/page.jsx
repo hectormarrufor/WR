@@ -6,7 +6,7 @@ import ConsumibleForm from '../ConsumibleForm';
 
 export default function NuevoConsumiblePage() {
     return (
-        <Paper withBorder p="xl" mt={30}>
+        <Paper   p="xl" mt={30}>
             <Group justify="space-between" mb="xl">
                  <Title order={2}>Crear Nuevo Consumible</Title>
                  <BackButton />

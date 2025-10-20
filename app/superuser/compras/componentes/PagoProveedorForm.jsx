@@ -143,7 +143,7 @@ export function PagoProveedorForm({ facturaProveedorId }) {
   return (
     <Box maw={600} mx="auto" py="md">
       <Title order={2} mb="lg">Registrar Pago a Proveedor</Title>
-      <Paper withBorder shadow="md" p="md" mb="lg">
+      <Paper   shadow="md" p="md" mb="lg">
         <Text size="lg" fw={700}>Factura: {facturaData.numeroFactura}</Text>
         <Text>Proveedor: {facturaData.proveedor?.nombre}</Text>
         <Text>Monto Total: ${parseFloat(facturaData.totalAPagar).toFixed(2)}</Text>
@@ -152,7 +152,7 @@ export function PagoProveedorForm({ facturaProveedorId }) {
       </Paper>
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Paper withBorder shadow="md" p="md" mb="lg">
+        <Paper   shadow="md" p="md" mb="lg">
           <Title order={4} mb="sm">Detalles del Pago</Title>
           <NumberInput
             label="Monto a Pagar"

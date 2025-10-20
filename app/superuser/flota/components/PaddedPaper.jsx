@@ -15,7 +15,7 @@ const PaddedPaper = ({children}) => {
             mx={isMobile ? 0 : 40}
             mt={isMobile ? 30 : 40}
             p={isMobile ? 4 : 'md'}
-            withBorder
+             
             shadow="md"
             radius={isMobile ? 0 : "md"}
             style={{ minHeight: '90vh' }}

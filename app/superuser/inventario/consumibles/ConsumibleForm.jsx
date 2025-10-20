@@ -669,7 +669,7 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
                 {isFetchingModels && <Loader size="sm" mt="md" />}
                 
                 {Object.entries(selectedModelosData).map(([modeloId, data]) => (
-                    <Paper withBorder p="sm" mt="md" key={modeloId}>
+                    <Paper   p="sm" mt="md" key={modeloId}>
                         <Text fw={500} mb="xs">
                             Atributos de {modelos.find(m => m.value === modeloId)?.label}
                         </Text>

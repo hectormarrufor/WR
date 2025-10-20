@@ -215,7 +215,7 @@ export function OrdenCompraForm({ ordenCompraId = null }) {
     <Box maw={800} mx="auto" py="md">
       <Title order={2} mb="lg">{ordenCompraId ? `Editar Orden de Compra: ${form.values.numeroOrden || ''}` : 'Crear Nueva Orden de Compra'}</Title>
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Paper withBorder shadow="md" p="md" mb="lg">
+        <Paper   shadow="md" p="md" mb="lg">
           <Title order={4} mb="sm">Datos Generales</Title>
           <Select
             label="Proveedor"
@@ -281,7 +281,7 @@ export function OrdenCompraForm({ ordenCompraId = null }) {
           />
         </Paper>
 
-        <Paper withBorder shadow="md" p="md" mb="lg">
+        <Paper   shadow="md" p="md" mb="lg">
           <Group justify="space-between" mb="sm">
             <Title order={4}>Detalles de la Orden</Title>
             {!isReadOnly && (

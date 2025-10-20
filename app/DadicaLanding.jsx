@@ -113,7 +113,7 @@ export default function DadicaLanding({ isMobile }) {
                 <Divider my="sm" />
                 <Grid>
                     <Grid.Col span={isMobile ? 12 : 3}>
-                        <Card radius="md" p="sm" withBorder>
+                        <Card radius="md" p="sm">
                             <Center>
                                 <Image src="/plataforma.jpg" alt="Gestión de carga" width={160} height={200} fit="cover" />
                             </Center>
@@ -122,7 +122,7 @@ export default function DadicaLanding({ isMobile }) {
                     </Grid.Col>
 
                     <Grid.Col span={isMobile ? 12 : 3}>
-                        <Card radius="md" p="sm" withBorder>
+                        <Card radius="md" p="sm" >
                             <Center>
                                 <Image src="/retro.jpg" alt="Preparación y mantenimiento de locaciones" width={160} height={200} fit="cover" />
                             </Center>
@@ -131,7 +131,7 @@ export default function DadicaLanding({ isMobile }) {
                     </Grid.Col>
 
                     <Grid.Col span={isMobile ? 12 : 3}>
-                        <Card radius="md" p="sm" withBorder>
+                        <Card radius="md" p="sm" >
                             <Center>
                                 <Image src="/vaccum.jpg" alt="Recolección y transporte de residuos" width={160} height={200} fit="cover" />
                             </Center>
@@ -140,7 +140,7 @@ export default function DadicaLanding({ isMobile }) {
                     </Grid.Col>
 
                     <Grid.Col span={isMobile ? 12 : 3}>
-                        <Card radius="md" p="sm" withBorder>
+                        <Card radius="md" p="sm" >
                             <Center>
                                 <Image src="/lowboy.jpg" alt="Transporte de equipos pesados" width={160} height={200} fit="cover" />
                             </Center>

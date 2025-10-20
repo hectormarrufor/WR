@@ -150,19 +150,19 @@ export default function FacturaDetailPage({ params }) {
 
       <Grid grow mb="lg">
         <Grid.Col span={{ base: 12, sm: 4 }}>
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Card shadow="sm" padding="lg" radius="md"  >
             <Text size="xl" fw={700} ta="center" mb="xs">Subtotal</Text>
             <Text size="3rem" fw={900} c="blue" ta="center">${parseFloat(factura.montoTotal).toFixed(2)}</Text>
           </Card>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 4 }}>
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Card shadow="sm" padding="lg" radius="md"  >
             <Text size="xl" fw={700} ta="center" mb="xs">Impuestos</Text>
             <Text size="3rem" fw={900} c="orange" ta="center">${parseFloat(factura.impuestos).toFixed(2)}</Text>
           </Card>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 4 }}>
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Card shadow="sm" padding="lg" radius="md"  >
             <Text size="xl" fw={700} ta="center" mb="xs">Total a Pagar</Text>
             <Text size="3rem" fw={900} c="teal" ta="center">${parseFloat(factura.totalAPagar).toFixed(2)}</Text>
           </Card>

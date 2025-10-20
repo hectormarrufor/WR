@@ -123,7 +123,7 @@ export default function GruposListPage() {
     ));
 
     return (
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <Paper   shadow="md" p={30} mt={30} radius="md">
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Grupos de Activos</Title>
                 <Group>

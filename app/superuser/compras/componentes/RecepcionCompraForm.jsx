@@ -197,7 +197,7 @@ function RecepcionCompraFormContent() {
     <Box maw={800} mx="auto" py="md">
       <Title order={2} mb="lg">Registrar Recepción de Compra</Title>
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Paper withBorder shadow="md" p="md" mb="lg">
+        <Paper   shadow="md" p="md" mb="lg">
           <Title order={4} mb="sm">Datos de la Recepción</Title>
           <Select
             label="Orden de Compra"
@@ -240,7 +240,7 @@ function RecepcionCompraFormContent() {
           />
         </Paper>
 
-        <Paper withBorder shadow="md" p="md" mb="lg">
+        <Paper   shadow="md" p="md" mb="lg">
           <Group justify="space-between" mb="sm">
             <Title order={4}>Ítems Recibidos</Title>
           </Group>

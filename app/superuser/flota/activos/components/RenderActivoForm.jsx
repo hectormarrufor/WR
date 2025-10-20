@@ -66,7 +66,7 @@ function ActivoConsumibleSelect({ attribute, form, fieldPath }) {
                 placeholder={loading ? 'Cargando...' : 'Selecciona un consumible'}
             />
             <Collapse in={!!selectedConsumible}>
-                <Paper withBorder p="xs" mt="xs" radius="sm">
+                <Paper   p="xs" mt="xs" radius="sm">
                     <Text size="xs" fw={500}>Datos de Instalación (Opcional, para piezas ya instaladas)</Text>
                     <Group grow mt="xs">
                         <DateInput
@@ -124,7 +124,7 @@ export default function RenderActivoForm({ schema, form, pathPrefix = 'datosPers
                 ))}
             </Grid>
             {objectAttributes.map(attr => (
-                <Paper withBorder p="md" mt="lg" radius="md" key={attr.id}>
+                <Paper   p="md" mt="lg" radius="md" key={attr.id}>
                     <Title order={6} mb="xs">{attr.label}</Title>
                     <RenderActivoForm
                         schema={attr.definicion}

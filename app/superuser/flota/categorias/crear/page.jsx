@@ -248,7 +248,7 @@ export default function CrearCategoriaPage() {
     };
 
     return (
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md" style={{ position: 'relative' }}>
+        <Paper   shadow="md" p={30} mt={30} radius="md" style={{ position: 'relative' }}>
             <LoadingOverlay visible={loading || isSubmitting} overlayProps={{ radius: "sm", blur: 2 }} />
             <Group justify="space-between" mb="xl">
                 <Title order={2}>

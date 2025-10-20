@@ -87,7 +87,7 @@ export default function ParametrosPage() {
     return (
         <Container size="md" py="xl">
             <Title order={2} mb="lg">Configuración de parámetros de estimación</Title>
-            <Card withBorder shadow="sm" padding="lg">
+            <Card   shadow="sm" padding="lg">
 
                 {/* RESGUARDO */}
                 <Title order={4}>🧯 Resguardo</Title>

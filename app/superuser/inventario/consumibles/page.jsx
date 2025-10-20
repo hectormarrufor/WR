@@ -74,7 +74,7 @@ export default function ListarConsumiblesPage() {
     ));
 
     return (
-        <Paper withBorder shadow="md" p="xl" radius="md" mt={30}>
+        <Paper   shadow="md" p="xl" radius="md" mt={30}>
             <LoadingOverlay visible={loading} />
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Gestión de Consumibles</Title>

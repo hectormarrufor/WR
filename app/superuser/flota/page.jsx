@@ -45,7 +45,7 @@ export default function FlotaDashboardPage() {
   const items = mockdata.map((item) => (
     <Paper
       key={item.title}
-      withBorder
+       
       p="md"
       radius="md"
       className={classes.card}

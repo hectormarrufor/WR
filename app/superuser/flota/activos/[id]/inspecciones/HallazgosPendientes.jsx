@@ -26,7 +26,7 @@ export default function HallazgosPendientes({ hallazgos, activoId }) {
         <Checkbox.Group value={selectedHallazgos} onChange={setSelectedHallazgos} m={0}>
             <Stack m={0}>
                 {hallazgos.map((hallazgo) => (
-                    <Paper withBorder p={5} m={0} radius="sm" key={hallazgo.id}>
+                    <Paper   p={5} m={0} radius="sm" key={hallazgo.id}>
                         <Group>
                             <Checkbox value={hallazgo.id.toString()} />
                             <Box style={{ flex: 1 }}>

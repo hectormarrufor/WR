@@ -17,7 +17,7 @@ export default function InventarioDashboardPage() {
                 shadow="md"
                 padding="xl"
                 radius="md"
-                withBorder
+                 
                 style={{ width: '100%', maxWidth: 800, backgroundColor: 'white' }}
             >
                 <Title order={2} align="center" mb="lg">

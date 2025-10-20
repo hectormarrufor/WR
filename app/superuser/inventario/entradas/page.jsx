@@ -31,7 +31,7 @@ export default function ListarEntradasPage() {
     ));
 
     return (
-        <Paper withBorder shadow="md" p="xl" radius="md" mt={30}>
+        <Paper   shadow="md" p="xl" radius="md" mt={30}>
             <Group justify="space-between" mb="xl">
                 <Title order={2}>Registro de Entradas</Title>
                 <Button leftSection={<IconPlus size={16} />} onClick={() => router.push('/superuser/inventario/entradas/nueva')}>

@@ -16,6 +16,7 @@ webpush.setVapidDetails(
 const admins = await PushSubscription.findAll({ where: { rol: 'admin', activo: true } });
 
 export async function POST(req) {
+    console.log("ADMIIIIIINSSSS", admins);
     try {
         const parsedBody = await req.json(); // Parsea el cuerpo de la solicitud JSON
         const { user, password } = parsedBody;
