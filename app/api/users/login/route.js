@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
 import { NextResponse } from "next/server";
 import { Error } from "sequelize";
-import { Departamento, Empleado, Puesto , db} from "@/models";
+import { Departamento, Empleado, Puesto ,db } from "@/models";
 
 webpush.setVapidDetails(
     'mailto:admin@tuapp.com',
