@@ -68,21 +68,18 @@ export function AuthProvider({ children }) {
                     await fetch('/api/suscribir', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
+                        body: JSON.stringify({
                             suscripcion: sub,
                             usuarioId: fetched?.id,
                             rol: fetched?.isAdmin ? 'admin' : (fetched?.rol || 'user'),
-                            
+
                         }),
                     });
                 } catch (e) {
                     console.error('Push subscribe failed', e);
                 }
             }
-
-
             router.push('/superuser'); // Redirige al dashboard
-
         } catch (error) {
             setLoading(false);
             throw error; // Lanza el error para que el formulario de login lo muestre
@@ -92,13 +89,19 @@ export function AuthProvider({ children }) {
     // ✨ NUEVA FUNCIÓN DE LOGOUT ✨
     const logout = async () => {
         try {
-            await fetch('/api/users/logout', { method: 'POST' });
-        } catch (error) {
-            console.error("Error al cerrar sesión:", error);
-        } finally {
-            setUser(null); // Limpiamos el estado del usuario
-            router.push('/login'); // Redirigimos al login
-        }
+            const endpoint = await unsubscribirsePush();
+            if (endpoint) {
+                await fetch('/api/suscribir', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint }),
+                });
+            }
+        } catch (e) { console.error('Unsubscribe failed', e); }
+        await fetch('/api/users/logout', { method: 'POST' });
+        setUser(null);
+        router.push('/login');
+
     };
 
     return <AuthContext.Provider value={{ userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout }}>{children}</AuthContext.Provider>;
