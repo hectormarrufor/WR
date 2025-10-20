@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
 import { NextResponse } from "next/server";
 import { Error } from "sequelize";
-import { Departamento, Empleado, Puesto ,db } from "@/models";
+import  { Departamento, Empleado, Puesto, PushSubscription } from "@/models";
+
 
 webpush.setVapidDetails(
     'mailto:admin@tuapp.com',
@@ -12,7 +13,7 @@ webpush.setVapidDetails(
     process.env.VAPID_PRIVATE_KEY
 );
 
-const admins = await db.PushSubscription.findAll({ where: { rol: 'admin', activo: true } });
+const admins = await PushSubscription.findAll({ where: { rol: 'admin', activo: true } });
 
 export async function POST(req) {
     try {
@@ -54,7 +55,7 @@ export async function POST(req) {
             } catch (err) {
                 console.error('Push send error', err);
                 // Si el error indica suscripción inválida elimina o marca inactiva
-                await db.PushSubscription.update({ activo: false }, { where: { endpoint: a.endpoint } });
+                await PushSubscription.update({ activo: false }, { where: { endpoint: a.endpoint } });
             }
         }
 
