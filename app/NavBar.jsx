@@ -1,12 +1,12 @@
 import { useAuth } from '@/hooks/useAuth';
-import { Group, Title, UnstyledButton } from '@mantine/core';
+import { Stack, Title, UnstyledButton } from '@mantine/core';
 import React from 'react'
 
-const LayoutMenu = ({ classes, router }) => {
+const NavBar = ({ classes, router }) => {
     const { isAuthenticated, logout, nombre } = useAuth();
 
     return (
-                <Group ml="xl" gap={0} visibleFrom="md">
+                <Stack mt={120} gap={20} justify='space-between' h="30%" align='center'>
                     {!isAuthenticated && <UnstyledButton className={classes.control} onClick={() => router.push('/')}><Title order={6}>Inicio</Title></UnstyledButton>}
                     {isAuthenticated && <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}><Title order={6}>Hola, {nombre}</Title></UnstyledButton>}
                     {/* <UnstyledButton className={classes.control} onClick={() => router.push('/stones')}>Nuestros Productos</UnstyledButton> */}
@@ -21,9 +21,9 @@ const LayoutMenu = ({ classes, router }) => {
 
 
                     {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
-                </Group>
+                </Stack>
 
     )
 }
 
-export default LayoutMenu
+export default NavBar

@@ -20,6 +20,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { AuthProvider } from '@/hooks/useAuth';
 import LayoutMenu from './LayoutMenu';
 import { notificar } from './handlers/notificar';
+import NavBar from './NavBar';
 
 
 
@@ -109,12 +110,12 @@ export default function RootLayout({ children }) {
                     <Group justify="space-evenly" style={{ flex: 1 }}>
                       <LayoutMenu classes={classes} router={router} />
 
- 
+
                     </Group>
                   </Group>
                 </Group>
               </AppShell.Header>
-              <AppShell.Navbar py="md" px={4} mt={70} bg="#fafaface"
+              <AppShell.Navbar py="md" px={4} mt={50} bg="#fafaface"
                 style={{
                   backdropFilter: 'blur(10px)', // efecto blur
                   WebkitBackdropFilter: 'blur(10px)', // soporte Safari
@@ -123,7 +124,7 @@ export default function RootLayout({ children }) {
                   zIndex: 999,
                 }}
               >
-                <LayoutMenu classes={classes} router={router} />
+                <NavBar classes={classes} router={router} />
 
               </AppShell.Navbar>
               <AppShell.Main
