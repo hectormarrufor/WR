@@ -1,100 +1,59 @@
-/**
- * Copyright 2018 Google Inc. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *     http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { NetworkFirst } from 'workbox-strategies';
+import { BackgroundSyncPlugin } from 'workbox-background-sync';
 
-// If the loader is already loaded, just stop.
-if (!self.define) {
-  let registry = {};
+// Precaching
+precacheAndRoute(self.__WB_MANIFEST);
 
-  // Used for `eval` and `importScripts` where we can't get script URL by other means.
-  // In both cases, it's safe to use a global var because those functions are synchronous.
-  let nextDefineUri;
+// Control inmediato
+self.skipWaiting();
+self.clients.claim();
 
-  const singleRequire = (uri, parentUri) => {
-    uri = new URL(uri + ".js", parentUri).href;
-    return registry[uri] || (
-      
-        new Promise(resolve => {
-          if ("document" in self) {
-            const script = document.createElement("script");
-            script.src = uri;
-            script.onload = resolve;
-            document.head.appendChild(script);
-          } else {
-            nextDefineUri = uri;
-            importScripts(uri);
-            resolve();
-          }
-        })
-      
-      .then(() => {
-        let promise = registry[uri];
-        if (!promise) {
-          throw new Error(`Module ${uri} didn’t register its module`);
-        }
-        return promise;
-      })
-    );
-  };
-
-  self.define = (depsNames, factory) => {
-    const uri = nextDefineUri || ("document" in self ? document.currentScript.src : "") || location.href;
-    if (registry[uri]) {
-      // Module is already loading or loaded.
-      return;
-    }
-    let exports = {};
-    const require = depUri => singleRequire(depUri, uri);
-    const specialDeps = {
-      module: { uri },
-      exports,
-      require
-    };
-    registry[uri] = Promise.all(depsNames.map(
-      depName => specialDeps[depName] || require(depName)
-    )).then(deps => {
-      factory(...deps);
-      return exports;
+// 🔔 Notificaciones push solo para admins
+self.addEventListener('push', event => {
+  const data = event.data?.json() || {};
+  if (data.role === 'admin') {
+    self.registration.showNotification(data.title || 'Alerta administrativa', {
+      body: data.body || 'Nuevo evento registrado',
+      icon: data.icon || '/icon.png',
+      data: data.url || '/',
     });
-  };
-}
-define(['./workbox-bd7e3b9b'], (function (workbox) { 'use strict';
+  }
+});
 
-  importScripts();
-  self.skipWaiting();
-  workbox.clientsClaim();
-  workbox.registerRoute("/", new workbox.NetworkFirst({
-    "cacheName": "start-url",
-    plugins: [{
-      cacheWillUpdate: async ({
-        request,
-        response,
-        event,
-        state
-      }) => {
-        if (response && response.type === 'opaqueredirect') {
-          return new Response(response.body, {
-            status: 200,
-            statusText: 'OK',
-            headers: response.headers
-          });
-        }
-        return response;
+// 🧭 Click en notificación → abrir URL
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) return client.focus();
       }
-    }]
-  }), 'GET');
-  workbox.registerRoute(/.*/i, new workbox.NetworkOnly({
-    "cacheName": "dev",
-    plugins: []
-  }), 'GET');
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});
 
-}));
+// 🔄 Estrategia de caché para inspecciones con background sync
+const bgSyncPlugin = new BackgroundSyncPlugin('inspecciones-queue', {
+  maxRetentionTime: 24 * 60, // 24 horas
+});
+
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/inspecciones'),
+  new NetworkFirst({
+    cacheName: 'inspecciones-cache',
+    plugins: [bgSyncPlugin],
+  })
+);
+
+// 🧹 Limpieza de suscripciones huérfanas al cerrar sesión
+self.addEventListener('message', event => {
+  if (event.data === 'logout') {
+    self.registration.pushManager.getSubscription().then(sub => {
+      if (sub) sub.unsubscribe();
+    });
+  }
+});

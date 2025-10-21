@@ -43,9 +43,27 @@ export default function RootLayout({ children }) {
       lastScrollY = currentY;
     };
 
+    if ('serviceWorker' in navigator) {
+      fetch('/static/service-worker.js', { method: 'HEAD' })
+        .then(res => {
+          if (res.ok) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+              .then(reg => console.log('SW registrado'))
+              .catch(err => console.error('Error al registrar SW:', err));
+          } else {
+            console.warn('SW no disponible en desarrollo');
+          }
+        })
+        .catch(err => console.error('Error al verificar SW:', err));
+    }
+
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+
+
+
+
 
   }, [])
 
@@ -151,7 +169,7 @@ export default function RootLayout({ children }) {
             </AppShell>
           </AuthProvider>
         </MantineProvider>
-        <Script id="sw-register" strategy="afterInteractive">
+        {/* <Script id="sw-register" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', () => {
@@ -161,7 +179,7 @@ export default function RootLayout({ children }) {
               });
             }
           `}
-        </Script>
+        </Script> */}
 
 
       </body>
