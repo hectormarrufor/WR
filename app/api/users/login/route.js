@@ -46,7 +46,7 @@ export async function POST(req) {
         if (!usuario.isAdmin) {
             await notificarAdmins({
                 title: 'Inicio de sesión detectado',
-                body: `${usuario.nombre} ha iniciado sesión`,
+                body: `${usuario.empleado?.nombre} ha iniciado sesión`,
                 url: '/admin/usuarios',
             });
         }

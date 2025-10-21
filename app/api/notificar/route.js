@@ -5,6 +5,9 @@ export async function notificarAdmins(payload) {
   const subscripciones = await PushSubscription.findAll({
     where: { rol: 'admin', activo: true },
   });
+  if( subscripciones.length === 0 ) {
+    throw new Error('No hay subscripciones de administradores activas.');
+  }
 
   for (const sub of subscripciones) {
     try {
