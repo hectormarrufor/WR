@@ -40,19 +40,31 @@ export default function RootLayout({ children }) {
       lastScrollY = currentY;
     };
 
-    if ('serviceWorker' in navigator) {
-      fetch('/static/service-worker.js', { method: 'HEAD' })
-        .then(res => {
-          if (res.ok) {
-            navigator.serviceWorker.register('/static/service-worker.js')
-              .then(reg => console.log('SW registrado'))
-              .catch(err => console.error('Error al registrar SW:', err));
-          } else {
-            console.warn('SW no disponible en desarrollo');
-          }
-        })
-        .catch(err => console.error('Error al verificar SW:', err));
+    if ("serviceWorker" in navigator) {
+      console.log("hay service worker");
+
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then(reg => console.log('✅ SW registrado:', reg))
+          .catch(err => console.error('❌ Error registrando SW:', err));
+
+      });
+
+
+      navigator.serviceWorker.ready.then(registration => {
+        console.log("✅ PWA listo con scope:", registration.scope);
+      });
     }
+
+    fetch('/api/suscribir') // Ver todas las suscripciones
+      .then(response => response.json())
+      .then(data => {
+        console.log('Suscripciones actuales:', data);
+      })
+      .catch(error => {
+        console.error('Error al obtener suscripciones:', error);
+      });
 
 
     window.addEventListener('scroll', handleScroll);

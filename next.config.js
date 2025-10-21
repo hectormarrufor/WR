@@ -1,29 +1,13 @@
-const { InjectManifest } = require('workbox-webpack-plugin');
+// next.config.js
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development'
+});
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = withPWA({
+  reactStrictMode: true,
   serverExternalPackages: ['sequelize'],
-  webpack(config, { isServer, dev }) {
-    // Solo aplica en el cliente
-    if (!isServer) {
-      // Evita duplicados: busca si ya existe una instancia
-      const alreadyInjected = config.plugins.some(
-        plugin => plugin.constructor.name === 'InjectManifest'
-      );
 
-      if (!alreadyInjected) {
-        config.plugins.push(
-          new InjectManifest({
-            swSrc: './public/sw.js',
-            swDest: 'static/service-worker.js',
-            maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-          })
-        );
-      }
-    }
-
-    return config;
-  },
-};
-
-module.exports = nextConfig;
+});

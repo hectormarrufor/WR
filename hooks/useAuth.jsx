@@ -3,7 +3,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
-import { suscribirsePush, unsubscribirsePush } from '@/app/handlers/push';
+import { desuscribirsePush, suscribirsePush } from '@/app/handlers/push';
 
 const AuthContext = createContext(null);
 
@@ -64,23 +64,13 @@ export function AuthProvider({ children }) {
             // Esto actualizará el estado y re-renderizará todo automáticamente.
             const fetched = await fetchUser();
             console.log(fetched)
-            if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-                try {
-                    const sub = await suscribirsePush();
-                    await fetch('/api/suscribir', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            suscripcion: sub,
-                            usuarioId: fetched?.id,
-                            rol: fetched?.isAdmin ? 'admin' : (fetched?.rol || 'user'),
 
-                        }),
-                    });
-                } catch (e) {
-                    console.error('Push subscribe failed', e);
-                }
+            try {
+                await suscribirsePush(fetched);
+            } catch (e) {
+                console.error('Push subscribe failed', e);
             }
+
             router.push('/superuser'); // Redirige al dashboard
         } catch (error) {
             setLoading(false);
@@ -90,20 +80,17 @@ export function AuthProvider({ children }) {
 
     // ✨ NUEVA FUNCIÓN DE LOGOUT ✨
     const logout = async () => {
+        console.log("voy a cerrar sesion")
         try {
-            const endpoint = await unsubscribirsePush();
-            if (endpoint) {
-                await fetch('/api/suscribir', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint }),
-                });
-            }
-        } catch (e) { console.error('Unsubscribe failed', e); }
+            await desuscribirsePush(); // ya maneja todo internamente
+            console.log("desuscripcion exitosa")
+        } catch (e) {
+            console.error('Unsubscribe failed', e);
+        }
+
         await fetch('/api/users/logout', { method: 'POST' });
         setUser(null);
         router.push('/login');
-
     };
 
     return <AuthContext.Provider value={{ userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout }}>{children}</AuthContext.Provider>;

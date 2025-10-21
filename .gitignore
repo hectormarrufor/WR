@@ -2,3 +2,6 @@ node_modules
 .next
 .env
 generarVAPIDKeys.js
+# next-pwa generated
+public/sw.js
+public/workbox-*.js

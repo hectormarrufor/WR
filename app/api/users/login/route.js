@@ -29,7 +29,6 @@ export async function POST(req) {
             console.error("contraseña invalida")
             throw new Error('Credenciales inválidas');
         }
-        console.log("usuario encontrado", usuario);
 
         const token = jwt.sign(
             { id: usuario.id, nombre: usuario.empleado?.nombre || "Admin", departamentos: usuario.empleado?.puestos.map(puesto => puesto.departamento) || "", isAdmin: usuario.isAdmin, puestos: usuario.empleado?.puestos || "", isAuthenticated: true },

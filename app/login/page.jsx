@@ -52,11 +52,23 @@ const page = () => {
   }, []);
 
   const handleSubmit = async (values) => {
+    
+  if (isAuthenticated) {
+    // Si ya está autenticado, redirige a la página de inicio
+    router.push('/superuser');
+    notifications.show({
+      title: 'Sesión Activa',
+      message: 'Ya estás autenticado, redirigiendo...',
+      color: 'blue',
+    });
+  }
+  else {
     try {
       pedirPermisoPush();
       // Llama a la función centralizada de login
       await login(values.user, values.password);
       // La redirección ahora la maneja el propio hook
+      return;
     } catch (error) {
       notifications.show({
         title: 'Error de Autenticación',
@@ -64,17 +76,9 @@ const page = () => {
         color: 'red',
       });
     }
+  }
   };
 
-  if (isAuthenticated) {
-    // Si ya está autenticado, redirige a la página de inicio
-    notifications.show({
-      title: 'Sesión Activa',
-      message: 'Ya estás autenticado, redirigiendo...',
-      color: 'blue',
-    });
-    router.push('/superuser');
-  }
 
 
   return (

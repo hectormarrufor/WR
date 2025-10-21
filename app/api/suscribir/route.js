@@ -1,21 +1,50 @@
 // app/api/suscribir/route.js
 import db from '@/models';
+import { Op } from 'sequelize';
+
+
+export async function GET(req) {
+  try {
+    const subscripciones = await db.PushSubscription.findAll();
+    return new Response(JSON.stringify(subscripciones), { status: 200 });
+  } catch (error) {
+    console.error('Error fetching subscriptions:', error);
+    return new Response(JSON.stringify({ error: 'Error fetching subscriptions' }), { status: 500 });
+  }
+}
 
 export async function POST(req) {
   const body = await req.json();
-  const { suscripcion, usuarioId, rol } = body;
+  const { suscripcion, usuarioId, rol, navegador } = body;
   await db.PushSubscription.upsert({
     endpoint: suscripcion.endpoint,
     keys: suscripcion.keys,
     usuarioId: parseInt(usuarioId),
     rol,
     activo: true,
+    navegador,
   });
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 }
 export async function DELETE(req) {
-  const body = await req.json();
-  const { endpoint } = body;
-  await db.PushSubscription.update({ activo: false }, { where: { endpoint } });
-  return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  try {
+
+    const body = await req.json();
+    const { endpoint } = body;
+    await db.PushSubscription.update({ activo: false }, { where: { endpoint } });
+
+    // Opcional: eliminar físicamente todas las entradas 
+    // await db.PushSubscription.destroy({
+    //   where: {
+    //     endpoint: {
+    //       [Op.like]: '%wns2-ch1p.notify.windows%'
+    //     }
+    //   }
+    // });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+  catch (error) {
+    console.error('Error deleting subscriptions:', error);
+    return new Response(JSON.stringify({ error: 'Error deleting subscriptions' }), { status: 500 });
+  }
 }
