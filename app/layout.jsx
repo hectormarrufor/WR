@@ -66,6 +66,8 @@ export default function RootLayout({ children }) {
         console.error('Error al obtener suscripciones:', error);
       });
 
+      
+
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
