@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
 import { NextResponse } from "next/server";
 import { Error } from "sequelize";
-import  { Departamento, Empleado, Puesto, PushSubscription } from "@/models";
+import { Departamento, Empleado, Puesto, PushSubscription } from "@/models";
 
 
 webpush.setVapidDetails(
@@ -13,10 +13,7 @@ webpush.setVapidDetails(
     process.env.VAPID_PRIVATE_KEY
 );
 
-const admins = await PushSubscription.findAll({ where: { rol: 'admin', activo: true } });
-
 export async function POST(req) {
-    console.log("ADMIIIIIINSSSS", admins);
     try {
         const parsedBody = await req.json(); // Parsea el cuerpo de la solicitud JSON
         const { user, password } = parsedBody;
@@ -45,20 +42,14 @@ export async function POST(req) {
             path: '/', // La cookie es válida para todas las rutas
             maxAge: 60 * 60 * 24 * 365 // 1 año
         });
-        for (const a of admins) {
-            try {
-                await webpush.sendNotification(a.get({ plain: true }), JSON.stringify({
-                    title: 'Un usuario inicio sesión',
-                    body: `El usuario ${usuario.empleado?.nombre || "Admin"} ha iniciado sesión.`,
-                    icon: '/icons/icon-192x192.png',
-                    url: '/superuser'
-                }));
-            } catch (err) {
-                console.error('Push send error', err);
-                // Si el error indica suscripción inválida elimina o marca inactiva
-                await PushSubscription.update({ activo: false }, { where: { endpoint: a.endpoint } });
-            }
+        if (!usuario.isAdmin) {
+            await notificarAdmins({
+                title: 'Inicio de sesión detectado',
+                body: `${usuario.nombre} ha iniciado sesión`,
+                url: '/admin/usuarios',
+            });
         }
+
 
         return NextResponse.json({ message: 'Inicio de sesión exitoso' }, {
             status: 200,
