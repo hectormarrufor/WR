@@ -57,6 +57,12 @@ export default function RootLayout({ children }) {
       });
     }
 
+    if ('PushManager' in window) {
+      console.log('✅ Push notifications are supported');
+    } else {
+      console.log('❌ Push notifications are NOT supported');
+    }
+
     fetch('/api/suscribir') // Ver todas las suscripciones
       .then(response => response.json())
       .then(data => {
@@ -66,7 +72,7 @@ export default function RootLayout({ children }) {
         console.error('Error al obtener suscripciones:', error);
       });
 
-      
+
 
 
     window.addEventListener('scroll', handleScroll);

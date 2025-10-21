@@ -14,6 +14,7 @@ export async function suscribirsePush(fetched) {
       console.warn('Suscripción WNS no soportada');
       return;
     }
+    
 
 
     // Enviar suscripción al backend junto con datos del usuario
