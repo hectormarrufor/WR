@@ -2,7 +2,6 @@
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 
-import Script from 'next/script';
 
 import { AppShell, Box, Burger, createTheme, Group, Image, LoadingOverlay, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -14,12 +13,10 @@ import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { useRouter, usePathname } from 'next/navigation';
 import { theme as themeee } from '../theme';
-import { cerrarSesion } from './ApiFunctions/userServices';
 import "./global.css"
 import { useMediaQuery } from '@mantine/hooks';
 import { AuthProvider } from '@/hooks/useAuth';
 import LayoutMenu from './LayoutMenu';
-import { notificar } from './handlers/notificar';
 import NavBar from './NavBar';
 
 
@@ -60,10 +57,6 @@ export default function RootLayout({ children }) {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-
-
-
-
 
   }, [])
 

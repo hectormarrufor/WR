@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
 import { NextResponse } from "next/server";
 import { Error } from "sequelize";
-import { Departamento, Empleado, Puesto, PushSubscription } from "@/models";
+import { Departamento, Empleado, Puesto } from "@/models";
+import { notificarAdmins } from "../../notificar/route";
 
 
 webpush.setVapidDetails(

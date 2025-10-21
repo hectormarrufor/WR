@@ -1,26 +1,43 @@
 // utils/push.js
-export function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
-
-export async function suscribirsePush() {
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.subscribe({
+export async function suscribirsePush(vapidPublicKey) {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
+    applicationServerKey: vapidPublicKey,
   });
-  return subscription.toJSON();
-}
 
-export async function unsubscribirsePush() {
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
-  if (subscription) {
-    await subscription.unsubscribe();
-    return subscription.endpoint;
+  await fetch('/api/suscribir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sub),
+  });
+
+  return sub;
+}
+export async function desuscribirsePush() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (sub) {
+    await sub.unsubscribe();
+    await fetch('/api/suscribir', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    });
   }
-  return null;
+  return sub ? sub.endpoint : null;
+}
+export async function pedirPermisoPush() {
+  if (!('Notification' in window)) {
+    console.warn('Este navegador no soporta notificaciones.');
+    return;
+  }
+  if (Notification.permission === 'default') {
+    const permiso = await Notification.requestPermission(); 
+    if (permiso === 'granted') {
+      console.log('Permiso de notificaciones concedido.');
+    }
+  } else if (Notification.permission === 'denied') {
+    console.warn('Las notificaciones están bloqueadas. Revisa los permisos del navegador.');
+  }
 }
