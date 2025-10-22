@@ -32,7 +32,7 @@ export async function DELETE(req) {
 
     const body = await req.json();
     const { endpoint } = body;
-    await db.PushSubscription.update({ activo: false }, { where: { endpoint } });
+    await db.PushSubscription.destroy({ where: { endpoint } });
 
     // Opcional: eliminar físicamente todas las entradas 
     // await db.PushSubscription.destroy({

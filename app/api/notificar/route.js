@@ -16,7 +16,8 @@ export async function notificarAdmins(payload) {
   });
   
   if( subscripciones.length === 0 ) {
-    throw new Error('No hay subscripciones de administradores activas.');
+    console.warn('No hay subscripciones de administradores activas.');
+    return;
   }
   else {
     console.log(`\x1b[42m [INFO]: Enviando notificación a ${subscripciones.length} administradores. \x1b[0m`);
@@ -49,7 +50,8 @@ export async function notificarUsuario(usuarioId, payload) {
     where: { usuarioId, activo: true },
   });
   if( subscripciones.length === 0 ) {
-    throw new Error(`No hay subscripciones activas para el usuario ${usuarioId}.`);
+    console.warn(`No hay subscripciones activas para el usuario ${usuarioId}.`);
+    return;
   }
   for (const sub of subscripciones) {
     try {
