@@ -6,7 +6,9 @@ const withPWA = require('next-pwa')({
   clientsClaim: true,
   disable: process.env.NODE_ENV === 'development',
   buildExcludes: [/app-build-manifest\.json$/],
-  customWorkerDir: 'public/sw',
+  swSrc: 'sw.js'
+
+
 });
 
 module.exports = withPWA({

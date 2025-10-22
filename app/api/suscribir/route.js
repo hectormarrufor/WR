@@ -29,18 +29,18 @@ export async function POST(req) {
 export async function DELETE(req) {
   try {
 
-    // const body = await req.json();
-    // const { endpoint } = body;
-    // await db.PushSubscription.update({ activo: false }, { where: { endpoint } });
+    const body = await req.json();
+    const { endpoint } = body;
+    await db.PushSubscription.update({ activo: false }, { where: { endpoint } });
 
     // Opcional: eliminar físicamente todas las entradas 
-    await db.PushSubscription.destroy({
-      where: {
-        endpoint: {
-          [Op.like]: '%wns2-ch1p.notify.windows%'
-        }
-      }
-    });
+    // await db.PushSubscription.destroy({
+    //   where: {
+    //     endpoint: {
+    //       [Op.like]: '%fcm.googleapis.com%'
+    //     }
+    //   }
+    // });
 
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 });

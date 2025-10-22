@@ -63,7 +63,6 @@ export function AuthProvider({ children }) {
             setLoading(false);
             // Esto actualizará el estado y re-renderizará todo automáticamente.
             const fetched = await fetchUser();
-            console.log(fetched)
 
             try {
                 await suscribirsePush(fetched);

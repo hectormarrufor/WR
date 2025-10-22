@@ -3,6 +3,11 @@ export async function suscribirsePush(fetched) {
   try {
     // Esperar a que el SW esté listo
     const reg = await navigator.serviceWorker.ready;
+    if (!reg) {
+      throw new Error('Service worker no está listo');
+    }else {
+      console.log("service worker disponible, procedo a suscribir al usuario")
+    }
 
     // Crear suscripción push
     const sub = await reg.pushManager.subscribe({
@@ -37,17 +42,19 @@ export async function suscribirsePush(fetched) {
 }
 export async function desuscribirsePush() {
   if (!('serviceWorker' in navigator)) {
-    console.warn('Service workers no disponibles');
+    console.warn('Service workers no disponibles, no se puede desuscribir de push');
     return null;
   }
-  console.log("hay service worker");
+  else {
+    console.log("service worker disponible, procedo a desuscribir de push el usuario")
+  }
+
   try {
-    console.log('navigator.serviceWorker.controller:', navigator.serviceWorker.controller);
-    console.log('navigator.serviceWorker.ready:', navigator.serviceWorker.ready);
+   
 
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
-    console.log("pase de obtener la suscripcion")
+    console.log("endpoint de la suscripcion a inactivar:", sub?.endpoint);
     if (sub) {
       try {
         await sub.unsubscribe();
