@@ -23,6 +23,7 @@ export async function POST(req) {
     rol,
     activo: true,
     navegador,
+    environment: process.env.NODE_ENV,
   });
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 }

@@ -5,7 +5,7 @@ export async function suscribirsePush(fetched) {
     const reg = await navigator.serviceWorker.ready;
     if (!reg) {
       throw new Error('Service worker no está listo');
-    }else {
+    } else {
       console.log("service worker disponible, procedo a suscribir al usuario")
     }
 
@@ -19,7 +19,25 @@ export async function suscribirsePush(fetched) {
       console.warn('Suscripción WNS no soportada');
       return;
     }
-    
+
+    let os = "Desconocido", browser = "Desconocido";
+    if (navigator.userAgentData) {
+      os = navigator.userAgentData.platform;
+      browser = navigator.userAgentData.brands[0]?.brand || "Desconocido";
+    } else {
+      const ua = navigator.userAgent;
+      if (/Android/i.test(ua)) os = "Android";
+      else if (/Win/i.test(ua)) os = "Windows";
+      else if (/Mac/i.test(ua)) os = "macOS";
+      else if (/Linux/i.test(ua)) os = "Linux";
+
+      if (/Chrome/i.test(ua)) browser = "Chrome";
+      else if (/Firefox/i.test(ua)) browser = "Firefox";
+      else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+      else if (/Edg/i.test(ua)) browser = "Edge";
+    }
+    console.log(`Suscripción push creada en ${os} usando ${browser}:`, sub);
+
 
 
     // Enviar suscripción al backend junto con datos del usuario
@@ -30,7 +48,7 @@ export async function suscribirsePush(fetched) {
         suscripcion: sub,
         usuarioId: fetched?.id,
         rol: fetched?.isAdmin ? 'admin' : (fetched?.rol || 'user'),
-        navegador: navigator.userAgent,
+        navegador: `${browser} - ${os}`,
       }),
     });
 
@@ -50,7 +68,7 @@ export async function desuscribirsePush() {
   }
 
   try {
-   
+
 
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();

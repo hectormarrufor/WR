@@ -28,5 +28,8 @@ const PushSubscription = sequelize.define('PushSubscription', {
         type: DataTypes.BOOLEAN,
         defaultValue: true,
     },
+    environment: {
+        type: DataTypes.STRING, // 'development' o 'production'
+    },
 });
 module.exports = PushSubscription;
