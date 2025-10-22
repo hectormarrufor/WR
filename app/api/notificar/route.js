@@ -1,6 +1,15 @@
 import webpush from 'web-push';
 import { PushSubscription } from '@/models'; // Sequelize: solo en server
 
+// Configurar VAPID (debe coincidir con el cliente)
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+webpush.setVapidDetails(
+  'mailto: hectormmarrufor@gmail.com',
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
+
 export async function notificarAdmins(payload) {
   const subscripciones = await PushSubscription.findAll({
     where: { rol: 'admin', activo: true },
