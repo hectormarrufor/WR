@@ -15,7 +15,7 @@ export async function GET(req) {
 
 export async function POST(req) {
   const body = await req.json();
-  const { suscripcion, usuarioId, rol, navegador } = body;
+  const { suscripcion, usuarioId, rol, navegador, environment } = body;
   await db.PushSubscription.upsert({
     endpoint: suscripcion.endpoint,
     keys: suscripcion.keys,
@@ -23,7 +23,7 @@ export async function POST(req) {
     rol,
     activo: true,
     navegador,
-    environment: process.env.NODE_ENV,
+    environment
   });
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 }

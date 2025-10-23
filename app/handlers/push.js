@@ -49,6 +49,7 @@ export async function suscribirsePush(fetched) {
         usuarioId: fetched?.id,
         rol: fetched?.isAdmin ? 'admin' : (fetched?.rol || 'user'),
         navegador: `${browser} - ${os}`,
+        environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
       }),
     });
 

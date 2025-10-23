@@ -5,14 +5,7 @@ import React from 'react'
 const LayoutMenu = ({ classes, router }) => {
     const { isAuthenticated, logout, nombre } = useAuth();
 
-    const handleDestroy = async () => {
-        try {
-        await fetch('/api/suscribir/eliminarTodas', { method: 'DELETE' });
-        console.log('Suscripciones eliminadas');
-        } catch (error) {
-        console.error('Error al eliminar las suscripciones:', error);
-        }
-    }
+    
 
     return (
                 <Group ml="xl" gap={0} visibleFrom="md">
@@ -27,7 +20,6 @@ const LayoutMenu = ({ classes, router }) => {
                     {isAuthenticated &&
                         <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}><Title order={6}>Panel de administracion</Title></UnstyledButton>
                     }
-                    <UnstyledButton className={classes.control} onClick={() => handleDestroy()}><Title order={6}>Elm.suscr</Title></UnstyledButton>
 
 
                     {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
