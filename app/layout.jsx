@@ -43,13 +43,19 @@ export default function RootLayout({ children }) {
     if ("serviceWorker" in navigator) {
       console.log("hay service worker");
 
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then(reg => console.log('✅ SW registrado:', reg))
-          .catch(err => console.error('❌ Error registrando SW:', err));
+      function registerSW() {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            if (regs.length === 0) {
+              navigator.serviceWorker.register('/sw.js')
+                .then(r => console.log('SW registrado tras reinstalación', r))
+                .catch(e => console.error('Error al registrar SW', e));
+            }
+          });
+        }
+      }
+      window.addEventListener('load', registerSW);
 
-      });
 
 
       navigator.serviceWorker.ready.then(registration => {
