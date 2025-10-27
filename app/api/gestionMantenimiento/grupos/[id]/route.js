@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import { Grupo } from '@/models';
 import sequelize from '@/sequelize';
+import { propagateFrom } from '../../helpers/propagate';
+
 
 // La función GET para obtener un grupo no necesita cambios.
 // (Puede mantener la versión de la respuesta anterior)
@@ -52,68 +54,73 @@ export async function GET(request, { params }) {
     }
 }
 
-// --- LÓGICA DE ACTUALIZACIÓN (PUT) CORREGIDA ---
 export async function PUT(request, { params }) {
-    const t = await sequelize.transaction();
-    try {
-        const body = await request.json();
-        const { id } = await params;
-        const grupoId = id;
+  const t = await sequelize.transaction();
+  try {
+    const body = await request.json();
+    const { id } = params;
+    const grupoId = id;
 
-        // Estrategia: Destruir hijos viejos y recrear la estructura.
-        // Es más simple y seguro que una comparación compleja.
-        await Grupo.destroy({ where: { parentId: grupoId }, transaction: t });
+    // Lógica existente de actualización/recreación de subgrupos
+    await Grupo.destroy({ where: { parentId: grupoId }, transaction: t });
 
-        const definicionFinal = { ...body.definicion };
+    const definicionFinal = { ...body.definicion };
 
-        // Re-usamos la misma lógica robusta de creación del POST
-        const crearGrupoRecursivo = async (grupoData, parentId, transaction) => {
-             const { nombre, definicion, subGrupos } = grupoData;
-             const nuevoGrupo = await Grupo.create({ nombre, parentId, definicion: {} }, { transaction });
-             const defFinal = { ...definicion };
-             if (subGrupos && subGrupos.length > 0) {
-                 for (const sub of subGrupos) {
-                     const creado = await crearGrupoRecursivo(sub, nuevoGrupo.id, transaction);
-                     const attrId = Object.keys(defFinal).find(k => defFinal[k].tempKey === sub.tempKey);
-                     if (attrId) {
-                         defFinal[attrId].refId = creado.id;
-                         delete defFinal[attrId].tempKey;
-                     }
-                 }
-             }
-             await nuevoGrupo.update({ definicion: defFinal }, { transaction });
-             return nuevoGrupo;
-        };
+    const crearGrupoRecursivo = async (grupoData, parentId, transaction) => {
+      const { nombre, definicion, subGrupos } = grupoData;
+      const nuevoGrupo = await Grupo.create({ nombre, parentId, definicion: {} }, { transaction });
+      const defFinal = { ...definicion };
 
-        if (body.subGrupos && body.subGrupos.length > 0) {
-            for (const subGrupoData of body.subGrupos) {
-                // Creamos los nuevos sub-grupos, asignando el parentId del grupo que se está editando
-                const subGrupoCreado = await crearGrupoRecursivo(subGrupoData, grupoId, t);
-                
-                const atributoIdOriginal = Object.keys(definicionFinal).find(key => definicionFinal[key].tempKey === subGrupoData.tempKey);
-                if (atributoIdOriginal) {
-                    definicionFinal[atributoIdOriginal].refId = subGrupoCreado.id;
-                    delete definicionFinal[atributoIdOriginal].tempKey;
-                }
-            }
+      if (subGrupos && subGrupos.length > 0) {
+        for (const sub of subGrupos) {
+          const creado = await crearGrupoRecursivo(sub, nuevoGrupo.id, transaction);
+          const attrId = Object.keys(defFinal).find(k => defFinal[k].tempKey === sub.tempKey);
+          if (attrId) {
+            defFinal[attrId].refId = creado.id;
+            delete defFinal[attrId].tempKey;
+          }
         }
-        
-        // Actualizamos el grupo principal con el nuevo nombre y la definición final
-        await Grupo.update(
-            { nombre: body.nombre, definicion: definicionFinal },
-            { where: { id: grupoId }, transaction: t }
-        );
+      }
 
-        await t.commit();
-        return NextResponse.json({ message: 'Grupo actualizado exitosamente' });
+      await nuevoGrupo.update({ definicion: defFinal }, { transaction });
+      return nuevoGrupo;
+    };
 
-    } catch (error) {
-        await t.rollback();
-        console.error('Error al actualizar el grupo:', error);
-        const detail = error.parent?.detail || 'Un nombre de grupo ya existe.';
-        return NextResponse.json({ error: `Conflicto: ${detail}`, details: error.message }, { status: 500 });
+    if (body.subGrupos && body.subGrupos.length > 0) {
+      for (const subGrupoData of body.subGrupos) {
+        const subGrupoCreado = await crearGrupoRecursivo(subGrupoData, grupoId, t);
+        const atributoIdOriginal = Object.keys(definicionFinal).find(key => definicionFinal[key].tempKey === subGrupoData.tempKey);
+        if (atributoIdOriginal) {
+          definicionFinal[atributoIdOriginal].refId = subGrupoCreado.id;
+          delete definicionFinal[atributoIdOriginal].tempKey;
+        }
+      }
     }
+
+    await Grupo.update(
+      { nombre: body.nombre, definicion: definicionFinal },
+      { where: { id: grupoId }, transaction: t }
+    );
+
+    await t.commit();
+
+    // Propagar cambios en cascada (no bloquear la respuesta si falla la propagación)
+    try {
+      await propagateFrom('grupo', grupoId, { removeMissing: false, sequelizeOverride: sequelize });
+    } catch (propErr) {
+      console.error('Error propagando cambios desde grupo:', propErr);
+      // No revertimos la actualización principal; registramos el error para revisión.
+    }
+
+    return NextResponse.json({ message: 'Grupo actualizado exitosamente' });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error al actualizar el grupo:', error);
+    const detail = error.parent?.detail || 'Un nombre de grupo ya existe.';
+    return NextResponse.json({ error: `Conflicto: ${detail}`, details: error.message }, { status: 500 });
+  }
 }
+
 
 export async function DELETE(request, { params }) {
     const { id } = await params;

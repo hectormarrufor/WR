@@ -91,46 +91,41 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-    const { id } = await params;
-    const transaction = await db.sequelize.transaction();
-    try {
-        const body = await request.json();
-        // console.log(body);
+  const { id } = params;
+  const transaction = await db.sequelize.transaction();
+  try {
+    const body = await request.json();
 
-        // return NextResponse.json({ message: 'Datos incompletos para actualizar el activo.' }, { status: 400 });
-
-        // 1. Buscamos el activo existente para obtener la URL de la imagen antigua.
-        const activoExistente = await db.Activo.findByPk(id, { transaction });
-        if (!activoExistente) {
-            await transaction.rollback();
-            return NextResponse.json({ message: 'Activo no encontrado' }, { status: 404 });
-        }
-
-        const urlImagenAntigua = activoExistente.imagen;
-
-        // 2. Actualizamos el registro del activo en la base de datos.
-        await activoExistente.update(body, { transaction });
-
-        // 3. ✨ LÓGICA DE REEMPLAZO ✨
-        // Comprobamos si la URL de la imagen ha cambiado Y si existía una imagen antigua.
-        const urlImagenNueva = body.imagen;
-        if (urlImagenNueva !== urlImagenAntigua && urlImagenAntigua) {
-            // Si son diferentes, eliminamos la imagen antigua de Vercel Blob.
-            await del(urlImagenAntigua);
-        }
-
-        await transaction.commit();
-        console.log(`\x1b[32m [SUCCESS]: Activo ${id} actualizado correctamente. \x1b[0m`);
-        return NextResponse.json({ message: 'Activo actualizado correctamente.' }, { status: 200 });
-
-    } catch (error) {
-        await transaction.rollback();
-        console.log(`\x1b[41m [ERROR]: Error al actualizar activo: ${error.message} \x1b[0m`);
-        return NextResponse.json({ message: 'Error al actualizar el activo', error: error.message }, { status: 500 });
-
+    const activoExistente = await db.Activo.findByPk(id, { transaction });
+    if (!activoExistente) {
+      await transaction.rollback();
+      return NextResponse.json({ message: 'Activo no encontrado' }, { status: 404 });
     }
-}
 
+    const urlImagenAntigua = activoExistente.imagen;
+
+    // Actualizamos el registro del activo (body debe contener los campos permitidos)
+    await activoExistente.update(body, { transaction });
+
+    // Si la URL de imagen cambió y había una antigua, la eliminamos
+    const urlImagenNueva = body.imagen;
+    if (urlImagenNueva !== urlImagenAntigua && urlImagenAntigua) {
+      try {
+        await del(urlImagenAntigua);
+      } catch (blobErr) {
+        console.error('Error eliminando imagen antigua del blob:', blobErr);
+      }
+    }
+
+    await transaction.commit();
+    console.log(`[SUCCESS]: Activo ${id} actualizado correctamente.`);
+    return NextResponse.json({ message: 'Activo actualizado correctamente.' }, { status: 200 });
+  } catch (error) {
+    await transaction.rollback();
+    console.log(`[ERROR]: Error al actualizar activo: ${error.message}`);
+    return NextResponse.json({ message: 'Error al actualizar el activo', error: error.message }, { status: 500 });
+  }
+}
 
 
 export async function DELETE(request, { params }) {

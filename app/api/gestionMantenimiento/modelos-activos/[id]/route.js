@@ -2,6 +2,8 @@
 import db from '@/models';
 import { NextResponse } from 'next/server';
 import { Op } from 'sequelize';
+import { propagateFrom } from '../../helpers/propagate';
+
 
 /**
  * Función recursiva para procesar la definición de un modelo y crear/actualizar los sub-modelos anidados.
@@ -101,81 +103,43 @@ async function poblarComponentesRecursivo(especificaciones, visited = new Set())
 }
 
 
-// --- Función Helper para PUT (CON LA LÓGICA INTEGRADA) ---
-async function actualizarModeloRecursivo(modeloId, modeloData, transaction) {
-    const { nombre, categoriaId, especificaciones } = modeloData;
+export async function PUT(request, { params }) {
+  const { id } = params;
+  const transaction = await db.sequelize.transaction();
+  try {
+    const body = await request.json();
+    const { nombre, categoriaId, definicion } = body;
 
-    const modeloAActualizar = await db.Modelo.findByPk(modeloId, { transaction });
-    if (!modeloAActualizar) {
-        throw new Error(`Modelo con ID ${modeloId} no encontrado.`);
+    const modeloExistente = await db.Modelo.findByPk(id, { transaction });
+    if (!modeloExistente) {
+      await transaction.rollback();
+      throw new Error(`Modelo con ID ${id} no encontrado.`);
     }
 
-    const especificacionesParaGuardar = Array.isArray(especificaciones)
-        ? especificaciones.reduce((acc, attr) => { const { key, ...rest } = attr; acc[rest.id] = rest; return acc; }, {})
-        : especificaciones;
-    
-    // ✨ INICIO DE LA INTEGRACIÓN: Creamos un Set para recolectar los IDs de consumibles
-    let consumiblesCompatiblesIds = new Set();
+    const especificacionesProcesadas = await procesarDefinicionParaGuardar(definicion, categoriaId, transaction);
 
-    // Iteramos para encontrar y actualizar componentes Y recolectar compatibilidades.
-    for (const attrId in especificacionesParaGuardar) {
-        const atributo = especificacionesParaGuardar[attrId];
-        
-        // Lógica de recursividad para componentes (la que ya tenías)
-        if (atributo.dataType === 'grupo' && atributo.subGrupo) {
-            const componenteCategoriaId = atributo.refId;
-            let componenteIdAActualizar = modeloAActualizar.especificaciones[attrId]?.refId;
+    await modeloExistente.update(
+      { nombre, categoriaId, especificaciones: especificacionesProcesadas },
+      { transaction }
+    );
 
-            let componenteActualizado;
-            if (componenteIdAActualizar) {
-                // La llamada recursiva ahora devuelve los IDs de sus propios hijos
-                const { idsRecolectados } = await actualizarModeloRecursivo(componenteIdAActualizar, {
-                    nombre: atributo.subGrupo.nombre,
-                    categoriaId: componenteCategoriaId,
-                    especificaciones: atributo.subGrupo.definicion,
-                }, transaction);
-                // Añadimos los IDs del hijo a la lista del padre
-                idsRecolectados.forEach(id => consumiblesCompatiblesIds.add(id));
-                componenteActualizado = { id: componenteIdAActualizar }; // Solo necesitamos el ID para continuar
-            } else {
-                // Lógica para crear un nuevo componente si no existía
-                componenteActualizado = await db.Modelo.create({
-                    nombre: atributo.subGrupo.nombre,
-                    categoriaId: componenteCategoriaId,
-                    especificaciones: Array.isArray(atributo.subGrupo.definicion) ? atributo.subGrupo.definicion.reduce((acc, attr) => ({...acc, [attr.id]: attr}),{}) : {},
-                }, { transaction });
-            }
-            
-            especificacionesParaGuardar[attrId].refId = componenteActualizado.id;
-            delete especificacionesParaGuardar[attrId].subGrupo;
-        }
+    await transaction.commit();
 
-        // ✨ NUEVA LÓGICA: Procesamos la compatibilidad del atributo actual
-        if (atributo.compatibilidad) {
-            if (atributo.compatibilidad.mode === 'directa' && atributo.compatibilidad.consumibleIds) {
-                atributo.compatibilidad.consumibleIds.forEach(id => consumiblesCompatiblesIds.add(parseInt(id)));
-            }
-            if (atributo.compatibilidad.mode === 'porCodigo' && atributo.compatibilidad.codigos) {
-                const consumiblesPorCodigo = await db.Consumible.findAll({
-                    where: { codigoParte: { [Op.in]: atributo.compatibilidad.codigos } },
-                    attributes: ['id'],
-                    transaction
-                });
-                consumiblesPorCodigo.forEach(c => consumiblesCompatiblesIds.add(c.id));
-            }
-        }
+    // Propagar cambios desde el modelo hacia sus activos (no revertir si falla)
+    try {
+      await propagateFrom('modelo', id, { removeMissing: false, sequelizeOverride: db.sequelize });
+    } catch (propErr) {
+      console.error('Error propagando cambios desde modelo:', propErr);
     }
 
-    // Actualizamos el JSONB del modelo actual
-    await modeloAActualizar.update({
-        nombre,
-        categoriaId,
-        especificaciones: especificacionesParaGuardar,
-    }, { transaction });
-
-    // ✨ Devolvemos el modelo actualizado Y el set de IDs recolectados
-    return { modeloActualizado: modeloAActualizar, idsRecolectados: consumiblesCompatiblesIds };
+    return NextResponse.json({ message: 'Modelo actualizado exitosamente.' });
+  } catch (error) {
+    await transaction.rollback();
+    console.error(`Error al actualizar el modelo ${id}:`, error);
+    return NextResponse.json({ message: error.message }, { status: 400 });
+  }
 }
+
 
 
 export async function GET(request, { params }) {
@@ -205,38 +169,6 @@ export async function GET(request, { params }) {
         return NextResponse.json({ message: 'Error en el servidor' }, { status: 500 });
     }
 }
-
-export async function PUT(request, { params }) {
-    const { id } = params;
-    const transaction = await db.sequelize.transaction();
-    try {
-        const body = await request.json();
-        const { nombre, categoriaId, definicion } = body;
-
-        const modeloExistente = await db.Modelo.findByPk(id, { transaction });
-        if (!modeloExistente) {
-            throw new Error(`Modelo con ID ${id} no encontrado.`);
-        }
-
-        const especificacionesProcesadas = await procesarDefinicionParaGuardar(definicion, categoriaId, transaction);
-
-        await modeloExistente.update({
-            nombre,
-            categoriaId,
-            especificaciones: especificacionesProcesadas,
-        }, { transaction });
-        
-        await transaction.commit();
-
-        return NextResponse.json({ message: "Modelo actualizado exitosamente." });
-    } catch (error) {
-        await transaction.rollback();
-        console.error(`Error al actualizar el modelo ${id}:`, error);
-        return NextResponse.json({ message: error.message }, { status: 400 });
-    }
-}
-
-
 
 /**
  * DELETE para eliminar un modelo de forma segura.
