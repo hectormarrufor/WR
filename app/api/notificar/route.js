@@ -21,7 +21,6 @@ export async function notificarAdmins(payload) {
   }
   else {
     console.log(`\x1b[42m [INFO]: Enviando notificación a ${subscripciones.length} administradores. \x1b[0m`);
-    console.log(subscripciones);
   }
 
   for (const sub of subscripciones) {

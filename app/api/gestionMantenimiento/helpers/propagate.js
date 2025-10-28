@@ -1,6 +1,6 @@
 // app/lib/propagacion/propagate.js
 import { QueryTypes } from 'sequelize';
-import { sequelize } from '@/sequelize'; // ajusta si tu instancia está en otra ruta
+import  sequelize  from '@/sequelize'; // ajusta si tu instancia está en otra ruta
 import {Grupo, Categoria, Modelo, Activo, CategoriaGrupos} from '@/models';
 
 /**

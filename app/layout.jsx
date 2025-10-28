@@ -41,10 +41,8 @@ export default function RootLayout({ children }) {
     };
 
     if ("serviceWorker" in navigator) {
-      console.log("hay service worker");
 
       function registerSW() {
-        if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(regs => {
             if (regs.length === 0) {
               navigator.serviceWorker.register('/sw.js')
@@ -52,11 +50,8 @@ export default function RootLayout({ children }) {
                 .catch(e => console.error('Error al registrar SW', e));
             }
           });
-        }
       }
       window.addEventListener('load', registerSW);
-
-
 
       navigator.serviceWorker.ready.then(registration => {
         console.log("✅ PWA listo con scope:", registration.scope);
