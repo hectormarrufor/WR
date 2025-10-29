@@ -13,8 +13,8 @@ self.addEventListener('push', event => {
   const title = payload.title || 'Notificación';
   const options = {
     body: payload.body || '',
-    icon: '/icons/Icon-192x192.png',
-    badge: '/icons/Icon-72.png',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/android-launchericon-96-96.png',
     data: payload.data || {}
   };
   event.waitUntil(self.registration.showNotification(title, options));
