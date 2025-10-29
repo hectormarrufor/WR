@@ -32,7 +32,7 @@ export async function notificarAdmins(payload) {
 
       await webpush.sendNotification(
         subscription,   
-        JSON.stringify({ ...payload, role: 'admin' })
+        JSON.stringify({ ...payload, role: 'admin', badge: "icons/android-launchericon-96-96.png" })
       );
         console.log(`\x1b[42m [INFO]: Notificación enviada a admin: ${sub.usuarioId} \x1b[0m`);
     } catch (err) {
@@ -60,7 +60,7 @@ export async function notificarUsuario(usuarioId, payload) {
       };
       await webpush.sendNotification(
         subscription,
-        JSON.stringify({ ...payload, role: 'user' })
+        JSON.stringify({ ...payload, role: 'user', badge: "icons/android-launchericon-96-96.png" })
       );
       console.log(`\x1b[42m [INFO]: Notificación enviada a usuario: ${usuarioId} \x1b[0m`);
     }
@@ -85,7 +85,7 @@ export async function notificarTodos(payload) {
       };
       await webpush.sendNotification(
         subscription,
-        JSON.stringify({ ...payload, role: 'user' })
+        JSON.stringify({ ...payload, role: 'user', badge: "icons/android-launchericon-96-96.png" })
       );
       console.log(`\x1b[42m [INFO]: Notificación enviada a usuario: ${sub.usuarioId} \x1b[0m`);
     }
