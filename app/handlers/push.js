@@ -98,6 +98,22 @@ export async function desuscribirsePush() {
 
   return null;
 }
+export async function eliminarTodasSuscripcionesInactivas() {
+  try {
+    const response = await fetch('/api/suscribir/eliminarTodas', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await response.json();
+    if (response.ok) {
+      console.log('Suscripciones inactivas eliminadas:', data);
+    } else {
+      console.error('Error al eliminar suscripciones inactivas:', data);
+    }
+  } catch (e) {
+    console.error('Error en eliminarTodasSuscripcionesInactivas:', e);
+  }
+}
 
 export async function pedirPermisoPush() {
   if (!('Notification' in window)) {

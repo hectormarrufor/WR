@@ -171,7 +171,9 @@ export default function AtributoConstructor({ form, pathPrefix = '', availableGr
   const theme = useMantineTheme();
   const paperColor = theme.colors.gray[level];
   const fieldName = `${pathPrefix}definicion`;
+  console.log(form.values)
   const definicion = getDeep(form.values, fieldName) || [];
+  console.log(definicion)
 
   const addAttribute = () => {
     const currentDefinicion = getDeep(form.values, fieldName) || [];

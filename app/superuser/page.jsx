@@ -9,11 +9,13 @@ import {
     IconFileText, IconTools, IconTruck, IconGasStation, IconUsers,
     IconToolsKitchen2, IconSteeringWheel, IconCash, IconShoppingCart,
     IconFileInvoice, IconArchive, IconUser, IconChartBar, IconMapPin, IconShieldLock,
-    IconExchange
+    IconExchange,
+    IconTrash
 } from '@tabler/icons-react';
 import './superuser.css';
 import { useAuth } from '@/hooks/useAuth';
 import PaddedPaper from './flota/components/PaddedPaper';
+import { eliminarTodasSuscripcionesInactivas } from '../handlers/push';
 
 export default function SuperUserHome() {
     const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +132,18 @@ export default function SuperUserHome() {
                                     </Text>
                                 </Button>
                             ))}
+                            <Button
+                                    w={isMobile ? "100%" : 200}
+                                    h={isMobile ? 100 : 120}
+                                    p={isMobile ? 5 : 10}
+                                    key={index}
+                                    variant="default"
+                                    onClick={() => eliminarTodasSuscripcionesInactivas()}
+                                    className="superuser-button"
+                                >
+                                    {<IconTrash color="red" size={32} />}
+                                    <Text fw={700} size="sm" mt={5}>Eliminar suscripciones inactivas</Text>
+                                </Button>
                         </Flex>
                     </>}
             </PaddedPaper>

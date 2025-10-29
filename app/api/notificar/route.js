@@ -34,7 +34,6 @@ export async function notificarAdmins(payload) {
         subscription,   
         JSON.stringify({ ...payload, role: 'admin', icon: "/icons/icon-192x192.png", badge: "/icons/android-launchericon-96-96.png" })
       );
-        console.log(`\x1b[42m [INFO]: Notificación enviada a admin: ${sub.usuarioId} \x1b[0m`);
     } catch (err) {
       console.error('Error enviando notificación a admin:', err);
 

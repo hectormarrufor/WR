@@ -1,315 +1,319 @@
-// app/superuser/flota/categorias/crear/page.jsx
 'use client';
-
 import { useState, useEffect } from 'react';
-import { Button, TextInput, Paper, Title, MultiSelect, Box, LoadingOverlay, Alert, Collapse, Group, Text } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
-import AtributoConstructor from '../../components/AtributoConstructor';
-import { IconAlertCircle } from '@tabler/icons-react';
-import BackButton from '@/app/components/BackButton';
 import { useForm } from '@mantine/form';
+import {
+    Paper, Title, TextInput, MultiSelect, Box, Button,
+    LoadingOverlay, Alert, Group, Text, Collapse
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconAlertCircle } from '@tabler/icons-react';
+import AtributoConstructor from '../../components/AtributoConstructor';
+import BackButton from '@/app/components/BackButton';
 
-// ✨ NUEVA FUNCIÓN HELPER: Genera un acrónimo de 3 letras
-export const generarAcronimo = (nombre) => {
-    if (!nombre) return '';
-    // Elimina palabras comunes, toma las primeras 3 letras, y las pone en mayúsculas.
-    const palabras = nombre.replace(/de|la|el/gi, '').trim().split(' ');
-    if (palabras.length >= 3) {
-        return (palabras[0][0] + palabras[1][0] + palabras[2][0]).toUpperCase();
-    }
-    return nombre.substring(0, 3).toUpperCase();
-};
+/**
+ * Genera acrónimo de 3 letras en mayúsculas a partir del nombre.
+ */
+function generarAcronimo(nombre = '') {
+    const letters = (nombre || '')
+        .toUpperCase()
+        .replace(/[^A-Z]/g, '')
+        .slice(0, 3);
+    return (letters + 'XXX').slice(0, 3);
+}
 
-function transformPayloadToFormValues(payload) {
-    if (!payload) return null;
-    console.log("datos de payload: ", payload);
-    
-    function processDefinition(definicion) {
-        if (!definicion || Object.keys(definicion).length === 0) return [];
+/**
+ * Convierte la respuesta de la API (objeto definicion) al formato que AtributoConstructor espera:
+ * un array de atributos con campos temporales (key, id, dataType, etc).
+ * Esta transformación reutiliza la lógica que usas para Grupos.
+ */
+function transformDefinitionObjectToFormArray(defObj = {}) {
+    if (!defObj || Object.keys(defObj).length === 0) return [];
+    return Object.keys(defObj).map((k) => {
+        const attr = defObj[k];
+        const out = {
+            id: k,
+            key: `attr_${Math.random().toString(36).slice(2, 9)}`,
+            nombre: attr.nombre ?? '',
+            dataType: attr.dataType ?? 'string',
+            required: !!attr.required,
+            // copia otras props que uses en tus atributos
+            ...attr
+        };
+        // si es objeto con definicion anidada
+        if (attr.definicion && typeof attr.definicion === 'object') {
+            out.definicion = transformDefinitionObjectToFormArray(attr.definicion);
+        }
+        // si define un subgrupo (modo define), mantenemos la estructura esperada por tu backend
+        if (attr.mode === 'define' && attr.subGrupo) {
+            // subGrupo en payload de grupo viene dentro del atributo; mantenemos la referencia tempKey
+            out.mode = 'define';
+            out.subGrupo = {
+                key: `sub_${Math.random().toString(36).slice(2, 9)}`,
+                nombre: attr.subGrupo.nombre ?? '',
+                definicion: transformDefinitionObjectToFormArray(attr.subGrupo.definicion ?? {})
+            };
+        } else if (attr.refId) {
+            out.mode = 'select';
+        }
+        return out;
+    });
+}
 
-        return Object.values(definicion).map(attr => {
-            const newAttr = { ...attr, key: `attr_${Math.random()}` }; // Clave aleatoria para Mantine
+/**
+ * Fusiona varias definiciones (objetos) en un único objeto.
+ * Último en la lista sobrescribe claves en conflicto (misma semántica que ya tenías).
+ */
+function mergeDefinitionObjects(listOfDefs = []) {
+    return listOfDefs.reduce((acc, d) => ({ ...acc, ...(d || {}) }), {});
+}
 
-            if (attr.dataType === 'grupo' && attr.subGrupo) {
-                newAttr.mode = 'define';
-                const subGrupoFormValues = transformPayloadToFormValues(attr.subGrupo);
-                newAttr.subGrupo = {
-                    key: `sub_${Math.random()}`,
-                    nombre: subGrupoFormValues.nombre,
-                    definicion: subGrupoFormValues.definicion,
-                };
-            } else if (attr.dataType === 'grupo' && attr.refId) {
-                newAttr.mode = 'select';
-            }
-
-            if (attr.dataType === 'object' && attr.definicion) {
-                newAttr.definicion = processDefinition(attr.definicion);
-            }
-
-            return newAttr;
-        });
-    }
-
-    return {
-        id: payload.id,
-        nombre: payload.nombre,
-        definicion: processDefinition(payload.definicion),
+/**
+ * Transforma los valores del form (definicion como array) al objeto que espera el backend:
+ * { nombre, acronimo, definicion: { id: attrObj, ... }, gruposBaseIds: [...] , subCategorias: [...] }
+ *
+ * Mantiene la lógica de tempKey/refId para subcategorias inline.
+ */
+function transformFormValuesToPayload(values) {
+    const result = {
+        nombre: values.nombre,
+        acronimo: values.acronimo,
+        definicion: {},
+        subCategorias: [],
+        gruposBaseIds: (values.gruposBaseIds || []).map((v) => parseInt(v, 10))
     };
+
+    function processArray(arr) {
+        if (!Array.isArray(arr)) return {};
+        const obj = {};
+        for (const item of arr) {
+            const id = item.id || `k_${Math.random().toString(36).slice(2, 9)}`;
+            const copy = { ...item };
+            // quitar props UI que no deben ir al backend
+            delete copy.key;
+            delete copy.id;
+            // si tiene definicion anidada, procesarla recursivamente
+            if (Array.isArray(item.definicion)) {
+                copy.definicion = processArray(item.definicion);
+            }
+            // si es subGrupo definido inline, convertir a subCategoria payload y marcar tempKey
+            if (item.mode === 'define' && item.subGrupo) {
+                const sub = {
+                    nombre: item.subGrupo.nombre || '',
+                    definicion: processArray(item.subGrupo.definicion || [])
+                };
+                // tempKey para relacionar en backend como en el flujo de grupos
+                const tempKey = item.subGrupo.key || `temp_${Math.random().toString(36).slice(2, 9)}`;
+                copy.tempKey = tempKey;
+                result.subCategorias.push({ tempKey, nombre: sub.nombre, definicion: sub.definicion });
+            }
+            obj[id] = copy;
+        }
+        return obj;
+    }
+
+    result.definicion = processArray(values.definicion || []);
+    return result;
 }
 
 export default function CrearCategoriaPage() {
     const router = useRouter();
-    const [grupos, setGrupos] = useState([]);
-    const [selectedGrupos, setSelectedGrupos] = useState([]);
-    const [initialDefinition, setInitialDefinition] = useState({});
-    const [finalDefinition, setFinalDefinition] = useState({});
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const [availableGroups, setAvailableGroups] = useState([]); // { value, label, definicion }
 
     const form = useForm({
         initialValues: {
             nombre: '',
             acronimo: '',
-            definicion: [],
+            definicion: [], // AtributoConstructor trabaja con array
+            gruposBaseIds: [] // array de strings por MultiSelect
         },
         validate: {
-            nombre: (value) => (value.trim().length > 2 ? null : 'El nombre debe tener al menos 3 caracteres'),
-            acronimo: (value) => (value.trim().length === 3 ? null : 'El acrónimo debe tener 3 caracteres'),
-        },
+            nombre: (v) => (v && v.trim().length > 2 ? null : 'El nombre debe tener al menos 3 caracteres'),
+            acronimo: (v) => (v && v.length === 3 ? null : 'Acrónimo inválido')
+        }
     });
 
-    // 1. Carga todos los grupos disponibles una sola vez.
     useEffect(() => {
-        async function fetchGrupos() {
+        // Cargar lista de grupos para MultiSelect
+        async function loadGroups() {
+            setLoading(true);
             try {
-                const response = await fetch('/api/gestionMantenimiento/grupos');
-                if (!response.ok) throw new Error('No se pudieron cargar los grupos');
-                const data = await response.json();
-                console.log(data);
-                setGrupos(data.map(g => ({ value: g.id.toString(), label: g.nombre, definicion: g.definicion })));
+                const res = await fetch('/api/gestionMantenimiento/grupos');
+                if (!res.ok) throw new Error('No se pudieron cargar los grupos');
+                const data = await res.json();
+                // Guardamos la definicion original en cada opción para poder fusionarlas luego
+                const opts = (data || []).map(g => ({
+                    value: String(g.id),
+                    label: g.nombre,
+                    definicion: g.definicion || {}
+                }));
+                setAvailableGroups(opts);
             } catch (err) {
                 setError(err.message);
-                notifications.show({
-                    title: 'Error de Carga',
-                    message: 'No se pudieron cargar los grupos base.',
-                    color: 'red',
-                });
             } finally {
                 setLoading(false);
             }
         }
-        fetchGrupos();
+        loadGroups();
     }, []);
 
+    // Sincronizar acrónimo con el nombre
     useEffect(() => {
-        const handler = setTimeout(() => {
-            const nombreCategoria = form.values.nombre;
-            if (nombreCategoria) {
-                const acronimoSugerido = generarAcronimo(nombreCategoria);
-                form.setFieldValue('acronimo', acronimoSugerido);
+        const nombre = form.values.nombre || '';
+        const acr = generarAcronimo(nombre);
+        if (form.values.acronimo !== acr) form.setFieldValue('acronimo', acr);
+    }, [form.values.nombre]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Cuando cambian los grupos seleccionados, fusionar sus definiciones y setear form.definicion
+    useEffect(() => {
+        const ids = form.values.gruposBaseIds || [];
+        if (!ids || ids.length === 0) {
+            // sólo actualizar si realmente es distinto
+            if ((form.values.definicion || []).length > 0) {
+                form.setFieldValue('definicion', []);
             }
-        }, 500); // Espera 500ms después de la última pulsación
-
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [form.values.nombre]);
-
-    // 2. ¡AQUÍ OCURRE LA MAGIA! Este hook se ejecuta cada vez que cambia la selección de grupos.
-     // 2. ¡AQUÍ OCURRE LA MAGIA! Este hook se ejecuta cada vez que cambia la selección de grupos.
-    useEffect(() => {
-        // Si no hay grupos seleccionados, limpia el formulario y termina.
-        if (selectedGrupos.length === 0) {
-            form.setFieldValue('definicion', []);
             return;
         }
 
-        const fetchAndMergeGrupos = async () => {
-            setLoading(true);
+        let mounted = true;
+
+        async function mergeSelected() {
+            // no cambiar el estado loading aquí para evitar re-render loops;
+            // si quieres mostrar un spinner, controla loading fuera o con un flag local
             try {
-                // 1. Obtenemos los datos completos de cada grupo seleccionado.
-                const fetchedGrupos = await Promise.all(
-                    selectedGrupos.map(async (grupoId) => {
-                        const res = await fetch(`/api/gestionMantenimiento/grupos/${grupoId}`);
-                        if (!res.ok) {
-                            console.error(`Error al obtener el grupo ${grupoId}`);
-                            return null; // Devuelve null si hay un error para filtrarlo después
-                        }
-                        return res.json();
-                    })
-                );
-                
-                // Filtramos cualquier resultado nulo por si una petición falló.
-                const validGrupos = fetchedGrupos.filter(g => g !== null);
-                console.log("Grupos completos obtenidos:", validGrupos);
+                // obtener definiciones desde availableGroups en memoria
+                const defs = ids.map(id => {
+                    const opt = availableGroups.find(g => g.value === id);
+                    return opt ? opt.definicion || {} : {};
+                });
 
-                // 2. Usamos reduce para FUSIONAR las DEFINICIONES de cada grupo en un solo objeto.
-                const mergedDefinitionObject = validGrupos.reduce((acc, grupo) => {
-                    // La clave: en lugar de esparcir todo el 'grupo', esparcimos 'grupo.definicion'.
-                    // Esto combina las propiedades de todos los objetos 'definicion'.
-                    // Si dos grupos tienen una propiedad con el mismo ID ('motor'), la del último prevalecerá,
-                    // pero si tienen propiedades diferentes, todas se conservarán.
-                    if (grupo && grupo.definicion) {
-                        return { ...acc, ...grupo.definicion };
-                    }
-                    return acc;
-                }, {}); // El acumulador inicial es un objeto vacío.
-
-                console.log("Objeto de definición fusionado:", mergedDefinitionObject);
-                
-                // 3. Transformamos el objeto fusionado al formato que el formulario necesita.
-                // Creamos un "payload" temporal solo para que la función transformadora trabaje.
-                const tempPayload = {
-                    nombre: form.values.nombre, // Mantenemos el nombre que ya estaba en el form
-                    definicion: mergedDefinitionObject
-                };
-
-                const formValues = transformPayloadToFormValues(tempPayload);
-
-                // 4. Actualizamos SOLAMENTE el campo 'definicion' del formulario.
-                // Así no borramos el nombre de la categoría que el usuario ya pudo haber escrito.
-                if (formValues && formValues.definicion) {
-                    form.setFieldValue('definicion', formValues.definicion);
+                // fetch si faltan algunos (opcional)
+                const missing = ids.filter(id => !availableGroups.find(g => g.value === id));
+                if (missing.length) {
+                    const fetched = await Promise.all(missing.map(async (gid) => {
+                        const res = await fetch(`/api/gestionMantenimiento/grupos/${gid}`);
+                        if (!res.ok) return {};
+                        const json = await res.json();
+                        return json.definicion || {};
+                    }));
+                    defs.push(...fetched);
                 }
 
+                // fusionar objetos
+                const mergedObj = mergeDefinitionObjects(defs);
+
+                // transformar mergedObj al array que AtributoConstructor usa
+                const arrayForForm = transformDefinitionObjectToFormArray(mergedObj);
+
+                if (!mounted) return;
+
+                // comparar antes de setear para evitar loops
+                const cur = form.values.definicion || [];
+                const curStr = JSON.stringify(cur);
+                const nextStr = JSON.stringify(arrayForForm);
+                if (curStr !== nextStr) {
+                    form.setFieldValue('definicion', arrayForForm);
+                }
             } catch (err) {
-                notifications.show({
-                    title: 'Error al procesar grupos',
-                    message: err.message,
-                    color: 'red',
-                });
-            } finally {
-                setLoading(false);
+                console.error('Error fusionando definiciones de grupos:', err);
+                notifications.show({ title: 'Error', message: 'No se pudieron fusionar las definiciones de los grupos', color: 'red' });
             }
-        };
+        }
 
-        fetchAndMergeGrupos();
-        // La dependencia clave que dispara la actualización automática.
-        // No es necesario 'grupos' aquí, solo reaccionar al cambio de selección.
-    }, [selectedGrupos]);
+        mergeSelected();
 
-    useEffect(() => { console.log(form.values) }, [form.values]); // Para depurar los valores del formulario
-
-    // La dependencia clave que dispara la actualización automática.
-
-
+        return () => { mounted = false; };
+    }, [JSON.stringify(form.values.gruposBaseIds), JSON.stringify(availableGroups)]); // dependencias seguras
 
     const handleSubmit = async () => {
-        if (!form.values.nombre || selectedGrupos.length === 0) {
-            notifications.show({
-                title: 'Campos Incompletos',
-                message: 'Por favor, asigna un nombre a la categoría y selecciona al menos un grupo base.',
-                color: 'yellow',
-            });
+        setError(null);
+        if (!form.values.nombre || (form.values.gruposBaseIds || []).length === 0) {
+            notifications.show({ title: 'Campos incompletos', message: 'Nombre y al menos un grupo base son requeridos', color: 'yellow' });
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const payload = {
-                nombre: form.values.nombre,
-                definicion: form.values.definicion, // Esta es la definición final, potencialmente modificada por el usuario.
-                gruposBaseIds: selectedGrupos.map(id => parseInt(id)),
-                acronimo: form.values.acronimo
-            };
-            console.log("Payload de creación:", payload);
-            // setIsSubmitting(false);
-            // return
-            const response = await fetch('/api/gestionMantenimiento/categorias', {
+            const payload = transformFormValuesToPayload(form.values);
+            const res = await fetch('/api/gestionMantenimiento/categorias', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(payload)
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Error al crear la categoría');
-            }
-
-            const data = await response.json();
-            notifications.show({
-                title: 'Éxito',
-                message: `Categoría "${data.nombre}" creada exitosamente.`,
-                color: 'green',
-            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.message || 'Error creando categoría');
+            notifications.show({ title: 'Categoría creada', message: `Categoría "${json.categoria?.nombre ?? form.values.nombre}" creada`, color: 'green' });
             router.push('/superuser/flota/categorias');
-
         } catch (err) {
-            notifications.show({
-                title: 'Error en Creación',
-                message: err.message,
-                color: 'red',
-            });
+            console.error('Error creando categoría:', err);
+            setError(err.message);
+            notifications.show({ title: 'Error', message: err.message, color: 'red' });
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <Paper   shadow="md" p={30} mt={30} radius="md" style={{ position: 'relative' }}>
-            <LoadingOverlay visible={loading || isSubmitting} overlayProps={{ radius: "sm", blur: 2 }} />
-            <Group justify="space-between" mb="xl">
-                <Title order={2}>
-                    Crear Nueva Categoría de Activo
-                </Title>
+        <Paper p={30} mt={30} radius="md" style={{ position: 'relative' }}>
+            <LoadingOverlay visible={loading || isSubmitting} overlayProps={{ blur: 2 }} />
+            <Group position="apart" mb="xl">
+                <Title order={2}>Crear Nueva Categoría</Title>
                 <BackButton />
             </Group>
 
             {error && (
-                <Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red" mb="lg">
+                <Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red" mb="md">
                     {error}
                 </Alert>
             )}
 
-            <TextInput
-                label="Nombre de la Categoría"
-                placeholder="Ej: CAMIONETA, CHUTO, UNIDAD_SNUBBING"
-                value={form.values.nombre}
-                onChange={(event) => form.setFieldValue('nombre', event.currentTarget.value.toUpperCase().replace(' ', '_'))}
-                required
-                mb="md"
-            />
-            <TextInput
-                label="Acronimo (Importante para definir códigos de activos)"
-                placeholder="Ej: CAM (Camioneta), CHT (Chuto), SNU (UNIDAD_SNUBBING) "
-                value={form.values.acronimo}
-                onChange={(event) => form.setFieldValue('acronimo', event.currentTarget.value.toUpperCase().replace(' ', '_'))}
-                required
-                mb="md"
-            />
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+                <TextInput
+                    label="Nombre de la Categoría"
+                    placeholder="Ej: CAMIONETA"
+                    mb="sm"
+                    value={form.values.nombre}
+                    onChange={(evt) => form.setFieldValue('nombre', evt.currentTarget.value.toUpperCase())}
+                    required
+                />
 
-            <MultiSelect
-                label="Selecciona Grupo(s) Base"
-                placeholder="Puedes seleccionar uno o más grupos para heredar sus propiedades"
-                data={grupos}
-                value={selectedGrupos}
-                onChange={setSelectedGrupos}
-                searchable
-                required
-                mb="xl"
-            />
+                <TextInput
+                    label="Acrónimo (generado)"
+                    placeholder="Acrónimo"
+                    mb="sm"
+                    value={form.values.acronimo}
+                    disabled
+                />
 
-            {/* 4. El AtributoConstructor se renderiza aquí, dentro de un Collapse para un efecto visual */}
-            <Collapse in={selectedGrupos.length > 0}>
-                <Box>
-                    <Title order={4} mb="sm">Definición de Atributos Heredados y Nuevos</Title>
-                    <Text size="sm" c="dimmed" mb="md">
-                        Las propiedades de los grupos base se han cargado. Puedes modificarlas o añadir nuevos atributos específicos para esta categoría.
-                    </Text>
-                    <AtributoConstructor
-                        initialData={initialDefinition} // Le pasamos la definición fusionada como estado inicial
-                        onDefinitionChange={setFinalDefinition} // Nos devuelve la definición final para enviarla a la API
-                        form={form} // Pasamos el formulario para manejar la validación y el estado
-                        from="Categoria"
-                    />
+                <MultiSelect
+                    label="Grupos base (selecciona uno o más)"
+                    placeholder="Selecciona grupos"
+                    data={availableGroups}
+                    value={form.values.gruposBaseIds}
+                    onChange={(vals) => form.setFieldValue('gruposBaseIds', vals)}
+                    searchable
+                    mb="md"
+                />
+
+
+                <Collapse in={(form.values.gruposBaseIds || []).length > 0}>
+                    <Box mt="md">
+                        <Title order={4} mb="sm">Definición de atributos heredados y adicionales</Title>
+                        <Text size="sm" color="dimmed" mb="md">
+                            Se han cargado las propiedades de los grupos seleccionados. Puedes modificarlas o agregar nuevas.
+                        </Text>
+
+                        <AtributoConstructor form={form} availableGroups={availableGroups} from="Categoria" />
+                    </Box>
+                </Collapse>
+
+                <Box mt="xl">
+                    <Button fullWidth type="submit">Crear Categoría</Button>
                 </Box>
-            </Collapse>
-
-            <Button fullWidth mt="xl" onClick={handleSubmit} disabled={loading || isSubmitting}>
-                Crear Categoría
-            </Button>
+            </form>
         </Paper>
     );
 }

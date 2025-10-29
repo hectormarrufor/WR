@@ -1,5 +1,4 @@
 import db from '@/models';
-import { Op } from 'sequelize';
 
 
 export async function DELETE() {
@@ -7,9 +6,7 @@ export async function DELETE() {
 
       await db.PushSubscription.destroy({
         where: {
-          endpoint: {
-            [Op.like]: '%fcm.googleapis.com%'
-          }
+          activo: false
         }
       });
   

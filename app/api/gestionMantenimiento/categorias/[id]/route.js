@@ -42,51 +42,63 @@ export async function GET(request, { params }) {
 // PUT para actualizar una categoría
 export async function PUT(request, { params }) {
   const { id } = params;
-  const transaction = await db.sequelize.transaction();
+  const transaction = await sequelize.transaction();
   try {
-    const { nombre, definicion, gruposBaseIds } = await request.json();
+    const body = await request.json();
+    const {
+      nombre,
+      definicion = {},
+      gruposBaseIds = [], // si quieres actualizar asociaciones
+      subCategorias = []  // estructura para recrear subcategorias si haces replace
+    } = body;
 
-    if (!nombre || !definicion || !gruposBaseIds || !Array.isArray(gruposBaseIds) || gruposBaseIds.length === 0) {
-      await transaction.rollback();
-      return NextResponse.json({ message: 'Nombre, definición y al menos un grupo base son requeridos.' }, { status: 400 });
-    }
-
-    const categoria = await db.Categoria.findByPk(id, { transaction });
+    const categoria = await Categoria.findByPk(id, { transaction });
     if (!categoria) {
       await transaction.rollback();
       return NextResponse.json({ message: 'Categoría no encontrada' }, { status: 404 });
     }
 
-    // 1. Actualizar datos de la categoría
-    await categoria.update({ nombre, definicion }, { transaction });
+    // actualizar nombre, acronimo y definicion
+    const acronimo = generarAcronimo(nombre || categoria.nombre);
+    await categoria.update({ nombre: nombre ?? categoria.nombre, acronimo, definicion: definicion ?? categoria.definicion }, { transaction });
 
-    // 2. Actualizar asociaciones con grupos base
-    await categoria.setGrupos(gruposBaseIds, { transaction });
+    // actualizar asociaciones con grupos base si vienen
+    if (Array.isArray(gruposBaseIds) && gruposBaseIds.length) {
+      if (typeof categoria.setGrupos === 'function') {
+        await categoria.setGrupos(gruposBaseIds, { transaction });
+      } else {
+        // fallback: eliminar existentes y crear nuevos
+        await CategoriaGrupos.destroy({ where: { categoriaId: categoria.id }, transaction });
+        for (const gid of gruposBaseIds) {
+          await CategoriaGrupos.create({ categoriaId: categoria.id, grupoId: gid }, { transaction });
+        }
+      }
+    }
+
+    // Si envías subCategorias en el body como reemplazo completo, puedes recrearlas:
+    // primero eliminar subcategorias que tengan parent = this id (si manejas parentId en Categoria)
+    // pero en tu modelo Categoria no está claro si hay parentId; si lo tienes, usa esa lógica.
+    // Aquí dejo ejemplo no destructivo por defecto: no tocar subcategorias si no envías explicitamente un flag.
 
     await transaction.commit();
 
-    // Propagar cambios en cascada desde la categoría (no revertir si falla)
+    // Propagar cambios en cascada desde la categoria (no revertir si falla)
     try {
-      await propagateFrom('categoria', id, { removeMissing: false, sequelizeOverride: db.sequelize });
+      await propagateFrom('categoria', categoria.id, { removeMissing: false, sequelizeOverride: sequelize });
     } catch (propErr) {
       console.error('Error propagando cambios desde categoría:', propErr);
     }
 
-    // Devolver la categoría actualizada con sus grupos
-    const categoriaActualizada = await db.Categoria.findByPk(id, {
-      include: [{ model: db.Grupo, as: 'gruposBase', attributes: ['id', 'nombre'], through: { attributes: [] } }]
-    });
-
-    return NextResponse.json(categoriaActualizada, { status: 200 });
+    // responder con la categoria actualizada
+    const categoriaActualizada = await Categoria.findByPk(id);
+    return NextResponse.json({ categoria: categoriaActualizada }, { status: 200 });
   } catch (error) {
     await transaction.rollback();
-    console.error('Error al actualizar la categoría:', error);
-    if (error.name === 'SequelizeUniqueConstraintError') {
-      return NextResponse.json({ message: 'Ya existe una categoría con este nombre.' }, { status: 409 });
-    }
-    return NextResponse.json({ message: 'Error al actualizar la categoría', error: error.message }, { status: 500 });
+    console.error('Error actualizando categoría:', error);
+    return NextResponse.json({ message: 'Error actualizando categoría', error: error.message }, { status: 500 });
   }
 }
+
 
 
 // DELETE para eliminar una categoría (opcional, pero buena práctica tenerlo)

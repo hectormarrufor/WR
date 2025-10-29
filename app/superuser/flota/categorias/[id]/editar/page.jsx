@@ -2,41 +2,74 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { Button, TextInput, Paper, Title, MultiSelect, Box, LoadingOverlay, Alert, Group } from '@mantine/core';
+import { Button, Paper, Title, Box, LoadingOverlay, Alert, Group } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useRouter, useParams } from 'next/navigation';
 import AtributoConstructor from '../../../components/AtributoConstructor';
 import { IconAlertCircle } from '@tabler/icons-react';
 import BackButton from '@/app/components/BackButton';
+import { useForm } from '@mantine/form';
+
+function transformPayloadToFormValues(payload) {
+    if (!payload) return null;
+    console.log("datos de payload: ", payload);
+
+    function processDefinition(definicion) {
+        if (!definicion || Object.keys(definicion).length === 0) return [];
+        
+        return Object.values(definicion).map(attr => {
+            const newAttr = { ...attr, key: `attr_${Math.random()}` }; // Clave aleatoria para Mantine
+            
+            if(attr.dataType === 'grupo') {
+                newAttr.mode = 'define';
+                const subGrupoFormValues = transformPayloadToFormValues(attr.subGrupo);
+                newAttr.subGrupo = {
+                    key: `sub_${Math.random()}`,
+                    nombre: subGrupoFormValues.nombre,
+                    definicion: subGrupoFormValues.definicion,
+                };
+            } else if (attr.dataType === 'grupo' && attr.refId) {
+                newAttr.mode = 'select';
+            }
+
+            if(attr.dataType === 'object' && attr.definicion) {
+                newAttr.definicion = processDefinition(attr.definicion);
+            }
+
+            return newAttr;
+        });
+    }
+
+    return {
+        id: payload.id,
+        nombre: payload.nombre,
+        definicion: processDefinition(payload.definicion),
+        acronimo: payload.acronimo,
+    };
+}
 
 export default function EditarCategoriaPage() {
     const router = useRouter();
     const params = useParams();
     const { id } = params;
 
-    const [nombre, setNombre] = useState('');
-    const [grupos, setGrupos] = useState([]); // Todos los grupos disponibles
     const [selectedGrupos, setSelectedGrupos] = useState([]);
-    const [initialDefinition, setInitialDefinition] = useState({});
-    const [finalDefinition, setFinalDefinition] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Cargar todos los grupos disponibles para el MultiSelect
-    useEffect(() => {
-        async function fetchGrupos() {
-            try {
-                const response = await fetch('/api/gestionMantenimiento/grupos');
-                if (!response.ok) throw new Error('No se pudieron cargar los grupos');
-                const data = await response.json();
-                setGrupos(data.map(g => ({ value: g.id.toString(), label: g.nombre, definicion: g.definicion })));
-            } catch (err) {
-                 setError('Error de Carga: No se pudieron cargar los grupos base.');
-            }
-        }
-        fetchGrupos();
-    }, []);
+    const form = useForm({
+        initialValues: {
+            id: '',
+            nombre: '',
+            acronimo: '',
+            definicion: [],
+        },
+        validate: {
+            nombre: (value) => (value.trim().length > 2 ? null : 'El nombre debe tener al menos 3 caracteres'),
+            acronimo: (value) => (value.trim().length === 3 ? null : 'El acrónimo debe tener 3 caracteres'),
+        },
+    });
 
     // Cargar los datos de la categoría específica a editar
     useEffect(() => {
@@ -47,13 +80,10 @@ export default function EditarCategoriaPage() {
                 const response = await fetch(`/api/gestionMantenimiento/categorias/${id}`);
                 if (!response.ok) throw new Error('No se pudo cargar la categoría');
                 const data = await response.json();
-                
-                setNombre(data.nombre);
-                setSelectedGrupos(data.grupos.map(g => g.id.toString()));
-                setInitialDefinition(data.definicion); // Usar la definición guardada de la categoría
-                
+                form.setValues({...transformPayloadToFormValues(data), acronimo: data.acronimo });
+
             } catch (err) {
-                 setError(err.message);
+                setError(`error al cargar los datos de la categoria especifica a editar: ${err.message}`);
             } finally {
                 setLoading(false);
             }
@@ -63,22 +93,11 @@ export default function EditarCategoriaPage() {
 
 
     const handleSubmit = async () => {
-        if (!nombre || selectedGrupos.length === 0) {
-            notifications.show({
-                title: 'Campos Incompletos',
-                message: 'Por favor, asigna un nombre y selecciona al menos un grupo base.',
-                color: 'yellow',
-            });
-            return;
-        }
+        const { nombre } = form.values;
 
         setIsSubmitting(true);
         try {
-            const payload = {
-                nombre,
-                definicion: finalDefinition,
-                gruposBaseIds: selectedGrupos.map(gid => parseInt(gid)),
-            };
+            const payload = form.values;
 
             const response = await fetch(`/api/gestionMantenimiento/categorias/${id}`, {
                 method: 'PUT',
@@ -112,10 +131,10 @@ export default function EditarCategoriaPage() {
     if (loading) {
         return <LoadingOverlay visible={true} />;
     }
-    
+
     if (error) {
         return (
-            <Paper   p={30} mt={30}>
+            <Paper p={30} mt={30}>
                 <Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red">
                     {error}
                 </Alert>
@@ -127,43 +146,20 @@ export default function EditarCategoriaPage() {
     }
 
     return (
-        <Paper   shadow="md" p={30} mt={30} radius="md" style={{ position: 'relative' }}>
+        <Paper shadow="md" p={30} mt={30} radius="md" style={{ position: 'relative' }}>
             <LoadingOverlay visible={isSubmitting} overlayProps={{ radius: "sm", blur: 2 }} />
-             <Group justify="space-between" mb="xl">
+            <Group justify="space-between" mb="xl">
                 <Title order={2}>
-                    Editar Categoría: {nombre}
+                    Editar Categoría: {form?.nombre}
                 </Title>
                 <BackButton />
             </Group>
 
-            <TextInput
-                label="Nombre de la Categoría"
-                placeholder="Ej: CAMIONETA, CHUTO"
-                value={nombre}
-                onChange={(event) => setNombre(event.currentTarget.value.toUpperCase())}
-                required
-                mb="md"
-            />
-
-            <MultiSelect
-                label="Selecciona Grupo(s) Base"
-                placeholder="Puedes cambiar los grupos base"
-                data={grupos}
-                value={selectedGrupos}
-                onChange={setSelectedGrupos}
-                searchable
-                required
-                mb="xl"
-                disabled // Deshabilitado por ahora para evitar complejidad al fusionar definiciones. Se puede habilitar en el futuro.
-            />
 
             <Box>
-                <Title order={4} mb="sm">Definición de Atributos</Title>
-                <AtributoConstructor
-                    initialData={initialDefinition}
-                    onDefinitionChange={setFinalDefinition}
-                    level="categoria"
-                />
+                {form && <AtributoConstructor
+                    form={form}
+                />}
             </Box>
 
             <Button fullWidth mt="xl" onClick={handleSubmit} disabled={isSubmitting}>
