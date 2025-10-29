@@ -136,13 +136,16 @@ export default function SuperUserHome() {
                                     w={isMobile ? "100%" : 200}
                                     h={isMobile ? 100 : 120}
                                     p={isMobile ? 5 : 10}
-                                    key={index}
+                                    key="eliminar-suscripciones"
                                     variant="default"
                                     onClick={() => eliminarTodasSuscripcionesInactivas()}
                                     className="superuser-button"
                                 >
                                     {<IconTrash color="red" size={32} />}
-                                    <Text fw={700} size="sm" mt={5}>Eliminar suscripciones inactivas</Text>
+                                    <Text fw={700} size="sm" mt={5}>Limpiar</Text>
+                                    <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
+                                        Eliminar suscripciones inactivas de notificaciones push
+                                    </Text>
                                 </Button>
                         </Flex>
                     </>}
