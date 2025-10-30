@@ -8,7 +8,7 @@ import AtributoConstructor from '../../../components/AtributoConstructor';
 import { IconAlertCircle, IconDeviceFloppy } from '@tabler/icons-react';
 
 // --- Función Helper para transformar el JSON de la API al estado del formulario ---
-function transformPayloadToFormValues(payload) {
+export function transformPayloadToFormValues(payload) {
     if (!payload) return null;
     console.log("datos de payload: ", payload);
 

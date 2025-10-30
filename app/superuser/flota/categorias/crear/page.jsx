@@ -10,6 +10,7 @@ import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import AtributoConstructor from '../../components/AtributoConstructor';
 import BackButton from '@/app/components/BackButton';
+import { transformPayloadToFormValues } from '../../grupos/[id]/editar/page';
 
 /**
  * Genera acrónimo de 3 letras en mayúsculas a partir del nombre.
@@ -167,100 +168,107 @@ export default function CrearCategoriaPage() {
         if (form.values.acronimo !== acr) form.setFieldValue('acronimo', acr);
     }, [form.values.nombre]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Cuando cambian los grupos seleccionados, fusionar sus definiciones y setear form.definicion
-  useEffect(() => {
-  let mounted = true;
-  const ids = form.values.gruposBaseIds || [];
+    useEffect(() => {
+        let mounted = true;
+        const ids = form.values.gruposBaseIds || [];
 
-  if (!ids || ids.length === 0) {
-    if ((form.values.definicion || []).length > 0) form.setFieldValue('definicion', []);
-    return;
-  }
-
-  (async () => {
-    try {
-      // 1) Fetchear cada grupo como hace editar/grupos
-      const fetched = await Promise.all(ids.map(async (gid) => {
-        try {
-          const res = await fetch(`/api/gestionMantenimiento/grupos/${gid}`);
-          if (!res.ok) return { id: gid, definicion: {}, nombre: '' };
-          const json = await res.json();
-          // adaptar si tu endpoint envuelve: json.definicion o json.grupo.definicion
-          return { id: gid, definicion: json.definicion || {}, nombre: json.nombre || '' };
-        } catch (err) {
-          console.error('Error fetching group', gid, err);
-          return { id: gid, definicion: {}, nombre: '' };
+        if (!ids || ids.length === 0) {
+            if ((form.values.definicion || []).length > 0) form.setFieldValue('definicion', []);
+            return;
         }
-      }));
 
-      if (!mounted) return;
+        (async () => {
+            try {
+                // 1) Fetch detallado de cada grupo seleccionado
+                const fetched = await Promise.all(ids.map(async (gid) => {
+                    try {
+                        const res = await fetch(`/api/gestionMantenimiento/grupos/${gid}`);
+                        if (!res.ok) return { id: gid, definicion: {}, nombre: '' };
+                        const json = await res.json();
+                        // ajustar si tu API devuelve envelope (ej.: json.grupo)
+                        return { id: gid, definicion: json.definicion || {}, nombre: json.nombre || '' };
+                    } catch (err) {
+                        console.error('Error fetching group', gid, err);
+                        return { id: gid, definicion: {}, nombre: '' };
+                    }
+                }));
 
-      // 2) fusionar objetos definicion (clave -> atributo) en un solo objeto
-      const defs = fetched.map(f => f.definicion || {});
-      const mergedObj = mergeDefinitionObjects(defs);
+                if (!mounted) return;
 
-      // 3) expandir referencias refId (como hace editar) fetcheando los grupos referenciados
-      const refIds = [];
-      for (const [, a] of Object.entries(mergedObj)) {
-        if (a && a.dataType === 'grupo' && a.refId && !a.subGrupo) {
-          if (!refIds.includes(a.refId)) refIds.push(a.refId);
-        }
-      }
-      const fetchedRefs = {};
-      if (refIds.length) {
-        const refs = await Promise.all(refIds.map(async (rid) => {
-          try {
-            const r = await fetch(`/api/gestionMantenimiento/grupos/${rid}`);
-            if (!r.ok) return { id: rid, definicion: {}, nombre: '' };
-            const j = await r.json();
-            return { id: rid, definicion: j.definicion || {}, nombre: j.nombre || '' };
-          } catch (err) {
-            console.error('Error fetching ref group', rid, err);
-            return { id: rid, definicion: {}, nombre: '' };
-          }
-        }));
-        refs.forEach(r => { fetchedRefs[r.id] = r; });
-      }
+                // 2) Obtener lista de objetos definicion para fusionar
+                const defs = fetched.map(f => f.definicion || {});
 
-      if (!mounted) return;
+                // 3) Fusionar objetos de definicion (clave -> atributo)
+                const mergedObj = mergeDefinitionObjects(defs);
 
-      // 4) inyectar subGrupo en los atributos que referencian grupos
-      for (const [k, a] of Object.entries(mergedObj)) {
-        if (a && a.dataType === 'grupo' && a.refId && !a.subGrupo) {
-          const ref = fetchedRefs[a.refId];
-          if (ref) {
-            mergedObj[k] = {
-              ...a,
-              subGrupo: {
-                key: `sub_${Math.random().toString(36).slice(2,9)}`,
-                nombre: ref.nombre || `GRUPO_${a.refId}`,
-                definicion: transformDefinitionObjectToFormArray(ref.definicion || {})
-              },
-              mode: 'define'
-            };
-          }
-        }
-      }
+                // 4) Detectar refId que necesiten expandirse (atributos tipo grupo sin subGrupo)
+                const refIdsToFetch = [];
+                for (const [, attr] of Object.entries(mergedObj)) {
+                    if (attr && attr.dataType === 'grupo' && attr.refId && !attr.subGrupo) {
+                        if (!refIdsToFetch.includes(attr.refId)) refIdsToFetch.push(attr.refId);
+                    }
+                }
 
-      if (!mounted) return;
+                // 5) Fetchear grupos referenciados (si hay)
+                const fetchedByRefId = {};
+                if (refIdsToFetch.length) {
+                    const refs = await Promise.all(refIdsToFetch.map(async (rid) => {
+                        try {
+                            const r = await fetch(`/api/gestionMantenimiento/grupos/${rid}`);
+                            if (!r.ok) return { id: rid, definicion: {}, nombre: '' };
+                            const j = await r.json();
+                            return { id: rid, definicion: j.definicion || {}, nombre: j.nombre || '' };
+                        } catch (err) {
+                            console.error('Error fetching ref group', rid, err);
+                            return { id: rid, definicion: {}, nombre: '' };
+                        }
+                    }));
+                    refs.forEach(r => { fetchedByRefId[r.id] = r; });
+                }
 
-      // 5) convertir mergedObj al array que AtributoConstructor usa
-      const arrayForForm = transformDefinitionObjectToFormArray(mergedObj);
+                if (!mounted) return;
 
-      // 6) normalizar y setear sólo si cambió
-      const normalized = Array.isArray(arrayForForm) ? arrayForForm : transformDefinitionObjectToFormArray(arrayForForm || {});
-      const cur = form.values.definicion || [];
-      if (JSON.stringify(cur) !== JSON.stringify(normalized)) {
-        form.setFieldValue('definicion', normalized);
-      }
-    } catch (err) {
-      console.error('Error procesando definiciones de grupos seleccionados:', err);
-      notifications.show({ title: 'Error', message: 'No se pudieron combinar las definiciones de los grupos', color: 'red' });
-    }
-  })();
+                // 6) Inyectar subGrupo en mergedObj cuando falte, usando las definiciones fetcheadas
+                for (const [k, a] of Object.entries(mergedObj)) {
+                    if (a && a.dataType === 'grupo' && a.refId && !a.subGrupo) {
+                        const ref = fetchedByRefId[a.refId];
+                        if (ref) {
+                            mergedObj[k] = {
+                                ...a,
+                                subGrupo: {
+                                    // dejamos la estructura tipo payload que espera transformPayloadToFormValues
+                                    id: ref.id ?? a.refId,
+                                    nombre: ref.nombre || (`GRUPO_${a.refId}`),
+                                    definicion: ref.definicion || {}
+                                },
+                                mode: 'define'
+                            };
+                        }
+                    }
+                }
 
-  return () => { mounted = false; };
-}, [JSON.stringify(form.values.gruposBaseIds)]);
+                if (!mounted) return;
+
+                // 7) Normalizar/finalizar: usar transformPayloadToFormValues para obtener la forma exacta
+                //    que usa la edición de grupo (retorna { id, nombre, definicion: [ ... ] })
+                const payloadLike = { definicion: mergedObj };
+                const transformed = transformPayloadToFormValues(payloadLike);
+                const arrayForForm = (transformed && transformed.definicion) ? transformed.definicion : [];
+
+                // 8) Comparar y setear sólo si cambió (evita loops)
+                const cur = form.values.definicion || [];
+                if (JSON.stringify(cur) !== JSON.stringify(arrayForForm)) {
+                    form.setFieldValue('definicion', arrayForForm);
+                }
+            } catch (err) {
+                console.error('Error procesando definiciones de grupos seleccionados:', err);
+                notifications.show({ title: 'Error', message: 'No se pudieron combinar las definiciones de los grupos', color: 'red' });
+            }
+        })();
+
+        return () => { mounted = false; };
+    }, [JSON.stringify(form.values.gruposBaseIds)]);
+
 
 
     const handleSubmit = async () => {
