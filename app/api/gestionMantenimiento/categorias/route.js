@@ -1,6 +1,8 @@
 // app/api/gestionMantenimiento/categorias/route.js
-import db from '@/models';
+import db, { CategoriaGrupos } from '@/models';
+import sequelize from '@/sequelize';
 import { NextResponse } from 'next/server';
+
 
 /**
  * Función recursiva para crear una categoría y sus subcategorías.

@@ -3,6 +3,8 @@ import db from '@/models';
 import { NextResponse } from 'next/server';
 import { Op } from 'sequelize';
 import { propagateFrom } from '../../helpers/propagate';
+import sequelize from '@/sequelize';
+
 
 
 // GET para obtener una categoría específica por ID
@@ -41,7 +43,7 @@ export async function GET(request, { params }) {
 
 // PUT para actualizar una categoría
 export async function PUT(request, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const transaction = await sequelize.transaction();
   try {
     const body = await request.json();
@@ -52,15 +54,14 @@ export async function PUT(request, { params }) {
       subCategorias = []  // estructura para recrear subcategorias si haces replace
     } = body;
 
-    const categoria = await Categoria.findByPk(id, { transaction });
+    const categoria = await db.Categoria.findByPk(id, { transaction });
     if (!categoria) {
       await transaction.rollback();
       return NextResponse.json({ message: 'Categoría no encontrada' }, { status: 404 });
     }
 
-    // actualizar nombre, acronimo y definicion
-    const acronimo = generarAcronimo(nombre || categoria.nombre);
-    await categoria.update({ nombre: nombre ?? categoria.nombre, acronimo, definicion: definicion ?? categoria.definicion }, { transaction });
+    // actualizar nombre y definicion
+    await categoria.update({ nombre: nombre ?? categoria.nombre, definicion: definicion ?? categoria.definicion }, { transaction });
 
     // actualizar asociaciones con grupos base si vienen
     if (Array.isArray(gruposBaseIds) && gruposBaseIds.length) {
@@ -90,7 +91,7 @@ export async function PUT(request, { params }) {
     }
 
     // responder con la categoria actualizada
-    const categoriaActualizada = await Categoria.findByPk(id);
+    const categoriaActualizada = await db.Categoria.findByPk(id);
     return NextResponse.json({ categoria: categoriaActualizada }, { status: 200 });
   } catch (error) {
     await transaction.rollback();
@@ -103,7 +104,7 @@ export async function PUT(request, { params }) {
 
 // DELETE para eliminar una categoría (opcional, pero buena práctica tenerlo)
 export async function DELETE(request, { params }) {
-    const { id: categoriaId } = params;
+    const { id: categoriaId } = await params;
     const transaction = await db.sequelize.transaction();
 
     try {

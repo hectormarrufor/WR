@@ -128,7 +128,10 @@ export default function EditarGrupoPage() {
         setError(null);
         
         const payload = transformFormValuesToPayload(values);
+
         console.log("Payload de actualización:", JSON.stringify(payload, null, 2));
+        // setLoading(false);
+        // return; // Quitar esta línea para habilitar el envío real
 
         try {
             const response = await fetch(`/api/gestionMantenimiento/grupos/${id}`, {

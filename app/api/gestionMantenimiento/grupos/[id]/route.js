@@ -58,7 +58,7 @@ export async function PUT(request, { params }) {
   const t = await sequelize.transaction();
   try {
     const body = await request.json();
-    const { id } = params;
+    const { id } = await params;
     const grupoId = id;
 
     // Lógica existente de actualización/recreación de subgrupos
@@ -96,6 +96,7 @@ export async function PUT(request, { params }) {
         }
       }
     }
+    console.log("Definición final para el grupo principal:", JSON.stringify(definicionFinal, null, 2));
 
     await Grupo.update(
       { nombre: body.nombre, definicion: definicionFinal },
@@ -106,7 +107,8 @@ export async function PUT(request, { params }) {
 
     // Propagar cambios en cascada (no bloquear la respuesta si falla la propagación)
     try {
-      await propagateFrom('grupo', grupoId, { removeMissing: false, sequelizeOverride: sequelize });
+      await propagateFrom('grupo', grupoId, { removeMissing: true, sequelizeOverride: sequelize });
+      console.log('Propagación de cambios desde grupo completada.');
     } catch (propErr) {
       console.error('Error propagando cambios desde grupo:', propErr);
       // No revertimos la actualización principal; registramos el error para revisión.
