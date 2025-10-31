@@ -210,17 +210,12 @@ async function pruneToTemplateExtended(merged, defaults, options = {}) {
 
   if (!removeMissing) return merged;
 
-  // si no tenemos propagateFromGroupId/categoryId/oldDef, fallback simple: eliminar claves que no estén en defaults
+  // si no tenemos propagateFromGroupId/categoryId/oldDef, NO hacemos pruning destructivo.
+  // Devolvemos merged tal cual para evitar borrar atributos que podrían pertenecer a otros grupos o haber sido añadidos manualmente.
   if (!propagateFromGroupId || !categoryId || !oldDef) {
-    // eliminar claves que no estén en defaults (comportamiento conservador)
-    const outSimple = {};
-    for (const k of Object.keys(merged || {})) {
-      if (Object.prototype.hasOwnProperty.call(defaults || {}, k)) {
-        outSimple[k] = merged[k];
-      }
-    }
-    return outSimple;
+    return merged;
   }
+
 
   // 1) keys que aportaba el propagador previamente
   const propagatorPrevKeys = new Set(Object.keys(oldDef || {}));
@@ -351,6 +346,7 @@ export async function propagateFrom(level, id, options = {}) {
           // si estamos propagando desde un grupo y tenemos gruposById, intentar obtener prev def del propagator desde DB no es trivial aquí;
           // asumimos caller pasó oldDef. Si no se pasó, pruneToTemplateExtended caerá en fallback conservador.
         }
+        
 
         const final = await pruneToTemplateExtended(merged, defaults, {
           removeMissing,

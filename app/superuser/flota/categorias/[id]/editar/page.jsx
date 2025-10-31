@@ -80,6 +80,7 @@ export default function EditarCategoriaPage() {
                 const response = await fetch(`/api/gestionMantenimiento/categorias/${id}`);
                 if (!response.ok) throw new Error('No se pudo cargar la categoría');
                 const data = await response.json();
+                console.log(data)
                 form.setValues({...transformPayloadToFormValues(data), acronimo: data.acronimo });
 
             } catch (err) {

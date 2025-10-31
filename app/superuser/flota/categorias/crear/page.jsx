@@ -88,11 +88,10 @@ function transformFormValuesToPayload(values) {
         if (!Array.isArray(arr)) return {};
         const obj = {};
         for (const item of arr) {
-            const id = item.id || `k_${Math.random().toString(36).slice(2, 9)}`;
+            // const id = item.id || `k_${Math.random().toString(36).slice(2, 9)}`;
             const copy = { ...item };
             // quitar props UI que no deben ir al backend
             delete copy.key;
-            delete copy.id;
             // si tiene definicion anidada, procesarla recursivamente
             if (Array.isArray(item.definicion)) {
                 copy.definicion = processArray(item.definicion);
@@ -108,7 +107,7 @@ function transformFormValuesToPayload(values) {
                 copy.tempKey = tempKey;
                 result.subCategorias.push({ tempKey, nombre: sub.nombre, definicion: sub.definicion });
             }
-            obj[id] = copy;
+            obj[item.id] = copy;
         }
         return obj;
     }
@@ -278,9 +277,12 @@ export default function CrearCategoriaPage() {
             return;
         }
 
-        setIsSubmitting(true);
         try {
+            setIsSubmitting(true);
             const payload = transformFormValuesToPayload(form.values);
+            console.log(payload);
+            // setIsSubmitting(false);
+            // return;
             const res = await fetch('/api/gestionMantenimiento/categorias', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
