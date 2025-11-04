@@ -168,15 +168,15 @@ export default function RootLayout({ children }) {
               >
                 <Image
                   style={{
-                    height: 1100,
                     opacity: 2,
                     position: 'fixed',
                     top: -220,
                     left: 0,
-                    objectFit: 'cover',
                     zIndex: -1,
+                    objectFit: 'cover',
+                    height: '140vh',
                   }}
-                  src="/fondoclaro.jpg"
+                  src="/fondo.jpg"
                 />
                 <Box mt={showHeader ? isMobile ? 33 : 35 : 0}>{children}</Box>
               </AppShell.Main>

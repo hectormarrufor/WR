@@ -6,7 +6,7 @@ import { Grupo, Categoria, Modelo, Activo, CategoriaGrupos } from '@/models';
 // Normaliza una definicion que puede venir como array o como objeto.
 // Resultado: objeto { key: attrObj, ... } listo para merge.
 // Filtra placeholders y elimina props UI (key, tempKey).
-function normalizeDefArrayToObject(def) {
+export function normalizeDefArrayToObject(def) {
   if (!def) return {};
   if (typeof def === 'object' && !Array.isArray(def)) {
     const out = {};

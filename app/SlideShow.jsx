@@ -11,10 +11,14 @@ const slideImages = [
 
 const Slideshow = () => {
     const [isMobile, setIsMobile] = React.useState(false);
+    const [isBigScreen, setIsBigScreen] = React.useState(false);
+    const [is4k, setIs4KScreen] = React.useState(false);
 
     React.useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth <= 768);
+            setIsBigScreen(window.innerWidth >= 1370 && window.innerWidth < 2000);
+            setIs4KScreen(window.innerWidth >= 2000);
         };
         handleResize();
         window.addEventListener('resize', handleResize);
@@ -62,7 +66,7 @@ const Slideshow = () => {
                     height: '80%',
                     zIndex: 150, // debajo del título (200) pero encima de las imágenes
                     pointerEvents: 'none',
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.63) 30%, rgba(0, 0, 0, 0.18) 70%)',
+                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.56) 50% rgba(0, 0, 0, 0.07) 70%, rgba(0, 0, 0, 0) 100%)',
                     filter: 'blur(20px)',
                     transform: 'translateZ(0)',
                 }}
@@ -76,7 +80,7 @@ const Slideshow = () => {
                         alt={`Slide ${index + 1}`}
                         radius={0}
                         fit="cover"
-                        height={isMobile ? 300 : 450}
+                        height={isMobile ? 300 : isBigScreen ? 600 : is4k ? 800 : 450}
                         width="100%"
                         style={{ aspectRatio: '2 / 1', objectFit: 'cover', objectPosition: 'center 70%', }}
                         mb={isMobile ? 0 : 20}

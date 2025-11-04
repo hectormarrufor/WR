@@ -7,6 +7,7 @@ import { useForm } from '@mantine/form';
 import { TextInput, Select, Button, Paper, Title, Group, Alert, Loader, Box, Text, Collapse, LoadingOverlay } from '@mantine/core';
 import AtributoConstructor from '../../components/AtributoConstructor';
 import { set } from 'date-fns';
+import { transformPayloadToFormValues } from '../../grupos/[id]/editar/page';
 
 /**
  * Función recursiva para transformar la definición de una categoría y sus hijas
@@ -96,7 +97,7 @@ export default function ModeloActivoForm({ modeloId = null }) {
             const fetchModelo = async () => {
                 setLoading(true);
                 try {
-                    const res = await fetch(`/api/gestionMantenimiento/modelos/${modeloId}`);
+                    const res = await fetch(`/api/gestionMantenimiento/modelos-activos/${modeloId}`);
                     if (!res.ok) throw new Error('No se pudo cargar el modelo');
                     const data = await res.json();
                     
@@ -134,16 +135,12 @@ export default function ModeloActivoForm({ modeloId = null }) {
                 const res = await fetch(`/api/gestionMantenimiento/categorias/${categoriaId}`);
                 if (!res.ok) throw new Error('No se pudo cargar la estructura de la categoría');
                 const categoriaCompleta = await res.json();
+
+                // Transformamos la definición en un esquema para el formulario
+                const schema = transformPayloadToFormValues(categoriaCompleta);
                 
-                // Transformamos la estructura de la categoría en el schema para el formulario
-                const schema = transformCategoriaToFormSchema(categoriaCompleta);
                 
-                // Actualizamos el campo 'propiedades_definidas' para que AtributoConstructor lo renderice.
-                // En modo edición, las propiedades guardadas ya están en el form, AtributoConstructor las tomará.
-                // En modo creación, las propiedades se inicializan vacías.
-                console.log(schema);
-                
-                form.setFieldValue('definicion', schema);
+                form.setFieldValue('definicion', schema.definicion);
 
             } catch (err) {
                 setError(err.message);

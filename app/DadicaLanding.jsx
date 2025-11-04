@@ -16,13 +16,28 @@ import {
     Center,
 } from '@mantine/core';
 import { IconTruck, IconRecycle, IconShieldCheck, IconUsersGroup } from '@tabler/icons-react';
+import React from 'react';
 
-export default function DadicaLanding({ isMobile }) {
+export default function DadicaLanding() {
+    const [isMobile, setIsMobile] = React.useState(false);
+        const [isBigScreen, setIsBigScreen] = React.useState(false);
+        const [is4k, setIs4KScreen] = React.useState(false);
+    
+        React.useEffect(() => {
+            const handleResize = () => {
+                setIsMobile(window.innerWidth <= 768);
+                setIsBigScreen(window.innerWidth >= 1370 && window.innerWidth < 2000);
+                setIs4KScreen(window.innerWidth >= 2000);
+            };
+            handleResize();
+            window.addEventListener('resize', handleResize);
+            return () => window.removeEventListener('resize', handleResize);
+        }, []);
     return (
-        <Box m={0} p={0} style={{ position: 'relative', top: '-180px' }}>
+        <Box m={0} p={0} style={{ position: 'relative', top: is4k ? '-250px' : '-180px' }}>
 
 
-            <Card pt={180} radius={0} mb="sm" >
+            <Card pt={is4k ? 220 : 180} radius={0} mb="sm" >
                 {isMobile ?
                     <Stack spacing="md" justify="center" align="center">
                         <Center flex={1}>
@@ -35,10 +50,10 @@ export default function DadicaLanding({ isMobile }) {
                             />
                         </Center>
                         <Box mx={isMobile ? 20 : "xl"} mb={40} flex={1}>
-                            <Title order={6} style={{ textAlign: 'justify' }}>
+                            <Title order={is4k ? 3 : 6} style={{ textAlign: 'justify' }}>
                                 Empresa venezolana fundada en 2008, especializada en transporte de carga pesada con cobertura nacional. Ofrece soluciones logísticas seguras y eficientes, respaldadas por un equipo profesional altamente calificado.
                             </Title>
-                            <Title order={6} mt="md" style={{ textAlign: 'justify' }}>
+                            <Title order={is4k ? 3 : 6} mt="md" style={{ textAlign: 'justify' }}>
                                 En Transporte DADICA, C.A nos dedicamos a ofrecer soluciones integrales de transporte y maquinaria pesada para la industria petrolera y de construcción. Con una flota moderna y un equipo altamente capacitado, garantizamos eficiencia, seguridad y cumplimiento en cada proyecto.
                             </Title>
                         </Box>

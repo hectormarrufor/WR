@@ -2,56 +2,56 @@
 import { NextResponse } from 'next/server';
 import { Grupo } from '@/models';
 import sequelize from '@/sequelize';
-import { propagateFrom } from '../../helpers/propagate';
+import { normalizeDefArrayToObject, propagateFrom } from '../../helpers/propagate';
 
 
 // La función GET para obtener un grupo no necesita cambios.
 // (Puede mantener la versión de la respuesta anterior)
 async function getGrupoCompleto(id) {
-    const grupo = await Grupo.findByPk(id);
-    if (!grupo) return null;
-    const definicion = grupo.definicion;
-    const definicionProcesada = {};
-    for (const key in definicion) {
-        const attr = definicion[key];
-        definicionProcesada[key] = { ...attr };
-        if (attr.dataType === 'grupo' && attr.refId) {
-            definicionProcesada[key].subGrupo = await getGrupoCompleto(attr.refId);
-        } else if (attr.dataType === 'object' && attr.definicion) {
-             const nestedResult = await processObjectDefinition(attr.definicion);
-             definicionProcesada[key].definicion = nestedResult;
-        }
+  const grupo = await Grupo.findByPk(id);
+  if (!grupo) return null;
+  const definicion = grupo.definicion;
+  const definicionProcesada = {};
+  for (const key in definicion) {
+    const attr = definicion[key];
+    definicionProcesada[key] = { ...attr };
+    if (attr.dataType === 'grupo' && attr.refId) {
+      definicionProcesada[key].subGrupo = await getGrupoCompleto(attr.refId);
+    } else if (attr.dataType === 'object' && attr.definicion) {
+      const nestedResult = await processObjectDefinition(attr.definicion);
+      definicionProcesada[key].definicion = nestedResult;
     }
-    async function processObjectDefinition(def) {
-        const result = {};
-        for(const key in def){
-            const attr = def[key];
-            result[key] = { ...attr };
-            if (attr.dataType === 'grupo' && attr.refId) {
-                result[key].subGrupo = await getGrupoCompleto(attr.refId);
-            } else if (attr.dataType === 'object' && attr.definicion) {
-                result[key].definicion = await processObjectDefinition(attr.definicion);
-            }
-        }
-        return result;
+  }
+  async function processObjectDefinition(def) {
+    const result = {};
+    for (const key in def) {
+      const attr = def[key];
+      result[key] = { ...attr };
+      if (attr.dataType === 'grupo' && attr.refId) {
+        result[key].subGrupo = await getGrupoCompleto(attr.refId);
+      } else if (attr.dataType === 'object' && attr.definicion) {
+        result[key].definicion = await processObjectDefinition(attr.definicion);
+      }
     }
-    grupo.definicion = definicionProcesada;
-    return grupo.toJSON();
+    return result;
+  }
+  grupo.definicion = definicionProcesada;
+  return grupo.toJSON();
 }
 
 export async function GET(request, { params }) {
-    const { id } = await params;
-    
-    try {
-        const grupoCompleto = await getGrupoCompleto(id);
-        if (!grupoCompleto) {
-            return NextResponse.json({ error: 'Grupo no encontrado' }, { status: 404 });
-        }
-        return NextResponse.json(grupoCompleto);
-    } catch (error) {
-        console.error('Error al obtener el grupo:', error);
-        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  const { id } = await params;
+
+  try {
+    const grupoCompleto = await getGrupoCompleto(id);
+    if (!grupoCompleto) {
+      return NextResponse.json({ error: 'Grupo no encontrado' }, { status: 404 });
     }
+    return NextResponse.json(grupoCompleto);
+  } catch (error) {
+    console.error('Error al obtener el grupo:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
 }
 
 export async function PUT(request, { params }) {
@@ -60,6 +60,10 @@ export async function PUT(request, { params }) {
     const body = await request.json();
     const { id } = await params;
     const grupoId = id;
+
+    const grupoBefore = await Grupo.findByPk(id);
+    const oldDefNormalized = normalizeDefArrayToObject(grupoBefore.definicion || {});
+
 
     // Lógica existente de actualización/recreación de subgrupos
     await Grupo.destroy({ where: { parentId: grupoId }, transaction: t });
@@ -107,7 +111,12 @@ export async function PUT(request, { params }) {
 
     // Propagar cambios en cascada (no bloquear la respuesta si falla la propagación)
     try {
-      await propagateFrom('grupo', grupoId, { removeMissing: true, sequelizeOverride: sequelize });
+      await propagateFrom('grupo', grupoId, {
+        removeMissing: true,
+        sequelizeOverride: sequelize,
+        oldDef: oldDefNormalized
+      });
+
       console.log('Propagación de cambios desde grupo completada.');
     } catch (propErr) {
       console.error('Error propagando cambios desde grupo:', propErr);
@@ -125,24 +134,24 @@ export async function PUT(request, { params }) {
 
 
 export async function DELETE(request, { params }) {
-    const { id } = await params;
-    const t = await sequelize.transaction();
-    try {
-        // Primero, eliminamos todos los subgrupos relacionados
-        await Grupo.destroy({ where: { parentId: id }, transaction: t });
-        
-        // Luego, eliminamos el grupo principal
-        const deletedCount = await Grupo.destroy({ where: { id }, transaction: t });
-        
-        if (deletedCount === 0) {
-            return NextResponse.json({ error: 'Grupo no encontrado' }, { status: 404 });
-        }
-        
-        await t.commit();
-        return NextResponse.json({ message: 'Grupo eliminado exitosamente' });
-    } catch (error) {
-        await t.rollback();
-        console.error('Error al eliminar el grupo:', error);
-        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  const { id } = await params;
+  const t = await sequelize.transaction();
+  try {
+    // Primero, eliminamos todos los subgrupos relacionados
+    await Grupo.destroy({ where: { parentId: id }, transaction: t });
+
+    // Luego, eliminamos el grupo principal
+    const deletedCount = await Grupo.destroy({ where: { id }, transaction: t });
+
+    if (deletedCount === 0) {
+      return NextResponse.json({ error: 'Grupo no encontrado' }, { status: 404 });
     }
+
+    await t.commit();
+    return NextResponse.json({ message: 'Grupo eliminado exitosamente' });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error al eliminar el grupo:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
 }
