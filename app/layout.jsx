@@ -174,7 +174,7 @@ export default function RootLayout({ children }) {
                     left: 0,
                     zIndex: -1,
                     objectFit: 'cover',
-                    height: '140vh',
+                    height: '150vh',
                   }}
                   src="/fondo.jpg"
                 />

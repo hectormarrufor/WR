@@ -346,7 +346,7 @@ export async function propagateFrom(level, id, options = {}) {
           // si estamos propagando desde un grupo y tenemos gruposById, intentar obtener prev def del propagator desde DB no es trivial aquí;
           // asumimos caller pasó oldDef. Si no se pasó, pruneToTemplateExtended caerá en fallback conservador.
         }
-        
+
 
         const final = await pruneToTemplateExtended(merged, defaults, {
           removeMissing,
@@ -421,6 +421,9 @@ export async function propagateFrom(level, id, options = {}) {
 
         if (JSON.stringify(final) !== JSON.stringify(cur)) {
           const payload = {};
+          if (Array.isArray(final)) {
+            final = normalizeDefArrayToObject(final);
+          }
           if ('definicion' in activo) payload.definicion = final;
           else payload.datosPersonalizados = final;
           await activo.update(payload, { transaction: t });
