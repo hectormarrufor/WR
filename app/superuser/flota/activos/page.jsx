@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Button, Group, ActionIcon, Text, Modal, LoadingOverlay, Paper, Title } from '@mantine/core';
+import { Table, Button, Group, ActionIcon, Text, Modal, LoadingOverlay, Paper, Title, Loader, Image } from '@mantine/core';
 import { IconPencil, IconTrash, IconPlus } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useAuth } from '@/hooks/useAuth';
+import { useMediaQuery } from '@mantine/hooks';
 
 export default function ListarActivosPage() {
     const router = useRouter();
@@ -13,6 +15,9 @@ export default function ListarActivosPage() {
     const [modalOpened, setModalOpened] = useState(false);
     const [activoToDelete, setActivoToDelete] = useState(null);
 
+    const { isAdmin } = useAuth();
+
+    const isMobile = useMediaQuery('(max-width: 768px)');
     const fetchActivos = async () => {
         setLoading(true);
         try {
@@ -44,11 +49,11 @@ export default function ListarActivosPage() {
                 method: 'DELETE',
             });
             if (response.status === 409) {
-                 const errorData = await response.json();
-                 throw new Error(errorData.message);
+                const errorData = await response.json();
+                throw new Error(errorData.message);
             }
             if (!response.ok) throw new Error('No se pudo eliminar el activo');
-            
+
             notifications.show({ title: 'Éxito', message: 'Activo eliminado correctamente.', color: 'green' });
             fetchActivos(); // Recargar la lista
         } catch (error) {
@@ -84,36 +89,75 @@ export default function ListarActivosPage() {
     ));
 
     return (
-        <Paper   shadow="md" p="xl" radius="md" mt={30}>
-            <LoadingOverlay visible={loading} />
-            <Group justify="space-between" mb="xl">
-                <Title order={2}>Gestión de Activos</Title>
-                <Button leftSection={<IconPlus size={16} />} onClick={() => router.push('/superuser/flota/activos/crear')}>
-                    Crear Activo
-                </Button>
-            </Group>
-            <Table.ScrollContainer minWidth={700}>
-                <Table verticalSpacing="sm" highlightOnHover>
-                    <Table.Thead>
-                        <Table.Tr>
-                            <Table.Th>Código del Activo</Table.Th>
-                            <Table.Th>Modelo</Table.Th>
-                            <Table.Th>Categoría</Table.Th>
-                            <Table.Th>Estado Operativo</Table.Th>
-                            <Table.Th>Acciones</Table.Th>
-                        </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>{rows.length > 0 ? rows : <Table.Tr><Table.Td colSpan={5}><Text ta="center">No hay activos para mostrar.</Text></Table.Td></Table.Tr>}</Table.Tbody>
-                </Table>
-            </Table.ScrollContainer>
 
-            <Modal opened={modalOpened} centered onClose={() => setModalOpened(false)} title="Confirmar Eliminación">
-                <Text>¿Estás seguro de que deseas eliminar el activo <Text span fw={700}>{activoToDelete?.codigoActivo}</Text>? Esta acción no se puede deshacer.</Text>
-                <Group justify="flex-end" mt="lg">
-                    <Button variant="default" onClick={() => setModalOpened(false)}>Cancelar</Button>
-                    <Button color="red" onClick={handleDelete}>Eliminar</Button>
+        isMobile ?
+            <Paper shadow="md" p="xl" radius="md" mt={30}>
+                <LoadingOverlay visible={loading} />
+                <Group justify="space-between" mb="xl">
+                    <Title order={2}>Gestión de Activos</Title>
+                    {isAdmin && <Button leftSection={<IconPlus size={16} />} onClick={() => router.push('/superuser/flota/activos/crear')}>
+                        Crear Activo
+                    </Button>}
                 </Group>
-            </Modal>
-        </Paper>
-    );
+                {loading ? <Loader />
+                    : activos.length === 0 ? <Text ta="center">No hay activos para mostrar.</Text>
+                        : activos.map((activo) => (
+                            <Paper key={activo.id} shadow="sm" p="md" mb="md" onClick={() => router.push(`/superuser/flota/activos/${activo.id}`)} style={{ cursor: 'pointer' }}>
+                                <Group position="apart">
+                                    {activo.imagen ? <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}`} alt={activo.codigoActivo} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} /> : null}
+                                    <Text fw={700}>{activo.codigoActivo}</Text>
+                                    {isAdmin && <Group>
+                                        <ActionIcon variant="subtle" color="blue" onClick={(e) => { e.stopPropagation(); router.push(`/superuser/flota/activos/${activo.id}/editar`); }}>
+                                            <IconPencil size={18} />
+                                        </ActionIcon>
+                                        <ActionIcon variant="subtle" color="red" onClick={(e) => { e.stopPropagation(); openDeleteModal(activo); }}>
+                                            <IconTrash size={18} />
+                                        </ActionIcon>
+                                    </Group>}
+                                </Group>
+                                <Text size="sm" c="dimmed">Modelo: {activo.modelo?.nombre || 'N/A'}</Text>
+                                <Text size="sm" c="dimmed">Categoría: {activo.modelo?.categoria?.nombre || 'N/A'}</Text>
+                                <Text size="sm" c={activo.estadoOperativo === 'Operativo' ? 'teal' : 'red'} fw={700}>
+                                    {activo.estadoOperativo}
+                                </Text>
+                            </Paper>
+                        ))
+                }
+            </Paper>
+
+                :
+
+                <Paper shadow="md" p="xl" radius="md" mt={30}>
+                    <LoadingOverlay visible={loading} />
+                    <Group justify="space-between" mb="xl">
+                        <Title order={2}>Gestión de Activos</Title>
+                        {isAdmin && <Button leftSection={<IconPlus size={16} />} onClick={() => router.push('/superuser/flota/activos/crear')}>
+                            Crear Activo
+                        </Button>}
+                    </Group>
+                    <Table.ScrollContainer minWidth={700}>
+                        <Table verticalSpacing="sm" highlightOnHover>
+                            <Table.Thead>
+                                <Table.Tr>
+                                    <Table.Th>Código del Activo</Table.Th>
+                                    <Table.Th>Modelo</Table.Th>
+                                    <Table.Th>Categoría</Table.Th>
+                                    <Table.Th>Estado Operativo</Table.Th>
+                                    <Table.Th>Acciones</Table.Th>
+                                </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>{rows.length > 0 ? rows : <Table.Tr><Table.Td colSpan={5}><Text ta="center">No hay activos para mostrar.</Text></Table.Td></Table.Tr>}</Table.Tbody>
+                        </Table>
+                    </Table.ScrollContainer>
+
+                    <Modal opened={modalOpened} centered onClose={() => setModalOpened(false)} title="Confirmar Eliminación">
+                        <Text>¿Estás seguro de que deseas eliminar el activo <Text span fw={700}>{activoToDelete?.codigoActivo}</Text>? Esta acción no se puede deshacer.</Text>
+                        <Group justify="flex-end" mt="lg">
+                            <Button variant="default" onClick={() => setModalOpened(false)}>Cancelar</Button>
+                            <Button color="red" onClick={handleDelete}>Eliminar</Button>
+                        </Group>
+                    </Modal>
+                </Paper>
+
+                );
 }

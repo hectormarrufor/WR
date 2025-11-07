@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Paper, Title, Text, Group, Button, Loader, Alert, Grid, Badge, Divider, Image, Center, Stack } from '@mantine/core';
-import { IconTool, IconClipboardCheck, IconPencil, IconPhotoOff } from '@tabler/icons-react';
+import { IconTool, IconClipboardCheck, IconPencil, IconPhotoOff, IconBook } from '@tabler/icons-react';
 import RenderActivoDetails from '../components/RenderActivoDetails';
 import HallazgosPendientes from './inspecciones/HallazgosPendientes';
 import PaddedPaper from '../../components/PaddedPaper';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function DetalleActivoPage() {
     const { id } = useParams();
@@ -14,6 +15,7 @@ export default function DetalleActivoPage() {
     const [activo, setActivo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const { isAdmin } = useAuth();
 
     const [isMobile, setIsMobile] = useState(false);
 
@@ -93,12 +95,12 @@ export default function DetalleActivoPage() {
                         <Button leftSection={<IconClipboardCheck size={18} />} size="md" onClick={() => router.push(`${id}/inspecciones/nueva`)}>
                             Realizar Inspección
                         </Button>
-                        <Button leftSection={<IconTool size={18} />} size="md" disabled>
-                            Ver Mantenimientos
+                        <Button leftSection={<IconBook size={18} />} size="md" disabled>
+                            Historial de Mantenimientos
                         </Button>
-                        <Button leftSection={<IconPencil size={18} />} onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
+                       {isAdmin && <Button leftSection={<IconPencil size={18} />} onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
                             Editar Activo
-                        </Button>
+                        </Button>}
                     </Group>
 
                     :
@@ -107,12 +109,12 @@ export default function DetalleActivoPage() {
                         <Button fullWidth leftSection={<IconClipboardCheck size={18} />} size="md" onClick={() => router.push(`${id}/inspecciones/nueva`)}>
                             Realizar Inspección
                         </Button>
-                        <Button fullWidth leftSection={<IconTool size={18} />} size="md" disabled>
-                            Ver Mantenimientos
+                        <Button fullWidth leftSection={<IconBook size={18} />} size="md" disabled>
+                            Historial de Mantenimientos
                         </Button>
-                        <Button fullWidth leftSection={<IconPencil size={18} />} onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
+                        {isAdmin && <Button fullWidth leftSection={<IconPencil size={18} />} onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
                             Editar Activo
-                        </Button>
+                        </Button>}
                     </Stack>
                 }
             </Paper>

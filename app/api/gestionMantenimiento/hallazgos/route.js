@@ -18,7 +18,7 @@ export async function GET(request) {
         const hallazgos = await db.Hallazgo.findAll({
             where: whereClause,
             order: [['createdAt', 'DESC']],
-            include: [{ model: db.Inspeccion, as: 'inspeccion' }]
+            include: [{ model: db.Inspeccion, as: 'inspeccion', include: [{ model: db.User, as: 'inspector', attributes: ['nombre', 'apellido'] }] }],
         });
 
         return NextResponse.json(hallazgos);

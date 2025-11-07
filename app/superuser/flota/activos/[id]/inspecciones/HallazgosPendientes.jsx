@@ -7,7 +7,6 @@ import { IconTool } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function HallazgosPendientes({ hallazgos, activoId }) {
-    const { nombre } = useAuth();
     const router = useRouter();
     const [selectedHallazgos, setSelectedHallazgos] = useState([]);
 
@@ -37,7 +36,7 @@ export default function HallazgosPendientes({ hallazgos, activoId }) {
                                 {hallazgo.observacionInspector && <Text size="sm">{hallazgo.observacionInspector}</Text>}
                                 <Text size="xs" c="dimmed">
                                     Reportado el {new Date(hallazgo.createdAt).toLocaleDateString()}
-                                    {hallazgo.inspeccionId ? ` (Inspección #${hallazgo.inspeccionId}) por: ${nombre}` : ' (Generado por sistema)'}
+                                    {hallazgo.inspeccionId ? ` (Inspección #${hallazgo.inspeccionId}) por: ${hallazgo.inspeccion.inspector?.empleado.nombre}` : ' (Generado por sistema)'}
                                     
                                 </Text>
                             </Box>

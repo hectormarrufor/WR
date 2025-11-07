@@ -63,7 +63,11 @@ export async function GET(request, { params }) {
                 // Solo queremos los hallazgos que aún no se han resuelto.
                 where: { estado: 'Pendiente' },
                 required: false, // Importante: si no hay hallazgos pendientes, el activo se debe mostrar igual.
-                include: [{ model: db.Inspeccion, as: 'inspeccion' }] // Traemos la inspección asociada al hallazgo
+                include: [{ model: db.Inspeccion, as: 'inspeccion',
+                    include: [{ model: db.User, as: 'inspector', attributes: ['empleadoId'],
+                        include: [{ model: db.Empleado, as: 'empleado', attributes: ['nombre', 'apellido'] }]   
+                     }]
+                 }] // Traemos la inspección asociada al hallazgo
             }
             ]
         });
