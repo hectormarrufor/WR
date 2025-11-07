@@ -69,6 +69,15 @@ export function AuthProvider({ children }) {
             } catch (e) {
                 console.error('Push subscribe failed', e);
             }
+            // Verificar si es chofer
+            const esChofer = fetched.puestos?.some(p => p.nombre === 'Chofer');
+
+            if (esChofer) {
+                router.push(`/superuser/flota/activos`);
+            } else {
+                router.push('/superuser');
+            }
+
 
             router.push('/superuser'); // Redirige al dashboard
         } catch (error) {
@@ -86,10 +95,12 @@ export function AuthProvider({ children }) {
         } catch (e) {
             console.error('Unsubscribe failed', e);
         }
+        finally {
+            await fetch('/api/users/logout', { method: 'POST' });
+            setUser(null);
+            router.push('/login');
+        }
 
-        await fetch('/api/users/logout', { method: 'POST' });
-        setUser(null);
-        router.push('/login');
     };
 
     return <AuthContext.Provider value={{ userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout }}>{children}</AuthContext.Provider>;

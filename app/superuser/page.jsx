@@ -53,6 +53,11 @@ export default function SuperUserHome() {
                     break;
                 case "Mantenimiento":
                     router.push('/superuser/flota')
+                case "Recursos Humanos":
+                    router.push('/superuser/rrhh')
+                    break;
+                case "Transporte":
+                    router.push(`/superuser/flota/activos`)
 
                 default:
                     break;

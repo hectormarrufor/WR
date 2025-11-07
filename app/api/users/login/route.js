@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
 import { NextResponse } from "next/server";
 import { Error } from "sequelize";
-import { Departamento, Empleado, Puesto } from "@/models";
+import { Activo, Departamento, Empleado, Puesto } from "@/models";
 import { notificarAdmins } from "../../notificar/route";
 
 
@@ -18,7 +18,18 @@ export async function POST(req) {
     try {
         const parsedBody = await req.json(); // Parsea el cuerpo de la solicitud JSON
         const { user, password } = parsedBody;
-        const usuario = await User.findOne({ where: { user }, include: [{ model: Empleado, as: 'empleado', include: [{ model: Puesto, as: 'puestos', attributes: ['nombre'], include: [{ model: Departamento, as: 'departamento', attributes: ['nombre'] }] }] }] });
+        const usuario = await User.findOne({
+            where: { user },
+            include: [{
+                model: Empleado, as: 'empleado',
+                include: [{
+                    model: Puesto, as: 'puestos', attributes: ['nombre'],
+                    include: [{ model: Departamento, as: 'departamento', attributes: ['nombre'] }]
+                },
+       
+            ]
+            }]
+        });
         if (!usuario) {
             throw new Error('usuario no existe');
         }
