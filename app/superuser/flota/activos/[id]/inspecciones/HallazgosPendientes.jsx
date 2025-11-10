@@ -14,7 +14,7 @@ export default function HallazgosPendientes({ hallazgos, activoId }) {
         if (selectedHallazgos.length === 0) return;
         // Navegamos a la página de creación de la orden, pasando los IDs de los hallazgos en la URL
         const hallazgosIds = selectedHallazgos.join(',');
-        router.push(`/superuser/flota/activos/${activoId}/ordenes/nueva?hallazgos=${hallazgosIds}`);
+        router.push(`/superuser/flota/activos/${activoId}/ordenes/nueva?hallazgos=${hallazgosIds}&activoId=${activoId}`);
     };
     
     if (hallazgos.length === 0) {

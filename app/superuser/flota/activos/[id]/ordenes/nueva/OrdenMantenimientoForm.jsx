@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useForm } from '@mantine/form';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import { Paper, Title, Text, Loader, Select, Button, Group, Textarea, Badge, Box, TextInput, Grid, ActionIcon, Collapse } from '@mantine/core';
+import { Paper, Title, Text, Loader, Select, Button, Group, Textarea, Badge, Box, TextInput, Grid, ActionIcon, Collapse, Flex } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -83,7 +83,7 @@ export default function OrdenMantenimientoForm() {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const activoId = params.id;
+    const activoId = searchParams.get('activoId');
     const hallazgoIds = searchParams.get('hallazgos')?.split(',');
 
     const form = useForm({
@@ -109,25 +109,31 @@ export default function OrdenMantenimientoForm() {
         const fetchData = async () => {
             if (hallazgos.length > 0) return; // Ya cargados
             // if (hallazgos.length > 0) return; // Ya cargados
-            try {
-                const [hallazgosRes, empleadosRes] = await Promise.all([
-                    fetch(`/api/gestionMantenimiento/hallazgos?ids=${hallazgoIds.join(',')}`),
-                    fetch('/api/rrhh/empleados')
-                ]);
-                const hallazgosData = await hallazgosRes.json();
-                const empleadosData = await empleadosRes.json();
+          
+                try {
+                    const [hallazgosRes, empleadosRes, ultimoCodigoOmRes] = await Promise.all([
+                        fetch(`/api/gestionMantenimiento/hallazgos?ids=${hallazgoIds.join(',')}`),
+                        fetch('/api/rrhh/empleados'),
+                        fetch(`/api/gestionMantenimiento/ordenes/ultimo-codigo`, { method: 'POST' })
+                    ]);
+                    const hallazgosData = await hallazgosRes.json();
+                    const empleadosData = await empleadosRes.json();
+                    const ultimoCodigoOm  = await ultimoCodigoOmRes.json();
 
-                setHallazgos(hallazgosData);
-                setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
-
-                const descripciones = hallazgosData.map(h => h.descripcion).join('; ');
-                form.setFieldValue('descripcion', `Atender los siguientes hallazgos: ${descripciones}.`);
-
-            } catch (error) {
-                notifications.show({ title: 'Error', message: 'No se pudieron cargar los datos necesarios.', color: 'red' });
-            } finally {
-                setLoading(false);
-            }
+                    console.log(ultimoCodigoOm)
+    
+                    setHallazgos(hallazgosData);
+                    setEmpleados(empleadosData.map(e => ({ value: e.id.toString(), label: `${e.nombre} ${e.apellido}` })));
+    
+                    const descripciones = hallazgosData.map(h => h.descripcion).join('; ');
+                    form.setFieldValue('descripcion', `Atender los siguientes hallazgos: ${descripciones}.`);
+                    form.setFieldValue('codigoOM', ultimoCodigoOm ? `OM-${(parseInt(ultimoCodigoOm.split('-')[1]) + 1).toString().padStart(5, '0')}` : 'OM-00001');
+                } catch (error) {
+                    notifications.show({ title: 'Error', message: `No se pudieron cargar los datos necesarios: ${error.message}`, color: 'red' });
+                } finally {
+                    setLoading(false);
+                }
+            
         };
         fetchData();
     }, [activoId, hallazgoIds, router]);
@@ -207,7 +213,7 @@ export default function OrdenMantenimientoForm() {
             <Paper>
                 <Title order={4} mb="md">Hallazgos Seleccionados:</Title>
                 <Box mb="lg">
-                    {hallazgos.map(h => <Text key={h.id}>• {h.descripcion} (<Badge color={h.severidad === 'Critico' ? 'red' : 'yellow'} size="sm">{h.severidad}</Badge>)</Text>)}
+                    {hallazgos.map(h => <Flex><Badge color={h.severidad === 'Critico' ? 'red' : 'yellow'} size="sm" mr={10}>{h.severidad}</Badge><Text key={h.id}>{h.descripcion} </Text></Flex>)}
                 </Box>
             </Paper>
 
@@ -216,7 +222,7 @@ export default function OrdenMantenimientoForm() {
                     <TextInput label="Creada por" value={`${nombre || ''} ${apellido || ''}`} readOnly />
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, md: 6 }}>
-                    <TextInput label="Código de Orden (Opcional)" placeholder="Se generará automáticamente si se deja vacío" {...form.getInputProps('codigoOM')} />
+                    <TextInput label="Código de Orden" value={form.values.codigoOM} readOnly />
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Select label="Responsable de la Orden" placeholder="Seleccione un supervisor" data={empleados} searchable required {...form.getInputProps('responsableId')} />

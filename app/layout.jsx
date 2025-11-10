@@ -134,7 +134,7 @@ export default function RootLayout({ children }) {
               >
                 <Group justify='space-between' px={isMobile ? 0 : 40}>
                   <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
-                    <Image src="/logo.png" height={40} alt="logo" p={0} py={0} m={5} />
+                    <Image src="/logo.png" w={isMobile ? "25vw" :"12vw"} alt="logo" p={0} py={0} m={5} />
                   </UnstyledButton>
                   <Group h="100%" px="md">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
