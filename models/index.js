@@ -17,6 +17,7 @@ const Categoria = require('./gestionMantenimiento/Categoria');
 const CategoriaGrupos = require('./gestionMantenimiento/CategoriaGrupos');
 const Modelo = require('./gestionMantenimiento/Modelo');
 const Grupo = require('./gestionMantenimiento/Grupo');
+const TipoConsumible = require('./inventario/TipoConsumibles');
 const Consumible = require('./inventario/Consumible');
 const EntradaInventario = require('./inventario/EntradaInventario');
 const SalidaInventario = require('./inventario/SalidaInventario');
@@ -68,6 +69,7 @@ const db = {
     Empleado,
 
     //INVENTARIO
+    TipoConsumible,
     Consumible,
     EntradaInventario,
     SalidaInventario,
