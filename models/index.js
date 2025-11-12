@@ -38,6 +38,7 @@ const FixedExpense = require('./gastos/FixedExpense');
 const Flete = require('./operaciones/Flete');
 const PushSubscription = require('./pushSubscription');
 const ConsumibleUsado = require('./inventario/ConsumibleUsado');
+const ViscosidadAceite = require('./inventario/ViscosidadAceite');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -78,6 +79,7 @@ const db = {
     Compatibilidad,
     MedidaNeumatico,
     Marca,
+    ViscosidadAceite,
 
     //ESTIMACION
     CostParameters,
