@@ -106,6 +106,31 @@ const TiposConsumiblesPage = () => {
                                         </ul>
                                     )
                                 },
+                                {
+                                    accessorKey: 'atributosUso',
+                                    header: 'Atributos de uso',
+                                    Edit: ({ cell, row, column, table }) => (
+                                        <EspecificacionesEditor
+                                            value={cell.getValue()}
+                                            onChange={(val) => {
+                                                // 🔥 Esto actualiza el estado interno de MantineReactTabl
+                                                // 
+                                                row._valuesCache[column.id] = val;
+                                                table.options.meta.updateData(row.index, column.id, val);
+                                            }}
+                                        />
+                                    ),
+                                    Cell: ({ cell }) => (
+                                        <ul>
+                                            {cell.getValue()?.map((esp, i) => (
+                                                <li key={i}>
+                                                    <strong>{esp.campo}</strong> ({esp.tipoEntrada})
+                                                    {esp.opciones?.length > 0 && ` → ${esp.opciones.join(', ')}`}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )
+                                }
 
                             ]}
                             data={tiposConsumibles}
@@ -117,7 +142,6 @@ const TiposConsumiblesPage = () => {
                                 const updatedTipos = tiposConsumibles.map((tipo, i) =>
                                     i === row.index ? { ...tipo, ...values } : tipo
                                 );
-
                                 setTiposConsumibles(updatedTipos);
                                 // Aquí puedes hacer el PUT al backend
                                 fetch(`/api/inventario/tipo/${values.id}`, {

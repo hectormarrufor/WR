@@ -8,6 +8,7 @@ export async function PUT(request) {
         const nombreTipo = body.nombre;
         const especificaciones = body.especificaciones;
         const unidadMedida = body.unidadMedida;
+        const atributosUso = body.atributosUso;
 
         if (!tipoId) {
             return NextResponse.json({ success: false, error: "El ID del tipo de consumible es obligatorio." }, { status: 400 });
@@ -19,6 +20,7 @@ export async function PUT(request) {
         tipo.nombre = nombreTipo || tipo.nombre;
         tipo.especificaciones = especificaciones || tipo.especificaciones;
         tipo.unidadMedida = unidadMedida || tipo.unidadMedida;
+        tipo.atributosUso = atributosUso || tipo.atributosUso;
 
         await tipo.save();
         return NextResponse.json({ success: true, data: tipo }, { status: 200 });

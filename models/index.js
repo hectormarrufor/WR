@@ -37,6 +37,7 @@ const CostEstimate = require('./estimacion/CostEstimate');
 const FixedExpense = require('./gastos/FixedExpense');
 const Flete = require('./operaciones/Flete');
 const PushSubscription = require('./pushSubscription');
+const ConsumibleUsado = require('./inventario/ConsumibleUsado');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -71,6 +72,7 @@ const db = {
     //INVENTARIO
     TipoConsumible,
     Consumible,
+    ConsumibleUsado,
     EntradaInventario,
     SalidaInventario,
     Compatibilidad,
