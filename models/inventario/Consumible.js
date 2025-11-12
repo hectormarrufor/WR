@@ -64,6 +64,8 @@ Consumible.associate = (models) => {
         otherKey: 'modeloId',
         as: 'modelosCompatibles'
     });
+    Consumible.hasMany(models.ConsumibleUsado, { foreignKey: 'consumibleId' });
+
 
 };
 

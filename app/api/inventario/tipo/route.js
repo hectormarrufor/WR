@@ -7,7 +7,6 @@ import { NextResponse } from 'next/server';
 export async function GET() {
     try {
         const tipos = await db.TipoConsumible.findAll({
-            attributes: ['id', 'nombre', 'especificaciones'],
             order: [['nombre', 'ASC']]
         });
         return NextResponse.json({ success: true, data: tipos });
@@ -25,6 +24,7 @@ export async function POST(request) {
         const body = await request.json();
         const nombreTipo = body.nombre;
         const especificaciones = body.especificaciones;
+        const unidadMedida = body.unidadMedida;
 
         if (!nombreTipo) {
             return NextResponse.json({ success: false, error: "El nombre del tipo de consumible es obligatorio." }, { status: 400 });
@@ -33,7 +33,7 @@ export async function POST(request) {
         // Utilizamos findOrCreate para evitar duplicados.
         const [tipo, created] = await db.TipoConsumible.findOrCreate({
             where: { nombre: nombreTipo },
-            defaults: { nombre: nombreTipo, especificaciones: especificaciones  }
+            defaults: { nombre: nombreTipo, especificaciones: especificaciones, unidadMedida: unidadMedida }
         });
 
         // Retornamos el tipo creado o encontrada.

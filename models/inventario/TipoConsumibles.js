@@ -16,7 +16,12 @@ const TipoConsumible = sequelize.define('TipoConsumible', {
     especificaciones: {
         type: DataTypes.JSONB, // aquí guardas el esqueleto dinámico
         allowNull: true
+    },
+    atributosUso: {
+        type: DataTypes.JSONB,
+        allowNull: true
     }
+
 },
     {
         tableName: 'TipoConsumibles',

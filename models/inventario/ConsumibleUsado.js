@@ -1,6 +1,7 @@
 // models/inventario/ConsumibleUsado.js (Modificado)
 const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../../sequelize');
+const { Consumible } = require('..');
 
   const ConsumibleUsado = sequelize.define('ConsumibleUsado', {
     id: {
@@ -16,11 +17,15 @@ const sequelize = require('../../sequelize');
       },
       allowNull: false,
     },
-    cantidad: {
-      type: DataTypes.DECIMAL(15, 3),
-      allowNull: false,
+    activoId:{
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Activos',
+        key: 'id',
+      },
     },
-    fechaUso: {
+    fechaInstalacion: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
       allowNull: false,
@@ -34,50 +39,16 @@ const sequelize = require('../../sequelize');
       },
       allowNull: true, // Puede ser null si el uso no es para una tarea específica (ej. para un trabajo extra)
     },
-    trabajoExtraId: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'TrabajosExtra',
-        key: 'id',
-      },
-      allowNull: true,
-    },
-    empleadoId: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'Empleados',
-        key: 'id',
-      },
-      allowNull: true,
-    },
-    destinoUso: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    notas: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
+
   }, {
     tableName: 'ConsumiblesUsados',
     timestamps: true,
-    indexes: [
-        {
-            fields: ['tareaMantenimientoId'],
-            where: { tareaMantenimientoId: { [Op.ne]: null } }
-        },
-        {
-            fields: ['trabajoExtraId'],
-            where: { trabajoExtraId: { [Op.ne]: null } }
-        }
-    ]
   });
 
   ConsumibleUsado.associate = (models) => {
     ConsumibleUsado.belongsTo(models.Consumible, { foreignKey: 'consumibleId', as: 'consumible' });
     ConsumibleUsado.belongsTo(models.TareaMantenimiento, { foreignKey: 'tareaMantenimientoId', as: 'tareaMantenimiento' }); // <--- NUEVA ASOCIACIÓN
-    ConsumibleUsado.belongsTo(models.TrabajoExtra, { foreignKey: 'trabajoExtraId', as: 'trabajoExtra' });
-    ConsumibleUsado.belongsTo(models.Empleado, { foreignKey: 'empleadoId', as: 'empleado' });
+    ConsumibleUsado.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
   };
 
   module.exports = ConsumibleUsado;

@@ -71,6 +71,8 @@ Activo.associate = (models) => {
         foreignKey: 'activoId',
         as: 'horometros'
     });
+    Activo.hasMany(ConsumibleUsado, { foreignKey: 'activoId' });
+
 
     // Aquí irían las futuras relaciones con Inspecciones y Mantenimientos
     // Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });

@@ -18,7 +18,7 @@ const Compatibilidad = sequelize.define('Compatibilidad', {
         type: DataTypes.INTEGER,
         primaryKey: true, // Parte de la clave primaria compuesta
         references: {
-            model: 'INV_Consumibles', // Nombre de la tabla de Consumibles
+            model: 'Consumibles', // Nombre de la tabla de Consumibles
             key: 'id'
         },
         onDelete: 'CASCADE', // Si se borra un consumible, se borra la compatibilidad

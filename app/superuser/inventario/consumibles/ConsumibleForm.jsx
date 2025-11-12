@@ -63,6 +63,8 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
     initialValues: {
       nombre: initialData?.nombre || '',
       marca: initialData?.marca || '',
+      stock: initialData?.stock || 0,
+      stockMinimo: initialData?.stockMinimo || 0,
       tipo: initialData?.tipo || '',
       especificaciones: initialData?.tipo.especificaciones || {},
     },
@@ -228,12 +230,12 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
     // if (form.values.tipo === 'Neumatico') {
     //   fetchMedidasNeumaticos();
     // }
-    console.log("form: ", form.values);
-    console.log("tipoConsumibles: ", tipoConsumibles);
     form.setFieldValue('especificaciones', tipoConsumibles.find(tipo => tipo.nombre === form.values.tipo)?.especificaciones || {});
-
-
   }, [form.values.tipo]);
+
+  useEffect(() => {
+    console.log(form.values);
+  }, [form.values]);
 
   // //USEEFFECT PARA SUGERIR SKU Y NOMBRE DE CONSUMIBLE 
   // useEffect(() => {
@@ -480,28 +482,67 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
                   {...form.getInputProps('stock')}
                 />
               </Grid.Col>
+              <Grid.Col span={6}>
+                <NumberInput
+                  label="stock minimo"
+                  placeholder="Ingresa la cantidad de stock minimo"
+                  {...form.getInputProps('stockMinimo')}
+                />
+              </Grid.Col>
             </>
           }
 
+          {/* --- Renderizado Condicional por Tipo de Consumible --- */}
+          {form.values.especificaciones.length > 0 && form.values.especificaciones?.map((spec, index) => (
+            <Grid.Col span={6} key={index}>
+              {
+                spec.tipoEntrada === 'number' ?
+                  <NumberInput
+                    key={index}
+                    label={spec.campo}
+                    placeholder={`Ingresa ${spec.campo.toLowerCase()}`}
+                    value={form.values.especificaciones[spec.value] || ''}
+                    onChange={(value) => {
+                      const newEspecificaciones = { ...form.values.especificaciones, [spec.value]: value };
+                      form.setFieldValue('especificaciones', newEspecificaciones);
+                    }}
+                  />
+                  : spec.tipoEntrada === 'text' ?
+                    <TextInput
+                      key={index}
+                      label={spec.campo}
+                      placeholder={`Ingresa ${spec.campo.toLowerCase()}`}
+                      value={form.values.especificaciones[spec.value] || ''}
+                      onChange={(event) => {
+                        console.log(form.values)
+                        const newEspecificaciones = { ...form.values.especificaciones, [spec.value]: event.currentTarget.value };
+                        form.setFieldValue('especificaciones', newEspecificaciones);
+
+                      }}
+                    /> :
+                    spec.tipoEntrada === 'select' &&
+                    <Select
+                      key={index}
+                      label={spec.campo}
+                      placeholder={`Selecciona ${spec.campo.toLowerCase()}`}
+                      data={spec.opciones || []}
+                      value={form.values.especificaciones.find(espec => espec.campo === spec.campo).value || ''}
+                      onChange={(value) => {
+                        console.log(value)
+                        const newEspecificaciones = [ ...form.values.especificaciones.map(espec => { return (espec.campo === spec.campo ?  {...espec, value: value} : {...espec})}) ];
+                        form.setFieldValue('especificaciones', newEspecificaciones);
+                      }}
+                    />
+              }
+
+
+
+            </Grid.Col>
+          ))}
 
 
         </Grid>
 
-        {/* --- Renderizado Condicional por Tipo de Consumible --- */}
-        <Stack mt="xl" spacing="lg">
-          {form.values.especificaciones.length > 0 && form.values.especificaciones?.map((spec, index) => (
-            <TextInput
-              key={index}
-              label={spec.label}
-              placeholder={`Ingresa ${spec.campo.toLowerCase()}`}
-              value={form.values.especificaciones[spec.campo] || ''}
-              onChange={(event) => {
-                const newEspecificaciones = { ...form.values.especificaciones, [spec.campo]: event.currentTarget.value };
-                form.setFieldValue('especificaciones', newEspecificaciones);
-              }}
-            />
-          ))}
-        </Stack>
 
 
 

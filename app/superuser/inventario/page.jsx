@@ -44,6 +44,9 @@ export default function InventarioDashboardPage() {
                     <Button fullWidth variant="filled" onClick={() => router.push('/superuser/inventario/consumibles-usados')}>
                         Consumibles Usados 🛠️
                     </Button>
+                    <Button fullWidth variant="filled" onClick={() => router.push('/superuser/inventario/tipos-consumibles')}>
+                        Editar tipos de consumibles 🛠️
+                    </Button>
                     {/* Puedes añadir más botones relacionados con inventario aquí, ej. Ajustes, Reportes */}
                 </SimpleGrid>
 
