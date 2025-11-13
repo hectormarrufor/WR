@@ -7,7 +7,8 @@ import {
   Combobox,
   useCombobox,
   Paper,
-  Loader
+  Loader,
+  Flex
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconPlus } from '@tabler/icons-react';
@@ -50,19 +51,23 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
   const [selectedModelosData, setSelectedModelosData] = useState({});
   const [medidasNeumaticos, setMedidasNeumaticos] = useState([]);
   const [viscosidades, setViscosidades] = useState([]);
+  const [codigoParte, setCodigoParte] = useState([]);
   const [searchValueMedida, setSearchValueMedida] = useState('');
   const [searchValueMarca, setSearchValueMarca] = useState('');
   const [searchValueTipo, setSearchValueTipo] = useState('');
+  const [searchValueViscosidad, setSearchValueViscosidad] = useState('');
+  const [searchValueCodigo, setSearchValueCodigo] = useState('');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const comboboxTipo = useCombobox({ onDropdownClose: () => comboboxTipo.resetSelectedOption(), });
   const comboboxNeumaticos = useCombobox({ onDropdownClose: () => comboboxNeumaticos.resetSelectedOption(), });
   const comboboxMarcas = useCombobox({ onDropdownClose: () => comboboxMarcas.resetSelectedOption(), });
+  const comboBoxViscosidades = useCombobox({ onDropdownClose: () => comboBoxViscosidades.resetSelectedOption(), });
+  const comboBoxCodigos = useCombobox({ onDropdownClose: () => comboBoxCodigos.resetSelectedOption(), });
   const [newTipoModalOpen, setNewTipoModalOpen] = useState(false);
 
 
   const form = useForm({
     initialValues: {
-      nombre: initialData?.nombre || '',
       marca: initialData?.marca || '',
       stock: initialData?.stock || 0,
       stockMinimo: initialData?.stockMinimo || 0,
@@ -70,8 +75,11 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
       especificaciones: initialData?.tipo.especificaciones || {},
     },
     validate: {
-      nombre: (value) => (value ? null : 'El nombre es obligatorio'),
       tipo: (value) => (value ? null : 'El tipo es obligatorio'),
+      marca: (value) => (value ? null : 'La marca es obligatoria'),
+      stock: (value) => (value >= 0 ? null : 'El stock no puede ser negativo'),
+      stockMinimo: (value) => (value >= 0 ? null : 'El stock mínimo no puede ser negativo'),
+
     },
   });
 
@@ -89,7 +97,7 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
 
     // Agregamos la especificación clave
     if (tipo === 'Aceite' && especificaciones?.find(atributo => atributo.campo === "Viscosidad")) {
-      nameParts.push(`Aceite ${especificaciones.find(atributo => atributo.campo === "Viscosidad").valor}`);
+      nameParts.push(`Aceite ${especificaciones?.find(atributo => atributo.campo === "Viscosidad").valor}`);
     } else if (tipo === 'Neumatico' && especificaciones?.medida) {
       nameParts.push(`Neumático ${especificaciones.medida}`);
     } else if (tipo === 'Bateria' && especificaciones?.nomenclatura) {
@@ -117,6 +125,7 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
       const res = await fetch('/api/inventario/medida-neumaticos');
       if (!res.ok) throw new Error('Error al consultar la API');
       const data = await res.json();
+      console.log(data.data)
       if (Array.isArray(data.data[0].medida) && data.data[0].medida.length > 0) {
         setMedidasNeumaticos(data.data[0].medida);
       } else {
@@ -177,9 +186,10 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
   const fetchViscosidades = async () => {
     try {
       const res = await fetch('/api/inventario/viscosidades-aceite');
-      if (!res.ok) throw new Error('Error al consultar la API');
       const data = await res.json();
-      if (Array.isArray(data.data[0].viscosidades) && data.data[0].viscosidades.length > 0) {
+      if (!data.success) throw new Error(data.error || 'Error al consultar la API');
+      console.log(data)
+      if (Array.isArray(data.data[0]?.viscosidades) && data.data[0]?.viscosidades.length > 0) {
         setViscosidades(data.data[0].viscosidades);
       } else {
         const viscosidadesArray = [
@@ -261,6 +271,12 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
     //   fetchMedidasNeumaticos();
     // }
     form.setFieldValue('especificaciones', tipoConsumibles.find(tipo => tipo.nombre === form.values.tipo)?.especificaciones || {});
+    if (form.values.tipo === 'Aceite') {
+      fetchViscosidades();
+    }
+    else if (form.values.tipo === 'Neumatico') {
+      fetchMedidasNeumaticos();
+    }
   }, [form.values.tipo]);
 
   useEffect(() => {
@@ -312,6 +328,26 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
       }
       setMarcas((current) => [...current, query]);
       notifications.show({ title: 'Éxito', message: `Marca "${query}" creada.`, color: 'green' });
+      return query;
+    } catch (error) {
+      notifications.show({ title: 'Error', message: error.message, color: 'red' });
+      return null;
+    }
+  };
+
+  const handleCreateViscosidad = async (query) => {
+    try {
+      const response = await fetch('/api/inventario/viscosidades-aceite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ viscosidades: [query] }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'No se pudo crear la viscosidad.');
+      }
+      setViscosidades(data.data.viscosidades);
+      notifications.show({ title: 'Éxito', message: `Viscosidad "${query}" creada.`, color: 'green' });
       return query;
     } catch (error) {
       notifications.show({ title: 'Error', message: error.message, color: 'red' });
@@ -399,9 +435,12 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
   const filteredTipos = tipoConsumibles.map(tipo => tipo.nombre).filter((item) => item.toLowerCase().includes(searchValueTipo.toLowerCase().trim()));
   const optionsTipos = filteredTipos.map((item) => (<Combobox.Option value={item} key={item}>{item}</Combobox.Option>));
   const showCreateOptionTipo = searchValueTipo.trim() !== '' && !tipoConsumibles.some(t => t.nombre.toLowerCase() === searchValueTipo.toLowerCase().trim());
-  const filteredViscosidades = viscosidades.filter((item) => item.toLowerCase().includes(form.values.especificaciones.viscosidad ? form.values.especificaciones.viscosidad.toLowerCase().trim() : ''));
+  const filteredViscosidades = viscosidades.filter((item) => item.toLowerCase().includes(form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value ? form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value.toLowerCase().trim() : ''));
   const optionsViscosidades = filteredViscosidades.map((item) => (<Combobox.Option value={item} key={item}>{item}</Combobox.Option>));
-  const showCreateOptionViscosidad = form.values.especificaciones.viscosidad && form.values.especificaciones.viscosidad.trim() !== '' && !viscosidades.some(v => v.toLowerCase() === form.values.especificaciones.viscosidad.toLowerCase().trim());
+  const showCreateOptionViscosidad = Array.isArray(form.values.especificaciones) && form.values.especificaciones?.find(espec => espec.campo === "Viscosidad")?.value && form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value.trim() !== '' && !viscosidades.some(v => v.toLowerCase() === form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value.toLowerCase().trim());
+  const filteredCodigos = codigoParte.filter((item) => item.toLowerCase().includes(form.values.especificaciones?.codigoParte ? form.values.especificaciones?.codigoParte.toLowerCase().trim() : ''));
+  const optionsCodigos = filteredCodigos.map((item) => (<Combobox.Option value={item} key={item}>{item}</Combobox.Option>));
+  const showCreateOptionCodigo = form.values.especificaciones?.codigoParte && form.values.especificaciones?.codigoParte.trim() !== '' && !codigoParte.some(c => c.toLowerCase() === form.values.especificaciones?.codigoParte.toLowerCase().trim());
 
   const handleAttributeChange = (modeloId, selectedAttrs) => {
     const updatedData = { ...selectedModelosData, [modeloId]: { ...selectedModelosData[modeloId], selectedAttributes: selectedAttrs } };
@@ -421,7 +460,6 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
                 const isNew = !tipoConsumibles.map(tipo => tipo.nombre).includes(val);
                 if (isNew) {
                   setNewTipoModalOpen(true);
-                  // handleCreateTipo(val);
                 }
                 form.setFieldValue('tipo', val);
                 comboboxTipo.closeDropdown();
@@ -509,15 +547,15 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
                 </Combobox>
               </Grid.Col>
               <Grid.Col span={6}>
-                <NumberInput
-                  label="cantidad en stock"
-                  placeholder="Ingresa la cantidad en stock"
-                  {...form.getInputProps('stock')}
-                />
+                  <NumberInput
+                    label={`cantidad en stock (${tipoConsumibles.find(tipo => tipo.nombre === form.values.tipo)?.unidadMedida || ''})`}
+                    placeholder="Ingresa la cantidad en stock"
+                    {...form.getInputProps('stock')}
+                  />
               </Grid.Col>
               <Grid.Col span={6}>
                 <NumberInput
-                  label="stock minimo"
+                  label={`stock minimo (${tipoConsumibles.find(tipo => tipo.nombre === form.values.tipo)?.unidadMedida || ''})`}
                   placeholder="Ingresa la cantidad de stock minimo"
                   {...form.getInputProps('stockMinimo')}
                 />
@@ -554,64 +592,158 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
                       }}
                     /> :
                     spec.tipoEntrada === 'select' && spec.campo === 'Medida' ?
-                     <Combobox
-                      store={comboboxNeumaticos}
-                      onOptionSubmit={(val) => {
-                        const isNew = !medidasNeumaticos.includes(val);
-                        if (isNew) {
-                          handleCreateMedida(val);
-                        } 
-                        const newEspecificaciones = { ...form.values.especificaciones, [spec.campo]: val };
-                        form.setFieldValue('especificaciones', newEspecificaciones);
-                        comboboxNeumaticos.closeDropdown();
-                      }}
-                    >
-                      <Combobox.Target> 
-                        <TextInput
+                      <Combobox
+                        store={comboboxNeumaticos}
+                        onOptionSubmit={(val) => {
+                          const isNew = !medidasNeumaticos.includes(val);
+                          if (isNew) {
+                            handleCreateMedida(val);
+                          }
+                          const newEspecificaciones = { ...form.values.especificaciones, [spec.campo]: val };
+                          form.setFieldValue('especificaciones', newEspecificaciones);
+                          comboboxNeumaticos.closeDropdown();
+                        }}
+                      >
+                        <Combobox.Target>
+                          <TextInput
+                            label={spec.campo}
+                            placeholder={`Selecciona ${spec.campo.toLowerCase()}`}
+                            value={form.values.especificaciones?.find(espec => espec.campo === spec.campo).value || searchValueMedida}
+                            onChange={(event) => {
+                              let newValue = event.currentTarget.value;
+                              newValue = capitalizeUnlessUppercase(newValue);
+                              setSearchValueMedida(newValue);
+                              const newEspecificaciones = [...form.values.especificaciones.map(espec => espec.campo === spec.campo ? { ...espec, value: newValue } : { ...espec })];
+                              form.setFieldValue('especificaciones', newEspecificaciones);
+                              comboboxNeumaticos.openDropdown();
+                              comboboxNeumaticos.updateSelectedOptionIndex('active');
+                            }}
+
+                            onFocus={() => comboboxNeumaticos.openDropdown()}
+                            onBlur={() => comboboxNeumaticos.closeDropdown()}
+                          />
+                        </Combobox.Target>
+                        <Combobox.Dropdown>
+                          <Combobox.Options>
+                            {optionsMedidas}
+                            {showCreateOptionMedida && (
+                              <Combobox.Option value={searchValueMedida}>
+                                {`+ Añadir "${searchValueMedida}"`}
+                              </Combobox.Option>
+                            )}
+                            {optionsMedidas.length === 0 && !showCreateOptionMedida && (
+                              <Combobox.Empty>No hay medidas que coincidan</Combobox.Empty>
+                            )}
+                          </Combobox.Options>
+                        </Combobox.Dropdown>
+                      </Combobox>
+                      : spec.tipoEntrada === 'select' && spec.campo === 'Viscosidad' ?
+                        <Combobox
+                          store={comboBoxViscosidades}
+                          onOptionSubmit={(val) => {
+                            const isNew = !viscosidades.includes(val);
+                            if (isNew) {
+                              handleCreateViscosidad(val);
+                            }
+                            const newEspecificaciones = [...form.values.especificaciones.map(espec => { return (espec.campo === spec.campo ? { ...espec, value: val } : { ...espec }) })];
+                            form.setFieldValue('especificaciones', newEspecificaciones);
+                            comboBoxViscosidades.closeDropdown();
+                          }}
+                        >
+                          <Combobox.Target>
+                            <TextInput
+                              label={spec.campo}
+                              placeholder={`Selecciona ${spec.campo.toLowerCase()}`}
+                              value={form.values.especificaciones?.find(espec => espec.campo === spec.campo).value || searchValueViscosidad}
+                              onChange={(event) => {
+                                let newValue = event.currentTarget.value;
+                                newValue = capitalizeUnlessUppercase(newValue);
+                                setSearchValueViscosidad(newValue);
+                                const newEspecificaciones = [...form.values.especificaciones.map(espec => espec.campo === spec.campo ? { ...espec, value: newValue } : { ...espec })];
+                                form.setFieldValue('especificaciones', newEspecificaciones);
+                                comboBoxViscosidades.openDropdown();
+                                comboBoxViscosidades.updateSelectedOptionIndex('active');
+                              }}
+
+                              onFocus={() => comboBoxViscosidades.openDropdown()}
+                              onBlur={() => comboBoxViscosidades.closeDropdown()}
+                            />
+                          </Combobox.Target>
+                          <Combobox.Dropdown>
+                            <Combobox.Options>
+                              {optionsViscosidades}
+                              {showCreateOptionViscosidad && (
+                                <Combobox.Option value={form.values.especificaciones?.find(espec => espec.campo === spec.campo).codigoParte}>
+                                  {`+ Añadir "${form.values.especificaciones?.find(espec => espec.campo === spec.campo).codigoParte}"`}
+                                </Combobox.Option>
+                              )}
+                              {optionsViscosidades.length === 0 && !showCreateOptionViscosidad && (
+                                <Combobox.Empty>No hay viscosidades que coincidan</Combobox.Empty>
+                              )}
+                            </Combobox.Options>
+                          </Combobox.Dropdown>
+                        </Combobox>
+                        :
+                        spec.tipoEntrada === 'select' && spec.campo === 'Codigo' ?
+                          <Combobox
+                            store={comboBoxCodigos}
+                            onOptionSubmit={(val) => {
+                              const isNew = !codigoParte.includes(val);
+                              if (isNew) {
+                                setCodigoParte((current) => [...current, val]);
+                              }
+                              const newEspecificaciones = [...form.values.especificaciones.map(espec => { return (espec.campo === spec.campo ? { ...espec, codigoParte: val } : { ...espec }) })];
+                              form.setFieldValue('especificaciones', newEspecificaciones);
+                              comboBoxCodigos.closeDropdown();
+                            }}
+                          >
+                            <Combobox.Target>
+                              <TextInput
+                                label={spec.campo}
+                                placeholder={`Selecciona ${spec.campo.toLowerCase()}`}
+                                value={form.values.especificaciones?.find(espec => espec.campo === spec.campo).codigoParte || searchValueCodigo}
+                                onChange={(event) => {
+                                  let newValue = event.currentTarget.value;
+                                  newValue = capitalizeUnlessUppercase(newValue);
+                                  setSearchValueCodigo(newValue);
+                                  const newEspecificaciones = [...form.values.especificaciones.map(espec => espec.campo === spec.campo ? { ...espec, codigoParte: newValue } : { ...espec })];
+                                  form.setFieldValue('especificaciones', newEspecificaciones);
+                                  comboBoxCodigos.openDropdown();
+                                  comboBoxCodigos.updateSelectedOptionIndex('active');
+                                }}
+
+                                onFocus={() => comboBoxCodigos.openDropdown()}
+                                onBlur={() => comboBoxCodigos.closeDropdown()}
+                              />
+                            </Combobox.Target>
+                            <Combobox.Dropdown>
+                              <Combobox.Options>
+                                {optionsCodigos}
+                                {showCreateOptionCodigo && (
+                                  <Combobox.Option value={form.values.especificaciones?.find(espec => espec.campo === spec.campo).codigoParte}>
+                                    {`+ Añadir "${form.values.especificaciones?.find(espec => espec.campo === spec.campo).codigoParte}"`}
+                                  </Combobox.Option>
+                                )}
+                                {optionsCodigos.length === 0 && !showCreateOptionCodigo && (
+                                  <Combobox.Empty>No hay códigos que coincidan</Combobox.Empty>
+                                )}
+                              </Combobox.Options>
+                            </Combobox.Dropdown>
+                          </Combobox>
+                          :
+
+                        <Select
+                          key={index}
                           label={spec.campo}
                           placeholder={`Selecciona ${spec.campo.toLowerCase()}`}
-                          value={form.values.especificaciones.find(espec => espec.campo === spec.campo).value || searchValueMedida}
-                          onChange={(event) => {
-                            let newValue = event.currentTarget.value;
-                            newValue = capitalizeUnlessUppercase(newValue);
-                            setSearchValueMedida(newValue);
-                            const newEspecificaciones = { ...form.values.especificaciones, [spec.campo]: newValue };
+                          data={spec.opciones || []}
+                          value={form.values.especificaciones?.find(espec => espec.campo === spec.campo).value || ''}
+                          onChange={(value) => {
+                            console.log(value)
+                            const newEspecificaciones = [...form.values.especificaciones.map(espec => { return (espec.campo === spec.campo ? { ...espec, value: value } : { ...espec }) })];
                             form.setFieldValue('especificaciones', newEspecificaciones);
-                            comboboxNeumaticos.openDropdown();
-                            comboboxNeumaticos.updateSelectedOptionIndex('active');
                           }}
-
-                          onFocus={() => comboboxNeumaticos.openDropdown()}
-                          onBlur={() => comboboxNeumaticos.closeDropdown()}
-                        />  
-                      </Combobox.Target>
-                      <Combobox.Dropdown>
-                        <Combobox.Options>
-                          {optionsMedidas}
-                          {showCreateOptionMedida && (
-                            <Combobox.Option value={searchValueMedida}>
-                              {`+ Añadir "${searchValueMedida}"`}
-                            </Combobox.Option>
-                          )}
-                          {optionsMedidas.length === 0 && !showCreateOptionMedida && (  
-                            <Combobox.Empty>No hay medidas que coincidan</Combobox.Empty>
-                          )}
-                        </Combobox.Options>
-                      </Combobox.Dropdown>
-                    </Combobox>
-                    :
-                    <Select
-                      key={index}
-                      label={spec.campo}
-                      placeholder={`Selecciona ${spec.campo.toLowerCase()}`}
-                      data={spec.opciones || []}
-                      value={form.values.especificaciones.find(espec => espec.campo === spec.campo).value || ''}
-                      onChange={(value) => {
-                        console.log(value)
-                        const newEspecificaciones = [ ...form.values.especificaciones.map(espec => { return (espec.campo === spec.campo ?  {...espec, value: value} : {...espec})}) ];
-                        form.setFieldValue('especificaciones', newEspecificaciones);
-                      }}
-                    />
+                        />
               }
 
 

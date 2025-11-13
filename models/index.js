@@ -39,6 +39,7 @@ const Flete = require('./operaciones/Flete');
 const PushSubscription = require('./pushSubscription');
 const ConsumibleUsado = require('./inventario/ConsumibleUsado');
 const ViscosidadAceite = require('./inventario/ViscosidadAceite');
+const Codigo = require('./inventario/Codigo');
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -80,6 +81,7 @@ const db = {
     MedidaNeumatico,
     Marca,
     ViscosidadAceite,
+    Codigo,
 
     //ESTIMACION
     CostParameters,
