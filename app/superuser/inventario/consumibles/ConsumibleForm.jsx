@@ -72,7 +72,7 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
       stock: initialData?.stock || 0,
       stockMinimo: initialData?.stockMinimo || 0,
       tipo: initialData?.tipo || '',
-      especificaciones: initialData?.tipo.especificaciones || {},
+      especificaciones: initialData?.tipo.especificaciones || [],
     },
     validate: {
       tipo: (value) => (value ? null : 'El tipo es obligatorio'),
@@ -435,12 +435,12 @@ export default function ConsumibleForm({ initialData, onSuccess }) {
   const filteredTipos = tipoConsumibles.map(tipo => tipo.nombre).filter((item) => item.toLowerCase().includes(searchValueTipo.toLowerCase().trim()));
   const optionsTipos = filteredTipos.map((item) => (<Combobox.Option value={item} key={item}>{item}</Combobox.Option>));
   const showCreateOptionTipo = searchValueTipo.trim() !== '' && !tipoConsumibles.some(t => t.nombre.toLowerCase() === searchValueTipo.toLowerCase().trim());
-  const filteredViscosidades = viscosidades.filter((item) => item.toLowerCase().includes(form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value ? form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value.toLowerCase().trim() : ''));
+  const filteredViscosidades = tipoConsumible.nombre ===  "Aceite" && viscosidades.length >= 0 && viscosidades.filter((item) => item.toLowerCase().includes(form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value ? form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value.toLowerCase().trim() : ''));
   const optionsViscosidades = filteredViscosidades.map((item) => (<Combobox.Option value={item} key={item}>{item}</Combobox.Option>));
   const showCreateOptionViscosidad = Array.isArray(form.values.especificaciones) && form.values.especificaciones?.find(espec => espec.campo === "Viscosidad")?.value && form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value.trim() !== '' && !viscosidades.some(v => v.toLowerCase() === form.values.especificaciones?.find(espec => espec.campo === "Viscosidad").value.toLowerCase().trim());
   const filteredCodigos = codigoParte.filter((item) => item.toLowerCase().includes(form.values.especificaciones?.codigoParte ? form.values.especificaciones?.codigoParte.toLowerCase().trim() : ''));
   const optionsCodigos = filteredCodigos.map((item) => (<Combobox.Option value={item} key={item}>{item}</Combobox.Option>));
-  const showCreateOptionCodigo = form.values.especificaciones?.codigoParte && form.values.especificaciones?.codigoParte.trim() !== '' && !codigoParte.some(c => c.toLowerCase() === form.values.especificaciones?.codigoParte.toLowerCase().trim());
+  const showCreateOptionCodigo = Array.isArray (form.values.especificaciones) && form.values?.especificaciones?.find(espec => espec.campo === "Codigo")?.codigoParte && form.values.especificaciones?.find(espec => espec.campo ==="Codigo").codigoParte.trim() !== '' && !codigoParte.some(c => c.toLowerCase() === form.values.especificaciones?.find(espec => espec.campo === "Codigo").codigoParte.toLowerCase().trim());
 
   const handleAttributeChange = (modeloId, selectedAttrs) => {
     const updatedData = { ...selectedModelosData, [modeloId]: { ...selectedModelosData[modeloId], selectedAttributes: selectedAttrs } };
