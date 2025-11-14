@@ -9,15 +9,17 @@ import {
   Modal,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { AsyncComboBox } from "./AsyncComboBox";
+
 import { updateSpec } from "./fieldConfig";
 import { useEffect , useState} from "react";
 import NewTipoConsumibleForm from "./NewTipoConsumibleForm";
+import { AsyncComboBox } from "./AsyncCombobox";
 
 export default function ConsumibleForm() {
   const [tipoConsumibles, setTipoConsumibles] = useState([]);
   const [newTipoModalOpen, setNewTipoModalOpen] = useState(false);
   const [pendingTipoNombre, setPendingTipoNombre] = useState("");
+  
 
   const form = useForm({
     initialValues: {
