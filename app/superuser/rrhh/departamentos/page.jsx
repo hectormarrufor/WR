@@ -6,13 +6,15 @@ import { FaPlus } from 'react-icons/fa';
 import DepartamentosTable from './components/DepartamentosTable';
 import {SectionTitle} from '../../../components/SectionTitle';
 import DeleteModal from '../../DeleteModal'; // Reutilizamos el modal de eliminación
+import { Modal, Paper } from '@mantine/core';
 
 export default function DepartamentosPage() {
     const [departamentos, setDepartamentos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [modalIsOpen, setModalIsOpen] = useState(false);
-    const [departamentoToDelete, setDepartamentoToDelete] = useState(null);
+    const [selectedDepartamento, setSelectedDepartamento] = useState(null);
+    const [editModalIsOpen, setEditModalIsOpen] = useState(false);
 
     const fetchDepartamentos = async () => {
         setLoading(true);
@@ -35,19 +37,19 @@ export default function DepartamentosPage() {
     }, []);
 
     const openModal = (departamento) => {
-        setDepartamentoToDelete(departamento);
+        setSelectedDepartamento(departamento);
         setModalIsOpen(true);
     };
 
     const closeModal = () => {
-        setDepartamentoToDelete(null);
+        setSelectedDepartamento(null);
         setModalIsOpen(false);
     };
 
     const handleDelete = async () => {
-        if (!departamentoToDelete) return;
+        if (!selectedDepartamento) return;
         try {
-            const response = await fetch(`/api/rrhh/departamentos/${departamentoToDelete.id}`, {
+            const response = await fetch(`/api/rrhh/departamentos/${selectedDepartamento.id}`, {
                 method: 'DELETE',
             });
 
@@ -67,11 +69,17 @@ export default function DepartamentosPage() {
         }
     };
 
+    const handleEdit = (departamento) => {
+        // Lógica para manejar la edición del departamento
+        setEditModalIsOpen(true);
+
+    }
+
     if (loading) return <p>Cargando departamentos...</p>;
     if (error) return <p>Error: {error}</p>;
 
     return (
-        <div>
+        <Paper mt={60}>
             <SectionTitle title="Gestión de Departamentos" />
             <div className="mb-4">
                 <Link href="/superuser/rrhh/departamentos/nuevo" className="btn btn-primary">
@@ -82,16 +90,24 @@ export default function DepartamentosPage() {
             <DepartamentosTable
                 departamentos={departamentos}
                 onDelete={openModal}
+                onEdit={handleEdit}
             />
-            {departamentoToDelete && (
+            {selectedDepartamento && (
                 <DeleteModal
-                    isOpen={modalIsOpen}
+                    opened={modalIsOpen}
                     onClose={closeModal}
                     onConfirm={handleDelete}
                     title="Confirmar Eliminación"
-                    message={`¿Estás seguro de que quieres eliminar el departamento "${departamentoToDelete.nombre}"? Esta acción no se puede deshacer.`}
+                    object={selectedDepartamento.nombre}
+                    message={`¿Estás seguro de que quieres eliminar el departamento "${selectedDepartamento.nombre}"? Esta acción no se puede deshacer.`}
                 />
             )}
-        </div>
+            <Modal centered opened={editModalIsOpen} onClose={() => setEditModalIsOpen(false)} title="Editar Departamento">
+                {/* Aquí iría el formulario de edición */}
+
+
+            </Modal>
+
+        </Paper>
     );
 }

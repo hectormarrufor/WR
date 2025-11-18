@@ -49,15 +49,17 @@ export default function SuperUserHome() {
         else {
             switch (departamentos[0]) {
                 case "Almacen":
-                    router.push('/superuser/inventario')
+                    router.push('/superuser/inventario');
                     break;
                 case "Mantenimiento":
-                    router.push('/superuser/flota')
+                    router.push('/superuser/flota');
                 case "Recursos Humanos":
-                    router.push('/superuser/rrhh')
+                    router.push('/superuser/rrhh');
                     break;
                 case "Transporte":
-                    router.push(`/superuser/flota/activos`)
+                    router.push(`/superuser/flota/activos`);
+                case "Operaciones":
+                    router.push('/superuser/operaciones');
 
                 default:
                     break;
@@ -72,7 +74,7 @@ export default function SuperUserHome() {
         { disabled: false, visible: isAdmin, title: 'Gastos Fijos mensuales', href: '/superuser/gastos', description: 'Configura los gastos fijos de la empresa', icon: IconExchange, size: 32, color: theme.colors.cyan[6] },
         { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Contratos', href: '/superuser/contratos', description: 'Gestiona contratos de servicio con clientes.', icon: IconFileText, size: 32, color: theme.colors.blue[5] },
         { disabled: false, visible: isAdmin, title: 'Fletes', href: '/superuser/fletes', description: 'Administrar fletes', icon: IconTruck, size: 32, color: theme.colors.yellow[8] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Operaciones', href: '/superuser/operaciones-campo', description: 'Control de operaciones diarias en pozos.', icon: IconGasStation, size: 32, color: theme.colors.red[5] },
+        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Operaciones', href: '/superuser/operaciones', description: 'Control de operaciones diarias del personal.', icon: IconGasStation, size: 32, color: theme.colors.red[5] },
         { disabled: false, visible: isAdmin || departamentos.includes("Mantenimiento"), title: 'Mantenimiento', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.', icon: IconTruck, size: 32, color: theme.colors.teal[6] },
         { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Transporte', href: '#', description: 'Logística de transporte de personal.', icon: IconSteeringWheel, size: 32, color: theme.colors.cyan[6] },
         { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Tesorería', href: '#', description: 'Gestiona cuentas bancarias y flujos de caja.', icon: IconCash, size: 32, color: theme.colors.cyan[6] },

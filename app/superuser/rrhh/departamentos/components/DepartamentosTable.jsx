@@ -2,8 +2,9 @@
 import Link from 'next/link';
 import { FaPencilAlt, FaTrash } from 'react-icons/fa';
 import EditButton from '../../../../components/EditButton';
+import { Button } from '@mantine/core';
 
-export default function DepartamentosTable({ departamentos, onDelete }) {
+export default function DepartamentosTable({ departamentos, onDelete, onEdit }) {
     if (!departamentos || departamentos.length === 0) {
         return <p>No hay departamentos registrados.</p>;
     }
@@ -29,14 +30,16 @@ export default function DepartamentosTable({ departamentos, onDelete }) {
                             <td className="py-2 px-4 border-b text-center">{depto.empleados?.length || 0}</td>
                             <td className="py-2 px-4 border-b">
                                 <div className="flex items-center justify-center space-x-2">
-                                    <EditButton href={`/superuser/rrhh/departamentos/${depto.id}/editar`} />
-                                    <button
+                                    <Button onClick={() => onEdit(depto)} variant="outline" color="blue" title="Editar">
+                                        <FaPencilAlt />
+                                    </Button>
+                                    <Button
                                         onClick={() => onDelete(depto)}
                                         className="text-red-500 hover:text-red-700"
                                         title="Eliminar"
                                     >
                                         <FaTrash />
-                                    </button>
+                                    </Button>
                                 </div>
                             </td>
                         </tr>
