@@ -10,6 +10,8 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import '@mantine/dates/styles.css';
+import ImageDropzone from '../../flota/activos/components/ImageDropzone';
+
 
 export function EmpleadoForm({ initialData = null }) {
   const [puestos, setPuestos] = useState([])
@@ -18,20 +20,21 @@ export function EmpleadoForm({ initialData = null }) {
 
   const form = useForm({
     initialValues: {
-      cedula: '',
-      nombre: '',
-      apellido: '',
-      telefono: '',
-      email: '',
-      direccion: '',
-      fechaIngreso: null,
-      fechaNacimiento: null,
-      fechaRetorno: null,
-      estado: 'Activo',
-      puestos: [],
-      sueldo: 0,
-      genero: '',
-      notas: '',
+      cedula: initialData?.cedula || '',
+      nombre: initialData?.nombre || '',
+      apellido: initialData?.apellido || '',
+      telefono: initialData?.telefono || '',
+      email: initialData?.email || '',
+      direccion: initialData?.direccion || '',
+      fechaIngreso: initialData?.fechaIngreso || null,
+      fechaNacimiento: initialData?.fechaNacimiento || null,
+      fechaRetorno: initialData?.fechaRetorno || null,
+      estado: initialData?.estado || 'Activo',
+      puestos: initialData?.puestos || [],
+      sueldo: initialData?.sueldo || 0,
+      genero: initialData?.genero || '',
+      notas: initialData?.notas || "",
+      imagen: initialData?.imagen || null
     },
     validate: {
       cedula: (value) => value ? null : 'La cédula es requerida',
@@ -48,8 +51,21 @@ export function EmpleadoForm({ initialData = null }) {
     },
   });
 
+
   useEffect(() => {
+    (async () => {
+      try {
+        const puestos = await fetch('/api/rrhh/puestos/');
+        const res = await puestos.json();
+        setPuestos(res.map(puesto => { return ({ puesto: puesto.nombre, id: puesto.id }) }));
+      } catch (error) {
+        notifications.show({ title: `no se pudo obtener los puestos: ${error.message}` })
+      }
+    })();
+
     if (initialData) {
+
+      console.log(initialData)
       form.setValues({
         ...initialData,
         fechaIngreso: initialData.fechaIngreso ? new Date(initialData.fechaIngreso) : null,
@@ -57,19 +73,7 @@ export function EmpleadoForm({ initialData = null }) {
         fechaRetorno: initialData.fechaRetorno ? new Date(initialData.fechaRetorno) : null,
       });
     }
-  }, [initialData]);
-
-  useEffect(() => {
-    (async() => {
-      try {
-        const puestos = await fetch('/api/rrhh/puestos/');
-        const res = await puestos.json();
-        setPuestos(res.map(puesto => {return ({puesto: puesto.nombre, id: puesto.id})}));
-      } catch (error) {
-        notifications.show({title: `no se pudo obtener los puestos: ${error.message}`})
-      }
-    })();
-  }, [])
+  }, []);
   const handleSubmit = async (values) => {
     setIsLoading(true);
     const payload = {
@@ -107,19 +111,28 @@ export function EmpleadoForm({ initialData = null }) {
         color: 'red',
       });
     }
-    finally{
+    finally {
       setIsLoading(false);
     }
   };
 
   return (
     <Box maw={800} mx="auto">
-      <Paper   shadow="md" p={30} mt={30} radius="md">
+      <Paper shadow="md" p={30} mt={30} radius="md">
         <Title order={2} ta="center" mb="lg">
           {initialData ? 'Editar Empleado' : 'Registrar Nuevo Empleado'}
         </Title>
         <form onSubmit={form.onSubmit(handleSubmit)}>
+          
+
           <Grid gutter="md">
+            <Grid.Col span={12}>
+            <ImageDropzone
+              label="Foto del Empleado"
+              form={form}
+              fieldPath="foto"
+            />
+          </Grid.Col>
             <Grid.Col span={6}>
               <TextInput label="Cédula" placeholder="12345678" {...form.getInputProps('cedula')} />
             </Grid.Col>
@@ -136,11 +149,11 @@ export function EmpleadoForm({ initialData = null }) {
               <TextInput label="Email" placeholder="juan@example.com" {...form.getInputProps('email')} />
             </Grid.Col>
             <Grid.Col span={12}>
-              <MultiSelect 
+              {/* <MultiSelect 
               label="Puestos"  
-              data={puestos.map(p => ({ value: p.id.toString(), label: p.puesto }))}
+              data={puestos.map(p => ({ value: p.id.toString(), label: p.nombre })) || []}
               {...form.getInputProps('puestos')} 
-              />
+              /> */}
             </Grid.Col>
             <Grid.Col span={12}>
               <NumberInput label="Sueldo" min={0} step={1} {...form.getInputProps('sueldo')} />
@@ -148,12 +161,12 @@ export function EmpleadoForm({ initialData = null }) {
             <Grid.Col span={12}>
               <TextInput label="Dirección" placeholder="Calle, ciudad, país" {...form.getInputProps('direccion')} />
             </Grid.Col>
-            <Grid.Col span={6}>
+            {/* <Grid.Col span={6}>
               <DateInput label="Fecha de Contratación" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaIngreso')} />
             </Grid.Col>
             <Grid.Col span={6}>
               <DateInput label="Fecha de Nacimiento" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaNacimiento')} />
-            </Grid.Col>
+            </Grid.Col> */}
             <Grid.Col span={6}>
               <Select
                 label="Estado"

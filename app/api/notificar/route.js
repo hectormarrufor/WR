@@ -12,7 +12,7 @@ webpush.setVapidDetails(
 
 export async function notificarAdmins(payload) {
   const subscripciones = await PushSubscription.findAll({
-    where: { rol: 'admin', activo: true },
+    where: { rol: ['admin', 'presidencia'], activo: true },
   });
   
   if( subscripciones.length === 0 ) {

@@ -179,6 +179,7 @@ export default function RootLayout({ children }) {
                   src="/fondo.jpg"
                 />
                 <Box mt={showHeader ? isMobile ? 33 : 35 : 0}>{children}</Box>
+                <installationIOSBanner />
               </AppShell.Main>
             </AppShell>
           </AuthProvider>

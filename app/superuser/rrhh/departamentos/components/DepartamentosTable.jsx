@@ -1,13 +1,15 @@
 // app/superuser/rrhh/departamentos/components/DepartamentosTable.jsx
 import Link from 'next/link';
 import { FaPencilAlt, FaTrash } from 'react-icons/fa';
-import EditButton from '../../../../components/EditButton';
-import { Button } from '@mantine/core';
+import { Button, Modal, Title } from '@mantine/core';
+import { useState } from 'react';
 
 export default function DepartamentosTable({ departamentos, onDelete, onEdit }) {
     if (!departamentos || departamentos.length === 0) {
         return <p>No hay departamentos registrados.</p>;
     }
+
+    const [empleadosModal, setEmpleadosModal] =useState([]);
 
     return (
         <div className="overflow-x-auto">
@@ -27,7 +29,7 @@ export default function DepartamentosTable({ departamentos, onDelete, onEdit }) 
                             <td className="py-2 px-4 border-b">{depto.nombre}</td>
                             <td className="py-2 px-4 border-b">{depto.codigo || 'N/A'}</td>
                             <td className="py-2 px-4 border-b">{depto.descripcion}</td>
-                            <td className="py-2 px-4 border-b text-center">{depto.empleados?.length || 0}</td>
+                            <td className="py-2 px-4 border-b text-center"><Button onClick={() => setEmpleadosModal(depto.puestos.map(puesto => puesto.empleados).flat())}>{depto.puestos.length > 0 && depto.puestos.map(puesto => puesto.empleados.length).reduce((acc, val) => acc + val, 0) || 0}</Button></td>
                             <td className="py-2 px-4 border-b">
                                 <div className="flex items-center justify-center space-x-2">
                                     <Button onClick={() => onEdit(depto)} variant="outline" color="blue" title="Editar">
@@ -46,6 +48,17 @@ export default function DepartamentosTable({ departamentos, onDelete, onEdit }) 
                     ))}
                 </tbody>
             </table>
+            <Modal opened={empleadosModal.length > 0} centered title="Lista de empleados" onClose={() => setEmpleadosModal([])}>
+                {console.log(empleadosModal)}
+                {empleadosModal &&
+                empleadosModal.map(empleado => 
+                   <Title><Link href={`/superuser/rrhh/empleados/${empleado.id}`}>{`${empleado.nombre} ${empleado.apellido}`}</Link></Title>
+                )
+                }
+
+
+
+            </Modal>
         </div>
     );
 }
