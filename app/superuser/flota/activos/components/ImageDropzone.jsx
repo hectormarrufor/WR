@@ -19,7 +19,11 @@ const [preview, setPreview] = useState(null);
         if (typeof initialValue === 'string' && initialValue.startsWith('http')) {
             setPreview(initialValue);
         }
+        else if (typeof initialValue === "string") {
+            setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${initialValue}`);
+        }
     }, [initialValue]);
+    
 
     const handleDrop = async (acceptedFiles) => {
         const file = acceptedFiles[0];

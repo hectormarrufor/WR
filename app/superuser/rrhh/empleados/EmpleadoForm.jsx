@@ -24,7 +24,6 @@ export function EmpleadoForm({ initialData = null }) {
       nombre: initialData?.nombre || '',
       apellido: initialData?.apellido || '',
       telefono: initialData?.telefono || '',
-      email: initialData?.email || '',
       direccion: initialData?.direccion || '',
       fechaIngreso: initialData?.fechaIngreso || null,
       fechaNacimiento: initialData?.fechaNacimiento || null,
@@ -41,7 +40,6 @@ export function EmpleadoForm({ initialData = null }) {
       nombre: (value) => value ? null : 'El nombre es requerido',
       apellido: (value) => value ? null : 'El apellido es requerido',
       telefono: (value) => (/^\d{4}\d{7}$/.test(value) ? null : 'Formato inválido (ej. 0412-1234567)'),
-      email: (value) => (/^\S+@\S+\.\S+$/.test(value) ? null : 'Email inválido'),
       fechaIngreso: (value) => value ? null : 'Fecha de contratación requerida',
       sueldo: (value) => value > 0 ? null : 'Sueldo debe ser mayor a 0',
       estado: (value) => value ? null : 'Estado requerido',
@@ -57,6 +55,7 @@ export function EmpleadoForm({ initialData = null }) {
       try {
         const puestos = await fetch('/api/rrhh/puestos/');
         const res = await puestos.json();
+        console.log(res)
         setPuestos(res.map(puesto => { return ({ puesto: puesto.nombre, id: puesto.id }) }));
       } catch (error) {
         notifications.show({ title: `no se pudo obtener los puestos: ${error.message}` })
@@ -74,26 +73,45 @@ export function EmpleadoForm({ initialData = null }) {
       });
     }
   }, []);
+
   const handleSubmit = async (values) => {
     setIsLoading(true);
-    const payload = {
+    let payload = {
       ...values,
       fechaIngreso: values.fechaIngreso?.toISOString().split('T')[0] ?? null,
       fechaNacimiento: values.fechaNacimiento?.toISOString().split('T')[0] ?? null,
       fechaRetorno: values.fechaRetorno?.toISOString().split('T')[0] ?? null,
     };
 
-    const isEditing = Boolean(initialData);
-    const url = isEditing
-      ? `/api/rrhh/empleados/${initialData.id}`
-      : '/api/rrhh/empleados';
-
     try {
+      if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
+        notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
+        const imagenFile = values.imagen;
+        const fileExtension = imagenFile.name.split('.').pop();
+        const uniqueFilename = `${values.cedula}.${fileExtension}`;
+
+        const response = await fetch(`/api/upload?filename=${encodeURIComponent(uniqueFilename)}`, {
+          method: 'POST',
+          body: imagenFile,
+        });
+
+        if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
+        const newBlob = await response.json();
+        payload.imagen = uniqueFilename;
+        notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
+      }
+
+      const isEditing = Boolean(initialData);
+      const url = isEditing
+        ? `/api/rrhh/empleados/${initialData.id}`
+        : '/api/rrhh/empleados';
+
+
       const response = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
+      })
 
       if (!response.ok) throw new Error((await response.json()).message || response.statusText);
 
@@ -114,7 +132,8 @@ export function EmpleadoForm({ initialData = null }) {
     finally {
       setIsLoading(false);
     }
-  };
+  }
+
 
   return (
     <Box maw={800} mx="auto">
@@ -123,31 +142,18 @@ export function EmpleadoForm({ initialData = null }) {
           {initialData ? 'Editar Empleado' : 'Registrar Nuevo Empleado'}
         </Title>
         <form onSubmit={form.onSubmit(handleSubmit)}>
-          
+
 
           <Grid gutter="md">
+             
             <Grid.Col span={12}>
-            <ImageDropzone
-              label="Foto del Empleado"
-              form={form}
-              fieldPath="foto"
-            />
-          </Grid.Col>
-            <Grid.Col span={6}>
-              <TextInput label="Cédula" placeholder="12345678" {...form.getInputProps('cedula')} />
+              <ImageDropzone
+                label="Foto del Empleado"
+                form={form}
+                fieldPath="imagen"
+              />
             </Grid.Col>
-            <Grid.Col span={6}>
-              <TextInput label="Nombre" placeholder="Juan" {...form.getInputProps('nombre')} />
-            </Grid.Col>
-            <Grid.Col span={6}>
-              <TextInput label="Apellido" placeholder="Pérez" {...form.getInputProps('apellido')} />
-            </Grid.Col>
-            <Grid.Col span={6}>
-              <TextInput label="Teléfono" placeholder="04121234567" {...form.getInputProps('telefono')} />
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <TextInput label="Email" placeholder="juan@example.com" {...form.getInputProps('email')} />
-            </Grid.Col>
+          
             <Grid.Col span={12}>
               {/* <MultiSelect 
               label="Puestos"  
@@ -161,12 +167,12 @@ export function EmpleadoForm({ initialData = null }) {
             <Grid.Col span={12}>
               <TextInput label="Dirección" placeholder="Calle, ciudad, país" {...form.getInputProps('direccion')} />
             </Grid.Col>
-            {/* <Grid.Col span={6}>
+            <Grid.Col span={6}>
               <DateInput label="Fecha de Contratación" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaIngreso')} />
             </Grid.Col>
             <Grid.Col span={6}>
               <DateInput label="Fecha de Nacimiento" valueFormat="DD/MM/YYYY" {...form.getInputProps('fechaNacimiento')} />
-            </Grid.Col> */}
+            </Grid.Col>
             <Grid.Col span={6}>
               <Select
                 label="Estado"
@@ -190,15 +196,6 @@ export function EmpleadoForm({ initialData = null }) {
                 placeholder="Selecciona género"
                 data={['Masculino', 'Femenino']}
                 {...form.getInputProps('genero')}
-              />
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <Textarea
-                label="Notas"
-                placeholder="Observaciones sobre el empleado"
-                autosize
-                minRows={3}
-                {...form.getInputProps('notas')}
               />
             </Grid.Col>
           </Grid>

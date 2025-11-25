@@ -16,6 +16,8 @@ import {
     Stack,
     Badge,
 } from "@mantine/core"
+import { useParams, useRouter } from "next/navigation"
+import calcularEdad from "@/app/helpers/calcularEdad";
 
 /**
  * Página adaptada a Mantine: /superuser/rrhh/empleados/[id]/page.jsx
@@ -24,7 +26,8 @@ import {
  */
 
 export default function Page({ params }) {
-    const { id } = params || {}
+    const { id } = useParams(params);
+    const router = useRouter();
     const [empleado, setEmpleado] = useState(null)
     const [cargando, setCargando] = useState(true)
     const [preview, setPreview] = useState(null)
@@ -36,10 +39,10 @@ export default function Page({ params }) {
                 const res = await fetch(`/api/rrhh/empleados/${id}`)
                 if (!res.ok) throw new Error("No hay datos")
                 const data = await res.json()
+            console.log(data)
                 if (!mounted) return
-                setEmpleado(data)
-                console.log(data)
-                if (data.imageUrl) setPreview(data.imageUrl)
+                setEmpleado({...data, edad: calcularEdad(data.fechaNacimiento)})
+                if (data.imagen) setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${data.imagen}`)
             } catch (err) {
                 if (!mounted) return
                 setEmpleado({
@@ -50,7 +53,7 @@ export default function Page({ params }) {
                     email: "empleado@ejemplo.com",
                     telefono: "+52 55 0000 0000",
                     fechaIngreso: "2024-01-01",
-                    imageUrl: null,
+                    imagen: null,
                 })
             } finally {
                 if (mounted) setCargando(false)
@@ -58,14 +61,13 @@ export default function Page({ params }) {
         }
         cargar()
         return () => (mounted = false)
-    }, [id])
+    }, [id]);
 
-    function handleImageFile(file) {
-        if (!file) return
-        const url = URL.createObjectURL(file)
-        setPreview(url)
-        // TODO: subir el archivo a tu API (fetch POST con FormData) y guardar la URL en la base de datos
-    }
+    useEffect(() => {
+      console.log(preview)
+    }, [preview])
+    
+
 
     if (cargando) {
         return (
@@ -90,8 +92,7 @@ export default function Page({ params }) {
                                 <Image
                                     src={preview}
                                     alt={`Foto ${empleado?.nombre}`}
-                                    width={200}
-                                    height={200}
+                                    w={200}
                                     radius="md"
                                     fit="cover"
                                 />
@@ -113,48 +114,35 @@ export default function Page({ params }) {
                                 </Paper>
                             )}
 
-                            <FileButton accept="image/*" onChange={handleImageFile}>
-                                {(props) => (
-                                    <Button {...props} mt="sm" variant="filled">
-                                        Subir imagen
-                                    </Button>
-                                )}
-                            </FileButton>
-
-                            <Text size="xs" color="dimmed" align="center">
-                                Puedes subir una foto del empleado (no se guarda automáticamente).
-                            </Text>
                         </Stack>
                     </Grid.Col>
 
-                    <Grid.Col span={12} md={8}>
-                        <Group position="apart" align="flex-start" mb="sm">
-                            <Title order={3}>{empleado?.nombre}</Title>
-                            <Badge color="gray" variant="light">
-                                ID: {empleado?.id}
-                            </Badge>
-                        </Group>
+                    <Grid.Col span={12} md={8} justify = "center" align = "center">
+           
+                        
 
-                        <Stack spacing="xs">
+                        <Stack >
+                            <Title order={4}><strong>{empleado?.nombre} {empleado?.apellido}</strong></Title>
                             <Text>
-                                <strong>Puesto:</strong> {empleado?.puestos.map(puesto => puesto.nombre).join(",")}
-                            </Text>
-                            <Text>
-                                <strong>Departamento:</strong> {empleado?.departamento}
-                            </Text>
-                            <Text>
-                                <strong>Email:</strong> {empleado?.email}
+                                {empleado?.puestos.map(puesto => puesto.nombre).join(",")}
                             </Text>
                             <Text>
                                 <strong>Teléfono:</strong> {empleado?.telefono}
                             </Text>
+                            <Text>
+                                <strong>Cedula:</strong> {empleado?.cedula}
+                            </Text>
+                            <Text>
+                                <strong>Edad:</strong>{empleado?.edad}
+                            </Text>
+
                             <Text>
                                 <strong>Fecha de ingreso:</strong> {empleado?.fechaIngreso}
                             </Text>
                         </Stack>
 
                         <Group mt="lg">
-                            <Button variant="filled">Editar</Button>
+                            <Button variant="filled" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}>Editar</Button>
                             <Button variant="outline">Ver historial</Button>
                         </Group>
                     </Grid.Col>

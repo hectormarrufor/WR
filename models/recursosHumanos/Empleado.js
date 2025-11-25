@@ -14,6 +14,10 @@ const Empleado = sequelize.define('Empleado', {
     allowNull: false,
     unique: true,
   },
+  imagen: {
+    type: DataTypes.TEXT, // Usamos TEXT para almacenar la imagen en formato Base64
+    allowNull: true,
+  },
   nombre: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -38,14 +42,6 @@ const Empleado = sequelize.define('Empleado', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  email: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-    unique: true,
-    validate: {
-      isEmail: true,
-    },
-  },
   sueldo: { // Sueldo total del empleado, independiente de los puestos
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false,
@@ -60,10 +56,7 @@ const Empleado = sequelize.define('Empleado', {
     defaultValue: 'Activo',
     allowNull: false,
   },
-  notas: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
+
 }, {
   tableName: 'Empleados',
   timestamps: true, // createdAt, updatedAt

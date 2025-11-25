@@ -95,6 +95,7 @@ export default function EmpleadosTable() {
 
   const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
+  const [opened, setOpened] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -165,10 +166,10 @@ export default function EmpleadosTable() {
         backgroundColor: "lightblue"
       }
     },
-    // mantineTableBodyRowProps:({ row }) => ({
-    //   onClick: () => router.push(`/superuser/flota/${row.original.id}`),
-    //   style: { cursor: 'pointer' },
-    // }),
+    mantineTableBodyRowProps:({ row }) => ({
+      onClick: () => router.push(`/superuser/rrhh/empleados/${row.original.id}`),
+      style: { cursor: 'pointer' },
+    }),
     columns,
     data,
     state: { isLoading: loading, showAlertBanner: !!error },
@@ -194,13 +195,14 @@ export default function EmpleadosTable() {
         >
           Eliminar
         </Menu.Item>
-        
+
         <Menu.Item
-          leftSection={row.original.usuario?.user ? <IconEdit size={18}/> :<IconPlus size={18} />}
+          leftSection={row.original.usuario?.user ? <IconEdit size={18} /> : <IconPlus size={18} />}
           color="blue"
           onClick={() => {
             setSelectedEmpleado(row.original);
-            {row.original.usuario?.user ? 
+            {
+              row.original.usuario?.user ?
               openEditUsuarioModal(selectedEmpleado)
               :
               openCrearUsuarioModal(selectedEmpleado);
@@ -256,7 +258,7 @@ export default function EmpleadosTable() {
           },
         }}
       >
-        <MantineReactTable table={table}/>
+        <MantineReactTable table={table} />
       </MantineProvider>
       <Modal opened={deleteModalOpened} onClose={closeDeleteModal} title="Confirmar Eliminación" centered>
         <Text>
