@@ -11,6 +11,7 @@ import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import '@mantine/dates/styles.css';
 import ImageDropzone from '../../flota/activos/components/ImageDropzone';
+import { sueldoDiarioDesdeMes, sueldoSemanalDesdeMes, sueldoXHora } from '@/app/helpers/calcularSueldo';
 
 
 export function EmpleadoForm({ initialData = null }) {
@@ -31,6 +32,10 @@ export function EmpleadoForm({ initialData = null }) {
       estado: initialData?.estado || 'Activo',
       puestos: initialData?.puestos.map(puesto => String(puesto.id)) || [],
       sueldo: initialData?.sueldo || 0,
+      sueldoDiario: "",
+      sueldoHorario: "",
+      sueldoSemanal: "",
+      sueldoMensual: "",
       genero: initialData?.genero || '',
       notas: initialData?.notas || "",
       imagen: initialData?.imagen || null
@@ -62,6 +67,7 @@ export function EmpleadoForm({ initialData = null }) {
       }
     })();
 
+
     // if (initialData) {
 
     //   console.log(initialData)
@@ -74,6 +80,17 @@ export function EmpleadoForm({ initialData = null }) {
     //   });
     // }
   }, []);
+
+  useEffect(() => {
+      form.setValues({
+        sueldoSemanal: sueldoSemanalDesdeMes(form.values.sueldo),
+        sueldoDiario: sueldoDiarioDesdeMes(form.values.sueldo),
+      })
+  }, [form.values.sueldo])
+
+  useEffect(() => {
+    form.setFieldValue("sueldoHorario", sueldoXHora(form.values.sueldoDiario))
+  }, [form.values.sueldoDiario])
 
   useEffect(() => {
     console.log(form.values);
@@ -180,7 +197,16 @@ export function EmpleadoForm({ initialData = null }) {
 
             </Grid.Col>
             <Grid.Col span={12}>
-              <NumberInput label="Sueldo" min={0} step={1} {...form.getInputProps('sueldo')} />
+              <NumberInput label="Sueldo Mensual" min={0} step={1} {...form.getInputProps('sueldo')} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <NumberInput label="Sueldo por hora" min={0} step={1} {...form.getInputProps('sueldoHorario')} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <NumberInput label="Sueldo por dia" min={0} step={1} {...form.getInputProps('sueldoDiario')} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <NumberInput label="Sueldo por semana" min={0} step={1} {...form.getInputProps('sueldoSemanal')} />
             </Grid.Col>
             <Grid.Col span={12}>
               <TextInput label="Dirección" placeholder="Calle, ciudad, país" {...form.getInputProps('direccion')} />

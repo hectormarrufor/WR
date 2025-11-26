@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import db from '../../../../../models';
+import sequelize from '@/sequelize';
 
 export async function GET(request, { params }) {
   const { id } = await params;
@@ -26,20 +27,57 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   const { id } = await params;
-  try {
-    const body = await request.json();
-    const empleado = await db.Empleado.findByPk(id);
+  const body = await request.json();
+  const t = await sequelize.transaction();
 
-    if (!empleado) {
-      return NextResponse.json({ message: 'Empleado no encontrado' }, { status: 404 });
+  try {
+    // 1. Actualizar datos básicos del empleado
+    await db.Empleado.update(
+      {
+        nombre: body.nombre,
+        apellido: body.apellido,
+        cedula: body.cedula,
+        fechaNacimiento: body.fechaNacimiento,
+        fechaIngreso: body.fechaIngreso,
+        sueldo: body.sueldo,
+        telefono:body.telefono,
+        direccion: body.direccion,
+        estado: body.estado,
+        imagen: body.imagen,
+
+      },
+      { where: { id }, transaction: t }
+    );
+
+    // 2. Borrar relaciones actuales de puestos
+    await db.EmpleadoPuesto.destroy({
+      where: { empleadoId: id },
+      transaction: t,
+    });
+
+    // 3. Insertar nuevas relaciones
+    if (body.puestos && Array.isArray(body.puestos)) {
+      const nuevasRelaciones = body.puestos.map((puestoId) => ({
+        empleadoId: id,
+        puestoId,
+      }));
+
+      await db.EmpleadoPuesto.bulkCreate(nuevasRelaciones, { transaction: t });
     }
 
-    await empleado.update(body);
-    return NextResponse.json(empleado);
+    // 4. Confirmar transacción
+    await t.commit();
+
+    return NextResponse.json({ message: 'Empleado actualizado con puestos' });
   } catch (error) {
-    console.error('Error updating employee:', error);
-    return NextResponse.json({ message: 'Error al actualizar empleado', error: error.message }, { status: 400 });
+    await t.rollback();
+    console.error(error);
+    return NextResponse.json(
+      { message: 'Error al actualizar empleado', error: error.message },
+      { status: 500 }
+    );
   }
+
 }
 
 export async function DELETE(request, { params }) {
