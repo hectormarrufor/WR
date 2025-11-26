@@ -10,7 +10,8 @@ import {
     IconToolsKitchen2, IconSteeringWheel, IconCash, IconShoppingCart,
     IconFileInvoice, IconArchive, IconUser, IconChartBar, IconMapPin, IconShieldLock,
     IconExchange,
-    IconTrash
+    IconTrash,
+    IconClock2
 } from '@tabler/icons-react';
 import './superuser.css';
 import { useAuth } from '@/hooks/useAuth';
@@ -72,18 +73,15 @@ export default function SuperUserHome() {
     const menuOptions = [
         { disabled: false, visible: isAdmin, title: 'Estimación de costos', href: '/superuser/estimacion-costos', description: 'Calcula el costo operativo por servicio de transporte.', icon: IconChartBar, size: 32, color: theme.colors.orange[6] },
         { disabled: false, visible: isAdmin, title: 'Gastos Fijos mensuales', href: '/superuser/gastos', description: 'Configura los gastos fijos de la empresa', icon: IconExchange, size: 32, color: theme.colors.cyan[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Contratos', href: '/superuser/contratos', description: 'Gestiona contratos de servicio con clientes.', icon: IconFileText, size: 32, color: theme.colors.blue[5] },
-        { disabled: false, visible: isAdmin, title: 'Fletes', href: '/superuser/fletes', description: 'Administrar fletes', icon: IconTruck, size: 32, color: theme.colors.yellow[8] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Operaciones', href: '/superuser/operaciones', description: 'Control de operaciones diarias del personal.', icon: IconGasStation, size: 32, color: theme.colors.red[5] },
+        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Contratos', href: '/superuser/contratos', description: 'Gestiona contratos de servicio con clientes.', icon: IconFileText, size: 32, color: theme.colors.blue[5] },
         { disabled: false, visible: isAdmin || departamentos.includes("Mantenimiento"), title: 'Mantenimiento', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.', icon: IconTruck, size: 32, color: theme.colors.teal[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Transporte', href: '#', description: 'Logística de transporte de personal.', icon: IconSteeringWheel, size: 32, color: theme.colors.cyan[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Tesorería', href: '#', description: 'Gestiona cuentas bancarias y flujos de caja.', icon: IconCash, size: 32, color: theme.colors.cyan[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Compras', href: '/superuser/compras', description: 'Administra proveedores y órdenes de compra.', icon: IconShoppingCart, size: 32, color: theme.colors.pink[5] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Cobranza', href: '/superuser/facturacion', description: 'Seguimiento de facturas y pagos de clientes.', icon: IconFileInvoice, size: 32, color: theme.colors.lime[6] },
+        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Tesorería', href: '#', description: 'Gestiona cuentas bancarias y flujos de caja.', icon: IconCash, size: 32, color: theme.colors.cyan[6] },
+        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Compras', href: '/superuser/compras', description: 'Administra proveedores y órdenes de compra.', icon: IconShoppingCart, size: 32, color: theme.colors.pink[5] },
+        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Cobranza', href: '/superuser/facturacion', description: 'Seguimiento de facturas y pagos de clientes.', icon: IconFileInvoice, size: 32, color: theme.colors.lime[6] },
         { disabled: false, visible: isAdmin || departamentos.includes("Almacen"), title: 'Inventario', href: '/superuser/inventario', description: 'Control de stock de partes y consumibles.', icon: IconArchive, size: 32, color: theme.colors.indigo[5] },
         { disabled: false, visible: isAdmin || departamentos.includes("Recursos Humanos"), title: 'Recursos Humanos', href: '/superuser/rrhh', description: 'Administra personal, puestos y departamentos.', icon: IconUser, size: 32, color: theme.colors.cyan[8] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Guardias', href: '/superuser/guardias', description: 'Planificación de turnos y guardias del personal.', icon: IconShieldLock, size: 32, color: theme.colors.cyan[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Reportes', href: '/superuser/reportes', description: 'Genera reportes gerenciales y operativos.', icon: IconChartBar, size: 32, color: theme.colors.red[8] },
+        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones"), title: 'ODTs', href: '/superuser/odt', description: 'Registro de ODT para horas del personal y vehiculos.', icon: IconClock2, size: 32, color: theme.colors.cyan[6] },
+        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Reportes', href: '/superuser/reportes', description: 'Genera reportes gerenciales y operativos.', icon: IconChartBar, size: 32, color: theme.colors.red[8] },
     ];
 
     return (
