@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { TextInput, Button, Group, Box, Paper, Title, Grid, Select } from '@mantine/core';
+import { TextInput, Button, Group, Box, Paper, Title, Grid, Select, NumberInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,8 @@ export function PuestoForm({ initialData = null }) {
     initialValues: {
       nombre: '',
       descripcion: '',
-      departamentoId: '', // Si tu modelo Puesto tiene un campo para departamento
+      departamentoId: '', // Si tu modelo Puesto tiene un campo para departamento,
+      salarioBaseSugerido: 0,
     },
     validate: {
       nombre: (value) => (value ? null : 'El nombre del puesto es requerido'),
@@ -122,6 +123,13 @@ export function PuestoForm({ initialData = null }) {
                 label="Nombre del Puesto"
                 placeholder="Ej. Gerente de Operaciones"
                 {...form.getInputProps('nombre')}
+              />
+            </Grid.Col>
+            <Grid.Col>
+              <NumberInput
+              label="Salario base sugerido"
+              placeholder='Ej: 500$'
+              {...form.getInputProps("salarioBaseSugerido")}
               />
             </Grid.Col>
             <Grid.Col span={12}>

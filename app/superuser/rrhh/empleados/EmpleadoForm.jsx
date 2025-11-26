@@ -14,7 +14,7 @@ import ImageDropzone from '../../flota/activos/components/ImageDropzone';
 
 
 export function EmpleadoForm({ initialData = null }) {
-  const [puestos, setPuestos] = useState([])
+  const [puestos, setPuestos] = useState(null)
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -25,11 +25,11 @@ export function EmpleadoForm({ initialData = null }) {
       apellido: initialData?.apellido || '',
       telefono: initialData?.telefono || '',
       direccion: initialData?.direccion || '',
-      fechaIngreso: initialData?.fechaIngreso || null,
-      fechaNacimiento: initialData?.fechaNacimiento || null,
-      fechaRetorno: initialData?.fechaRetorno || null,
+      fechaIngreso: initialData?.fechaIngreso ? new Date(initialData.fechaIngreso) : null,
+      fechaNacimiento: initialData?.fechaNacimiento ? new Date(initialData.fechaNacimiento) : null,
+      fechaRetorno: initialData?.fechaRetorno ? new Date(initialData.fechaRetorno) : null,
       estado: initialData?.estado || 'Activo',
-      puestos: initialData?.puestos || [],
+      puestos: initialData?.puestos.map(puesto => String(puesto.id)) || [],
       sueldo: initialData?.sueldo || 0,
       genero: initialData?.genero || '',
       notas: initialData?.notas || "",
@@ -56,23 +56,28 @@ export function EmpleadoForm({ initialData = null }) {
         const puestos = await fetch('/api/rrhh/puestos/');
         const res = await puestos.json();
         console.log(res)
-        setPuestos(res.map(puesto => { return ({ puesto: puesto.nombre, id: puesto.id }) }));
+        setPuestos(res.map(puesto => { return ({ label: puesto.nombre, value: String(puesto.id) }) }));
       } catch (error) {
         notifications.show({ title: `no se pudo obtener los puestos: ${error.message}` })
       }
     })();
 
-    if (initialData) {
+    // if (initialData) {
 
-      console.log(initialData)
-      form.setValues({
-        ...initialData,
-        fechaIngreso: initialData.fechaIngreso ? new Date(initialData.fechaIngreso) : null,
-        fechaNacimiento: initialData.fechaNacimiento ? new Date(initialData.fechaNacimiento) : null,
-        fechaRetorno: initialData.fechaRetorno ? new Date(initialData.fechaRetorno) : null,
-      });
-    }
+    //   console.log(initialData)
+    //   form.setValues({
+    //     ...initialData,
+    //     fechaIngreso: initialData.fechaIngreso ? new Date(initialData.fechaIngreso) : null,
+    //     fechaNacimiento: initialData.fechaNacimiento ? new Date(initialData.fechaNacimiento) : null,
+    //     fechaRetorno: initialData.fechaRetorno ? new Date(initialData.fechaRetorno) : null,
+    //     puestos: initialData.puestos.map(p => String(p.id))
+    //   });
+    // }
   }, []);
+
+  useEffect(() => {
+    console.log(form.values);
+  }, [form])
 
   const handleSubmit = async (values) => {
     setIsLoading(true);
@@ -145,7 +150,19 @@ export function EmpleadoForm({ initialData = null }) {
 
 
           <Grid gutter="md">
-             
+            <Grid.Col span={12}>
+              <TextInput label="Nombre" placeholder="Nombre" {...form.getInputProps('nombre')} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <TextInput label="Apellido" placeholder="Apellido" {...form.getInputProps('apellido')} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <TextInput label="Cedula" placeholder="Cedula" {...form.getInputProps('cedula')} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <TextInput label="Telefono" placeholder="Telefono" {...form.getInputProps('telefono')} />
+            </Grid.Col>
+
             <Grid.Col span={12}>
               <ImageDropzone
                 label="Foto del Empleado"
@@ -153,13 +170,14 @@ export function EmpleadoForm({ initialData = null }) {
                 fieldPath="imagen"
               />
             </Grid.Col>
-          
+
             <Grid.Col span={12}>
-              {/* <MultiSelect 
-              label="Puestos"  
-              data={puestos.map(p => ({ value: p.id.toString(), label: p.nombre })) || []}
-              {...form.getInputProps('puestos')} 
-              /> */}
+              {puestos && <MultiSelect
+                label="Puestos"
+                data={puestos}
+                {...form.getInputProps('puestos')}
+              />}
+
             </Grid.Col>
             <Grid.Col span={12}>
               <NumberInput label="Sueldo" min={0} step={1} {...form.getInputProps('sueldo')} />

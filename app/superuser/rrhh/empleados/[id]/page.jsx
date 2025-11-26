@@ -113,15 +113,11 @@ export default function Page({ params }) {
                                     <Text color="dimmed">Sin imagen</Text>
                                 </Paper>
                             )}
-
                         </Stack>
                     </Grid.Col>
 
-                    <Grid.Col span={12} md={8} justify = "center" align = "center">
-           
-                        
-
-                        <Stack >
+                    <Grid.Col span={12} md={8} justify="center" align="center">
+                        <Stack>
                             <Title order={4}><strong>{empleado?.nombre} {empleado?.apellido}</strong></Title>
                             <Text>
                                 {empleado?.puestos.map(puesto => puesto.nombre).join(",")}
@@ -133,11 +129,13 @@ export default function Page({ params }) {
                                 <strong>Cedula:</strong> {empleado?.cedula}
                             </Text>
                             <Text>
-                                <strong>Edad:</strong>{empleado?.edad}
+                                <strong>Edad:</strong> {empleado?.edad}
                             </Text>
-
                             <Text>
-                                <strong>Fecha de ingreso:</strong> {empleado?.fechaIngreso}
+                                <strong>Fecha de Nacimiento:</strong> {new Date(empleado?.fechaNacimiento).toLocaleDateString()}
+                            </Text>
+                            <Text>
+                                <strong>Fecha de ingreso:</strong> {empleado?.fechaIngreso.substring(0, 10).split("-").reverse().join("-")}
                             </Text>
                         </Stack>
 
