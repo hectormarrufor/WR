@@ -11,7 +11,7 @@ import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import '@mantine/dates/styles.css';
 import ImageDropzone from '../../flota/activos/components/ImageDropzone';
-import { sueldoDiarioDesdeMes, sueldoSemanalDesdeMes, sueldoXHora } from '@/app/helpers/calcularSueldo';
+import { actualizarSueldos, sueldoDiarioDesdeMes, sueldoSemanalDesdeMes, sueldoXHora } from '@/app/helpers/calcularSueldo';
 
 
 export function EmpleadoForm({ initialData = null }) {
@@ -81,16 +81,8 @@ export function EmpleadoForm({ initialData = null }) {
     // }
   }, []);
 
-  useEffect(() => {
-      form.setValues({
-        sueldoSemanal: sueldoSemanalDesdeMes(form.values.sueldo),
-        sueldoDiario: sueldoDiarioDesdeMes(form.values.sueldo),
-      })
-  }, [form.values.sueldo])
 
-  useEffect(() => {
-    form.setFieldValue("sueldoHorario", sueldoXHora(form.values.sueldoDiario))
-  }, [form.values.sueldoDiario])
+
 
   useEffect(() => {
     console.log(form.values);
@@ -156,6 +148,16 @@ export function EmpleadoForm({ initialData = null }) {
     }
   }
 
+  const handleSueldo = (campo, valor) => {
+    const {mensual, semanal, diario, horario} = actualizarSueldos(campo, valor)
+    form.setValues({
+      sueldo: mensual,
+      sueldoDiario: diario,
+      sueldoSemanal: semanal,
+      sueldoHorario: horario,
+    })
+  }
+
 
   return (
     <Box maw={800} mx="auto">
@@ -197,16 +199,42 @@ export function EmpleadoForm({ initialData = null }) {
 
             </Grid.Col>
             <Grid.Col span={12}>
-              <NumberInput label="Sueldo Mensual" min={0} step={1} {...form.getInputProps('sueldo')} />
+              <NumberInput 
+              label="Sueldo Mensual" 
+              min={0} 
+              step={1} 
+              {...form.getInputProps('sueldo')} 
+              onChange={(value) => {
+                console.log(value)
+                handleSueldo("mensual", value)}}
+              />
             </Grid.Col>
             <Grid.Col span={12}>
-              <NumberInput label="Sueldo por hora" min={0} step={1} {...form.getInputProps('sueldoHorario')} />
+              <NumberInput
+              label="Sueldo por hora" 
+              min={0} 
+              step={1} 
+              {...form.getInputProps('sueldoHorario')} 
+              onChange={(value) => handleSueldo("horario", value)}
+              />
             </Grid.Col>
             <Grid.Col span={12}>
-              <NumberInput label="Sueldo por dia" min={0} step={1} {...form.getInputProps('sueldoDiario')} />
+              <NumberInput 
+              label="Sueldo por dia" 
+              min={0} 
+              step={1} 
+              {...form.getInputProps('sueldoDiario')}
+              onChange={(value) => handleSueldo("diario", value)}
+              />
             </Grid.Col>
             <Grid.Col span={12}>
-              <NumberInput label="Sueldo por semana" min={0} step={1} {...form.getInputProps('sueldoSemanal')} />
+              <NumberInput 
+              label="Sueldo por semana" 
+              min={0} 
+              step={1} 
+              {...form.getInputProps('sueldoSemanal')} 
+              onChange={(value) => handleSueldo("semanal", value)}
+              />
             </Grid.Col>
             <Grid.Col span={12}>
               <TextInput label="Dirección" placeholder="Calle, ciudad, país" {...form.getInputProps('direccion')} />
