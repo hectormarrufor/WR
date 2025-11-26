@@ -8,31 +8,14 @@ const Cliente = sequelize.define('Cliente', {
     primaryKey: true,
     autoIncrement: true,
   },
-  rif: { // RIF
+  identificacion: { // RIF, cedula
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
   },
-  razonSocial: { // Nombre de la empresa o persona jurídica
+  nombre: { // Nombre de la empresa o persona jurídica
     type: DataTypes.STRING,
     allowNull: true, // Puede ser nulo si es persona natural
-  },
-  nombreContacto: { // Nombre de la persona de contacto si es empresa
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  apellidoContacto: { // Apellido de la persona de contacto si es empresa
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  nombreCompleto: { // Para personas naturales o un campo combinado para búsqueda
-    type: DataTypes.VIRTUAL,
-    get() {
-      return `${this.nombreContacto || ''} ${this.apellidoContacto || ''}`.trim();
-    },
-    set(value) {
-      throw new Error('Do not try to set the `nombreCompleto` value!');
-    }
   },
   telefono: {
     type: DataTypes.STRING,
@@ -60,8 +43,7 @@ const Cliente = sequelize.define('Cliente', {
 
 // Este `associate` se llamará desde `models/index.js`
 Cliente.associate = (models) => {
-  Cliente.hasMany(models.ContratoServicio, { foreignKey: 'clienteId', as: 'contratos' });
-  Cliente.hasMany(models.Factura, { foreignKey: 'clienteId', as: 'facturas' });
+  Cliente.hasMany(models.ODT, { as: "odts", foreignKey: "clienteId" });
 };
 
 module.exports = Cliente;

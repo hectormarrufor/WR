@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
-import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal, MantineProvider, Badge } from '@mantine/core';
+import { Button, Box, Flex, Tooltip, ActionIcon, Text, Menu, Modal, MantineProvider, Badge, Avatar } from '@mantine/core';
 import { IconEdit, IconTrash, IconEye, IconPlus, IconRefresh } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
@@ -31,6 +31,21 @@ function calcularEdad(fechaNacimiento) {
 
 // Definición de las columnas de la tabla
 const getColumns = (openDeleteModal, router) => [
+  {
+    accessorKey: 'imagen',
+    header: "",
+    enableColumnFilters: false,
+    size: 80,
+    Cell: ({ cell }) => (
+      <Avatar
+        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${cell.getValue()}`}   // aquí va la URL o base64
+        alt="Foto empleado"
+        radius="xl"
+        size="md"
+      />
+    ),
+  },
+
   {
     accessorKey: 'cedula',
     header: 'Cédula',
@@ -166,7 +181,7 @@ export default function EmpleadosTable() {
         backgroundColor: "lightblue"
       }
     },
-    mantineTableBodyRowProps:({ row }) => ({
+    mantineTableBodyRowProps: ({ row }) => ({
       onClick: () => router.push(`/superuser/rrhh/empleados/${row.original.id}`),
       style: { cursor: 'pointer' },
     }),
@@ -203,9 +218,9 @@ export default function EmpleadosTable() {
             setSelectedEmpleado(row.original);
             {
               row.original.usuario?.user ?
-              openEditUsuarioModal(selectedEmpleado)
-              :
-              openCrearUsuarioModal(selectedEmpleado);
+                openEditUsuarioModal(selectedEmpleado)
+                :
+                openCrearUsuarioModal(selectedEmpleado);
             }
           }}
         >

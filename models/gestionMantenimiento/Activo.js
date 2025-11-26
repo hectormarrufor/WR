@@ -72,6 +72,11 @@ Activo.associate = (models) => {
         as: 'horometros'
     });
     Activo.hasMany(models.ConsumibleUsado, { foreignKey: 'activoId' });
+    Activo.belongsToMany(models.ODT, {
+        through: models.ODT_Vehiculos,
+        as: "odts",
+        foreignKey: "activoId",
+    });
 
 
     // Aquí irían las futuras relaciones con Inspecciones y Mantenimientos

@@ -71,6 +71,11 @@ Empleado.associate = (models) => {
     as: 'puestos',
   });
   Empleado.hasOne(models.User, { foreignKey: 'empleadoId', as: 'usuario' });
+  Empleado.belongsToMany(models.ODT, {
+    through: "ODT_Empleados",
+    as: "odtsComoChofer",
+    foreignKey: "empleadoId",
+});
 
   // Un Empleado puede ser el Supervisor de muchas Operaciones de Campo
   // Empleado.hasMany(models.OperacionCampo, { foreignKey: 'supervisorId', as: 'operacionesSupervisadas' });

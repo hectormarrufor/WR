@@ -40,6 +40,12 @@ const PushSubscription = require('./pushSubscription');
 const ConsumibleUsado = require('./inventario/ConsumibleUsado');
 const ViscosidadAceite = require('./inventario/ViscosidadAceite');
 const Codigo = require('./inventario/Codigo');
+const ODT = require('./recursosHumanos/ODT');
+const ODT_Vehiculos = require('./recursosHumanos/ODTVehiculos');
+const Cliente = require('./Cliente');
+const HorasTrabajadas = require('./recursosHumanos/HorasTrabajadas');
+const ODT_Empleados = require('./recursosHumanos/ODTEmpleados');
+
 
 // --- Crear un objeto 'db' para agruparlos ---
 const db = {
@@ -91,7 +97,14 @@ const db = {
     FixedExpense,
 
     //FLETES
-    Flete
+    Flete,
+
+    //OPERACIONES
+    ODT,
+    ODT_Vehiculos,
+    ODT_Empleados,
+    Cliente,
+    HorasTrabajadas,
 };
 
 // --- Llamar al método 'associate' de cada modelo ---
