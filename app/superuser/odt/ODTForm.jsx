@@ -22,10 +22,10 @@ export default function ODTForm({ mode, odtId }) {
     },
     // 'validate' es el lugar para TODAS las funciones de validación.
     validate: {
-      nroODT: (value) => {value.trim() === 4 ? null : "El numero de ODT es de 4 caracteres"},
-      fecha: (value) => {fecha.trim() > 0 ? null : "debe ingresar la fecha de ODT"},
-      horaLlegada: (value) => {horaLlegada.trim() > 0 ? null : "debe ingresar la hora de llegada de la ODT"},
-      horaSalida: (value) => {horaSalida.trim() > 0 ? null : "debe ingresar la hora de salida de la ODT"},
+      nroODT: (value) => { value.trim() === 4 ? null : "El numero de ODT es de 4 caracteres" },
+      fecha: (value) => { fecha.trim() > 0 ? null : "debe ingresar la fecha de ODT" },
+      horaLlegada: (value) => { horaLlegada.trim() > 0 ? null : "debe ingresar la hora de llegada de la ODT" },
+      horaSalida: (value) => { horaSalida.trim() > 0 ? null : "debe ingresar la hora de salida de la ODT" },
 
     },
   });
@@ -60,7 +60,17 @@ export default function ODTForm({ mode, odtId }) {
         <TextInput label="Hora llegada" type="time" value={form.horaLlegada} onChange={(e) => setForm({ ...form, horaLlegada: e.target.value })} />
         <TextInput label="Hora salida" type="time" value={form.horaSalida} onChange={(e) => setForm({ ...form, horaSalida: e.target.value })} />
         {/* Aquí puedes añadir selects para cliente, vehículos y empleados */}
-        
+        <ODTMultiSelect
+          label="Empleados"
+          data={empleados.map(e => ({ value: e.id, label: e.nombre }))}
+          onChange={(values) => form.setFieldValue("empleados", values)}
+        />
+
+        <ODTMultiSelect
+          label="Activos"
+          data={activos.map(a => ({ value: a.id, label: a.descripcion }))}
+          onChange={(values) => form.setFieldValue("activos", values)}
+        />
         <Button type="submit">{mode === "create" ? "Crear ODT" : "Actualizar ODT"}</Button>
       </form>
     </Paper>
