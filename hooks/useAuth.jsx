@@ -103,13 +103,37 @@ export function AuthProvider({ children }) {
 
     };
 
-    return <AuthContext.Provider value={{imagen: user?.imagen, rol: user?.rol, userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout }}>{children}</AuthContext.Provider>;
+    return <AuthContext.Provider value={{ imagen: user?.imagen, rol: user?.rol, userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout, changePassword }}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+const changePassword = async ({userId, currentPassword, newPassword }) => {
+    try{
+        const res = await fetch('/api/users/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId,
+                currentPassword,
+                newPassword,
+            }),
+        });
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        else notifications.show({ title: "Contraseña cambiada exitosamente" , color: "green"})
+
     }
-    return context;
-};
+    catch (error) {
+        notifications.show({title: "no se pudo cambiar la contraseña", message: error.message})
+        return error
+    }
+
+}
+
+    export const useAuth = () => {
+        const context = useContext(AuthContext);
+        if (!context) {
+            throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+        }
+        return context;
+    };

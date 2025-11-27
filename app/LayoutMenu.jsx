@@ -1,29 +1,76 @@
 import { useAuth } from '@/hooks/useAuth';
-import { Avatar, Box, Flex, Group, Title, UnstyledButton } from '@mantine/core';
-import React from 'react'
+import { Avatar, Box, Button, Flex, Group, Menu, Title, UnstyledButton } from '@mantine/core';
+import { IconKey, IconLogout } from '@tabler/icons-react';
+import React, { useState } from 'react'
+import ChangePasswordForm from './ChangePasswordForm';
 
 const LayoutMenu = ({ classes, router }) => {
-    const { isAuthenticated, logout, nombre, imagen } = useAuth();
+    const { isAuthenticated, logout, nombre, imagen, changePassword, userId } = useAuth();
+    const [opened, setOpened] = useState(false);
 
-    
+
+    if (!isAuthenticated) {
+        return (
+            <Button variant="light">
+                Iniciar sesión
+            </Button>
+        );
+    }
+
 
     return (
-                <Group ml="xl" gap={0} visibleFrom="md">
-                    {!isAuthenticated && <UnstyledButton className={classes.control} onClick={() => router.push('/')}><Title order={6}>Inicio</Title></UnstyledButton>}
-                    {isAuthenticated && <UnstyledButton justify="center" align="center" className={classes.control} onClick={() => router.push('/superuser')}><Flex justify="center" align="center"><Title order={6}>Hola, {nombre} </Title><Avatar ml={10} src={imagen}/>▼</Flex></UnstyledButton>}
-                    {/* <UnstyledButton className={classes.control} onClick={() => router.push('/stones')}>Nuestros Productos</UnstyledButton> */}
-                    {!isAuthenticated ?
-                        <UnstyledButton className={classes.control} onClick={() => router.push('/login')}><Title order={6}>Iniciar Sesion</Title></UnstyledButton>
-                        :
-                        <UnstyledButton className={classes.control} onClick={logout}><Title order={6}>Cerrar sesion</Title></UnstyledButton>
-                    }
-                    {isAuthenticated &&
-                        <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}><Title order={6}>Panel de administracion</Title></UnstyledButton>
-                    }
+        <>
+            <Group ml="xl" gap={0} visibleFrom="md">
+                <Menu shadow="md" width={200} zIndex={2000}>
+                    <Menu.Target>
+                        <Button variant='subtle'
+                            justify="center"
+                            p={0}
+                            px={10}
+                            h={40}
+                            align="center"
+                        >
+                            <Flex justify="center" align="center">
+                                <Title order={6}>Hola, {nombre} </Title><Avatar ml={10} src={imagen} /><Title order={6}>▼</Title>
+                            </Flex>
+                        </Button>
+
+                    </Menu.Target>
+
+                    <Menu.Dropdown>
+                        <Menu.Item
+                            icon={<IconKey size={16} />}
+                            onClick={() => setOpened(true)}
+                        >
+                            Cambiar contraseña
+                        </Menu.Item>
+
+                        <Menu.Item
+                            icon={<IconLogout size={16} />}
+                            onClick={logout}
+                        >
+                            Cerrar sesión
+                        </Menu.Item>
+                    </Menu.Dropdown>
+                </Menu>
+
+                <Button
+                    variant='subtle'
+                    onClick={() => router.push('/superuser')}>
+                    <Title order={6}>Menu principal</Title>
+                </Button>
 
 
-                    {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
-                </Group>
+
+                {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
+            </Group>
+            <ChangePasswordForm
+                opened={opened}
+                onClose={() => setOpened(false)}
+                onSubmit={changePassword}
+                userId = {userId}
+            />
+        </>
 
     )
 }
