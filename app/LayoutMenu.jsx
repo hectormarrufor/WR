@@ -27,11 +27,11 @@ const LayoutMenu = ({ classes, router }) => {
                             justify="center"
                             p={0}
                             px={10}
-                            h={40}
+                            h={50}
                             align="center"
                         >
                             <Flex justify="center" align="center">
-                                <Title order={6}>Hola, {nombre} </Title><Avatar ml={10} src={imagen} /><Title order={6}>▼</Title>
+                                <Title order={6}>Hola, {nombre} </Title><Avatar ml={10} h={45} w={45} src={imagen} /><Title order={6}>▼</Title>
                             </Flex>
                         </Button>
 
@@ -56,7 +56,10 @@ const LayoutMenu = ({ classes, router }) => {
 
                 <Button
                     variant='subtle'
-                    onClick={() => router.push('/superuser')}>
+                    onClick={() => router.push('/superuser')}
+                    h={50}
+                    >
+                        
                     <Title order={6}>Menu principal</Title>
                 </Button>
 
