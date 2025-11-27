@@ -11,7 +11,9 @@ const LayoutMenu = ({ classes, router }) => {
 
     if (!isAuthenticated) {
         return (
-            <Button variant="light">
+            <Button 
+            onClick={() => router.push("/login")}
+            >
                 Iniciar sesión
             </Button>
         );

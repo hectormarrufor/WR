@@ -179,7 +179,7 @@ export const theme = {
     "light": 6,
     "dark": 8
   },
-  "primaryColor": "blue",
+  "primaryColor": "yellow",
   "autoContrast": false,
   "luminanceThreshold": 0.3,
   "fontFamily": "sans-serif, sans-se-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji",
@@ -317,11 +317,12 @@ export const theme = {
       },
       "styles":  (theme) => ({
         "root": {
+          "color": "rgba(0,0,0,0.77)",
           "transition": 'transform 150ms ease, box-shadow 150ms ease',
           "boxShadow": 'var(--mantine-shadow-xl)',
           '&:hover': {
-            "transform": 'scale(1.05)',
-            "boxShadow": '10px 12px 24px rgba(0, 0, 0, 0.47)',
+            "transform": 'scale(1.5)',
+            "boxShadow": '10px 12px 24px rgba(0, 0, 0, 0.95)',
           },
         },
       })
