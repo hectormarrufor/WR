@@ -12,7 +12,7 @@ webpush.setVapidDetails(
 
 export async function notificarAdmins(payload) {
   const subscripciones = await PushSubscription.findAll({
-    where: { rol: ['admin', 'presidencia'], activo: true },
+    where: { rol: ['admin'], activo: true },
   });
   
   if( subscripciones.length === 0 ) {
@@ -22,6 +22,36 @@ export async function notificarAdmins(payload) {
   else {
     console.log(`\x1b[42m [INFO]: Enviando notificación a ${subscripciones.length} administradores. \x1b[0m`);
   }
+
+  for (const sub of subscripciones) {
+    try {
+      const subscription = {
+        endpoint: sub.endpoint,
+        keys: sub.keys, // Sequelize ya lo guarda como JSONB
+      };
+
+      await webpush.sendNotification(
+        subscription,   
+        JSON.stringify({ ...payload, role: 'admin', icon: "/icons/icon-192x192.png", badge: "/icons/android-launchericon-96-96.png" })
+      );
+    } catch (err) {
+      console.error('Error enviando notificación a admin:', err);
+
+      // Opcional: marcar como inactiva si falla
+      await sub.update({ activo: false });
+    }
+  }
+}
+
+export async function notificarPresidente(payload) {
+  const subscripciones = await PushSubscription.findAll({
+    where: { rol: ['Presidente'], activo: true },
+  });
+  
+  if( subscripciones.length === 0 ) {
+    return;
+  }
+ 
 
   for (const sub of subscripciones) {
     try {

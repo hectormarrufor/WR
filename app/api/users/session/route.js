@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import { notificarAdmins } from '../../notificar/route';
+import { notificarAdmins, notificarPresidente } from '../../notificar/route';
 
 export async function GET(request) {
   try {
@@ -15,6 +15,11 @@ export async function GET(request) {
     notificarAdmins({
       title: 'Verificación de sesión',
       body: `${decoded.nombre} ha verificado su sesión`,
+      url: '/admin/usuarios',
+    });
+    notificarPresidente({
+      title: 'Este es un mensaje para el presidente',
+      body: `EYYYYYY ACORDATE!!!`,
       url: '/admin/usuarios',
     });
     return Response.json({
