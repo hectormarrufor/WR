@@ -43,32 +43,37 @@ export default function SuperUserHome() {
     }, []);
 
     useEffect(() => {
-        console.log(rol)
-        if (departamentos.length > 1 || isAdmin) {
+        if (isAdmin) {
             setIsLoading(false);
             return
         }
+
         else {
-            switch (departamentos[0]) {
-                case "Almacen":
-                    router.push('/superuser/inventario');
-                    break;
-                case "Mantenimiento":
-                    router.push('/superuser/flota');
-                case "Recursos Humanos":
-                    router.push('/superuser/rrhh');
-                    break;
-                case "Transporte":
-                    router.push(`/superuser/flota/activos`);
-                case "Operaciones":
-                    router.push('/superuser/operaciones');
 
-                default:
-                    break;
+            if (rol) {
+                console.log(rol)
+                switch (true) {
+                    case rol.includes("Administrador"):
+                        router.push('/superuser');
+                        break;
+                    case rol.includes("Gerente de Mantenimiento"):
+                        router.push('/superuser/flota');
+                    case rol.includes("Analista de Recursos Humanos"):
+                        router.push('/superuser/rrhh');
+                        break;
+                    case rol.includes("Chofer"):
+                        router.push(`/superuser/flota/activos`);
+                        break;
+                    case rol.includes("Coordinador de Operaciones"):
+                        router.push('/superuser/operaciones');
+                        break;
+                    default:
+                        router.push("/forbidden")
+                        break;
+                }
             }
-
         }
-    }, [departamentos])
+    }, [rol])
 
 
     const menuOptions = [
@@ -86,76 +91,76 @@ export default function SuperUserHome() {
     ];
 
     return (
-            <PaddedPaper>
-                {isLoading ?
-                    <Center>
-                        <Loader />
-                    </Center>
-                    : <>
+        <PaddedPaper>
+            {isLoading ?
+                <Center>
+                    <Loader />
+                </Center>
+                : <>
 
-                        <Title order={1} align="center" c="blue.8">
-                            PANEL DE ADMINISTRACIÓN
-                        </Title>
-                        
+                    <Title order={1} align="center" c="blue.8">
+                        PANEL DE ADMINISTRACIÓN
+                    </Title>
 
-                        <Box mb="sm" style={{ display: 'flex', justifyContent: 'center' }}>
-                            <Badge color={precioBCV ? "green" : "gray"} size="lg">
-                                BCV: {precioBCV ? `${precioBCV} BS` : "Cargando..."}
-                            </Badge>
-                        </Box>
-                        <Flex
-                            justify="center"
-                            align="stretch"
-                            wrap="wrap"
-                            gap="md"
-                            style={{
-                                maxWidth: isMobile ? '100%' : 1200,
-                                margin: '0 auto',
-                                padding: isMobile ? '0 1rem' : '0',
-                            }}
-                        // spacing="xl"
-                        // verticalSpacing="xl"
-                        // breakpoints={[
-                        //     { maxWidth: 'lg', cols: 4 },
-                        //     { maxWidth: 'md', cols: 3 },
-                        //     { maxWidth: 'sm', cols: 2 },
-                        // ]}
+
+                    <Box mb="sm" style={{ display: 'flex', justifyContent: 'center' }}>
+                        <Badge color={precioBCV ? "green" : "gray"} size="lg">
+                            BCV: {precioBCV ? `${precioBCV} BS` : "Cargando..."}
+                        </Badge>
+                    </Box>
+                    <Flex
+                        justify="center"
+                        align="stretch"
+                        wrap="wrap"
+                        gap="md"
+                        style={{
+                            maxWidth: isMobile ? '100%' : 1200,
+                            margin: '0 auto',
+                            padding: isMobile ? '0 1rem' : '0',
+                        }}
+                    // spacing="xl"
+                    // verticalSpacing="xl"
+                    // breakpoints={[
+                    //     { maxWidth: 'lg', cols: 4 },
+                    //     { maxWidth: 'md', cols: 3 },
+                    //     { maxWidth: 'sm', cols: 2 },
+                    // ]}
+                    >
+                        {menuOptions.map((option, index) => (
+                            option.visible && <Button
+                                w={isMobile ? "100%" : 200}
+                                h={isMobile ? 100 : 120}
+                                p={isMobile ? 5 : 10}
+                                key={index}
+                                variant="default"
+                                disabled={option.disabled}
+                                onClick={() => !option.disabled && router.push(option.href)}
+                                className="superuser-button"
+                            >
+                                {<option.icon color={option.disabled ? "gray" : option.color} size={option.size} />}
+                                <Text fw={700} size="sm" mt={5}>{option.title}</Text>
+                                <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
+                                    {option.disabled ? '(No disponible)' : option.description}
+                                </Text>
+                            </Button>
+                        ))}
+                        <Button
+                            w={isMobile ? "100%" : 200}
+                            h={isMobile ? 100 : 120}
+                            p={isMobile ? 5 : 10}
+                            key="eliminar-suscripciones"
+                            variant="default"
+                            onClick={() => eliminarTodasSuscripcionesInactivas()}
+                            className="superuser-button"
                         >
-                            {menuOptions.map((option, index) => (
-                                option.visible && <Button
-                                    w={isMobile ? "100%" : 200}
-                                    h={isMobile ? 100 : 120}
-                                    p={isMobile ? 5 : 10}
-                                    key={index}
-                                    variant="default"
-                                    disabled={option.disabled}
-                                    onClick={() => !option.disabled && router.push(option.href)}
-                                    className="superuser-button"
-                                >
-                                    {<option.icon color={option.disabled ? "gray" : option.color} size={option.size} />}
-                                    <Text fw={700} size="sm" mt={5}>{option.title}</Text>
-                                    <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
-                                        {option.disabled ? '(No disponible)' : option.description}
-                                    </Text>
-                                </Button>
-                            ))}
-                            <Button
-                                    w={isMobile ? "100%" : 200}
-                                    h={isMobile ? 100 : 120}
-                                    p={isMobile ? 5 : 10}
-                                    key="eliminar-suscripciones"
-                                    variant="default"
-                                    onClick={() => eliminarTodasSuscripcionesInactivas()}
-                                    className="superuser-button"
-                                >
-                                    {<IconTrash color="red" size={32} />}
-                                    <Text fw={700} size="sm" mt={5}>Limpiar</Text>
-                                    <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
-                                        Eliminar suscripciones inactivas de notificaciones push
-                                    </Text>
-                                </Button>
-                        </Flex>
-                    </>}
-            </PaddedPaper>
+                            {<IconTrash color="red" size={32} />}
+                            <Text fw={700} size="sm" mt={5}>Limpiar</Text>
+                            <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
+                                Eliminar suscripciones inactivas de notificaciones push
+                            </Text>
+                        </Button>
+                    </Flex>
+                </>}
+        </PaddedPaper>
     );
 }
