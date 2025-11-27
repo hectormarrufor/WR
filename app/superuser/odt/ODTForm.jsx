@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { TextInput, Textarea, Button, Paper, Title } from "@mantine/core";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "@mantine/form";
+import ODTMultiSelect from "./ODTMultiselect";
 
 export default function ODTForm({ mode, odtId }) {
   const { nombre } = useAuth();
