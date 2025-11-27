@@ -20,7 +20,7 @@ import { eliminarTodasSuscripcionesInactivas } from '../handlers/push';
 
 export default function SuperUserHome() {
     const [isLoading, setIsLoading] = useState(true);
-    const { isAdmin, departamentos } = useAuth();
+    const { isAdmin, departamentos, rol, imagen } = useAuth();
     const [precioBCV, setPrecioBCV] = useState(0);
     const router = useRouter();
     const theme = useMantineTheme();
@@ -43,6 +43,7 @@ export default function SuperUserHome() {
     }, []);
 
     useEffect(() => {
+        console.log(rol)
         if (departamentos.length > 1 || isAdmin) {
             setIsLoading(false);
             return
@@ -95,6 +96,7 @@ export default function SuperUserHome() {
                         <Title order={1} align="center" c="blue.8">
                             PANEL DE ADMINISTRACIÓN
                         </Title>
+                        
 
                         <Box mb="sm" style={{ display: 'flex', justifyContent: 'center' }}>
                             <Badge color={precioBCV ? "green" : "gray"} size="lg">

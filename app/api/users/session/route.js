@@ -17,7 +17,19 @@ export async function GET(request) {
       body: `${decoded.nombre} ha verificado su sesión`,
       url: '/admin/usuarios',
     });
-    return Response.json({id: decoded.id, nombre: decoded.nombre, apellido: decoded.apellido, isAuthenticated: decoded.isAuthenticated, isAdmin: decoded.isAdmin, departamentos: decoded.departamentos.length > 0 ? decoded.departamentos?.map(departamento => departamento.nombre) : [], puestos: decoded.puestos.length > 0 ? decoded.puestos?.map(puesto => puesto.nombre) : []}, { status: 200 });
+    return Response.json({
+      rol: decoded.puestos.length > 0 ? decoded.puestos?.map(puesto => puesto.nombre).join(" - ") : decoded.isAdmin ? "admin" : "user", 
+      id: decoded.id, 
+      imagen: decoded.imagen,
+      nombre: decoded.nombre, 
+      apellido: decoded.apellido, 
+      isAuthenticated: decoded.isAuthenticated, 
+      isAdmin: decoded.isAdmin, 
+      departamentos: decoded.departamentos.length > 0 ? decoded.departamentos?.map(departamento => departamento.nombre) : [], 
+      puestos: decoded.puestos.length > 0 ? decoded.puestos?.map(puesto => puesto.nombre) : []
+    }, 
+      { status: 200 }
+    );
   } catch (error) {
     console.log(`\x1b[41m Error al verificar el token: ${error.message} \x1b[0m`);
     

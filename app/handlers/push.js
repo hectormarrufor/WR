@@ -47,7 +47,7 @@ export async function suscribirsePush(fetched) {
       body: JSON.stringify({
         suscripcion: sub,
         usuarioId: fetched?.id,
-        rol: fetched?.isAdmin ? 'admin' : (fetched?.rol || 'user'),
+        rol: fetched?.isAdmin ? 'admin' : fetched?.rol,
         navegador: `${browser} - ${os}`,
         environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
       }),

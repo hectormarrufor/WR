@@ -103,7 +103,7 @@ export function AuthProvider({ children }) {
 
     };
 
-    return <AuthContext.Provider value={{ userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout }}>{children}</AuthContext.Provider>;
+    return <AuthContext.Provider value={{imagen: user?.imagen, rol: user?.rol, userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {
