@@ -4,16 +4,20 @@ import { useState, useEffect } from "react";
 import { TextInput, Textarea, Button, Paper, Title, Center } from "@mantine/core";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "@mantine/form";
-import ODTMultiSelect from "./ODTMultiselect";
 import { notifications } from "@mantine/notifications";
 import { DateInput, TimeInput } from "@mantine/dates";
 import '@mantine/dates/styles.css';
+import ODTSelectableGrid from "./ODTSelectableGrid";
+import { AsyncComboBox } from "../inventario/consumibles/AsyncCombobox";
+import ClienteSelect from "./ClienteSelect";
+import { SelectClienteConCreacion } from "../contratos/SelectClienteConCreacion";
 
 
 export default function ODTForm({ mode, odtId }) {
   const { nombre } = useAuth();
   const [empleados, setEmpleados] = useState();
   const [activos, setActivos] = useState();
+  const [clientes, setClientes] = useState();
   const form = useForm({
     initialValues: {
       nroODT: "",
@@ -46,6 +50,9 @@ export default function ODTForm({ mode, odtId }) {
       fetch(`/api/gestionMantenimiento/activos`)
         .then((res) => res.json())
         .then((data) => setActivos(data));
+      fetch(`/api/contratos/clientes`)
+        .then((res) => res.json())
+        .then((data) => setClientes(data));
     }
     catch (error) {
       notifications.show({ title: "No se pudo cargar los datos" })
@@ -53,9 +60,13 @@ export default function ODTForm({ mode, odtId }) {
   }, [])
 
   useEffect(() => {
-    console.log(empleados);
-    console.log(activos)
-  }, [empleados, activos])
+    console.log(form.values);
+
+  }, [form])
+  useEffect(() => {
+    console.log(clientes);
+
+  }, [clientes])
 
   useEffect(() => {
     if (mode === "edit" && odtId) {
@@ -88,7 +99,7 @@ export default function ODTForm({ mode, odtId }) {
     <Paper mt={70}>
       <Title centered justify="center" align="center" order={3}>Nueva ODT, registrada por: {nombre}</Title>
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-
+        <SelectClienteConCreacion form={form} fieldName="cliente" label="Cliente" placeholder = 'Selecciona un cliente' disabled = {false} />
         <TextInput label="Nro ODT"  {...form.getInputProps("nroODT")} />
         <DateInput label="Fecha de ODT" valueFormat="DD/MM/YYYY"  {...form.getInputProps('fecha')} />
         <Textarea label="Descripción del servicio" {...form.getInputProps('descripcionServicio')} />
@@ -102,16 +113,25 @@ export default function ODTForm({ mode, odtId }) {
           {...form.getInputProps('horaSalida')}
         />
         {/* Aquí puedes añadir selects para cliente, vehículos y empleados */}
-        <ODTMultiSelect
+        <ODTSelectableGrid
           label="Empleados"
-          data={empleados.map(e => ({ value: e.id, label: e.nombre }))}
+          data={empleados.map(e => ({
+            id: e.id,
+            nombre: e.nombre + " " + e.apellido,
+            imagen: e.imagen,
+            puestos: e.puestos,
+          }))}
           onChange={(values) => form.setFieldValue("empleados", values)}
         />
 
-        <ODTMultiSelect
-          label="Activos"
-          data={activos.map(a => ({ value: a.id, label: a.descripcion }))}
-          onChange={(values) => form.setFieldValue("activos", values)}
+        <ODTSelectableGrid
+          label="Vehículos"
+          data={activos.map(v => ({
+            id: v.id,
+            nombre: v.modelo.nombre + v.datosPersonalizados.placa,
+            imagen: v.imagen,
+          }))}
+          onChange={(values) => form.setFieldValue("vehiculos", values)}
         />
         <Button type="submit">{mode === "create" ? "Crear ODT" : "Actualizar ODT"}</Button>
       </form>

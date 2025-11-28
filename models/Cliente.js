@@ -32,6 +32,10 @@ const Cliente = sequelize.define('Cliente', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  imagen: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   notas: {
     type: DataTypes.TEXT,
     allowNull: true,

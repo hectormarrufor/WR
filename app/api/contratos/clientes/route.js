@@ -14,7 +14,6 @@ export async function GET(request) {
 
     const clientes = await db.Cliente.findAll({
       where: whereClause,
-      order: [['razonSocial', 'ASC'], ['nombreContacto', 'ASC']],
     });
     return NextResponse.json(clientes);
   } catch (error) {

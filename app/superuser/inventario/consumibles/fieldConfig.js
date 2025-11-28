@@ -33,6 +33,7 @@ export const fieldConfig = {
     write: (form, value) => form.setFieldValue('tipo', value),
     dependsOnTipo: false,
   },
+
 };
 
 // Helper para mantener especificaciones como array [{campo, value, ...}]

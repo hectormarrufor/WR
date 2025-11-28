@@ -10,6 +10,7 @@ import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconUserPlus, IconId, IconBuildingFactory, IconPhone, IconMail, IconMapPin, IconNotes } from '@tabler/icons-react';
+import ImageDropzone from '../flota/activos/components/ImageDropzone';
 
 // Se añade `children` como prop para que actúe como el disparador del modal
 export function ModalCrearCliente({ onClienteCreado, children }) {
@@ -18,40 +19,55 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
 
   const form = useForm({
     initialValues: {
-      rif: '',
-      razonSocial: '',
-      nombreContacto: '',
-      apellidoContacto: '',
+      identificacion: '',
+      nombre: '',
       telefono: '',
       email: '',
+      imagen: '',
       direccion: '',
       notas: '',
     },
 
     validate: {
-      rif: (value) => (value ? null : 'Identificación es requerida'),
+      identificacion: (value) => (value ? null : 'Identificación es requerida'),
+      nombre: (value) => (value ? null : 'Nombre es requerido'),
 
       email: (value) => (value && !/^\S+@\S+$/.test(value) ? 'Email inválido' : null),
     },
   });
 
-  useEffect(() => { 
+  useEffect(() => {
     form.setValues({
-      rif: 'J-12345678-9',
-      razonSocial: 'PDVSA',
-      nombreContacto: 'Jose',
-      apellidoContacto: 'Perez',
+      identificacion: 'J-12345678-9',
+      nombre: 'NABEP',
       telefono: '04121234567',
-      email: 'pdvsa@pdvsa.com',
-      direccion: 'El Tigre',
+      email: 'nabep@nabep.com',
+      direccion: 'Ciudad Ojeda',
       notas: '',
     })
   }, [])
-  
+
 
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
+      if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
+        notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
+        const imagenFile = values.imagen;
+        const fileExtension = imagenFile.name.split('.').pop();
+        const uniqueFilename = `${values.identificacion.replace(/\s+/g, '_')}.${fileExtension}`;
+
+        const response = await fetch(`/api/upload?filename=${encodeURIComponent(uniqueFilename)}`, {
+          method: 'POST',
+          body: imagenFile,
+        });
+
+        if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
+        const newBlob = await response.json();
+        finalPayload.imagen = `${values.identificacion}.jpg`;
+        notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
+      }
+
       const response = await fetch('/api/contratos/clientes', {
         method: 'POST',
         headers: {
@@ -106,36 +122,24 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
                   placeholder="Ej. V-12345678, J-12345678-9"
                   required
                   leftSection={<IconId size={18} />}
-                  {...form.getInputProps('rif')}
+                  {...form.getInputProps('identificacion')}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <ImageDropzone
+                  label="Imagen del Cliente" form={form} fieldPath="imagen"
                 />
               </Grid.Col>
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
-                  label="Razón Social"
-                  placeholder="Nombre de la empresa"
+                  label="Razón Social o nombre"
+                  placeholder="Nombre de la empresa o cliente "
                   required
                   leftSection={<IconBuildingFactory size={18} />}
-                  {...form.getInputProps('razonSocial')}
+                  {...form.getInputProps('nombre')}
                 />
               </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <TextInput
-                  label="Nombre de Representante"
-                  placeholder="Nombre de la persona"
-                  required
-                  leftSection={<IconUserPlus size={18} />}
-                  {...form.getInputProps('nombreContacto')}
-                />
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <TextInput
-                  label="Apellido de Representante"
-                  placeholder="Apellido de la persona"
-                  required
-                  leftSection={<IconUserPlus size={18} />}
-                  {...form.getInputProps('apellidoContacto')}
-                />
-              </Grid.Col>
+
               <Grid.Col span={{ base: 12, sm: 6 }}>
                 <TextInput
                   label="Teléfono"
