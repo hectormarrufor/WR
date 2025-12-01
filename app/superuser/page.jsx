@@ -53,12 +53,14 @@ export default function SuperUserHome() {
             if (rol) {
                 console.log(rol)
                 switch (true) {
-                    // case rol.includes("Administrador"):
-                    //     // router.push('/superuser');
-                    //     break;
-                    // case rol.includes("Presidente"):
-                    //     // router.push('/superuser');
-                    //     break;
+                    case rol.includes("Administrador"):
+                        setIsLoading(false);
+                        // router.push('/superuser');
+                        break;
+                        case rol.includes("Presidente"):
+                        setIsLoading(false);
+                        // router.push('/superuser');
+                        break;
                     case rol.includes("Gerente de Mantenimiento"):
                         router.push('/superuser/flota');
                     case rol.includes("Analista de Recursos Humanos"):
