@@ -1,4 +1,4 @@
-// components/clientes/ModalCrearCliente.jsx (Actualizado)
+// components/clientes/ModalClienteForm.jsx (Actualizado)
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -10,11 +10,10 @@ import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconUserPlus, IconId, IconBuildingFactory, IconPhone, IconMail, IconMapPin, IconNotes } from '@tabler/icons-react';
-import ImageDropzone from '../flota/activos/components/ImageDropzone';
+import ImageDropzone from '../../flota/activos/components/ImageDropzone';
 
 // Se añade `children` como prop para que actúe como el disparador del modal
-export function ModalCrearCliente({ onClienteCreado, children }) {
-  const [opened, { open, close }] = useDisclosure(false);
+export function ModalClienteForm({ onClienteCreated, onClienteUpdated, onClose, opened, cliente = null }) {
   const [loading, setLoading] = useState(false);
 
   const form = useForm({
@@ -37,18 +36,21 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
   });
 
   useEffect(() => {
-    form.setValues({
-      identificacion: 'J-12345678-9',
-      nombre: 'NABEP',
-      telefono: '04121234567',
-      email: 'nabep@nabep.com',
-      direccion: 'Ciudad Ojeda',
-      notas: '',
-    })
-  }, [])
+
+    cliente ? form.setValues({
+      identificacion: cliente.identificacion || '',
+      imagen: cliente.imagen || '',
+      nombre: cliente.nombre || '',
+      telefono: cliente.telefono || '',
+      email: cliente.email || '',
+      direccion: cliente.direccion || '',
+      notas: cliente.notas || '',
+    }) : form.reset();
+  }, [cliente]);
 
 
   const handleSubmit = async (values) => {
+    let finalPayload = { ...values };
     setLoading(true);
     try {
       if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
@@ -68,12 +70,12 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
         notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
       }
 
-      const response = await fetch('/api/contratos/clientes', {
-        method: 'POST',
+      const response = await fetch(cliente  ? `/api/contratos/clientes/${cliente.id}` : '/api/contratos/clientes', {
+        method: cliente ? "PUT" : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(finalPayload),
       });
 
       if (!response.ok) {
@@ -88,10 +90,10 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
         color: 'green',
       });
       form.reset();
-      close();
-      if (onClienteCreado) {
-        onClienteCreado(nuevoCliente); // Llama al callback si se proporciona
+      if (onClienteCreated) {
+        onClienteCreated(nuevoCliente); // Llama al callback si se proporciona
       }
+      onClose();
     } catch (error) {
       console.error('Error al crear cliente:', error);
       notifications.show({
@@ -109,10 +111,8 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
 
   return (
     <>
-      {/* El disparador del modal ahora se pasa como children */}
-      {React.cloneElement(children, { onClick: open })}
-
-      <Modal opened={opened} onClose={close} title="Registrar Nuevo Cliente" size="lg" my={80} centered>
+   
+      <Modal opened={opened} onClose={onClose} title="Registrar Nuevo Cliente" size="lg" my={80} centered>
         <Box component="form" onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
             <Grid>
@@ -125,7 +125,7 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
                   {...form.getInputProps('identificacion')}
                 />
               </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
+              <Grid.Col span={12}>
                 <ImageDropzone
                   label="Imagen del Cliente" form={form} fieldPath="imagen"
                 />
@@ -178,7 +178,7 @@ export function ModalCrearCliente({ onClienteCreado, children }) {
           </Stack>
 
           <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={close}>
+            <Button variant="default" onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" loading={loading}>

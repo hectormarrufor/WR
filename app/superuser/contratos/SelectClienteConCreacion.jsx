@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Select, ActionIcon, Group, Tooltip, rem, Box } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import { ModalCrearCliente } from './ModalCrearCliente'; // Ajusta la ruta si es necesario
+import { ModalClienteForm } from './clientes/ModalClienteForm'; // Ajusta la ruta si es necesario
 import { notifications } from '@mantine/notifications';
 
 export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label = 'Cliente', placeholder = 'Selecciona un cliente', disabled = false }) {
@@ -75,7 +75,7 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
         />
       </Box>
       <Tooltip label="Crear Nuevo Cliente" position="top-end" withArrow>
-        <ModalCrearCliente onClienteCreado={handleClienteCreado}>
+        <ModalClienteForm onClienteCreado={handleClienteCreado}>
           <ActionIcon
             variant="filled"
             size="lg" // Ajusta el tamaño para que se vea bien junto al Select
@@ -85,7 +85,7 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
           >
             <IconPlus style={{ width: rem(20), height: rem(20) }} stroke={1.5} />
           </ActionIcon>
-        </ModalCrearCliente>
+        </ModalClienteForm>
       </Tooltip>
     </Group>
   );
