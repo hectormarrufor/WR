@@ -2,7 +2,7 @@
 'use client'; // Necesario para componentes interactivos en Next.js App Router
 
 import React, { useState, useEffect } from 'react';
-import { Select, ActionIcon, Group, Tooltip, rem, Box } from '@mantine/core';
+import { Select, ActionIcon, Group, Tooltip, rem, Box, Flex } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { ModalClienteForm } from './clientes/ModalClienteForm'; // Ajusta la ruta si es necesario
 import { notifications } from '@mantine/notifications';
@@ -11,6 +11,7 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
   const [clientesData, setClientesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [opened, setOpened] = useState(false);
 
   // Función para cargar los clientes desde la API
   const fetchClientes = async () => {
@@ -25,7 +26,7 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
       // Mapear los clientes al formato { value: id, label: nombreCompleto/razonSocial }
       const formattedClients = data.map(cliente => ({
         value: String(cliente.id), // Mantine Select espera valores de tipo string
-        label: cliente.razonSocial || `${cliente.nombreContacto || ''} ${cliente.apellidoContacto || ''}`.trim(),
+        label: cliente.nombre
       }));
       setClientesData(formattedClients);
     } catch (err) {
@@ -62,9 +63,10 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
 
   return (
     <Group wrap="nowrap" align="flex-end" style={{ width: '100%' }}>
-      <Box style={{ flexGrow: 1 }}>
+      <Flex style={{ flex: 1 }}>
         <Select
           label={label}
+          grow
           placeholder={placeholder}
           data={clientesData}
           searchable
@@ -73,20 +75,19 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
           nothingFoundMessage={loading ? "Cargando clientes..." : (error ? "Error al cargar clientes" : "No se encontraron clientes")}
           {...form.getInputProps(fieldName)}
         />
-      </Box>
-      <Tooltip label="Crear Nuevo Cliente" position="top-end" withArrow>
-        <ModalClienteForm onClienteCreado={handleClienteCreado}>
-          <ActionIcon
-            variant="filled"
-            size="lg" // Ajusta el tamaño para que se vea bien junto al Select
-            aria-label="Crear nuevo cliente"
-            disabled={disabled}
-            style={{ marginBottom: rem(2.5) }} // Ajusta el margen si es necesario para alinear
-          >
-            <IconPlus style={{ width: rem(20), height: rem(20) }} stroke={1.5} />
-          </ActionIcon>
-        </ModalClienteForm>
-      </Tooltip>
+        <ActionIcon
+          variant="filled"
+          size="lg" // Ajusta el tamaño para que se vea bien junto al Select
+          aria-label="Crear nuevo cliente"
+          disabled={disabled}
+          mt={26}
+          style={{ marginBottom: rem(2.5) }} // Ajusta el margen si es necesario para alinear
+          onClick={() => setOpened(true)}
+        >
+          <IconPlus style={{ width: rem(20), height: rem(20) }} stroke={1.5} />
+        </ActionIcon>
+      </Flex>
+        <ModalClienteForm onClienteCreado={handleClienteCreado} opened={opened} onClose={() => setOpened(false)}/>
     </Group>
   );
 }

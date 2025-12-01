@@ -1,4 +1,4 @@
-import { Activo, Cliente, Empleado, HorasTrabajadas, ODT } from "@/models";
+import db, { Activo, Cliente, Empleado, HorasTrabajadas, ODT } from "@/models";
 import { NextResponse } from "next/server";
 
 // =======================
@@ -24,52 +24,59 @@ export async function GET() {
 // POST nueva ODT
 // =======================
 export async function POST(req) {
+  const transaction = await db.sequelize.transaction();
+
   try {
     const body = await req.json();
+    console.log(body);
     const {
-      nroODT,
-      fecha,
-      descripcionServicio,
-      horaLlegada,
-      horaSalida,
       clienteId,
       vehiculosPrincipales,
       vehiculosRemolque,
       choferes,
       ayudantes,
-    } = body;
+      ...odtData
+    } = body.values;
 
-    const nuevaODT = await ODT.create({
-      nroODT,
-      fecha,
-      descripcionServicio,
-      horaLlegada,
-      horaSalida,
-      clienteId,
+
+
+    const nuevaODT = await ODT.create(odtData, { transaction });
+    // Asociar vehículos principales
+
+    const vehiculos = await Activo.findAll({
+      transaction
     });
 
-    // Relacionar vehículos principales
-    if (vehiculosPrincipales) {
-      await nuevaODT.addVehiculos(vehiculosPrincipales, { through: { tipo: "principal" } });
+    await nuevaODT.addVehiculos(vehiculos, { transaction });
+    if (vehiculosPrincipales && vehiculosPrincipales.length > 0) {
+      await nuevaODT.addVehiculos(vehiculosPrincipales, { transaction });
+    }
+    // Asociar vehículos remolque
+    if (vehiculosRemolque && vehiculosRemolque.length > 0) {
+      await nuevaODT.addVehiculos(vehiculosRemolque, { transaction });
+    }
+    // Asociar choferes
+    if (choferes && choferes.length > 0) {
+      await nuevaODT.addEmpleados(choferes, { transaction });
+    }
+    // Asociar ayudantes
+    if (ayudantes && ayudantes.length > 0) {
+      await nuevaODT.addEmpleados(ayudantes, { transaction });
+    }
+    // Asociar cliente
+    if (clienteId) {
+      const cliente = await Cliente.findByPk(clienteId, { transaction });
+      if (cliente) {
+        await nuevaODT.setCliente(cliente);
+      }
     }
 
-    // Relacionar vehículos remolque
-    if (vehiculosRemolque) {
-      await nuevaODT.addVehiculos(vehiculosRemolque, { through: { tipo: "remolque" } });
-    }
+    await transaction.commit();
 
-    // Relacionar choferes
-    if (choferes) {
-      await nuevaODT.addEmpleados(choferes, { through: { rol: "chofer" } });
-    }
-
-    // Relacionar ayudantes
-    if (ayudantes) {
-      await nuevaODT.addEmpleados(ayudantes, { through: { rol: "ayudante" } });
-    }
 
     return NextResponse.json(nuevaODT, { status: 201 });
   } catch (error) {
+    console.log(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

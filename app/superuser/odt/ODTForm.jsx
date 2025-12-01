@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TextInput, Textarea, Button, Paper, Title, Center } from "@mantine/core";
+import { TextInput, Textarea, Button, Paper, Title, Center, SimpleGrid, Box, Divider } from "@mantine/core";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -14,10 +14,22 @@ import { SelectClienteConCreacion } from "../contratos/SelectClienteConCreacion"
 
 
 export default function ODTForm({ mode, odtId }) {
+  const [isMobile, setIsMobile] = useState(false);
   const { nombre } = useAuth();
   const [empleados, setEmpleados] = useState();
   const [activos, setActivos] = useState();
   const [clientes, setClientes] = useState();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const form = useForm({
     initialValues: {
       nroODT: "",
@@ -99,40 +111,72 @@ export default function ODTForm({ mode, odtId }) {
     <Paper mt={70}>
       <Title centered justify="center" align="center" order={3}>Nueva ODT, registrada por: {nombre}</Title>
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-        <SelectClienteConCreacion form={form} fieldName="cliente" label="Cliente" placeholder = 'Selecciona un cliente' disabled = {false} />
-        <TextInput label="Nro ODT"  {...form.getInputProps("nroODT")} />
-        <DateInput label="Fecha de ODT" valueFormat="DD/MM/YYYY"  {...form.getInputProps('fecha')} />
-        <Textarea label="Descripción del servicio" {...form.getInputProps('descripcionServicio')} />
-        <TimeInput
-          label="Hora de llegada"
-          format="24" // formato de 24 horas
-          {...form.getInputProps('horaLlegada')}
-        />
-        <TimeInput label="Hora de Salida"
-          format="24" // formato de 24 horas
-          {...form.getInputProps('horaSalida')}
-        />
-        {/* Aquí puedes añadir selects para cliente, vehículos y empleados */}
-        <ODTSelectableGrid
-          label="Empleados"
-          data={empleados.map(e => ({
-            id: e.id,
-            nombre: e.nombre + " " + e.apellido,
-            imagen: e.imagen,
-            puestos: e.puestos,
-          }))}
-          onChange={(values) => form.setFieldValue("empleados", values)}
-        />
-
-        <ODTSelectableGrid
-          label="Vehículos"
-          data={activos.map(v => ({
-            id: v.id,
-            nombre: v.modelo.nombre + v.datosPersonalizados.placa,
-            imagen: v.imagen,
-          }))}
-          onChange={(values) => form.setFieldValue("vehiculos", values)}
-        />
+        <SimpleGrid cols={isMobile ? 1 : 2} spacing="lg" padding="lg">
+          <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" placeholder='Selecciona un cliente' disabled={false} />
+          <TextInput label="Nro ODT"  {...form.getInputProps("nroODT")} />
+          <DateInput label="Fecha de ODT" valueFormat="DD/MM/YYYY"  {...form.getInputProps('fecha')} />
+          <Textarea label="Descripción del servicio" {...form.getInputProps('descripcionServicio')} />
+          <TimeInput
+            label="Hora de llegada"
+            format="24" // formato de 24 horas
+            {...form.getInputProps('horaLlegada')}
+          />
+          <TimeInput label="Hora de Salida"
+            format="24" // formato de 24 horas
+            {...form.getInputProps('horaSalida')}
+          />
+          {/* Aquí puedes añadir selects para cliente, vehículos y empleados */}
+          <Box>
+            <ODTSelectableGrid
+              label="Choferes"
+              data={empleados.map(e => ({
+                id: e.id,
+                nombre: e.nombre + " " + e.apellido,
+                imagen: e.imagen,
+                puestos: e.puestos,
+              }))}
+              onChange={(values) => form.setFieldValue("choferes", values)}
+            />
+            <Divider my="sm" />
+          </Box>
+          <Box>
+            <ODTSelectableGrid
+              label="Ayudantes"
+              data={empleados.map(e => ({
+                id: e.id,
+                nombre: e.nombre + " " + e.apellido,
+                imagen: e.imagen,
+                puestos: e.puestos,
+              }))}
+              onChange={(values) => form.setFieldValue("ayudantes", values)}
+            />
+            <Divider my="sm" />
+          </Box>
+          <Box>
+            <ODTSelectableGrid
+              label="Vehículos Principales"
+              data={activos.map(v => ({
+                id: v.id,
+                nombre: v.modelo.nombre + v.datosPersonalizados.placa,
+                imagen: v.imagen,
+              }))}
+              onChange={(values) => form.setFieldValue("vehiculosPrincipales", values)}
+            />
+            <Divider my="sm" />
+          </Box>
+          <Box>
+            <ODTSelectableGrid
+              label="Vehículos Principales"
+              data={activos.map(v => ({
+                id: v.id,
+                nombre: v.modelo.nombre + v.datosPersonalizados.placa,
+                imagen: v.imagen,
+              }))}
+              onChange={(values) => form.setFieldValue("vehiculosRemolque", values)}
+            />
+            <Divider my="sm" />
+          </Box>
+        </SimpleGrid>
         <Button type="submit">{mode === "create" ? "Crear ODT" : "Actualizar ODT"}</Button>
       </form>
     </Paper>
