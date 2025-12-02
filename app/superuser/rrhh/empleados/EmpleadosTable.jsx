@@ -62,9 +62,18 @@ const getColumns = (openDeleteModal, router) => [
     size: 120,
   },
   {
-    accessorKey: 'email',
-    header: 'Email',
+    accessorKey: 'puestos',
+    header: 'Cargo(s)',
     size: 200,
+    Cell: ({ cell }) => (
+      <Box>
+        {cell.getValue().map((puesto, index) => (
+          <Badge key={index} color="blue" variant="light" mr={4} mb={2}>
+            {puesto.nombre}
+          </Badge>
+        ))}
+      </Box>
+    ),
   },
   {
     accessorKey: 'direccion',

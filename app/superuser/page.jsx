@@ -55,7 +55,7 @@ export default function SuperUserHome() {
                 switch (true) {
                     case rol.includes("Administrador"):
                         setIsLoading(false);
-                        // router.push('/superuser');
+                        router.push('/superuser/rrhh/empleados');
                         break;
                         case rol.includes("Presidente"):
                         setIsLoading(false);
