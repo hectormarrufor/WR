@@ -63,9 +63,7 @@ export default function Page({ params }) {
         return () => (mounted = false)
     }, [id]);
 
-    useEffect(() => {
-      console.log(preview)
-    }, [preview])
+  
     
 
 
@@ -120,7 +118,7 @@ export default function Page({ params }) {
                         <Stack>
                             <Title order={4}><strong>{empleado?.nombre} {empleado?.apellido}</strong></Title>
                             <Text>
-                                {empleado?.puestos.map(puesto => puesto.nombre).join(",")}
+                                {empleado?.puestos?.map(puesto => puesto.nombre).join(",")}
                             </Text>
                             <Text>
                                 <strong>Teléfono:</strong> {empleado?.telefono}

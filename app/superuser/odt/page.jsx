@@ -16,6 +16,7 @@ export default function ODTPage() {
       try {
         const res = await fetch("/api/odts", { cache: "no-store" });
         const data = await res.json();
+        console.log(data);
         setOdts(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error cargando ODTs:", error);

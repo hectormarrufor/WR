@@ -1,4 +1,4 @@
-import db, { Activo, Cliente, Empleado, HorasTrabajadas, ODT } from "@/models";
+import db, { Activo, Cliente, Empleado, HorasTrabajadas, Modelo, ODT, ODT_Empleados, ODT_Vehiculos } from "@/models";
 import { NextResponse } from "next/server";
 
 // =======================
@@ -9,7 +9,7 @@ export async function GET() {
     const odts = await ODT.findAll({
       include: [
         { model: Cliente, as: "cliente" },
-        { model: Activo, as: "vehiculos" },
+        { model: Activo, as: "vehiculos", include: [{ model: Modelo, as: "modelo"  }] },
         { model: Empleado, as: "empleados" },
         { model: HorasTrabajadas },
       ],
@@ -28,9 +28,9 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    console.log(body);
+
     const {
-      clienteId,
+
       vehiculosPrincipales,
       vehiculosRemolque,
       choferes,
@@ -38,38 +38,82 @@ export async function POST(req) {
       ...odtData
     } = body;
 
+    // odtData.horaLlegada = odtData.horaLlegada.length === 5
+    //   ? odtData.horaLlegada + ':00'
+    //   : odtData.horaLlegada;
+
+    // odtData.horaSalida = odtData.horaSalida.length === 5
+    //   ? odtData.horaSalida + ':00'
+    //   : odtData.horaSalida;
 
 
+    console.log("creando la odt")
     const nuevaODT = await ODT.create(odtData, { transaction });
     // Asociar vehículos principales
-
-    const vehiculos = await Activo.findAll({
-      transaction
-    });
-
-    await nuevaODT.addVehiculos(vehiculos, { transaction });
-    if (vehiculosPrincipales && vehiculosPrincipales.length > 0) {
-      await nuevaODT.addVehiculos(vehiculosPrincipales, { transaction });
-    }
-    // Asociar vehículos remolque
-    if (vehiculosRemolque && vehiculosRemolque.length > 0) {
-      await nuevaODT.addVehiculos(vehiculosRemolque, { transaction });
-    }
-    // Asociar choferes
-    if (choferes && choferes.length > 0) {
-      await nuevaODT.addEmpleados(choferes, { transaction });
-    }
-    // Asociar ayudantes
-    if (ayudantes && ayudantes.length > 0) {
-      await nuevaODT.addEmpleados(ayudantes, { transaction });
-    }
-    // Asociar cliente
-    if (clienteId) {
-      const cliente = await Cliente.findByPk(clienteId, { transaction });
-      if (cliente) {
-        await nuevaODT.setCliente(cliente);
+    console.log("asiociando vehiculos principales")
+    // Vehículos principales
+    if (vehiculosPrincipales?.length) {
+      for (const id of vehiculosPrincipales) {
+        await ODT_Vehiculos.create({
+          odtId: nuevaODT.id,
+          activoId: id,
+          tipo: 'principal'
+        }, { transaction });
       }
     }
+    console.log("asiociando vehiculos remolque")
+    // Vehículos remolque
+    if (vehiculosRemolque?.length) {
+      for (const id of vehiculosRemolque) {
+        await ODT_Vehiculos.create({
+          odtId: nuevaODT.id,
+          activoId: id,
+          tipo: 'remolque'
+        }, { transaction });
+      }
+    }
+    console.log("asiociando choferes y ayudantes")
+    // Choferes
+    if (choferes?.length) {
+      for (const id of choferes) {
+        await ODT_Empleados.create({
+          odtId: nuevaODT.id,
+          EmpleadoId: id,
+          rol: 'chofer'
+        }, { transaction });
+        // Crear horas trabajadas
+        await HorasTrabajadas.create({
+         odtId: nuevaODT.id,
+          EmpleadoId: id,
+          fecha: odtData.fecha,
+          horas: odtData.horaSalida - odtData.horaLlegada,
+          origen: 'odt',
+          observaciones: `Horas registradas por ODT #${nuevaODT.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
+        }, { transaction });
+
+      }
+    }
+    console.log("asiociando ayudantes")
+    // Ayudantes
+    if (ayudantes?.length) {
+      for (const id of ayudantes) {
+        await ODT_Empleados.create({
+          odtId: nuevaODT.id,
+          EmpleadoId: id,
+          rol: 'ayudante'
+        }, { transaction });
+        await HorasTrabajadas.create({
+          odtId: nuevaODT.id,
+          EmpleadoId: id,
+          fecha: odtData.fecha,
+          horas: odtData.horaSalida - odtData.horaLlegada,
+          origen: 'odt',
+          observaciones: `Horas registradas por ODT #${nuevaODT.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
+        }, { transaction });
+
+      }
+    }
+
 
     await transaction.commit();
 

@@ -8,6 +8,7 @@ export async function GET(request, { params }) {
     const empleado = await db.Empleado.findByPk(id, {
       include: [
         { model: db.Puesto, as: 'puestos', through: { attributes: [] } },
+        { model: db.HorasTrabajadas },
         // Puedes añadir más inclusiones aquí si el empleado está asociado a Mantenimientos, Operaciones, etc.
         // { model: db.Mantenimiento, as: 'mantenimientosCreados' },
         // { model: db.OperacionCampo, as: 'operacionesSupervisadas' },

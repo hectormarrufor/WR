@@ -19,6 +19,7 @@ export default function ODTForm({ mode, odtId }) {
   const [empleados, setEmpleados] = useState();
   const [activos, setActivos] = useState();
   const [clientes, setClientes] = useState();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -69,6 +70,29 @@ export default function ODTForm({ mode, odtId }) {
     catch (error) {
       notifications.show({ title: "No se pudo cargar los datos" })
     }
+
+    form.setValues({
+
+      nroODT: "0325",
+      fecha: new Date("2025-12-09T04:00:00.000Z"),
+      descripcionServicio: "achique",
+      horaLlegada: "08:00",
+      horaSalida: "15:00",
+      clienteId: "1",
+      vehiculosPrincipales: [
+        10
+      ],
+      vehiculosRemolque: [],
+      choferes: [
+        12,
+        14
+      ],
+      ayudantes: [
+        15,
+        4
+      ]
+    });
+
   }, [])
 
 
@@ -78,7 +102,7 @@ export default function ODTForm({ mode, odtId }) {
 
   }, [form])
 
-  
+
 
   useEffect(() => {
     if (mode === "edit" && odtId) {
@@ -89,14 +113,30 @@ export default function ODTForm({ mode, odtId }) {
   }, [mode, odtId]);
 
   const handleSubmit = async () => {
-    const url = mode === "create" ? "/api/odts" : `/api/odts/${odtId}`;
-    const method = mode === "create" ? "POST" : "PUT";
+    setLoading(true);
+    try {
+      const url = mode === "create" ? "/api/odts" : `/api/odts/${odtId}`;
+      const method = mode === "create" ? "POST" : "PUT";
+      console.log(url, method)
 
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form.values),
-    });
+      await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form.values),
+      });
+      notifications.show({
+        title: mode === "create" ? "ODT creada exitosamente" : "ODT actualizada exitosamente",
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Error al guardar la ODT",
+        message: error.message,
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!empleados || !activos) return (
@@ -114,7 +154,7 @@ export default function ODTForm({ mode, odtId }) {
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="lg" padding="lg">
           <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" placeholder='Selecciona un cliente' disabled={false} />
 
-          
+
 
 
 
@@ -182,7 +222,9 @@ export default function ODTForm({ mode, odtId }) {
             <Divider my="sm" />
           </Box>
         </SimpleGrid>
-        <Button type="submit">{mode === "create" ? "Crear ODT" : "Actualizar ODT"}</Button>
+
+
+        <Button fullWidth loading={loading} type="submit">{mode === "create" ? "Crear ODT" : "Actualizar ODT"}</Button>
       </form>
     </Paper>
   );

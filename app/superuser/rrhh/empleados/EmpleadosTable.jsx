@@ -121,6 +121,7 @@ export default function EmpleadosTable() {
         throw new Error(`Error fetching data: ${response.statusText}`);
       }
       const result = await response.json();
+      console.log(result)
       setData(result.map(empleado => { return { ...empleado, nombreCompleto: empleado.nombre + " " + empleado.apellido, edad: calcularEdad(empleado.fechaNacimiento) } }));
     } catch (err) {
       console.error('Failed to fetch employees:', err);

@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 // =======================
 export async function GET(_, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const odt = await ODT.findByPk(id, {
       include: [
         { model: Cliente, as: "cliente" },
@@ -27,7 +27,7 @@ export async function GET(_, { params }) {
 // =======================
 export async function PUT(req, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const odt = await ODT.findByPk(id);
     if (!odt) return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
@@ -44,7 +44,7 @@ export async function PUT(req, { params }) {
 // =======================
 export async function DELETE(_, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const odt = await ODT.findByPk(id);
     if (!odt) return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
 
