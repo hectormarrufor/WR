@@ -96,7 +96,7 @@ export async function POST(req) {
       for (const id of choferes) {
         await ODT_Empleados.create({
           odtId: nuevaODT.id,
-          EmpleadoId: id,
+          empleadoId: id,
           rol: 'chofer'
         }, { transaction });
         // Crear horas trabajadas
@@ -117,12 +117,12 @@ export async function POST(req) {
       for (const id of ayudantes) {
         await ODT_Empleados.create({
           odtId: nuevaODT.id,
-          EmpleadoId: id,
+          empleadoId: id,
           rol: 'ayudante'
         }, { transaction });
         await HorasTrabajadas.create({
           odtId: nuevaODT.id,
-          EmpleadoId: id,
+          empleadoId: id,
           fecha: odtData.fecha,
           horas: calcularHoras(odtData.horaLlegada, odtData.horaSalida),
           origen: 'odt',

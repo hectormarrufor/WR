@@ -108,7 +108,7 @@ export default function ODTForm({ mode, odtId }) {
     if (mode === "edit" && odtId) {
       fetch(`/api/odts/${odtId}`)
         .then((res) => res.json())
-        .then((data) => form.setValues(data));
+        .then((data) => form.setValues({...data, fecha: new Date(data.fecha)}));
     }
   }, [mode, odtId]);
 
