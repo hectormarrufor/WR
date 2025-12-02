@@ -1,4 +1,4 @@
-import { Activo, Cliente, Empleado, HorasTrabajadas, ODT } from "@/models";
+import db, { Activo, Cliente, Empleado, HorasTrabajadas, ODT, ODT_Empleados, ODT_Vehiculos } from "@/models";
 import { NextResponse } from "next/server";
 
 // =======================
@@ -47,10 +47,16 @@ export async function DELETE(_, { params }) {
     const { id } = await params;
     const odt = await ODT.findByPk(id);
     if (!odt) return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
+    // Para borrar todo de una vez
+    //     await db.sequelize.query(`
+    //   TRUNCATE TABLE "ODT_Vehiculos", "ODT_Empleados", "HorasTrabajadas", "ODTs" RESTART IDENTITY CASCADE;
+    // `);
+
 
     await odt.destroy();
     return NextResponse.json({ message: "ODT eliminada correctamente" });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

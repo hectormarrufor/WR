@@ -1,6 +1,24 @@
 import db, { Activo, Cliente, Empleado, HorasTrabajadas, Modelo, ODT, ODT_Empleados, ODT_Vehiculos } from "@/models";
 import { NextResponse } from "next/server";
 
+function calcularHoras(horaEntrada, horaSalida) {
+  const [hIn, mIn] = horaEntrada.split(':').map(Number);
+  const [hOut, mOut] = horaSalida.split(':').map(Number);
+
+  let entrada = hIn * 60 + mIn;
+  let salida = hOut * 60 + mOut;
+
+  // Si la salida es menor que la entrada, significa que pasó la medianoche
+  if (salida < entrada) {
+    salida += 24 * 60;
+  }
+
+  const diffMin = salida - entrada;
+  return diffMin / 60; // devolver en horas decimales
+}
+
+
+
 // =======================
 // GET todas las ODTs
 // =======================
@@ -47,7 +65,7 @@ export async function POST(req) {
     //   : odtData.horaSalida;
 
 
-    console.log("creando la odt")
+    console.log("creando la odt con: ", odtData);
     const nuevaODT = await ODT.create(odtData, { transaction });
     // Asociar vehículos principales
     console.log("asiociando vehiculos principales")
@@ -84,9 +102,9 @@ export async function POST(req) {
         // Crear horas trabajadas
         await HorasTrabajadas.create({
          odtId: nuevaODT.id,
-          EmpleadoId: id,
+          empleadoId: id,
           fecha: odtData.fecha,
-          horas: odtData.horaSalida - odtData.horaLlegada,
+          horas: calcularHoras(odtData.horaLlegada, odtData.horaSalida),
           origen: 'odt',
           observaciones: `Horas registradas por ODT #${nuevaODT.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
         }, { transaction });
@@ -106,7 +124,7 @@ export async function POST(req) {
           odtId: nuevaODT.id,
           EmpleadoId: id,
           fecha: odtData.fecha,
-          horas: odtData.horaSalida - odtData.horaLlegada,
+          horas: calcularHoras(odtData.horaLlegada, odtData.horaSalida),
           origen: 'odt',
           observaciones: `Horas registradas por ODT #${nuevaODT.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
         }, { transaction });
@@ -121,6 +139,8 @@ export async function POST(req) {
     return NextResponse.json(nuevaODT, { status: 201 });
   } catch (error) {
     console.log(error);
+    await transaction.rollback();
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
