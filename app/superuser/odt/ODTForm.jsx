@@ -95,7 +95,7 @@ export default function ODTForm({ mode, odtId }) {
     await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(form.values),
     });
   };
 

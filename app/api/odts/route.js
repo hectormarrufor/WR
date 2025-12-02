@@ -36,7 +36,7 @@ export async function POST(req) {
       choferes,
       ayudantes,
       ...odtData
-    } = body.values;
+    } = body;
 
 
 
