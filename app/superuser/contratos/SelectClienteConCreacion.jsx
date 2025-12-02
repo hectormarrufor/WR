@@ -2,16 +2,17 @@
 'use client'; // Necesario para componentes interactivos en Next.js App Router
 
 import React, { useState, useEffect } from 'react';
-import { Select, ActionIcon, Group, Tooltip, rem, Box, Flex } from '@mantine/core';
+import { Select, ActionIcon, Group, Tooltip, rem, Box, Flex, Avatar, Card, Text } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { ModalClienteForm } from './clientes/ModalClienteForm'; // Ajusta la ruta si es necesario
 import { notifications } from '@mantine/notifications';
 
-export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label = 'Cliente', placeholder = 'Selecciona un cliente', disabled = false }) {
+export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label = 'Cliente', placeholder = 'Selecciona un cliente', disabled = false  }) {
   const [clientesData, setClientesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [opened, setOpened] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState(null);
 
   // Función para cargar los clientes desde la API
   const fetchClientes = async () => {
@@ -23,12 +24,8 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
         throw new Error('Error al cargar clientes');
       }
       const data = await response.json();
-      // Mapear los clientes al formato { value: id, label: nombreCompleto/razonSocial }
-      const formattedClients = data.map(cliente => ({
-        value: String(cliente.id), // Mantine Select espera valores de tipo string
-        label: cliente.nombre
-      }));
-      setClientesData(formattedClients);
+  
+      setClientesData(data);
     } catch (err) {
       setError(err.message);
       notifications.show({
@@ -62,18 +59,26 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
   };
 
   return (
-    <Group wrap="nowrap" align="flex-end" style={{ width: '100%' }}>
+    <Box wrap="nowrap" align="flex-end" style={{ width: '100%' }}>
       <Flex style={{ flex: 1 }}>
         <Select
           label={label}
           grow
           placeholder={placeholder}
-          data={clientesData}
+          data={clientesData.map((cliente => ({
+            value: String(cliente.id),
+            label: cliente.nombre ,
+          })))}
           searchable
           clearable // Permite deseleccionar si es necesario
           disabled={disabled || loading}
           nothingFoundMessage={loading ? "Cargando clientes..." : (error ? "Error al cargar clientes" : "No se encontraron clientes")}
           {...form.getInputProps(fieldName)}
+          onChange={(value) => {
+            form.setFieldValue(fieldName, value);
+            const selected = clientesData.find(c => c.id == value);
+            setSelectedCliente(selected);
+          }}
         />
         <ActionIcon
           variant="filled"
@@ -87,7 +92,20 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
           <IconPlus style={{ width: rem(20), height: rem(20) }} stroke={1.5} />
         </ActionIcon>
       </Flex>
+      {selectedCliente &&
+                  <Card padding="sm" radius="md" withBorder>
+                    <Group>
+                      <Avatar
+                        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${selectedCliente?.imagen}`}
+                        alt={selectedCliente?.nombre}
+                        radius="xl"
+                      />
+                      <Text>{selectedCliente?.nombre}</Text>
+                    </Group>
+                  </Card>
+                }
+
         <ModalClienteForm onClienteCreado={handleClienteCreado} opened={opened} onClose={() => setOpened(false)}/>
-    </Group>
+    </Box>
   );
 }

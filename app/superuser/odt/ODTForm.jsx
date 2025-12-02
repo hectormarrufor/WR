@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TextInput, Textarea, Button, Paper, Title, Center, SimpleGrid, Box, Divider } from "@mantine/core";
+import { TextInput, Textarea, Button, Paper, Title, Center, SimpleGrid, Box, Divider, Card, Avatar, Group, Text } from "@mantine/core";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -71,14 +71,14 @@ export default function ODTForm({ mode, odtId }) {
     }
   }, [])
 
+
+
   useEffect(() => {
     console.log(form.values);
 
   }, [form])
-  useEffect(() => {
-    console.log(clientes);
 
-  }, [clientes])
+  
 
   useEffect(() => {
     if (mode === "edit" && odtId) {
@@ -113,6 +113,11 @@ export default function ODTForm({ mode, odtId }) {
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="lg" padding="lg">
           <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" placeholder='Selecciona un cliente' disabled={false} />
+
+          
+
+
+
           <TextInput label="Nro ODT"  {...form.getInputProps("nroODT")} />
           <DateInput label="Fecha de ODT" valueFormat="DD/MM/YYYY"  {...form.getInputProps('fecha')} />
           <Textarea label="Descripción del servicio" {...form.getInputProps('descripcionServicio')} />
