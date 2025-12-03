@@ -1,7 +1,7 @@
 "use client";
 
 import { MantineReactTable } from "mantine-react-table";
-import { Badge, ActionIcon, Group, Avatar, Text, Flex } from "@mantine/core";
+import { Badge, ActionIcon, Group, Avatar, Text, Flex, UnstyledButton } from "@mantine/core";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 
@@ -50,16 +50,19 @@ const getColumns = (openDeleteModal, router) => [
     size: 250,
     Cell: ({ cell }) =>
       cell.getValue()?.map((emp) => (
-        <Flex  key={emp.id}>
-          <Avatar h={40} w={40} src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}?${Date.now()}`} alt="Foto empleado" radius="xl" size="sm" mr="xs" />
-          <Badge
-            key={emp.id}
-            color={emp.ODT_Empleados.rol === "chofer" ? "blue" : "green"}
-            mr="xs"
-          >
-            {emp.nombre} ({emp.ODT_Empleados.rol})
-          </Badge>
-        </Flex>
+        <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${emp.id}`)}>
+          <Flex key={emp.id}>
+            <Avatar h={40} w={40} src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}?${Date.now()}`} alt="Foto empleado" radius="xl" size="sm" mr="xs" />
+            <Badge
+              key={emp.id}
+              color={emp.ODT_Empleados.rol === "chofer" ? "blue" : "green"}
+              mr="xs"
+            >
+              {emp.nombre} ({emp.ODT_Empleados.rol})
+            </Badge>
+          </Flex>
+
+        </UnstyledButton>
       )),
   },
   {

@@ -72,28 +72,6 @@ export default function ODTForm({ mode, odtId }) {
       notifications.show({ title: "No se pudo cargar los datos" })
     }
 
-    form.setValues({
-
-      nroODT: "0325",
-      fecha: new Date("2025-12-09T04:00:00.000Z"),
-      descripcionServicio: "achique",
-      horaLlegada: "08:00",
-      horaSalida: "15:00",
-      clienteId: "1",
-      vehiculosPrincipales: [
-        10
-      ],
-      vehiculosRemolque: [],
-      choferes: [
-        12,
-        14
-      ],
-      ayudantes: [
-        15,
-        4
-      ]
-    });
-
   }, [])
 
 

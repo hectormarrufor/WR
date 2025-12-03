@@ -18,10 +18,12 @@ import {
     ScrollArea,
     Table,
     UnstyledButton,
+    Modal,
 } from "@mantine/core"
 import { useParams, useRouter } from "next/navigation"
 import calcularEdad from "@/app/helpers/calcularEdad";
 import Link from "next/link";
+import ModalCrearHora from "./ModalCrearHora";
 
 /**
  * Página adaptada a Mantine: /superuser/rrhh/empleados/[id]/page.jsx
@@ -35,6 +37,7 @@ export default function Page({ params }) {
     const [empleado, setEmpleado] = useState(null)
     const [cargando, setCargando] = useState(true)
     const [preview, setPreview] = useState(null)
+    const [modalCrearHora, setModalCrearHora] = useState(false);
     
 
     useEffect(() => {
@@ -144,7 +147,7 @@ export default function Page({ params }) {
 
                         <Group mt="lg">
                             <Button variant="filled" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}>Editar</Button>
-                            <Button variant="outline">Ver historial</Button>
+                            <Button variant="outline" onClick={() => setModalCrearHora(true)}>Añadir horas en la base</Button>
                         </Group>
                     </Grid.Col>
                 </Grid>
@@ -181,6 +184,15 @@ export default function Page({ params }) {
                     </ScrollArea>
                 )}
             </Paper>
+            <ModalCrearHora
+                opened={modalCrearHora}
+                onClose={() => setModalCrearHora(false)}
+                empleadoId={id}
+                onCreated={() => {
+                    // Recargar la página para ver las nuevas horas
+                    router.refresh();
+                }}
+            />
 
         </Container>
     )
