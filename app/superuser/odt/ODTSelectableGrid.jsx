@@ -90,7 +90,7 @@ export default function ODTSelectableGrid({ label, data, onChange }) {
                       <Avatar
                         w={100}
                         h={100}
-                        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen}`}
+                        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen}?${Date.now()}`}
                         alt={item.nombre}
                         radius="xl"
                       />
@@ -123,7 +123,7 @@ export default function ODTSelectableGrid({ label, data, onChange }) {
             <Card key={id} padding="sm" radius="md" withBorder>
               <Group>
                 <Avatar
-                  src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item?.imagen}`}
+                  src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item?.imagen}?${Date.now()}`}
                   alt={item?.nombre}
                   radius="xl"
                 />

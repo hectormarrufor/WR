@@ -171,7 +171,7 @@ export default function NuevaEstimacionPage() {
         {renglones.map((r, index) => (
           <Card key={r.id} shadow="sm" padding="md"   mb="md">
             <Flex>
-              <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${r.imagen}`} height={150} mx={20} radius={10} alt={r.modelo.nombre} />
+              <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${r.imagen}?${Date.now()}`} height={150} mx={20} radius={10} alt={r.modelo.nombre} />
               <Group>
                 <Text fw={700}>Activo {index + 1}</Text>
                 <Text>{r.modelo.nombre} - {r.datosPersonalizados.placa}</Text>
@@ -271,7 +271,7 @@ export default function NuevaEstimacionPage() {
             // .filter(a => a.categoria === categoria)
             .map((a) => (
               <Card key={a.id} shadow="sm" padding="md"  >
-                <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${a.imagen}`} height={100} alt={a.modelo.nombre} />
+                <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${a.imagen}?${Date.now()}`} height={100} alt={a.modelo.nombre} />
                 <Text>{a.modelo.nombre}</Text>
                 {a.datosPersonalizados.placa && <Text>Placa: {a.datosPersonalizados.placa}</Text>}
                 <Text>Codigo de Activo: {a.codigoActivo}</Text>

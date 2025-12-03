@@ -20,7 +20,7 @@ const [preview, setPreview] = useState(null);
             setPreview(initialValue);
         }
         else if (typeof initialValue === "string") {
-            setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${initialValue}`);
+            setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${initialValue}?${Date.now()}`);
         }
     }, [initialValue]);
     

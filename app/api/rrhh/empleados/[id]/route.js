@@ -2,13 +2,36 @@ import { NextResponse } from 'next/server';
 import db from '../../../../../models';
 import sequelize from '@/sequelize';
 
+function getLastFriday() {
+  const today = new Date();
+  const day = today.getDay(); // 0=domingo, 5=viernes
+  const diff = (day >= 5) ? day - 5 : day + 2; // días desde el último viernes
+  const lastFriday = new Date(today);
+  lastFriday.setDate(today.getDate() - diff);
+  lastFriday.setHours(0, 0, 0, 0);
+  return lastFriday;
+}
+
+
 export async function GET(request, { params }) {
   const { id } = await params;
+  const lastFriday = getLastFriday();
+
   try {
     const empleado = await db.Empleado.findByPk(id, {
       include: [
         { model: db.Puesto, as: 'puestos', through: { attributes: [] } },
-        { model: db.HorasTrabajadas },
+        {
+          model: db.HorasTrabajadas,
+          // para filtrar las horas trabajadas desde el último viernes
+          // where: {
+          //   fecha: {
+          //     [db.Sequelize.Op.gte]: lastFriday
+          //   }
+          // },
+          required: false // 👈 para que no falle si no hay horas
+
+        },
         // Puedes añadir más inclusiones aquí si el empleado está asociado a Mantenimientos, Operaciones, etc.
         // { model: db.Mantenimiento, as: 'mantenimientosCreados' },
         // { model: db.OperacionCampo, as: 'operacionesSupervisadas' },
@@ -41,7 +64,7 @@ export async function PUT(request, { params }) {
         fechaNacimiento: body.fechaNacimiento,
         fechaIngreso: body.fechaIngreso,
         sueldo: body.sueldo,
-        telefono:body.telefono,
+        telefono: body.telefono,
         direccion: body.direccion,
         estado: body.estado,
         imagen: body.imagen,

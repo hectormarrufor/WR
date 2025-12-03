@@ -17,6 +17,7 @@ export async function POST(request) {
   try {
     const blob = await put(filename, request.body, {
       access: 'public',
+      allowOverwrite: true, // Permitir sobrescribir archivos con el mismo nombre
     });
 
     console.log(`[API UPLOAD] Éxito: Archivo subido a la URL: ${blob.url}`);

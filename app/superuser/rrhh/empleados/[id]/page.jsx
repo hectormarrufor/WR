@@ -15,9 +15,13 @@ import {
     Loader,
     Stack,
     Badge,
+    ScrollArea,
+    Table,
+    UnstyledButton,
 } from "@mantine/core"
 import { useParams, useRouter } from "next/navigation"
 import calcularEdad from "@/app/helpers/calcularEdad";
+import Link from "next/link";
 
 /**
  * Página adaptada a Mantine: /superuser/rrhh/empleados/[id]/page.jsx
@@ -31,6 +35,7 @@ export default function Page({ params }) {
     const [empleado, setEmpleado] = useState(null)
     const [cargando, setCargando] = useState(true)
     const [preview, setPreview] = useState(null)
+    
 
     useEffect(() => {
         let mounted = true
@@ -39,10 +44,10 @@ export default function Page({ params }) {
                 const res = await fetch(`/api/rrhh/empleados/${id}`)
                 if (!res.ok) throw new Error("No hay datos")
                 const data = await res.json()
-            console.log(data)
+                console.log(data)
                 if (!mounted) return
-                setEmpleado({...data, edad: calcularEdad(data.fechaNacimiento)})
-                if (data.imagen) setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${data.imagen}`)
+                setEmpleado({ ...data, edad: calcularEdad(data.fechaNacimiento) })
+                if (data.imagen) setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${data.imagen}?${Date.now()}`)
             } catch (err) {
                 if (!mounted) return
                 setEmpleado({
@@ -63,8 +68,8 @@ export default function Page({ params }) {
         return () => (mounted = false)
     }, [id]);
 
-  
-    
+
+
 
 
     if (cargando) {
@@ -144,6 +149,39 @@ export default function Page({ params }) {
                     </Grid.Col>
                 </Grid>
             </Paper>
+            <Paper shadow="sm" radius="md" p="md" mt="lg" withBorder>
+                <Title order={3} mb="md">
+                    Horas trabajadas recientes
+                </Title>
+
+                {empleado.HorasTrabajadas?.length === 0 ? (
+                    <Text c="dimmed">No hay registros de horas trabajadas en este período.</Text>
+                ) : (
+                    <ScrollArea>
+                        <Table striped highlightOnHover withTableBorder withColumnBorders>
+                            <Table.Thead>
+                                <Table.Tr>
+                                    <Table.Th>Fecha</Table.Th>
+                                    <Table.Th>Horas</Table.Th>
+                                    <Table.Th>Origen</Table.Th>
+                                    <Table.Th>Observaciones</Table.Th>
+                                </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                                {empleado.HorasTrabajadas.map((h) => (
+                                    <Table.Tr key={h.id}>
+                                        <Table.Td>{new Date(h.fecha).toLocaleDateString()}</Table.Td>
+                                        <Table.Td>{h.horas}</Table.Td>
+                                        <Table.Td>{h.origen === "odt" ? <Link href={`/superuser/odt/${h.odtId}`}>{h.observaciones.match(/ODT\s+#(\d+)/)[0]}</Link> : h.origen}</Table.Td>
+                                        <Table.Td style={{ whiteSpace: 'normal' }}>{h.observaciones}</Table.Td>
+                                    </Table.Tr>
+                                ))}
+                            </Table.Tbody>
+                        </Table>
+                    </ScrollArea>
+                )}
+            </Paper>
+
         </Container>
     )
 }

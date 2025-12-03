@@ -108,6 +108,8 @@ export function EmpleadoForm({ initialData = null }) {
           method: 'POST',
           body: imagenFile,
         });
+                console.log(response)
+
 
         if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
         const newBlob = await response.json();

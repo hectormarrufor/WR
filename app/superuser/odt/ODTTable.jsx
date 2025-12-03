@@ -18,7 +18,7 @@ const getColumns = (openDeleteModal, router) => [
     Cell: ({ cell }) =>
       cell.getValue() && (
         <Flex align="center">
-          <Avatar h={50} w={50} src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${cell.getValue().imagen}`} alt="Logo cliente" radius="xl" size="sm" mr="xs" />
+          <Avatar h={50} w={50} src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${cell.getValue().imagen}?${Date.now()}`} alt="Logo cliente" radius="xl" size="sm" mr="xs" />
           <Text key={cell.getValue().id}>{cell.getValue().nombre}</Text>
         </Flex>
       ),
@@ -51,7 +51,7 @@ const getColumns = (openDeleteModal, router) => [
     Cell: ({ cell }) =>
       cell.getValue()?.map((emp) => (
         <Flex  key={emp.id}>
-          <Avatar h={40} w={40} src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}`} alt="Foto empleado" radius="xl" size="sm" mr="xs" />
+          <Avatar h={40} w={40} src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}?${Date.now()}`} alt="Foto empleado" radius="xl" size="sm" mr="xs" />
           <Badge
             key={emp.id}
             color={emp.ODT_Empleados.rol === "chofer" ? "blue" : "green"}

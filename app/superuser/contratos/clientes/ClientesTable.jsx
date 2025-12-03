@@ -21,7 +21,7 @@ const getColumns = (openDeleteModal, router) => [
     size: 80,
     Cell: ({ cell }) => (
       <Avatar
-        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${cell.getValue()}`}   // aquí va la URL o base64
+        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${cell.getValue()}?${Date.now()}`}   // aquí va la URL o base64
         alt="Foto cliente"
         radius="xl"
         size="md"

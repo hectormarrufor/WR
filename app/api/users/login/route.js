@@ -42,7 +42,7 @@ export async function POST(req) {
         }
 
         const token = jwt.sign(
-            { imagen: `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${usuario.empleado?.imagen || "defaultuser.jpg"}`, id: usuario.id, nombre: usuario.empleado?.nombre || "Admin", departamentos: usuario.empleado?.puestos.map(puesto => puesto.departamento) || "", isAdmin: usuario.isAdmin, puestos: usuario.empleado?.puestos || "", isAuthenticated: true },
+            { imagen: `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${usuario.empleado?.imagen || "defaultuser.jpg"}?${Date.now()}`, id: usuario.id, nombre: usuario.empleado?.nombre || "Admin", departamentos: usuario.empleado?.puestos.map(puesto => puesto.departamento) || "", isAdmin: usuario.isAdmin, puestos: usuario.empleado?.puestos || "", isAuthenticated: true },
             process.env.JWT_SECRET,
             { expiresIn: '1y' }
         );

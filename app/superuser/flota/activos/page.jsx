@@ -104,7 +104,7 @@ export default function ListarActivosPage() {
                         : activos.map((activo) => (
                             <Paper key={activo.id} shadow="sm" p="md" mb="md" onClick={() => router.push(`/superuser/flota/activos/${activo.id}`)} style={{ cursor: 'pointer' }}>
                                 <Group position="apart">
-                                    {activo.imagen ? <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}`} alt={activo.codigoActivo} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} /> : null}
+                                    {activo.imagen ? <Image src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}?${Date.now()}`} alt={activo.codigoActivo} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} /> : null}
                                     <Text fw={700}>{activo.codigoActivo}</Text>
                                     {isAdmin && <Group>
                                         <ActionIcon variant="subtle" color="blue" onClick={(e) => { e.stopPropagation(); router.push(`/superuser/flota/activos/${activo.id}/editar`); }}>

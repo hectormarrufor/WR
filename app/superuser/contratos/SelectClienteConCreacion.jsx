@@ -96,7 +96,7 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
                   <Card padding="sm" radius="md" withBorder>
                     <Group>
                       <Avatar
-                        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${selectedCliente?.imagen}`}
+                        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${selectedCliente?.imagen}?${Date.now()}`}
                         alt={selectedCliente?.nombre}
                         radius="xl"
                       />

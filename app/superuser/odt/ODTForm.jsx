@@ -11,9 +11,10 @@ import ODTSelectableGrid from "./ODTSelectableGrid";
 import { AsyncComboBox } from "../inventario/consumibles/AsyncCombobox";
 import ClienteSelect from "./ClienteSelect";
 import { SelectClienteConCreacion } from "../contratos/SelectClienteConCreacion";
-
+import { useRouter } from "next/navigation";
 
 export default function ODTForm({ mode, odtId }) {
+  const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const { nombre } = useAuth();
   const [empleados, setEmpleados] = useState();
@@ -128,6 +129,7 @@ export default function ODTForm({ mode, odtId }) {
         title: mode === "create" ? "ODT creada exitosamente" : "ODT actualizada exitosamente",
         color: "green",
       });
+      router.push("/superuser/odt");
     } catch (error) {
       notifications.show({
         title: "Error al guardar la ODT",

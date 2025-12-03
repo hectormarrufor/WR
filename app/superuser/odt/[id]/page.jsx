@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader, Badge } from "@mantine/core";
+import { Loader, Badge, Paper, Button } from "@mantine/core";
+import { useRouter } from "next/navigation";
 
 export default function ODTDetallePage({ params }) {
+  const router = useRouter();
   const [odt, setOdt] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,7 +20,7 @@ export default function ODTDetallePage({ params }) {
   if (!odt) return <p>ODT no encontrada</p>;
 
   return (
-    <div>
+    <Paper>
       <h1>ODT {odt.nroODT}</h1>
       <p>Cliente: {odt.cliente?.nombre}</p>
       <p>Fecha: {odt.fecha}</p>
@@ -39,6 +41,7 @@ export default function ODTDetallePage({ params }) {
           {veh.nombre} ({veh.ODT_Vehiculos.tipo})
         </Badge>
       ))}
-    </div>
+      <Button onClick={() => router.push(`/superuser/odt/${odt.id}/editar`)} mt="md">Editar</Button>
+    </Paper>
   );
 }

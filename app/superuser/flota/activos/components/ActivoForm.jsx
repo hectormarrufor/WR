@@ -142,6 +142,7 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
                     body: imagenFile,
                 });
                 
+                console.log(response)
                 if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
                 const newBlob = await response.json();
                 finalPayload.imagen = `${values.codigoActivo}.jpg`;
@@ -167,7 +168,6 @@ export default function ActivoForm({ initialData = null, isEditing = false }) {
 
         } catch (error) {
             notifications.show({ title: 'Error', message: error.message, color: 'red' });
-            notifications.hide('uploading-image');
         } finally {
             setIsSubmitting(false);
         }
