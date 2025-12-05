@@ -83,7 +83,7 @@ export default function Page({ params }) {
                 }, 0));
 
                 if (!mounted) return
-                setEmpleado({ ...empleadofetched, edad: calcularEdad(empleadofetched.fechaNacimiento), horario : actualizarSueldos("mensual", empleadofetched.sueldo).horario });
+                setEmpleado({ ...empleadofetched, edad: calcularEdad(empleadofetched.fechaNacimiento), horario: actualizarSueldos("mensual", empleadofetched.sueldo).horario });
                 if (empleadofetched.imagen) setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${empleadofetched.imagen}?${Date.now()}`)
             } catch (err) {
                 if (!mounted) return
@@ -173,31 +173,33 @@ export default function Page({ params }) {
                             <Text>
                                 <strong>Fecha de ingreso:</strong> {empleado?.fechaIngreso?.substring(0, 10).split("-").reverse().join("-")}
                             </Text>
-                            <Text>
+                            {rol.includes("Presidente") || rol.includes("admin") && <Text>
                                 <strong>Sueldo Mensual:</strong> {empleado?.sueldo}$
-                            </Text>
+                            </Text>}
                             <Button variant="filled" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}><IconEdit /> Editar Empleado</Button>
                         </Stack>
                     </Grid.Col>
 
                     <Grid.Col span={8} md={8} justify="center" align="center">
                         <Stack>
-                            {rol.includes("Presidente") || isAdmin && (
-                                <>
-                                    <Title order={5}>Tasa BCV hoy: {bcvPrecio}</Title>
+                       
+                                    {rol.includes("Presidente") || rol.includes("admin") && <Title order={5}>Tasa BCV hoy: {bcvPrecio}</Title>}
                                     <Title order={4}>Horas trabajadas esta semana: {horasEstaSemana} horas</Title>
                                     <Title order={4}>Horas extra esta semana: {horasExtraEstaSemana} horas</Title>
-                                    <Title order={6}>Sueldo del empleado por hora: {empleado.horario}$</Title>
-                                    <Title order={3}>Calculo estimado esta semana: {((horasEstaSemana * empleado.horario) * bcvPrecio).toFixed(2)}Bs ({(horasEstaSemana * empleado.horario).toFixed(2)}$) </Title>
-                                    <Title order={4}>Desglose:</Title>
-                                    <Title order={5}>
-                                        Sueldo por horas normales ({horasEstaSemana - horasExtraEstaSemana} horas): {((horasEstaSemana - horasExtraEstaSemana) * empleado.horario * bcvPrecio).toFixed(2)}Bs ({((horasEstaSemana - horasExtraEstaSemana) * empleado.horario).toFixed(2)}$)
-                                    </Title>
-                                    <Title order={5}>
-                                        Sueldo por horas extra:  {(horasExtraEstaSemana * empleado.horario * bcvPrecio).toFixed(2)}Bs ({(horasExtraEstaSemana * empleado.horario).toFixed(2)})$
-                                    </Title>
-                                </>
-                            )}
+                                    {rol.includes("Presidente") || rol.includes("admin") &&
+                                        <>
+                                            <Title order={6}>Sueldo del empleado por hora: {empleado.horario}$</Title>
+                                            <Title order={3}>Calculo estimado esta semana: {((horasEstaSemana * empleado.horario) * bcvPrecio).toFixed(2)}Bs ({(horasEstaSemana * empleado.horario).toFixed(2)}$) </Title>
+                                            <Title order={4}>Desglose:</Title>
+                                            <Title order={5}>
+                                                Sueldo por horas normales ({horasEstaSemana - horasExtraEstaSemana} horas): {((horasEstaSemana - horasExtraEstaSemana) * empleado.horario * bcvPrecio).toFixed(2)}Bs ({((horasEstaSemana - horasExtraEstaSemana) * empleado.horario).toFixed(2)}$)
+                                            </Title>
+                                            <Title order={5}>
+                                                Sueldo por horas extra:  {(horasExtraEstaSemana * empleado.horario * bcvPrecio).toFixed(2)}Bs ({(horasExtraEstaSemana * empleado.horario).toFixed(2)})$
+                                            </Title>
+                                        </>
+                                    }
+                        
                         </Stack>
                     </Grid.Col>
                 </Grid>

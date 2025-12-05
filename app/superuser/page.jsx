@@ -59,7 +59,7 @@ export default function SuperUserHome() {
                         break;
                         case rol.includes("Presidente"):
                         setIsLoading(false);
-                        // router.push('/superuser');
+                        router.push('/superuser/rrhh/empleados');
                         break;
                     case rol.includes("Gerente de Mantenimiento"):
                         router.push('/superuser/flota');
