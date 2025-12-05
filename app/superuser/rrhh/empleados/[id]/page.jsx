@@ -19,11 +19,15 @@ import {
     Table,
     UnstyledButton,
     Modal,
+    Flex,
 } from "@mantine/core"
 import { useParams, useRouter } from "next/navigation"
 import calcularEdad from "@/app/helpers/calcularEdad";
 import Link from "next/link";
 import ModalCrearHora from "./ModalCrearHora";
+import { IconEdit } from "@tabler/icons-react";
+import { useAuth } from "@/hooks/useAuth";
+import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
 
 /**
  * Página adaptada a Mantine: /superuser/rrhh/empleados/[id]/page.jsx
@@ -35,22 +39,52 @@ export default function Page({ params }) {
     const { id } = useParams(params);
     const router = useRouter();
     const [empleado, setEmpleado] = useState(null)
-    const [cargando, setCargando] = useState(true)
+    const [bcvPrecio, setBcvPrecio] = useState(0);
+    const [cargando, setCargando] = useState(true);
+    const [horasEstaSemana, setHorasEstaSemana] = useState(0);
+    const [horasExtraEstaSemana, setHorasExtraEstaSemana] = useState(0);
     const [preview, setPreview] = useState(null)
     const [modalCrearHora, setModalCrearHora] = useState(false);
-    
+    const { rol, isAdmin } = useAuth();
+
 
     useEffect(() => {
         let mounted = true
         async function cargar() {
             try {
-                const res = await fetch(`/api/rrhh/empleados/${id}`)
-                if (!res.ok) throw new Error("No hay datos")
-                const data = await res.json()
-                console.log(data)
+                const res = fetch(`/api/rrhh/empleados/${id}`).then(r => r.json())
+                const bcv = fetch(`/api/bcv`).then(r => r.json())
+
+                const [empleadofetched, bcvres] = await Promise.all([res, bcv]);
+                setBcvPrecio(bcvres.precio);
+                console.log(empleadofetched);
+                console.log(bcvres);
+
+                // setHorasEstaSemana(data.HorasTrabajadas.reduce((total, hora) => {
+                //     const fechaHora = new Date(hora.fecha);
+                //     const ahora = new Date();
+                //     const primerDiaSemana = new Date(ahora.setDate(ahora.getDate() - ahora.getDay()));
+                //     if (fechaHora >= primerDiaSemana) {
+                //         return total + hora.horas;
+                //     }
+                //     return total;
+                // }, 0));
+
+                setHorasEstaSemana(empleadofetched.HorasTrabajadas.reduce((total, hora) => {
+                    total += hora.horas;
+                    return total;
+                }, 0));
+
+                setHorasExtraEstaSemana(empleadofetched.HorasTrabajadas.reduce((total, hora) => {
+                    if (hora.horas > 8) {
+                        total += (hora.horas - 8);
+                    }
+                    return total;
+                }, 0));
+
                 if (!mounted) return
-                setEmpleado({ ...data, edad: calcularEdad(data.fechaNacimiento) })
-                if (data.imagen) setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${data.imagen}?${Date.now()}`)
+                setEmpleado({ ...empleadofetched, edad: calcularEdad(empleadofetched.fechaNacimiento), horario : actualizarSueldos("mensual", empleadofetched.sueldo).horario });
+                if (empleadofetched.imagen) setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${empleadofetched.imagen}?${Date.now()}`)
             } catch (err) {
                 if (!mounted) return
                 setEmpleado({
@@ -77,7 +111,8 @@ export default function Page({ params }) {
 
     if (cargando) {
         return (
-            <Center style={{ padding: 24 }}>
+
+            <Center centered style={{ padding: 24 }}>
                 <Paper withBorder shadow="sm" p="lg" radius="md">
                     <Group spacing="sm">
                         <Loader size="sm" />
@@ -92,7 +127,7 @@ export default function Page({ params }) {
         <Container size="lg" py="xl">
             <Paper withBorder shadow="md" p="lg" radius="md">
                 <Grid gutter="xl" align="center">
-                    <Grid.Col span={12} md={4}>
+                    <Grid.Col span={4} md={4}>
                         <Stack align="center">
                             {preview ? (
                                 <Image
@@ -119,11 +154,6 @@ export default function Page({ params }) {
                                     <Text color="dimmed">Sin imagen</Text>
                                 </Paper>
                             )}
-                        </Stack>
-                    </Grid.Col>
-
-                    <Grid.Col span={12} md={8} justify="center" align="center">
-                        <Stack>
                             <Title order={4}><strong>{empleado?.nombre} {empleado?.apellido}</strong></Title>
                             <Text>
                                 {empleado?.puestos?.map(puesto => puesto.nombre).join(",")}
@@ -138,49 +168,73 @@ export default function Page({ params }) {
                                 <strong>Edad:</strong> {empleado?.edad}
                             </Text>
                             <Text>
-                                <strong>Fecha de Nacimiento:</strong> {new Date(empleado?.fechaNacimiento).toLocaleDateString()}
+                                <strong>Fecha de Nacimiento:</strong> {empleado?.fechaNacimiento?.substring(0, 10).split("-").reverse().join("-")}
                             </Text>
                             <Text>
-                                <strong>Fecha de ingreso:</strong> {empleado?.fechaIngreso.substring(0, 10).split("-").reverse().join("-")}
+                                <strong>Fecha de ingreso:</strong> {empleado?.fechaIngreso?.substring(0, 10).split("-").reverse().join("-")}
                             </Text>
+                            <Text>
+                                <strong>Sueldo Mensual:</strong> {empleado?.sueldo}$
+                            </Text>
+                            <Button variant="filled" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}><IconEdit /> Editar Empleado</Button>
                         </Stack>
+                    </Grid.Col>
 
-                        <Group mt="lg">
-                            <Button variant="filled" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}>Editar</Button>
-                            <Button variant="outline" onClick={() => setModalCrearHora(true)}>Añadir horas en la base</Button>
-                        </Group>
+                    <Grid.Col span={8} md={8} justify="center" align="center">
+                        <Stack>
+                            {rol.includes("Presidente") || isAdmin && (
+                                <>
+                                    <Title order={5}>Tasa BCV hoy: {bcvPrecio}</Title>
+                                    <Title order={4}>Horas trabajadas esta semana: {horasEstaSemana} horas</Title>
+                                    <Title order={4}>Horas extra esta semana: {horasExtraEstaSemana} horas</Title>
+                                    <Title order={6}>Sueldo del empleado por hora: {empleado.horario}$</Title>
+                                    <Title order={3}>Calculo estimado esta semana: {((horasEstaSemana * empleado.horario) * bcvPrecio).toFixed(2)}Bs ({(horasEstaSemana * empleado.horario).toFixed(2)}$) </Title>
+                                    <Title order={4}>Desglose:</Title>
+                                    <Title order={5}>
+                                        Sueldo por horas normales ({horasEstaSemana - horasExtraEstaSemana} horas): {((horasEstaSemana - horasExtraEstaSemana) * empleado.horario * bcvPrecio).toFixed(2)}Bs ({((horasEstaSemana - horasExtraEstaSemana) * empleado.horario).toFixed(2)}$)
+                                    </Title>
+                                    <Title order={5}>
+                                        Sueldo por horas extra:  {(horasExtraEstaSemana * empleado.horario * bcvPrecio).toFixed(2)}Bs ({(horasExtraEstaSemana * empleado.horario).toFixed(2)})$
+                                    </Title>
+                                </>
+                            )}
+                        </Stack>
                     </Grid.Col>
                 </Grid>
             </Paper>
             <Paper shadow="sm" radius="md" p="md" mt="lg" withBorder>
-                <Title order={3} mb="md">
-                    Horas trabajadas recientes
-                </Title>
-
+                <Flex justify="space-between" align="center" mb="md">
+                    <Title order={3} mb="md">
+                        Horas trabajadas recientes
+                    </Title>
+                    <Button onClick={() => setModalCrearHora(true)}>Añadir horas en la base</Button>
+                </Flex>
                 {empleado.HorasTrabajadas?.length === 0 ? (
                     <Text c="dimmed">No hay registros de horas trabajadas en este período.</Text>
                 ) : (
                     <ScrollArea>
-                        <Table striped highlightOnHover withTableBorder withColumnBorders>
-                            <Table.Thead>
-                                <Table.Tr>
-                                    <Table.Th>Fecha</Table.Th>
-                                    <Table.Th>Horas</Table.Th>
-                                    <Table.Th>Origen</Table.Th>
-                                    <Table.Th>Observaciones</Table.Th>
-                                </Table.Tr>
-                            </Table.Thead>
-                            <Table.Tbody>
-                                {empleado.HorasTrabajadas.map((h) => (
-                                    <Table.Tr key={h.id}>
-                                        <Table.Td>{new Date(h.fecha).toLocaleDateString()}</Table.Td>
-                                        <Table.Td>{h.horas}</Table.Td>
-                                        <Table.Td>{h.origen === "odt" ? <Link href={`/superuser/odt/${h.odtId}`}>{h.observaciones.match(/ODT\s+#(\d+)/)[0]}</Link> : h.origen}</Table.Td>
-                                        <Table.Td style={{ whiteSpace: 'normal' }}>{h.observaciones}</Table.Td>
+                        <Paper>
+                            <Table striped highlightOnHover withTableBorder withColumnBorders>
+                                <Table.Thead>
+                                    <Table.Tr>
+                                        <Table.Th>Fecha</Table.Th>
+                                        <Table.Th>Horas</Table.Th>
+                                        <Table.Th>Origen</Table.Th>
+                                        <Table.Th>Observaciones</Table.Th>
                                     </Table.Tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
+                                </Table.Thead>
+                                <Table.Tbody>
+                                    {empleado?.HorasTrabajadas?.map((h) => (
+                                        <Table.Tr key={h.id}>
+                                            <Table.Td>{h?.fecha.substring(0, 10).split("-").reverse().join("-")}</Table.Td>
+                                            <Table.Td>{h.horas}</Table.Td>
+                                            <Table.Td>{h.origen === "odt" ? <Link href={`/superuser/odt/${h.odtId}`}>{h.observaciones.match(/ODT\s+#(\d+)/)[0]}</Link> : h.origen}</Table.Td>
+                                            <Table.Td style={{ whiteSpace: 'normal' }}>{h.observaciones}</Table.Td>
+                                        </Table.Tr>
+                                    ))}
+                                </Table.Tbody>
+                            </Table>
+                        </Paper>
                     </ScrollArea>
                 )}
             </Paper>
