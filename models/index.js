@@ -27,24 +27,25 @@ const TareaMantenimiento = require('./gestionMantenimiento/tareaMantenimiento');
 const Inspeccion = require('./gestionMantenimiento/Inspeccion');
 const Kilometraje = require('./gestionMantenimiento/Kilometraje');
 const Horometro = require('./gestionMantenimiento/Horometro');
-const Requisicion = require('./gestionMantenimiento/Requisicion');
-const RequisicionDetalle = require('./gestionMantenimiento/RequisicionDetalle');
+const Requisicion = require('./inventario/requisicion/Requisicion');
+const RequisicionDetalle = require('./inventario/requisicion/RequisicionDetalle');
 const Compatibilidad = require('./inventario/Compatibilidad');
-const MedidaNeumatico = require('./inventario/MedidaNeumatico');
-const Marca = require('./inventario/Marca');
+const MedidaNeumatico = require('./catalogos/MedidaNeumatico');
+const Marca = require('./catalogos/Marca');
 const CostParameters = require('./estimacion/CostParameters');
 const CostEstimate = require('./estimacion/CostEstimate');
 const FixedExpense = require('./gastos/FixedExpense');
 const Flete = require('./operaciones/Flete');
 const PushSubscription = require('./pushSubscription');
 const ConsumibleUsado = require('./inventario/ConsumibleUsado');
-const ViscosidadAceite = require('./inventario/ViscosidadAceite');
-const Codigo = require('./inventario/Codigo');
+const ViscosidadAceite = require('./catalogos/ViscosidadAceite');
+const Codigo = require('./catalogos/Codigo');
 const ODT = require('./recursosHumanos/ODT');
 const ODT_Vehiculos = require('./recursosHumanos/ODTVehiculos');
 const Cliente = require('./Cliente');
 const HorasTrabajadas = require('./recursosHumanos/HorasTrabajadas');
 const ODT_Empleados = require('./recursosHumanos/ODTEmpleados');
+const Color = require('./catalogos/Color');
 
 
 // --- Crear un objeto 'db' para agruparlos ---
@@ -69,6 +70,7 @@ const db = {
     TareaMantenimiento,
     Requisicion,
     RequisicionDetalle,
+    Color,
 
     //RECURSOS HUMANOS
     Departamento,

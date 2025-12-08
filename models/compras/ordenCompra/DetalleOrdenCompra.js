@@ -1,6 +1,6 @@
 // models/inventario/DetalleOrdenCompra.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../../sequelize');
+const sequelize = require('../../../sequelize');
 const DetalleOrdenCompra = sequelize.define('DetalleOrdenCompra', {
   id: {
     type: DataTypes.INTEGER,

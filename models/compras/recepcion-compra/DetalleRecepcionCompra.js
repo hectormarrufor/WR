@@ -1,6 +1,6 @@
 // models/Factura.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../../sequelize');
+const sequelize = require('../../../sequelize');
 
 const DetalleRecepcionCompra = sequelize.define('DetalleRecepcionCompra', {
     id: {

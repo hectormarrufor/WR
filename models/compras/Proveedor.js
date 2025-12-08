@@ -23,9 +23,6 @@ const sequelize = require('../../sequelize');
     email: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: {
-        isEmail: true,
-      },
     },
     direccion: {
       type: DataTypes.STRING,
@@ -45,8 +42,5 @@ const sequelize = require('../../sequelize');
     timestamps: true,
   });
 
-  Proveedor.associate = (models) => {
-    Proveedor.hasMany(models.OrdenCompra, { foreignKey: 'proveedorId', as: 'ordenesCompra' });
-  };
 
   module.exports = Proveedor;

@@ -2,33 +2,13 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const Consumible = sequelize.define('Consumible', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-    },
-    tipoConsumibleId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'TipoConsumibles', // nombre de la tabla
-            key: 'id'
-        }
-    },
     nombre: { // Ej: "Aceite 15W40 Venoco", "Filtro WIX 51515"
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
     },
-    marca: {
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
-    especificaciones: {
-        type: DataTypes.JSONB,
-        allowNull: true,
-        defaultValue: {},
-    },
+    categoria: { type: DataTypes.ENUM('aceiteMotor','aceiteHidraulico','neumatico'), allowNull: false },
+
     stock: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -51,20 +31,21 @@ const Consumible = sequelize.define('Consumible', {
 }, {
     tableName: 'Consumibles',
     timestamps: true,
-    underscored: true,
 });
 
 Consumible.associate = (models) => {
     // Un consumible puede tener muchas entradas y salidas de inventario
-    Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId', as: 'entradas' });
-    Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId', as: 'salidas' });
-    Consumible.belongsToMany(models.Modelo, {
-        through: models.Compatibilidad, // La misma tabla intermedia
-        foreignKey: 'consumibleId',
-        otherKey: 'modeloId',
-        as: 'modelosCompatibles'
-    });
-    Consumible.hasMany(models.ConsumibleUsado, { foreignKey: 'consumibleId' });
+    Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId' });
+    Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId' });
+    Consumible.hasOne(models.AceiteMotor, { foreignKey: 'consumibleId' });
+    Consumible.hasOne(models.Neumatico, { foreignKey: 'consumibleId' });
+    Consumible.hasOne(models.AceiteHidraulico, { foreignKey: 'consumibleId' });
+    Consumible.hasOne(models.Bateria, { foreignKey: 'consumibleId' });
+    Consumible.hasOne(models.Filtro, { foreignKey: 'consumibleId' });
+    Consumible.hasOne(models.Sensor, { foreignKey: 'consumibleId' });
+
+    
+
 
 
 };
