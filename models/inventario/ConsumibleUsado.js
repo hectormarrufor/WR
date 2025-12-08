@@ -1,7 +1,7 @@
 // models/inventario/ConsumibleUsado.js (Modificado)
 const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../../sequelize');
-const { Consumible } = require('..');
+const { Consumible } = require('./Consumible');
 
   const ConsumibleUsado = sequelize.define('ConsumibleUsado', {
     id: {
@@ -34,7 +34,7 @@ const { Consumible } = require('..');
     tareaMantenimientoId: {
       type: DataTypes.INTEGER,
       references: {
-        model: 'TareaMantenimientos', // Asegúrate que sea el nombre de la tabla de TareaMantenimiento
+        model: 'TareasMantenimiento', // Asegúrate que sea el nombre de la tabla de TareaMantenimiento
         key: 'id',
       },
       allowNull: true, // Puede ser null si el uso no es para una tarea específica (ej. para un trabajo extra)

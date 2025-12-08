@@ -15,7 +15,7 @@ const Requisicion = sequelize.define('Requisicion', {
     solicitadoPorId: { // El usuario que generó la requisición
         type: DataTypes.INTEGER,
         allowNull: false,
-        references: { model: 'Users', key: 'id' }
+        references: { model: 'Usuarios', key: 'id' }
     },
     estado: {
         type: DataTypes.ENUM('Pendiente', 'Aprobada', 'Rechazada', 'Entregada Parcial', 'Entregada Completa'),
