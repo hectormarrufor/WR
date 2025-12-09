@@ -3,12 +3,6 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../../sequelize');
 
 const RecepcionCompra = sequelize.define('RecepcionCompra', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-        allowNull: false,
-    },
     ordenCompraId: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -17,14 +11,15 @@ const RecepcionCompra = sequelize.define('RecepcionCompra', {
             key: 'id',
         },
     },
+    nroFactura: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+    },
     fechaRecepcion: {
         type: DataTypes.DATEONLY,
         allowNull: false,
         defaultValue: DataTypes.NOW,
-    },
-    numeroGuia: { // Número de guía del proveedor o remisión
-        type: DataTypes.STRING,
-        allowNull: true,
     },
     recibidaPorId: {
         type: DataTypes.INTEGER,
@@ -63,6 +58,8 @@ RecepcionCompra.associate = (models) => {
         as: 'detalles',
         onDelete: 'CASCADE', // Si se elimina la recepción, se eliminan sus detalles
     });
+    RecepcionCompra.belongsTo(models.Proveedor, { foreignKey: 'proveedorId' });
+
 };
 
 

@@ -2,66 +2,14 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../../sequelize');
 const DetalleOrdenCompra = sequelize.define('DetalleOrdenCompra', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  ordenCompraId: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: 'OrdenesCompra',
-      key: 'id',
-    },
-    allowNull: false,
-  },
-  consumibleId: { // El ítem que se está comprando
-    type: DataTypes.INTEGER,
-    references: {
-      model: 'Consumibles',
-      key: 'id',
-    },
-    allowNull: false,
-  },
   cantidadSolicitada: {
     type: DataTypes.DECIMAL(15, 3),
-    allowNull: false,
-  },
-  cantidadRecibida: {
-    type: DataTypes.DECIMAL(15, 3),
-    defaultValue: 0,
     allowNull: false,
   },
   precioUnitario: {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false,
   },
-  notas: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  // Nuevo campo: Cantidad acumulada ya recibida para este detalle de OC
-  cantidadRecibida: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0.00,
-  },
-  // Nuevo campo: Para rastrear si este item de la OC está completamente recibido
-  recibidoCompletamente: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  },
-  cantidadFacturada: { // Cantidad acumulada ya facturada para este detalle de OC
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0.00,
-  },
-  facturadoCompletamente: { // Para rastrear si este item de la OC está completamente facturado
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  }
 }, {
   tableName: 'DetallesOrdenCompra',
   timestamps: true,

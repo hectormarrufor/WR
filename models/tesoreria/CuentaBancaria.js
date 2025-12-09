@@ -3,11 +3,6 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const CuentaBancaria = sequelize.define('CuentaBancaria', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
   nombreBanco: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -29,23 +24,17 @@ const CuentaBancaria = sequelize.define('CuentaBancaria', {
   saldoActual: {
     type: DataTypes.DECIMAL(18, 2),
     defaultValue: 0,
-    allowNull: false,
-  },
-  // Nuevos campos para titular y su identificación
-  titularRazonSocial: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    comment: 'Razón social o nombre completo del titular de la cuenta',
-  },
-  titularIdentificacion: {
-    type: DataTypes.STRING, // Ej. V-12345678, J-12345678-9
-    allowNull: false,
-    comment: 'Cédula o RIF del titular de la cuenta',
+    allowNull: true,
   },
   pagoMovil: { // Campo para el número de teléfono de Pago Móvil
     type: DataTypes.STRING, // Almacenará el número telefónico
     allowNull: true, // Es opcional
     comment: 'Número de teléfono asociado a Pago Móvil',
+  },
+  cedulaPagoMovil: { // Cédula del titular para Pago Móvil
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Cédula del titular asociada a Pago Móvil',
   },
 }, {
   tableName: 'CuentasBancarias',
@@ -55,6 +44,8 @@ const CuentaBancaria = sequelize.define('CuentaBancaria', {
 CuentaBancaria.associate = (models) => {
   CuentaBancaria.hasMany(models.MovimientoTesoreria, { foreignKey: 'cuentaOrigenId', as: 'movimientosOrigen' });
   CuentaBancaria.hasMany(models.MovimientoTesoreria, { foreignKey: 'cuentaDestinoId', as: 'movimientosDestino' });
+  CuentaBancaria.belongsTo(models.Proveedor, { foreignKey: 'proveedorId' });
+  CuentaBancaria.belongsTo(models.Empleado, { foreignKey: 'empleadoId' });
 };
 
 module.exports = CuentaBancaria;
