@@ -53,7 +53,7 @@ RecepcionCompra.associate = (models) => {
         foreignKey: 'recibidaPorId',
         as: 'recibidaPor',
     });
-    RecepcionCompra.hasMany(models.DetalleRecepcionCompra, {
+    RecepcionCompra.hasMany(models.RecepcionCompraItem, {
         foreignKey: 'recepcionCompraId',
         as: 'detalles',
         onDelete: 'CASCADE', // Si se elimina la recepción, se eliminan sus detalles

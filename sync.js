@@ -8,6 +8,6 @@ db.sequelize.sync({ alter: true }) // Usa la instancia de sequelize del objeto d
         
     })
     .catch(error => {
-        console.error(`\x1b[41m ERROR AL SINCRONIZAR LOS MODELOS: ${error.message} \x1b[0m`);
+        console.error(`\x1b[41m ERROR AL SINCRONIZAR LOS MODELOS: ${error} \x1b[0m`);
         
     });

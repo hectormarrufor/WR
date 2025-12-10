@@ -1,112 +1,82 @@
 // index.js
 const sequelize = require('../sequelize');
 
-// --- Importar todos tus modelos ---
-const User = require('./user');
-
-// RECURSOS HUMANOS
-const Empleado = require('./recursosHumanos/Empleado');
-const Puesto = require('./recursosHumanos/Puesto');
-const EmpleadoPuesto = require('./recursosHumanos/EmpleadoPuesto');
-const Departamento = require('./recursosHumanos/Departamento'); // <-- AÑADIR NUEVO MODELO
-
-const BcvPrecioHistorico = require('./BcvPrecioHistorico');
-const ConfiguracionGeneral = require('./ConfiguracionGeneral');
-const Activo = require('./gestionMantenimiento/Activo');
-const Categoria = require('./gestionMantenimiento/Categoria');
-const CategoriaGrupos = require('./gestionMantenimiento/CategoriaGrupos');
-const Modelo = require('./gestionMantenimiento/Modelo');
-const Grupo = require('./gestionMantenimiento/Grupo');
-const TipoConsumible = require('./inventario/TipoConsumibles');
-const Consumible = require('./inventario/Consumible');
-const EntradaInventario = require('./inventario/EntradaInventario');
-const SalidaInventario = require('./inventario/SalidaInventario');
-const Hallazgo = require('./gestionMantenimiento/Hallazgo');
-const Mantenimiento = require('./gestionMantenimiento/mantenimiento');
-const TareaMantenimiento = require('./gestionMantenimiento/tareaMantenimiento');
-const Inspeccion = require('./gestionMantenimiento/Inspeccion');
-const Kilometraje = require('./gestionMantenimiento/Kilometraje');
-const Horometro = require('./gestionMantenimiento/Horometro');
-const Requisicion = require('./inventario/requisicion/Requisicion');
-const RequisicionDetalle = require('./inventario/requisicion/RequisicionDetalle');
-const Compatibilidad = require('./inventario/Compatibilidad');
-const MedidaNeumatico = require('./catalogos/MedidaNeumatico');
-const Marca = require('./catalogos/Marca');
-const CostParameters = require('./estimacion/CostParameters');
-const CostEstimate = require('./estimacion/CostEstimate');
-const FixedExpense = require('./gastos/FixedExpense');
-const Flete = require('./operaciones/Flete');
-const PushSubscription = require('./pushSubscription');
-const ConsumibleUsado = require('./inventario/ConsumibleUsado');
-const ViscosidadAceite = require('./catalogos/ViscosidadAceite');
-const Codigo = require('./catalogos/Codigo');
-const ODT = require('./recursosHumanos/ODT');
-const ODT_Vehiculos = require('./recursosHumanos/ODTVehiculos');
-const Cliente = require('./Cliente');
-const HorasTrabajadas = require('./recursosHumanos/HorasTrabajadas');
-const ODT_Empleados = require('./recursosHumanos/ODTEmpleados');
-const Color = require('./catalogos/Color');
-
-
-// --- Crear un objeto 'db' para agruparlos ---
 const db = {
-    BcvPrecioHistorico,
-    ConfiguracionGeneral,
-    PushSubscription,
+    
+    // RECURSOS HUMANOS
+    User: require('./user'),
+    Empleado: require('./recursosHumanos/Empleado'),
+    HorasTrabajadas: require('./recursosHumanos/HorasTrabajadas'),
+    Puesto: require('./recursosHumanos/Puesto'),
+    EmpleadoPuesto: require('./recursosHumanos/EmpleadoPuesto'),
+    Departamento: require('./recursosHumanos/Departamento'),
+    PushSubscription: require('./pushSubscription'),
+    
+    // FLOTA Y GESTION DE MANTENIMIENTO
+    Activo: require('./gestionMantenimiento/Activo'),
+    Categoria: require('./gestionMantenimiento/Categoria'),
+    CategoriaGrupos: require('./gestionMantenimiento/CategoriaGrupos'),
+    Modelo: require('./gestionMantenimiento/Modelo'),
+    Grupo: require('./gestionMantenimiento/Grupo'),
+    Hallazgo: require('./gestionMantenimiento/Hallazgo'),
+    Mantenimiento: require('./gestionMantenimiento/mantenimiento'),
+    TareaMantenimiento: require('./gestionMantenimiento/tareaMantenimiento'),
+    Inspeccion: require('./gestionMantenimiento/Inspeccion'),
+    Kilometraje: require('./gestionMantenimiento/Kilometraje'),
+    Horometro: require('./gestionMantenimiento/Horometro'),
+    
+    // INVENTARIO
+    Compatibilidad: require('./inventario/Compatibilidad'),
+    Consumible: require('./inventario/Consumible'),
+    AceiteHidraulico: require('./inventario/tipo-consumible/AceiteHidraulico'),
+    Neumatico: require('./inventario/tipo-consumible/Neumatico'),
+    AceiteMotor: require('./inventario/tipo-consumible/AceiteMotor'),
+    Filtro: require('./inventario/tipo-consumible/Filtro'),
+    Sensor: require('./inventario/tipo-consumible/Sensor'),
+    Bateria: require('./inventario/tipo-consumible/Bateria'),
+    EquivalenciaFiltro: require('./inventario/tipo-consumible/EquivalenciaFiltro'),
 
-    //FLOTA
-    Activo,
-    Categoria,
-    CategoriaGrupos,
-    Modelo,
-    Grupo,
-    Kilometraje,
-    Horometro,
+    EntradaInventario: require('./inventario/EntradaInventario'),
+    SalidaInventario: require('./inventario/SalidaInventario'),
+    Requisicion: require('./inventario/requisicion/Requisicion'),
+    RequisicionDetalle: require('./inventario/requisicion/RequisicionDetalle'),
+    
+    //Estimacion de Costos
+    CostParameters: require('./estimacion/CostParameters'),
+    CostEstimate: require('./estimacion/CostEstimate'),
+    FixedExpense: require('./gastos/FixedExpense'),
+    
+    //Operaciones
+    Flete: require('./operaciones/Flete'),
+    ConsumibleUsado: require('./inventario/ConsumibleUsado'),
+    ODT: require('./recursosHumanos/ODT'),
+    ODT_Vehiculos: require('./recursosHumanos/ODTVehiculos'),
+    ODT_Empleados: require('./recursosHumanos/ODTEmpleados'),
+    
+    //CATALOGOS
+    ViscosidadAceite: require('./catalogos/ViscosidadAceite'),
+    Codigo: require('./catalogos/Codigo'),
+    Color: require('./catalogos/Color'),
+    Marca: require('./catalogos/Marca'),
+    MedidaNeumatico: require('./catalogos/MedidaNeumatico'),
+    Banco: require('./catalogos/Banco'),
 
-    //GESTION MANTENIMIENTO
-    Inspeccion,
-    Hallazgo,
-    Mantenimiento,
-    TareaMantenimiento,
-    Requisicion,
-    RequisicionDetalle,
-    Color,
+    // TESORERIA
+    CuentaBancaria: require('./tesoreria/CuentaBancaria'),
+    MovimientoTesoreria: require('./tesoreria/MovimientoTesoreria'),    
+    CuentaTerceros: require('./tesoreria/CuentaTercero'),
+    PagoMovil: require('./tesoreria/PagoMovil'),
+    
+    //Compras
+    Proveedor: require('./compras/Proveedor'),
+    RecepcionCompra: require('./compras/recepcion-compra/RecepcionCompra'),
+    RecepcionCompraItem: require('./compras/recepcion-compra/RecepcionCompraItem'),
+    OrdenCompra: require('./compras/ordenCompra/OrdenCompra'),
+    OrdenCompraItem: require('./compras/ordenCompra/OrdenCompraItem'),
 
-    //RECURSOS HUMANOS
-    Departamento,
-    Puesto,
-    EmpleadoPuesto,
-    User,
-    Empleado,
-
-    //INVENTARIO
-    TipoConsumible,
-    Consumible,
-    ConsumibleUsado,
-    EntradaInventario,
-    SalidaInventario,
-    Compatibilidad,
-    MedidaNeumatico,
-    Marca,
-    ViscosidadAceite,
-    Codigo,
-
-    //ESTIMACION
-    CostParameters,
-    CostEstimate,
-
-    //Gastos
-    FixedExpense,
-
-    //FLETES
-    Flete,
-
-    //OPERACIONES
-    ODT,
-    ODT_Vehiculos,
-    ODT_Empleados,
-    Cliente,
-    HorasTrabajadas,
+    //Facturacion
+    Cliente: require('./Cliente'),
+  
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

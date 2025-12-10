@@ -123,6 +123,14 @@ export default function EmpleadosTable() {
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
   const [opened, setOpened] = useState(false);
 
+  const [file, setFile] = useState(null);
+  const [status, setStatus] = useState('');
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -150,6 +158,49 @@ export default function EmpleadosTable() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  async function handleExport() {
+    const res = await fetch('/api/rrhh/empleados/export');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'empleados.csv'; // o empleados.xlsx
+    a.click();
+    a.remove();
+  }
+
+  const handleImport = async () => {
+    if (!file) {
+      setStatus('Debes seleccionar un archivo JSON primero');
+      return;
+    }
+
+    try {
+      // Leer el archivo seleccionado
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      // Enviar al backend
+      const res = await fetch('/api/rrhh/empleados/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        setStatus('Importación realizada con éxito ✅');
+      } else {
+        const error = await res.json();
+        setStatus(`Error al importar: ${error.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus(`Error procesando archivo: ${err.message}`);
+    }
+  };
+
+
 
   const handleDelete = async () => {
     if (!selectedEmpleado) return;
@@ -287,6 +338,11 @@ export default function EmpleadosTable() {
       >
         <MantineReactTable table={table} />
       </MantineProvider>
+      <Button onClick={handleExport}>Exportar empleados</Button>
+      <input type="file" accept=".json" onChange={handleFileChange} />
+      <Button onClick={handleImport}>Importar</Button>
+      <p>{status}</p>
+
       <Modal opened={deleteModalOpened} onClose={closeDeleteModal} title="Confirmar Eliminación" centered>
         <Text>
           ¿Estás seguro de que quieres eliminar el empleado "

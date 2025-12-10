@@ -28,6 +28,7 @@ import ModalCrearHora from "./ModalCrearHora";
 import { IconEdit } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/useAuth";
 import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
+import ModalCuentaBancaria from "./ModalCuentaBancaria";
 
 /**
  * Página adaptada a Mantine: /superuser/rrhh/empleados/[id]/page.jsx
@@ -177,29 +178,59 @@ export default function Page({ params }) {
                                 <strong>Sueldo Mensual:</strong> {empleado?.sueldo}$
                             </Text>}
                             <Button variant="filled" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}><IconEdit /> Editar Empleado</Button>
+                            {empleado?.cuentasBancarias?.length > 0 ?
+                                <>
+                                    <Title order={4}>Cuentas bancarias asociadas:</Title>
+                                    {empleado.cuentasBancarias.map((cuenta) => (
+                                        <Stack key={cuenta.id} align="center">
+                                            <Title order={5}>Cuenta ban asociado: </Title>
+                                            <Text>Banco: {empleado.nombreBanco}</Text>
+                                            <Text>Titular: {empleado.titularCuenta}</Text>
+                                            <Text>cedula del titular: {empleado.cedulaTitular}</Text>
+                                            <Text>numero de cuenta: {empleado.numeroCuenta}</Text>
+                                            <Text>tipo de cuenta: {empleado.tipoCuenta}</Text>
+
+                                        </Stack>))}
+                                </>
+                                : <Title order={6}>No hay cuentas bancarias asociadas</Title>}
+                            <Button variant="filled" onClick={() => setModalCuenta(true)}><IconEdit /> Añadir cuenta bancaria</Button>
+
+                            {empleado?.pagosMovil?.length > 0 ?
+                                empleado.pagosMovil.map((pagoMovil) => (
+                                <Stack align="center">
+                                    <Title order={5}>Pago Móvil asociado: </Title>
+                                    <Text>Banco: {empleado.pagoMovil.nombreBanco}</Text>
+                                    <Text>Titular: {empleado.pagoMovil.titularCuenta}</Text>
+                                    <Text>Numero pago movil: {empleado.pagoMovil.numeroPagoMovil} </Text>
+                                    <Text>Cedula: {empleado.pagoMovil.cedulaCuenta} </Text>
+                                </Stack> ))
+                                :
+                                <Title order={6}>No hay Pago Móvil asociado</Title>
+                            }
+                            <Button variant="filled" onClick={() => setModalPagoMovil(true)}><IconEdit /> Añadir Pago Móvil</Button>
                         </Stack>
                     </Grid.Col>
 
                     <Grid.Col span={8} md={8} justify="center" align="center">
                         <Stack>
-                       
-                                    {rol.includes("Presidente") || rol.includes("admin") && <Title order={5}>Tasa BCV hoy: {bcvPrecio}</Title>}
-                                    <Title order={4}>Horas trabajadas esta semana: {horasEstaSemana} horas</Title>
-                                    <Title order={4}>Horas extra esta semana: {horasExtraEstaSemana} horas</Title>
-                                    {rol.includes("Presidente") || rol.includes("admin") &&
-                                        <>
-                                            <Title order={6}>Sueldo del empleado por hora: {empleado.horario}$</Title>
-                                            <Title order={3}>Calculo estimado esta semana: {((horasEstaSemana * empleado.horario) * bcvPrecio).toFixed(2)}Bs ({(horasEstaSemana * empleado.horario).toFixed(2)}$) </Title>
-                                            <Title order={4}>Desglose:</Title>
-                                            <Title order={5}>
-                                                Sueldo por horas normales ({horasEstaSemana - horasExtraEstaSemana} horas): {((horasEstaSemana - horasExtraEstaSemana) * empleado.horario * bcvPrecio).toFixed(2)}Bs ({((horasEstaSemana - horasExtraEstaSemana) * empleado.horario).toFixed(2)}$)
-                                            </Title>
-                                            <Title order={5}>
-                                                Sueldo por horas extra:  {(horasExtraEstaSemana * empleado.horario * bcvPrecio).toFixed(2)}Bs ({(horasExtraEstaSemana * empleado.horario).toFixed(2)})$
-                                            </Title>
-                                        </>
-                                    }
-                        
+
+                            {rol.includes("Presidente") || rol.includes("admin") && <Title order={5}>Tasa BCV hoy: {bcvPrecio}</Title>}
+                            <Title order={4}>Horas trabajadas esta semana: {horasEstaSemana} horas</Title>
+                            <Title order={4}>Horas extra esta semana: {horasExtraEstaSemana} horas</Title>
+                            {rol.includes("Presidente") || rol.includes("admin") &&
+                                <>
+                                    <Title order={6}>Sueldo del empleado por hora: {empleado.horario}$</Title>
+                                    <Title order={3}>Calculo estimado esta semana: {((horasEstaSemana * empleado.horario) * bcvPrecio).toFixed(2)}Bs ({(horasEstaSemana * empleado.horario).toFixed(2)}$) </Title>
+                                    <Title order={4}>Desglose:</Title>
+                                    <Title order={5}>
+                                        Sueldo por horas normales ({horasEstaSemana - horasExtraEstaSemana} horas): {((horasEstaSemana - horasExtraEstaSemana) * empleado.horario * bcvPrecio).toFixed(2)}Bs ({((horasEstaSemana - horasExtraEstaSemana) * empleado.horario).toFixed(2)}$)
+                                    </Title>
+                                    <Title order={5}>
+                                        Sueldo por horas extra:  {(horasExtraEstaSemana * empleado.horario * bcvPrecio).toFixed(2)}Bs ({(horasExtraEstaSemana * empleado.horario).toFixed(2)})$
+                                    </Title>
+                                </>
+                            }
+
                         </Stack>
                     </Grid.Col>
                 </Grid>
@@ -249,7 +280,17 @@ export default function Page({ params }) {
                     router.refresh();
                 }}
             />
+            <ModalCuentaBancaria
+                opened={modalCuenta}
+                onClose={() => setModalCuenta(false)}
+                tipoEntidad="empleado"
+                entidadId={id}
+                onCreated={() => {
+                    // Recargar la página para ver las nuevas horas
+                    router.refresh();
+                }}
+            />
 
-        </Container>
+        </Container >
     )
 }

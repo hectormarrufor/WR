@@ -21,6 +21,8 @@ export async function GET(request, { params }) {
     const empleado = await db.Empleado.findByPk(id, {
       include: [
         { model: db.Puesto, as: 'puestos', through: { attributes: [] } },
+        {model: db.CuentaTerceros, as: 'cuentasBancarias' },
+        {model: db.PagoMovil, as: 'pagosMovil' },
         {
           model: db.HorasTrabajadas,
           // para filtrar las horas trabajadas desde el último viernes

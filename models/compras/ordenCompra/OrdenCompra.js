@@ -2,23 +2,10 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../../sequelize');
 const OrdenCompra = sequelize.define('OrdenCompra', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
   numeroOrden: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-  },
-  proveedorId: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: 'Proveedores',
-      key: 'id',
-    },
-    allowNull: false,
   },
   fechaOrden: {
     type: DataTypes.DATEONLY,
@@ -46,22 +33,6 @@ const OrdenCompra = sequelize.define('OrdenCompra', {
     allowNull: false,
     defaultValue: 'Pendiente',
   },
-  // Añadir campo para rastrear total recibido (opcional, se puede calcular)
-  totalRecibido: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0.00,
-  },
-  facturada: { // Ahora sí tiene sentido este campo
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  },
-  montoFacturado: { // Nuevo campo para llevar el control de lo facturado
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    defaultValue: 0.00,
-  },
   montoTotalEstimado: {
     type: DataTypes.DECIMAL(18, 2),
     allowNull: true,
@@ -70,7 +41,7 @@ const OrdenCompra = sequelize.define('OrdenCompra', {
     type: DataTypes.DECIMAL(18, 2),
     allowNull: true,
   },
-  notas: {
+  justificacion: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
@@ -81,16 +52,10 @@ const OrdenCompra = sequelize.define('OrdenCompra', {
 
 OrdenCompra.associate = (models) => {
   OrdenCompra.belongsTo(models.Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
-  OrdenCompra.hasMany(models.DetalleOrdenCompra, { foreignKey: 'ordenCompraId', as: 'detalles', onDelete: 'CASCADE', });
-  OrdenCompra.hasMany(models.EntradaInventario, { foreignKey: 'ordenCompraId', as: 'entradasInventario' }); // Una OC puede tener varias entradas (ej. parciales)
+  OrdenCompra.hasMany(models.OrdenCompraItem, { foreignKey: 'ordenCompraId', as: 'items', onDelete: 'CASCADE', });
   OrdenCompra.hasMany(models.RecepcionCompra, {
     foreignKey: 'ordenCompraId',
     as: 'recepciones',
-  });
-  // NUEVA ASOCIACIÓN: Una OC puede tener muchas facturas de proveedor
-  OrdenCompra.hasMany(models.FacturaProveedor, {
-    foreignKey: 'ordenCompraId',
-    as: 'facturasProveedor',
   });
 };
 

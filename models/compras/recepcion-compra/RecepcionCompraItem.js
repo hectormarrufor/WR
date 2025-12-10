@@ -30,7 +30,8 @@ RecepcionCompraItem.associate = (models) => {
         foreignKey: 'consumibleId',
         as: 'consumible',
     });
-    RecepcionCompraItem.belongsTo(models.EntradaInventario, { foreignKey: 'entradaInventarioId' });
+    RecepcionCompraItem.hasOne(models.EntradaInventario, { foreignKey: 'recepcionCompraItemId', as: 'entradaInventario' });
+
 
 };
 

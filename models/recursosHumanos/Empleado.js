@@ -71,6 +71,8 @@ Empleado.associate = (models) => {
     as: 'puestos',
   });
   Empleado.hasOne(models.User, { foreignKey: 'empleadoId', as: 'usuario' });
+  Empleado.hasMany(models.CuentaTerceros, { foreignKey: 'empleadoId', as: 'cuentasBancarias' });
+  Empleado.hasMany(models.PagoMovil, { foreignKey: 'empleadoId', as: 'pagosMoviles' });
   Empleado.belongsToMany(models.ODT, {
     through: "ODT_Empleados",
     as: "odtsComoChofer",
