@@ -4,7 +4,6 @@ import { useState, useEffect, use } from 'react';
 import { useForm } from '@mantine/form';
 import { TextInput, Button, Box, Title, Paper, LoadingOverlay, Alert } from '@mantine/core';
 import { useRouter, useParams } from 'next/navigation';
-import AtributoConstructor from '../../../components/AtributoConstructor';
 import { IconAlertCircle, IconDeviceFloppy } from '@tabler/icons-react';
 
 // --- Función Helper para transformar el JSON de la API al estado del formulario ---
@@ -159,7 +158,6 @@ export default function EditarGrupoPage() {
                     required
                     {...form.getInputProps('nombre')}
                 />
-                <AtributoConstructor form={form} availableGroups={availableGroups} />
                 {error && (<Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red" mt="xl">{error}</Alert>)}
                 <Button type="submit" fullWidth mt="xl" leftSection={<IconDeviceFloppy size={14}/>}>
                     Guardar Cambios

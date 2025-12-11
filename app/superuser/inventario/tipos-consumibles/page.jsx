@@ -4,7 +4,6 @@ import { Box, Button, Center, Modal, Paper, Select, TextInput, Title } from '@ma
 import { MantineReactTable } from 'mantine-react-table';
 import React, { useEffect, useState } from 'react'
 import EspecificacionesEditor from './EspecificacionesEditor';
-import NewTipoConsumibleForm from '../consumibles/NewTipoConsumibleForm';
 
 const TiposConsumiblesPage = () => {
     const [loading, setLoading] = useState(true);
@@ -181,7 +180,6 @@ const TiposConsumiblesPage = () => {
 
 
                         <Modal opened={createModal} title="Crear nuevo tipo de consumible" centered onClose={() => setCreateModal(false)} size="lg">
-                            <NewTipoConsumibleForm setNewTipoModalOpen={setCreateModal} />
                         </Modal>
                     </Paper>
 

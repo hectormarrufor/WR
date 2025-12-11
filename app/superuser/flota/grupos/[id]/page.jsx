@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button, Paper, Group, Alert, Loader, Title } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import AtributoConstructor from '../../components/AtributoConstructor';
 
 export default function EditarGrupoPage() {
   const router = useRouter();
@@ -79,13 +78,7 @@ export default function EditarGrupoPage() {
       <Paper p="xl" style={{ width: 'fit-content', minWidth: '500px', marginTop: '20px' }}>
         <form onSubmit={handleSaveChanges}>
           <Title order={1} style={{textAlign: 'center', marginBottom: '2rem'}}>Editando Plantilla de Grupo</Title>
-          
-          <AtributoConstructor 
-              grupo={grupo}
-              onUpdate={setGrupo}
-              gruposDisponibles={gruposDisponibles}
-          />
-
+     
           <Group justify="flex-end" mt="xl">
             <Button variant="default" onClick={() => router.push('/superuser/flota/grupos')}>Cancelar</Button>
             <Button type="submit" loading={loading}>Guardar Cambios</Button>

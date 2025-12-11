@@ -8,7 +8,6 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
-import AtributoConstructor from '../../components/AtributoConstructor';
 import BackButton from '@/app/components/BackButton';
 import { transformPayloadToFormValues } from '../../grupos/[id]/editar/page';
 
@@ -23,11 +22,6 @@ function generarAcronimo(nombre = '') {
     return (letters + 'XXX').slice(0, 3);
 }
 
-/**
- * Convierte la respuesta de la API (objeto definicion) al formato que AtributoConstructor espera:
- * un array de atributos con campos temporales (key, id, dataType, etc).
- * Esta transformación reutiliza la lógica que usas para Grupos.
- */
 function transformDefinitionObjectToFormArray(defObj = {}) {
     if (!defObj || Object.keys(defObj).length === 0) return [];
     return Object.keys(defObj).map((k) => {
@@ -127,7 +121,7 @@ export default function CrearCategoriaPage() {
         initialValues: {
             nombre: '',
             acronimo: '',
-            definicion: [], // AtributoConstructor trabaja con array
+            definicion: [], 
             gruposBaseIds: [] // array de strings por MultiSelect
         },
         validate: {
@@ -350,7 +344,6 @@ export default function CrearCategoriaPage() {
                             Se han cargado las propiedades de los grupos seleccionados. Puedes modificarlas o agregar nuevas.
                         </Text>
 
-                        <AtributoConstructor form={form} availableGroups={availableGroups} from="Categoria" />
                     </Box>
                 </Collapse>
 

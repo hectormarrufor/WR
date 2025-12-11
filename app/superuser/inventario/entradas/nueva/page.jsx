@@ -5,7 +5,6 @@ import { Select, Button, Group, NumberInput, TextInput, Paper, Title, Modal, Act
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useAuth } from '@/hooks/useAuth'; // Importamos el hook de autenticación
-import ConsumibleForm from '../../consumibles/ConsumibleForm';
 
 
 export default function NuevaEntradaPage() {
@@ -99,7 +98,6 @@ export default function NuevaEntradaPage() {
             </form>
 
             <Modal opened={modalOpened} onClose={() => setModalOpened(false)} title="Crear Nuevo Consumible" size="xl" centered>
-                <ConsumibleForm onSuccess={handleConsumibleCreado} />
             </Modal>
         </Paper>
     );

@@ -5,7 +5,6 @@ import { useState, useEffect, use } from 'react';
 import { Button, Paper, Title, Box, LoadingOverlay, Alert, Group } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useRouter, useParams } from 'next/navigation';
-import AtributoConstructor from '../../../components/AtributoConstructor';
 import { IconAlertCircle } from '@tabler/icons-react';
 import BackButton from '@/app/components/BackButton';
 import { useForm } from '@mantine/form';
@@ -155,13 +154,6 @@ export default function EditarCategoriaPage() {
                 </Title>
                 <BackButton />
             </Group>
-
-
-            <Box>
-                {form && <AtributoConstructor
-                    form={form}
-                />}
-            </Box>
 
             <Button fullWidth mt="xl" onClick={handleSubmit} disabled={isSubmitting}>
                 Guardar Cambios

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Loader, Paper, Title, Alert, Group } from '@mantine/core';
 import BackButton from '@/app/components/BackButton';
-import ConsumibleForm from '../../ConsumibleForm';
 
 
 export default function EditarConsumiblePage() {
@@ -32,7 +31,6 @@ export default function EditarConsumiblePage() {
                 <Title order={2}>Editar Consumible: {initialData.nombre}</Title>
                 <BackButton />
             </Group>
-            <ConsumibleForm initialData={initialData} isEditing={true} />
         </Paper>
     );
 }

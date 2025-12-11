@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from '@mantine/form';
 import { TextInput, Button, Box, Title, Paper, LoadingOverlay, Alert } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import AtributoConstructor from '../../components/AtributoConstructor';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
@@ -329,7 +328,6 @@ export default function CrearGrupoPage() {
                     }
 
                 />
-                <AtributoConstructor form={form} availableGroups={availableGroups} from="Grupo" />
                 {error && (<Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red" mt="xl">{error}</Alert>)}
                 <Button type="submit" fullWidth mt="xl">
                     Crear Grupo
