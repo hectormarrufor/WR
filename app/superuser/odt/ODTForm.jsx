@@ -8,8 +8,6 @@ import { notifications } from "@mantine/notifications";
 import { DateInput, TimeInput } from "@mantine/dates";
 import '@mantine/dates/styles.css';
 import ODTSelectableGrid from "./ODTSelectableGrid";
-import { AsyncComboBox } from "../inventario/consumibles/AsyncCombobox";
-import ClienteSelect from "./ClienteSelect";
 import { SelectClienteConCreacion } from "../contratos/SelectClienteConCreacion";
 import { useRouter } from "next/navigation";
 

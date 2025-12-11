@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Paper, Title, Loader, Alert, Group } from '@mantine/core';
 import BackButton from '@/app/components/BackButton';
-import ActivoForm from '../../components/ActivoForm';
 
 
 export default function EditarActivoPage() {
@@ -40,11 +39,7 @@ export default function EditarActivoPage() {
                 <Title order={2}>Editar Activo: {initialData?.codigoActivo}</Title>
                 <BackButton />
             </Group>
-            {initialData ? (
-                <ActivoForm initialData={initialData} isEditing={true} />
-            ) : (
-                <Alert color="yellow">No se encontraron datos para el activo.</Alert>
-            )}
+   
         </Paper>
     );
 }

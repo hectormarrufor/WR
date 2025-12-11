@@ -5,13 +5,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from '@mantine/form';
 import { TextInput, Select, Button, Paper, Title, Group, Alert, Loader, Box, Text, Collapse, LoadingOverlay } from '@mantine/core';
-import AtributoConstructor from '../../components/AtributoConstructor';
 import { set } from 'date-fns';
 import { transformPayloadToFormValues } from '../../grupos/[id]/editar/page';
 
 /**
- * Función recursiva para transformar la definición de una categoría y sus hijas
- * en un esquema que AtributoConstructor pueda entender.
  * @param {object} category - El objeto de la categoría con sus subCategorías.
  * @returns {Array} - Una definición de atributos lista para el formulario.
  */
@@ -58,7 +55,6 @@ export default function ModeloActivoForm({ modeloId = null }) {
         initialValues: {
             nombre: '',
             categoriaId: '',
-            // Este campo contendrá la estructura jerárquica para AtributoConstructor
             propiedades_definidas: [], 
         },
         validate: {
@@ -216,11 +212,7 @@ export default function ModeloActivoForm({ modeloId = null }) {
                         <Text size="sm" c="dimmed" mb="md">
                             Completa los valores para las propiedades heredadas de la categoría y sus sub-categorías.
                         </Text>
-                        <AtributoConstructor
-                            form={form}
-                            fieldName="propiedades_definidas" // El constructor trabajará sobre este campo
-                            from="Modelo"
-                        />
+            
                     </Box>
                 </Collapse>
                 
