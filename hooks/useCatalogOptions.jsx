@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export function useCatalogOptions(catalogo) {
+export function useCatalogOptions(catalogo, tipo) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -8,7 +8,7 @@ export function useCatalogOptions(catalogo) {
     if (!catalogo) return;
     setLoading(true);
 
-    fetch(`/api/inventario/${catalogo}`)
+    fetch(`/api/inventario/catalogo/${catalogo}${tipo ? `?tipo=${tipo}` : ''}`)
       .then(res => {
         if (!res.ok) throw new Error("Error fetching catalog options");
         return res.json();

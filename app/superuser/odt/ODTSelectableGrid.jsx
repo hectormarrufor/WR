@@ -95,7 +95,7 @@ export default function ODTSelectableGrid({ label, data, onChange }) {
                         radius="xl"
                       />
                       <Title order={5} weight={500}>
-                        {item.nombre}
+                        {item.nombre || item.marca + " - " + item.codigo}
                       </Title>
                       {item.extra && (
                         <Text size="sm" color="dimmed">

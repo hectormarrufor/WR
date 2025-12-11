@@ -1,8 +1,8 @@
 import db from '@/models';
 import { NextResponse } from 'next/server';
 
-export async function GET({params}) {
-    const { tipo } = params;
+export async function GET(request, { params }) {
+    const { tipo } = await params;
 
     if (tipo == 'aceite') {
         try {

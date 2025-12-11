@@ -7,9 +7,18 @@ const Consumible = sequelize.define('Consumible', {
         allowNull: false,
         unique: true,
     },
-    categoria: { type: DataTypes.ENUM('aceiteMotor','aceiteHidraulico','neumatico'), allowNull: false },
+    tipo: {
+        type: DataTypes.ENUM('fungible', 'serializado'),
+        allowNull: false
 
-    stock: {
+    },
+    categoria: { type: DataTypes.ENUM('aceite de motor', 'aceite hidraulico', 'filtro de aceite', 'filtro de aire', 'filtro de combustible', 'filtro de cabina', 'neumatico', 'bateria', 'sensor', 'correa'), allowNull: false },
+    stockAlmacen: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    stockAsignado: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0.00
@@ -18,11 +27,7 @@ const Consumible = sequelize.define('Consumible', {
         type: DataTypes.DECIMAL(10, 2),
         defaultValue: 0.00
     },
-    inventario: {
-        type: DataTypes.DECIMAL(10, 2),
-        defaultValue: 0.00
-    },
-    costoPromedio: {
+    precioPromedio: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0.00
@@ -34,6 +39,8 @@ const Consumible = sequelize.define('Consumible', {
 });
 
 Consumible.associate = (models) => {
+    Consumible.hasMany(models.ConsumibleSerializado, { foreignKey: 'consumibleId', as: 'serializados' });
+
     // Un consumible puede tener muchas entradas y salidas de inventario
     Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId' });
     Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId' });
@@ -43,8 +50,10 @@ Consumible.associate = (models) => {
     Consumible.hasOne(models.Bateria, { foreignKey: 'consumibleId' });
     Consumible.hasOne(models.Filtro, { foreignKey: 'consumibleId' });
     Consumible.hasOne(models.Sensor, { foreignKey: 'consumibleId' });
+    Consumible.hasOne(models.Correa, { foreignKey: 'consumibleId' });
+    Consumible.hasMany(models.ConsumibleRecomendado, { foreignKey: 'consumibleId', as: 'recomendaciones' });
 
-    
+
 
 
 

@@ -3,31 +3,37 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const Activo = sequelize.define('Activo', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-    },
-    codigoActivo: {
+    nombre: {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
     },
-    modeloId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'Modelos',
-            key: 'id'
-        },
+    grupo: {
+        type: DataTypes.ENUM(
+            'vehiculo',
+            'remolque',
+            'maquina',
+            'generador',
+            'otro'
+        ),
     },
-    datosPersonalizados: {
-        type: DataTypes.JSONB,
+    categoria: {
+        type: DataTypes.ENUM(
+            'chuto',
+            'vaccum',
+            'batea',
+            'montacargas',
+            'camioneta',
+            'maquina de soldar',
+            'retroexcavadora',
+            'planta electrica',
+            'otro',
+            "bomba de agua"
+        ),
         allowNull: false,
-        defaultValue: {},
     },
     estadoOperativo: {
-        type: DataTypes.STRING,
+        type: DataTypes.ENUM('Operativo', 'No operativo', 'Operativo con advertencias'),
         allowNull: false,
         defaultValue: 'Operativo',
     },
@@ -45,10 +51,13 @@ const Activo = sequelize.define('Activo', {
 });
 
 Activo.associate = (models) => {
-    Activo.belongsTo(models.Modelo, {
-        foreignKey: 'modeloId',
-        as: 'modelo'
-    });
+    Activo.hasMany(models.ConsumibleSerializado, { foreignKey: 'activoId', as: 'consumiblesSerializados' });
+
+    Activo.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'instancia' });
+    Activo.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'instancia' });
+    Activo.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'instancia' });
+
+
 
     Activo.hasMany(models.Inspeccion, {
         foreignKey: 'activoId',
@@ -62,26 +71,6 @@ Activo.associate = (models) => {
         foreignKey: 'activoId',
         as: 'mantenimientos'
     });
-    Activo.hasMany(models.Kilometraje, {
-        foreignKey: 'activoId', // Asegúrate de que el nombre de la FK sea consistente
-        as: 'kilometrajes'
-    });
-
-    Activo.hasMany(models.Horometro, {
-        foreignKey: 'activoId',
-        as: 'horometros'
-    });
-    Activo.hasMany(models.ConsumibleUsado, { foreignKey: 'activoId' });
-    Activo.belongsToMany(models.ODT, {
-        through: models.ODT_Vehiculos,
-        as: "odts",
-        foreignKey: "activoId",
-    });
-
-
-    // Aquí irían las futuras relaciones con Inspecciones y Mantenimientos
-    // Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
-    // Activo.hasMany(models.Mantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
 };
 
 module.exports = Activo;

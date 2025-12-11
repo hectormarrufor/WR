@@ -14,10 +14,6 @@ const db = {
     
     // FLOTA Y GESTION DE MANTENIMIENTO
     Activo: require('./gestionMantenimiento/Activo'),
-    Categoria: require('./gestionMantenimiento/Categoria'),
-    CategoriaGrupos: require('./gestionMantenimiento/CategoriaGrupos'),
-    Modelo: require('./gestionMantenimiento/Modelo'),
-    Grupo: require('./gestionMantenimiento/Grupo'),
     Hallazgo: require('./gestionMantenimiento/Hallazgo'),
     Mantenimiento: require('./gestionMantenimiento/mantenimiento'),
     TareaMantenimiento: require('./gestionMantenimiento/tareaMantenimiento'),
@@ -26,7 +22,7 @@ const db = {
     Horometro: require('./gestionMantenimiento/Horometro'),
     
     // INVENTARIO
-    Compatibilidad: require('./inventario/Compatibilidad'),
+    ConsumibleRecomendado: require('./inventario/ConsumibleRecomendado'),
     Consumible: require('./inventario/Consumible'),
     AceiteHidraulico: require('./inventario/tipo-consumible/AceiteHidraulico'),
     Neumatico: require('./inventario/tipo-consumible/Neumatico'),

@@ -17,7 +17,11 @@ const Filtro = sequelize.define('Filtro', {
     posicion: {
         type: DataTypes.ENUM('primario', 'secundario'),
         allowNull: true
-    }
+    },
+    imagen: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
 
 }, {
     tableName: 'Filtros',

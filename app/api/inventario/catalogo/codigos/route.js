@@ -4,9 +4,13 @@ import { NextResponse } from 'next/server';
 /**
  * GET: Obtiene una lista de todos los códigos.
  */
-export async function GET() {
+export async function GET(request) {
+    const { searchParams } = new URL(request.url);
+    const tipo = searchParams.get('tipo');
+    const whereClause = tipo ? { where: { tipo } } : {};
     try {
         const codigos = await db.Codigo.findAll({
+            ...whereClause,
             attributes: ['id', 'nombre'],
             order: [['nombre', 'ASC']]
         });
@@ -24,15 +28,21 @@ export async function POST(request) {
     try {
         const body = await request.json();
         const nombreCodigo = body.valor;
+        const tipo = body.tipo === "aceite" ? "filtroAceite" :
+                     body.tipo === "aire" ? "filtroAire" :
+                     body.tipo === "combustible" ? "filtroCombustible" :
+                     body.tipo === "cabina" ? "filtroCabina" : null;
+        
         console.log("nombre del código", nombreCodigo)
 
-        if (!nombreCodigo) {
-            return NextResponse.json({ success: false, error: "El nombre del código es obligatorio." }, { status: 400 });
+        if (!nombreCodigo || !tipo) {
+            console.error("El nombre del código y el tipo son obligatorios.");
+            return NextResponse.json({ success: false, error: "El nombre del código y el tipo son obligatorios." }, { status: 400 });
         }
 
         // Utilizamos findOrCreate para evitar duplicados.
         const [codigo, created] = await db.Codigo.findOrCreate({
-            where: { nombre: nombreCodigo },
+            where: { nombre: nombreCodigo, tipo: tipo },
             defaults: { nombre: nombreCodigo }
         });
 

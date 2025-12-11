@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { TextInput, Select, Button, Group, Modal } from '@mantine/core';
+import { TextInput, Select, Button, Group, Modal, Divider } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import axios from 'axios';
 import { notifications } from '@mantine/notifications';
 import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
 import ODTSelectableGrid from '@/app/superuser/odt/ODTSelectableGrid';
+import ImageDropzone from '@/app/superuser/flota/activos/components/ImageDropzone';
+import { useRouter } from 'next/navigation';
 
 const FiltroForm = () => {
+    const router = useRouter();
     const [filtros, setFiltros] = useState([]);
 
     const form = useForm({
@@ -16,25 +19,54 @@ const FiltroForm = () => {
             codigo: '',
             equivalencias: [],
             posicion: '',
+            imagen: "",
         },
     });
 
     useEffect(() => {
         // Fetch existing filtros for equivalencias selection
+
         const fetchFiltros = async () => {
             try {
                 const response = await axios.get(`/api/inventario/filtros/${form.values.tipo}`);
                 setFiltros(response.data);
+                console.log(response.data)
             } catch (error) {
                 console.error('Error fetching filtros:', error);
             }
         };
-        form.values.tipo.length > 0 && fetchFiltros();
+        form.values.tipo?.length > 0 && fetchFiltros();
     }, [form.values.tipo]);
 
+    useEffect(() => {
+        console.log("Form values changed:", form.values);
+    }, [form.values]);
+
     const handleSubmit = async (values) => {
+        const {posicion, ...rest} = values;
+        let payload = values.tipo === "combustible" ? {...rest, posicion} : {...rest};
+
+        if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
+                notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
+                const imagenFile = values.imagen;
+                const fileExtension = imagenFile.name.split('.').pop();
+                const uniqueFilename = `${values.marca}${values.codigo}.${fileExtension}`;
+        
+                const response = await fetch(`/api/upload?filename=${encodeURIComponent(uniqueFilename)}`, {
+                  method: 'POST',
+                  body: imagenFile,
+                });
+                        console.log(response)
+        
+        
+                if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
+                const newBlob = await response.json();
+                payload.imagen = uniqueFilename;
+                notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
+              }
+
         try {
-            await axios.post('/api/inventario/filtro', values);
+            await axios.post('/api/inventario/filtros', payload);
             // Handle success (e.g., show a success message or reset the form)
             form.reset();
             notifications.show({
@@ -42,6 +74,7 @@ const FiltroForm = () => {
                 message: 'Filtro creado exitosamente',
                 color: 'green',
             });
+            router.push('/superuser/inventario/consumibles');
         } catch (error) {
             // Handle error (e.g., show an error message)
             console.error('Error submitting form:', error);
@@ -55,6 +88,16 @@ const FiltroForm = () => {
 
     return (
         <form onSubmit={form.onSubmit(handleSubmit)}>
+            <Select
+                label="Tipo"
+                data={['aceite', 'aire', 'combustible', 'cabina']}
+                {...form.getInputProps('tipo')}
+            />
+            {form.values.tipo === "combustible" && <Select
+                label="Posición"
+                data={['primario', 'secundario']}
+                {...form.getInputProps('posicion')}
+            />}
             <AsyncCatalogComboBox
                 label="Marca"
                 placeholder="Selecciona una marca"
@@ -62,33 +105,34 @@ const FiltroForm = () => {
                 form={form}
                 catalogo="marcas"
             />
-            <Select
-                label="Tipo"
-                data={['aceite', 'aire', 'combustible', 'cabina']}
-                {...form.getInputProps('tipo')}
-            />
             <AsyncCatalogComboBox
                 label="Código"
                 placeholder="Ingresa el código del filtro"
                 fieldKey="codigo"
                 form={form}
                 catalogo="codigos"
-                tipo = {form.values.tipo}
+                tipo={form.values.tipo}
             />
-            <ODTSelectableGrid
-                label="Equivalencias"
-                data={filtros}
-                onChange={(values) => form.setFieldValue("equivalencias", values)}
+            <ImageDropzone 
+                label="Imagen del filtro"
+                form={form}
+                fieldPath="imagen"
             />
-            <Select
-                label="Posición"
-                data={['primario', 'secundario']}
-                {...form.getInputProps('posicion')}
-            />
+            {form.values.tipo &&
+                <>
+                    <Divider my={10} />
+                    <ODTSelectableGrid
+                        label="Equivalencias"
+                        data={filtros}
+                        onChange={(values) => form.setFieldValue("equivalencias", values)}
+                    />
+                </>
+            }
+
             <Group position="right" mt="md">
                 <Button type="submit">Submit</Button>
             </Group>
-        
+
         </form>
 
     );

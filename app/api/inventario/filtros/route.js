@@ -4,12 +4,34 @@ import { NextResponse } from "next/server";
 export async function POST(request) {
     try {
         const data = await request.json();
-        
+        const { posicion, ...rest } = data;
 
-        const nuevoFiltro = await db.Filtro.create(data);
-      
+        const result = await db.sequelize.transaction(async (t) => {
+            let nuevoFiltro;
 
-        return NextResponse.json(nuevoFiltro, { status: 201 });
+            if (data.tipo === "combustible") {
+                nuevoFiltro = await db.Filtro.create(data, { transaction: t });
+            } else {
+                nuevoFiltro = await db.Filtro.create(rest, { transaction: t });
+            }
+
+            const nuevoConsumible = await db.Consumible.create({
+                nombre: nuevoFiltro.nombre,
+                categoria: data.tipo === "aceite" ? "filtro de aceite" :
+                          data.tipo === "aire" ? "filtro de aire" :
+                          data.tipo === "combustible" ? "filtro de combustible" :
+                          data.tipo === "cabina" ? "filtro de cabina" : null,
+                descripcion: nuevoFiltro.descripcion,
+                cantidad: nuevoFiltro.cantidad,
+                tipo: "filtro",
+                filtroId: nuevoFiltro.id,
+            }, { transaction: t });
+
+            return nuevoFiltro;
+        });
+
+        return NextResponse.json(result, { status: 201 });
+
     } catch (error) {
         console.error("Error creating filtro de aceite:", error);
         return NextResponse.json(

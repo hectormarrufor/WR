@@ -13,11 +13,6 @@ const Bateria = sequelize.define('Bateria', {
     amperaje: { type: DataTypes.STRING, allowNull: false }, //1200
     capacidadArranque: { type: DataTypes.STRING, allowNull: false }, 
     voltaje: { type: DataTypes.STRING, allowNull: false },
-    fechaVencimientoGarantia: { type: DataTypes.DATE, allowNull: true },
-    fechaCompra: { type: DataTypes.DATE, allowNull: true },
-    
-
-
 }, {
     tableName: 'Baterias',
     timestamps: true,

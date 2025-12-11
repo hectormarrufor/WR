@@ -1,7 +1,6 @@
 // models/inventario/ConsumibleUsado.js (Modificado)
 const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../../sequelize');
-const { Consumible } = require('./Consumible');
 
   const ConsumibleUsado = sequelize.define('ConsumibleUsado', {
     id: {

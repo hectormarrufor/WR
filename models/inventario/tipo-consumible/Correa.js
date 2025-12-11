@@ -1,21 +1,22 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../../sequelize');
 
-const Neumatico = sequelize.define('Neumatico', {
+const Correa = sequelize.define('Correa', {
     marca: {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    medida: {
+    codigo: {
         type: DataTypes.STRING,
         allowNull: false,
     },
 }, {
-    tableName: 'Neumaticos',
+    tableName: 'Correas',
     timestamps: true,
 });
 
-Neumatico.associate = (models) => {
-    Neumatico.belongsTo(models.Consumible, { foreignKey: 'consumibleId' });
+Correa.associate = (models) => {
+    Correa.belongsTo(models.Consumible, { foreignKey: 'consumibleId' });
 }
-module.exports = Neumatico;
+
+module.exports = Correa;

@@ -9,11 +9,11 @@ export function AsyncCatalogComboBox({
   placeholder,
   fieldKey,
   form,
-  tipo = null,
+  tipo = "",
   catalogo
 }) {
   const store = useCombobox({ onDropdownClose: () => store.resetSelectedOption() });
-  const { options, loading, setOptions } = useCatalogOptions(catalogo);
+  const { options, loading, setOptions } = useCatalogOptions(catalogo, tipo);
 
   const handleCreateNew = async (nuevoValor) => {
     try {

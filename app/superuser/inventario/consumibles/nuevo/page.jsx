@@ -1,5 +1,5 @@
 'use client';
-import { Paper, Select, Stack, Title } from '@mantine/core';
+import { Flex, Paper, Select, Stack, Title } from '@mantine/core';
 import BackButton from '@/app/components/BackButton';
 import { useState } from 'react';
 import FiltroForm from './FiltroForm';
@@ -11,7 +11,10 @@ export default function NuevoConsumiblePage() {
     return (
         <Paper p="xl" mt={30}>
             <Stack justify="space-between" mb="xl">
-                <Title order={2}>Crear Nuevo Consumible</Title>
+                <Flex>
+                    <Title order={2}>Crear Nuevo Consumible</Title>
+                    <BackButton />
+                </Flex>
                 <Select
                     data={[
                         { value: 'aceiteMotor', label: 'Aceite de Motor' },
@@ -29,7 +32,7 @@ export default function NuevoConsumiblePage() {
                     size="sm"
                     style={{ minWidth: 220 }}
                 />
-                <BackButton />
+
                 {(tipo === "aceiteMotor") ?
                     <AceiteMotorForm /> :
                     (tipo === "aceiteHidraulico") ?
@@ -39,9 +42,9 @@ export default function NuevoConsumiblePage() {
                             (tipo === "bateria") ?
                                 <BateriaForm /> :
                                 (tipo === "filtro") ?
-                                    <FiltroForm/> :
+                                    <FiltroForm /> :
                                     (tipo === "sensor") ?
-                                        <SensorForm/>
+                                        <SensorForm />
                                         : null
                 }
             </Stack>
