@@ -1,219 +1,208 @@
-import db from '@/models';
+// app/api/gestionMantenimiento/vehiculo/route.js
 import { NextResponse } from 'next/server';
+import sequelize from '@/sequelize';
+import { Op } from 'sequelize';
+import { 
+    Vehiculo, 
+    Subsistema, 
+    Consumible, 
+    ConsumibleRecomendado,
+    Filtro,
+    Correa,
+    EquivalenciaFiltro // Importamos el modelo agrupador si existe, o usamos lógica de IDs compartidos
+} from '@/models';
 
-/**
- * GET para obtener una lista de todos los vehículos (plantillas).
- */
-export async function GET(request) {
-    try {
-        const vehiculos = await db.Vehiculo.findAll({
-            include: [
-                {
-                    model: db.Subsistema,
-                    as: 'subsistemas',
-                    include: [
-                        {
-                            model: db.ConsumibleRecomendado,
-                            as: 'recomendados',
-                            include: [{ model: db.Consumible, as: 'consumible' }]
-                        }
-                    ]
-                }
-            ],
-            order: [['id', 'ASC']]
-        });
-        return NextResponse.json(vehiculos);
-    } catch (error) {
-        console.error('Error al obtener los vehículos:', error);
-        return NextResponse.json({ message: 'Error al obtener los vehículos', error: error.message }, { status: 500 });
+// ----------------------------------------------------------------------
+// 1. HELPER: Resolver Consumible (Obtener ID o Crear con Vinculación)
+// ----------------------------------------------------------------------
+async function resolverConsumible(item, transaction) {
+    // CASO A: El usuario envió un ID (Consumible existente)
+    if (typeof item === 'number') {
+        const existe = await Consumible.findByPk(item, { transaction });
+        if (!existe) throw new Error(`El consumible ID ${item} no existe.`);
+        return existe;
     }
-}
 
-/**
- * POST para crear un nuevo vehículo (plantilla).
- */
-import db from '@/models';
-import { NextResponse } from 'next/server';
+    // CASO B: Crear nuevo al vuelo
+    if (typeof item === 'object') {
+        
+        // 1. Crear el registro padre (Consumible)
+        const nuevoConsumible = await Consumible.create({
+            nombre: item.nombre,
+            descripcion: item.descripcion || 'Creado desde plantilla vehículo',
+            tipo: item.tipo, 
+            stockActual: 0, 
+            stockMinimo: item.stockMinimo || 0,
+            unidadMedida: item.unidadMedida || 'UNIDAD',
+            codigo: item.codigo || null 
+        }, { transaction });
 
-/**
- * POST para crear un nuevo vehículo (plantilla) con sus subsistemas y consumibles recomendados.
- */
-export async function POST(request) {
-    const transaction = await db.sequelize.transaction();
-    try {
-        const body = await request.json();
-        const { marca, modelo, anio, subsistemas } = body;
+        // 2. Lógica específica por TIPO y VINCULACIÓN (EquivalenteA)
+        if (item.tipo === 'Filtro') {
+            
+            let equivalenciaIdToUse = null;
 
-        if (!marca || !modelo) {
-            return NextResponse.json({ message: 'La marca y el modelo son requeridos.' }, { status: 400 });
+            // ¿El usuario nos dijo que este nuevo filtro es igual a uno existente?
+            if (item.equivalenteA) {
+                // Buscamos el filtro "hermano mayor" existente
+                const filtroExistente = await Filtro.findOne({ 
+                    where: { consumibleId: item.equivalenteA },
+                    transaction 
+                });
+
+                if (filtroExistente) {
+                    if (filtroExistente.equivalenciaId) {
+                        // Caso 1: El existente ya tiene grupo, nos unimos.
+                        equivalenciaIdToUse = filtroExistente.equivalenciaId;
+                    } else {
+                        // Caso 2: El existente es un lobo solitario.
+                        // Creamos un nuevo grupo de equivalencia
+                        const nuevaEquivalencia = await EquivalenciaFiltro.create({
+                            descripcion: 'Grupo generado automáticamente'
+                        }, { transaction });
+                        
+                        equivalenciaIdToUse = nuevaEquivalencia.id;
+
+                        // IMPORTANTE: Actualizamos al "hermano mayor" para que entre al grupo
+                        filtroExistente.equivalenciaId = equivalenciaIdToUse;
+                        await filtroExistente.save({ transaction });
+                    }
+                }
+            }
+
+            // Creamos el detalle del filtro nuevo con el ID de grupo (si se encontró)
+            await Filtro.create({
+                consumibleId: nuevoConsumible.id,
+                tipoFiltro: item.tipoFiltro || 'Aceite',
+                equivalenciaId: equivalenciaIdToUse // null si no se pasó equivalenteA
+            }, { transaction });
+
+        } else if (item.tipo === 'Correa') {
+            // Para correas es más fácil: si pasas la medida, la equivalencia es automática luego
+            await Correa.create({
+                consumibleId: nuevoConsumible.id,
+                medida: item.medida // Ej: "6PK1035"
+            }, { transaction });
         }
 
-        // 1. Crear vehículo plantilla
-        const nuevoVehiculo = await db.Vehiculo.create(
-            { marca, modelo, anio },
-            { transaction }
-        );
+        // Retornamos la instancia completa
+        return nuevoConsumible;
+    }
+    
+    throw new Error('Formato de consumible inválido.');
+}
 
-        // 2. Crear subsistemas asociados
-        if (subsistemas && subsistemas.length > 0) {
-            for (const subsistema of subsistemas) {
-                const nuevoSubsistema = await db.Subsistema.create(
-                    {
-                        vehiculoId: nuevoVehiculo.id,
-                        nombre: subsistema.nombre
-                    },
-                    { transaction }
-                );
+// ----------------------------------------------------------------------
+// 2. HELPER: Buscar Equivalencias (Expandir selección)
+// ----------------------------------------------------------------------
+async function buscarHermanosEquivalentes(consumible, transaction) {
+    let idsRecomendados = [consumible.id];
 
-                // 3. Crear consumibles recomendados dentro de cada subsistema
-                if (subsistema.recomendados && subsistema.recomendados.length > 0) {
-                    for (const recomendado of subsistema.recomendados) {
-                        await db.ConsumibleRecomendado.create(
-                            {
-                                subsistemaId: nuevoSubsistema.id,
-                                consumibleId: recomendado.consumibleId, // id del consumible genérico
-                                cantidad: recomendado.cantidad,
-                                notas: recomendado.notas || null
-                            },
-                            { transaction }
-                        );
+    if (consumible.tipo === 'Filtro') {
+        const miFiltro = await Filtro.findOne({ where: { consumibleId: consumible.id }, transaction });
+        
+        // Ahora sí: Si acabamos de crear uno nuevo y lo vinculamos en el paso anterior,
+        // miFiltro.equivalenciaId YA tendrá valor, y traerá a sus nuevos hermanos.
+        if (miFiltro && miFiltro.equivalenciaId) {
+            const hermanos = await Filtro.findAll({
+                where: { 
+                    equivalenciaId: miFiltro.equivalenciaId,
+                    consumibleId: { [Op.ne]: consumible.id }
+                },
+                attributes: ['consumibleId'],
+                transaction
+            });
+            idsRecomendados.push(...hermanos.map(h => h.consumibleId));
+        }
+    } 
+    else if (consumible.tipo === 'Correa') {
+        const miCorrea = await Correa.findOne({ where: { consumibleId: consumible.id }, transaction });
+        if (miCorrea && miCorrea.medida) {
+            const hermanas = await Correa.findAll({
+                where: { 
+                    medida: miCorrea.medida,
+                    consumibleId: { [Op.ne]: consumible.id }
+                },
+                attributes: ['consumibleId'],
+                transaction
+            });
+            idsRecomendados.push(...hermanas.map(c => c.consumibleId));
+        }
+    }
+
+    return [...new Set(idsRecomendados)];
+}
+
+// ----------------------------------------------------------------------
+// MAIN HANDLER
+// ----------------------------------------------------------------------
+
+export async function POST(request) {
+    const t = await sequelize.transaction();
+
+    try {
+        const body = await request.json();
+
+        // 1. Crear Vehículo
+        const vehiculo = await Vehiculo.create({
+            marcaId: body.marcaId,
+            modelo: body.modelo,
+            anio: body.anio,
+            tipoVehiculo: body.tipoVehiculo,
+            peso: body.peso,
+            capacidadCarga: body.capacidadCarga,
+            numeroEjes: body.numeroEjes,
+            tipoCombustible: body.tipoCombustible,
+            imagen: body.imagen
+        }, { transaction: t });
+
+        // 2. Subsistemas
+        if (body.subsistemas && Array.isArray(body.subsistemas)) {
+            for (const subData of body.subsistemas) {
+                const subsistema = await Subsistema.create({
+                    nombre: subData.nombre,
+                    descripcion: subData.descripcion,
+                    vehiculoId: vehiculo.id
+                }, { transaction: t });
+
+                // 3. Consumibles
+                if (subData.consumibles && Array.isArray(subData.consumibles)) {
+                    for (const itemInput of subData.consumibles) {
+                        
+                        // A. Resolver (Buscar o Crear + Vincular)
+                        // Aquí ocurre la magia: si es nuevo y trae 'equivalenteA', se une al grupo.
+                        const consumiblePrincipal = await resolverConsumible(itemInput, t);
+
+                        // B. Expandir (Traer a toda la familia)
+                        // Como ya se unió al grupo en el paso A, aquí traerá a los hermanos.
+                        const todosLosIds = await buscarHermanosEquivalentes(consumiblePrincipal, t);
+
+                        // C. Insertar relaciones
+                        const cantidad = (typeof itemInput === 'object' && itemInput.cantidad) ? itemInput.cantidad : 1;
+
+                        const promesasInsert = todosLosIds.map(id => {
+                            return ConsumibleRecomendado.findOrCreate({
+                                where: { subsistemaId: subsistema.id, consumibleId: id },
+                                defaults: {
+                                    subsistemaId: subsistema.id,
+                                    consumibleId: id,
+                                    cantidadRecomendada: cantidad
+                                },
+                                transaction: t
+                            });
+                        });
+                        await Promise.all(promesasInsert);
                     }
                 }
             }
         }
 
-        await transaction.commit();
-        return NextResponse.json(nuevoVehiculo, { status: 201 });
+        await t.commit();
+        return NextResponse.json({ success: true, data: vehiculo }, { status: 201 });
 
     } catch (error) {
-        await transaction.rollback();
-        console.error('Error al crear el vehículo:', error);
-        return NextResponse.json(
-            { message: 'Error al crear el vehículo', error: error.message },
-            { status: 500 }
-        );
+        await t.rollback();
+        console.error("Error:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 }
-
-/**
- * PUT para actualizar un vehículo (plantilla).
- */
-export async function PUT(request) {
-    const transaction = await db.sequelize.transaction();
-    try {
-        const body = await request.json();
-        const { id, marca, modelo, anio } = body;
-
-        if (!id) {
-            return NextResponse.json({ message: 'El ID del vehículo es requerido.' }, { status: 400 });
-        }
-
-        const vehiculo = await db.Vehiculo.findByPk(id);
-        if (!vehiculo) {
-            return NextResponse.json({ message: 'Vehículo no encontrado.' }, { status: 404 });
-        }
-
-        await vehiculo.update({ marca, modelo, anio }, { transaction });
-        await transaction.commit();
-        return NextResponse.json(vehiculo);
-
-    } catch (error) {
-        await transaction.rollback();
-        console.error('Error al actualizar el vehículo:', error);
-        return NextResponse.json({ message: 'Error al actualizar el vehículo', error: error.message }, { status: 500 });
-    }
-}
-
-/**
- * DELETE para eliminar un vehículo (plantilla).
- */
-export async function DELETE(request) {
-    const transaction = await db.sequelize.transaction();
-    try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
-
-        if (!id) {
-            return NextResponse.json({ message: 'El ID del vehículo es requerido.' }, { status: 400 });
-        }
-
-        const vehiculo = await db.Vehiculo.findByPk(id);
-        if (!vehiculo) {
-            return NextResponse.json({ message: 'Vehículo no encontrado.' }, { status: 404 });
-        }
-
-        await vehiculo.destroy({ transaction });
-        await transaction.commit();
-        return NextResponse.json({ message: 'Vehículo eliminado correctamente.' });
-
-    } catch (error) {
-        await transaction.rollback();
-        console.error('Error al eliminar el vehículo:', error);
-        return NextResponse.json({ message: 'Error al eliminar el vehículo', error: error.message }, { status: 500 });
-    }
-}
-
-
-
-VehiculoInstancia.afterCreate(async (instancia, options) => {
-  const { Vehiculo, Subsistema, SubsistemaInstancia, ConsumibleRecomendado, Consumible, ConsumibleSerializado } = instancia.sequelize.models;
-
-  // 1. Buscar subsistemas de la plantilla
-  const subsistemas = await Subsistema.findAll({
-    where: { vehiculoId: instancia.vehiculoId },
-    include: [{ model: ConsumibleRecomendado, as: 'recomendados', include: [{ model: Consumible, as: 'consumible' }] }]
-  });
-
-  for (const subsistema of subsistemas) {
-    // 2. Crear subsistemaInstancia
-    const subsistemaInstancia = await SubsistemaInstancia.create({
-      vehiculoInstanciaId: instancia.id,
-      subsistemaId: subsistema.id,
-      nombre: subsistema.nombre
-    }, { transaction: options.transaction });
-
-    // 3. Copiar consumibles recomendados
-    for (const recomendado of subsistema.recomendados) {
-      const consumible = recomendado.consumible;
-
-      if (consumible.tipo === 'fungible') {
-        // Asignar cantidad fungible
-        await consumible.update({
-          stockAlmacen: consumible.stockAlmacen - recomendado.cantidad,
-          stockAsignado: consumible.stockAsignado + recomendado.cantidad
-        }, { transaction: options.transaction });
-
-        // Registrar asignación fungible
-        await instancia.sequelize.models.AsignacionConsumible.create({
-          subsistemaInstanciaId: subsistemaInstancia.id,
-          consumibleId: consumible.id,
-          cantidad: recomendado.cantidad,
-          estado: 'instalado'
-        }, { transaction: options.transaction });
-
-      } else if (consumible.tipo === 'serializado') {
-        // Buscar unidades disponibles
-        const unidades = await ConsumibleSerializado.findAll({
-          where: { consumibleId: consumible.id, estado: 'almacen' },
-          limit: recomendado.cantidad,
-          transaction: options.transaction
-        });
-
-        for (const unidad of unidades) {
-          await unidad.update({
-            estado: 'asignado',
-            subsistemaInstanciaId: subsistemaInstancia.id,
-            activoId: instancia.activoId
-          }, { transaction: options.transaction });
-
-          // Registrar asignación serializada
-          await instancia.sequelize.models.AsignacionConsumibleSerializado.create({
-            subsistemaInstanciaId: subsistemaInstancia.id,
-            consumibleSerializadoId: unidad.id,
-            estado: 'instalado'
-          }, { transaction: options.transaction });
-        }
-      }
-    }
-  }
-});

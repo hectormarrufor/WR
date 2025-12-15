@@ -44,5 +44,6 @@ ConsumibleSerializado.associate = (models) => {
     ConsumibleSerializado.belongsTo(models.Consumible, { foreignKey: 'consumibleId', as: 'consumible' });
     ConsumibleSerializado.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
     ConsumibleSerializado.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId', as: 'subsistemaInstancia' });
+    ConsumibleSerializado.hasOne(models.ConsumibleUsado, { foreignKey: 'consumibleSerializadoId' });
 }
 module.exports = ConsumibleSerializado;

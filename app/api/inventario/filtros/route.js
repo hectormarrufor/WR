@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function POST(request) {
     try {
         const data = await request.json();
-        const { posicion, ...rest } = data;
+        const { posicion, stock, stockMinimo, costoPromedio, ...rest } = data;
 
         const result = await db.sequelize.transaction(async (t) => {
             let nuevoFiltro;
@@ -21,7 +21,7 @@ export async function POST(request) {
                           data.tipo === "aire" ? "filtro de aire" :
                           data.tipo === "combustible" ? "filtro de combustible" :
                           data.tipo === "cabina" ? "filtro de cabina" : null,
-                descripcion: nuevoFiltro.descripcion,
+                stock: nuevoFiltro.descripcion,
                 cantidad: nuevoFiltro.cantidad,
                 tipo: "filtro",
                 filtroId: nuevoFiltro.id,

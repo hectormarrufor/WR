@@ -52,7 +52,7 @@ Consumible.associate = (models) => {
     Consumible.hasOne(models.Sensor, { foreignKey: 'consumibleId' });
     Consumible.hasOne(models.Correa, { foreignKey: 'consumibleId' });
     Consumible.hasMany(models.ConsumibleRecomendado, { foreignKey: 'consumibleId', as: 'recomendaciones' });
-
+    Consumible.hasMany(models.ConsumibleUsado, { foreignKey: 'consumibleId', as: 'usos' });
 
 
 

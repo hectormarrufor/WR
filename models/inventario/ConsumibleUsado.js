@@ -2,52 +2,43 @@
 const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../../sequelize');
 
-  const ConsumibleUsado = sequelize.define('ConsumibleUsado', {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    consumibleId: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'Consumibles',
-        key: 'id',
-      },
-      allowNull: false,
-    },
-    activoId:{
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'Activos',
-        key: 'id',
-      },
-    },
-    fechaInstalacion: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      allowNull: false,
-    },
-    // <--- CAMBIO CLAVE AQUI: AHORA APUNTA A TareaMantenimiento
-    tareaMantenimientoId: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'TareasMantenimiento', // Asegúrate que sea el nombre de la tabla de TareaMantenimiento
-        key: 'id',
-      },
-      allowNull: true, // Puede ser null si el uso no es para una tarea específica (ej. para un trabajo extra)
-    },
+const ConsumibleUsado = sequelize.define('ConsumibleUsado', {
+  cantidad: {
+    type: DataTypes.FLOAT, // Float por si usas litros de aceite, etc.
+    allowNull: false,
+    defaultValue: 1, // Para serializados siempre es 1. Para fungibles, la cantidad descontada.
+  },
+  fechaInstalacion: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+    allowNull: false,
+  },
+  vidaUtilInicial: {
+    type: DataTypes.FLOAT, // Vida útil en horas o kilómetros al momento de la instalación
+  }
 
-  }, {
-    tableName: 'ConsumiblesUsados',
-    timestamps: true,
-  });
 
-  ConsumibleUsado.associate = (models) => {
-    ConsumibleUsado.belongsTo(models.Consumible, { foreignKey: 'consumibleId', as: 'consumible' });
-    ConsumibleUsado.belongsTo(models.TareaMantenimiento, { foreignKey: 'tareaMantenimientoId', as: 'tareaMantenimiento' }); // <--- NUEVA ASOCIACIÓN
-    ConsumibleUsado.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
-  };
+}, {
+  tableName: 'ConsumiblesUsados',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['subsistemaInstanciaId']
+    },
+    {
+      fields: ['consumibleSerializadoId'],
+      unique: true, // Un ítem serializado físico no puede estar en dos sitios a la vez (mientras esté activo)
+      where: {
+        consumibleSerializadoId: { [DataTypes.Op.ne]: null }
+      }
+    }
+  ]
+});
 
-  module.exports = ConsumibleUsado;
+ConsumibleUsado.associate = (models) => {
+  ConsumibleUsado.belongsTo(models.ConsumibleSerializado, { foreignKey: 'consumibleSerializadoId' });
+  ConsumibleUsado.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId' });
+  ConsumibleUsado.belongsTo(models.Consumible, { foreignKey: 'consumibleId' });
+};
+
+module.exports = ConsumibleUsado;
