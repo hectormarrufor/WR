@@ -7,7 +7,7 @@ import {
   Stepper, Button, Group, Title, Paper, Text, 
   SimpleGrid, UnstyledButton, rem, ThemeIcon,
   Select, Modal, TextInput, NumberInput, ColorInput,
-  LoadingOverlay, ActionIcon, Stack, Divider, Alert
+  LoadingOverlay, Stack, Divider, Alert
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -15,12 +15,11 @@ import {
   IconTruck, IconTruckLoading, IconBackhoe, 
   IconPlus, IconCheck, IconAlertCircle, IconTool 
 } from '@tabler/icons-react';
-import { upload } from '@vercel/blob/client'; // Para subir la imagen desde el front
+import { upload } from '@vercel/blob/client'; 
 
-// Componentes propios
+// Componentes
 import ImageDropzone from '../components/ImageDropzone'; 
-import ModeloActivoForm from '../../modelos/components/ModeloActivoForm'; // Reutilizamos tu form existente
-import { http } from '@/app/ApiFunctions/httpServices'; // Tu servicio HTTP
+import ModeloActivoForm from '../../modelos/components/ModeloActivoForm'; 
 
 // --- PASO 1: SELECCIÓN DE TIPO ---
 const TipoSelector = ({ value, onChange }) => {
@@ -72,7 +71,7 @@ export default function CrearActivoPage() {
   // Datos para los selects
   const [modelosDisponibles, setModelosDisponibles] = useState([]);
   const [subsistemasPlantilla, setSubsistemasPlantilla] = useState([]);
-  const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]); // Para sugerencias
+  const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]); 
   
   // Estado para la imagen
   const [imagenFile, setImagenFile] = useState(null);
@@ -84,7 +83,6 @@ export default function CrearActivoPage() {
       codigoInterno: '',
       estado: 'Operativo',
       ubicacionActual: 'Base Principal',
-      // Campos específicos mezclados
       placa: '',
       serialCarroceria: '',
       serialMotor: '',
@@ -92,7 +90,6 @@ export default function CrearActivoPage() {
       anioFabricacion: new Date().getFullYear(),
       kilometrajeActual: 0,
       horometroActual: 0,
-      // Array de instalaciones
       instalacionesIniciales: [] // { subsistemaId, consumibleId }
     },
     validate: {
@@ -119,28 +116,23 @@ export default function CrearActivoPage() {
   const cargarModelos = async () => {
     setLoading(true);
     try {
-      // Endpoint que te sugiero crear o adaptar: GET /api/gestionMantenimiento/modelos?tipo=Vehiculo
-      // Por ahora usaré una lógica simulada o asumiré que tienes un endpoint de "plantillas"
-      // Si no tienes uno específico, podrías filtrar en el front, pero idealmente filtra en back.
-      // Aquí asumo que usas el endpoint genérico que te di antes o uno de catálogos.
-      
-      /* NOTA: Como no tengo tu endpoint exacto de "get all templates by type", 
-         asumiré que tienes uno o lo agregas. 
-         Si no, puedes usar el de /vehiculo, /remolque, /maquina por separado.
-      */
       let url = '';
       if (form.values.tipoActivo === 'Vehiculo') url = '/api/gestionMantenimiento/vehiculo';
       else if (form.values.tipoActivo === 'Remolque') url = '/api/gestionMantenimiento/remolque';
       else if (form.values.tipoActivo === 'Maquina') url = '/api/gestionMantenimiento/maquina';
 
-      const res = await http.get(url);
+      const response = await fetch(url);
+      const res = await response.json();
+
       if (res.success) {
-        // Mapeamos para el Select
         const lista = res.data.map(m => ({
           value: m.id.toString(),
           label: `${m.marca?.nombre || 'S/M'} ${m.modelo || m.tipoRemolque || ''} ${m.anio || ''}`
         }));
         setModelosDisponibles(lista);
+      } else {
+        console.warn('No se encontraron modelos:', res.message);
+        setModelosDisponibles([]);
       }
     } catch (error) {
       console.error(error);
@@ -153,25 +145,17 @@ export default function CrearActivoPage() {
   const cargarSubsistemasYRecomendaciones = async () => {
     setLoading(true);
     try {
-        // 1. Buscamos los Subsistemas definidos para este modelo
-        // Usamos el endpoint que creamos: GET /api/gestionMantenimiento/subsistemas?plantillaId=X&tipo=Y
-        // Si no lo tienes, puedes usar el endpoint de detalle del vehiculo/remolque
+        // 1. Cargar Subsistemas (Usando fetch)
+        const responseSub = await fetch(`/api/gestionMantenimiento/subsistemas?plantillaId=${form.values.plantillaId}&tipo=${form.values.tipoActivo}`);
+        const resSub = await responseSub.json();
         
-        let urlDetalle = '';
-        if (form.values.tipoActivo === 'Vehiculo') urlDetalle = `/api/gestionMantenimiento/vehiculo/${form.values.plantillaId}`;
-        // ... otros tipos ...
-
-        // SIMULACIÓN: Asumimos que traemos los subsistemas. 
-        // En tu implementación real, asegúrate de tener un endpoint que devuelva los subsistemas del modelo abstracto.
-        // Aquí voy a hacer un fetch simulado a 'subsistemas' filtrando (necesitas ajustar esto a tu API real)
-        const res = await http.get(`/api/gestionMantenimiento/subsistemas?plantillaId=${form.values.plantillaId}&tipo=${form.values.tipoActivo}`);
-        
-        if (res.success) {
-            setSubsistemasPlantilla(res.data);
+        if (resSub.success) {
+            setSubsistemasPlantilla(resSub.data);
             
-            // También cargamos consumibles recomendados o inventario general
-            // Esto es ideal para el Select de "Qué le pongo"
-            const resInv = await http.get('/api/inventario/consumibles'); // Trae todo el inventario
+            // 2. Cargar Inventario para sugerencias
+            const responseInv = await fetch('/api/inventario/consumibles'); 
+            const resInv = await responseInv.json();
+
             if(resInv.success) {
                 const stock = resInv.data.map(c => ({
                     value: c.id.toString(),
@@ -192,26 +176,22 @@ export default function CrearActivoPage() {
   const nextStep = () => setActive((current) => (current < 3 ? current + 1 : current));
   const prevStep = () => setActive((current) => (current > 0 ? current - 1 : current));
 
-  // Manejador Final: SUBIR IMAGEN + CREAR ACTIVO
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
         let imageUrl = null;
 
-        // 1. Subir Imagen a Vercel Blob (si existe)
         if (imagenFile) {
             const blob = await upload(imagenFile.name, imagenFile, {
                 access: 'public',
-                handleUploadUrl: '/api/upload', // Asegúrate de tener este helper o usa la url directa si tienes token
+                handleUploadUrl: '/api/upload',
             });
             imageUrl = blob.url;
         }
 
-        // 2. Preparar Payload
         const payload = {
             ...values,
             imagen: imageUrl,
-            // Convertir IDs a números
             plantillaId: parseInt(values.plantillaId),
             instalacionesIniciales: values.instalacionesIniciales.map(i => ({
                 subsistemaId: parseInt(i.subsistemaId),
@@ -220,14 +200,19 @@ export default function CrearActivoPage() {
             }))
         };
 
-        // 3. Enviar a la API Centralizada
-        const res = await http.post('/api/gestionMantenimiento/activos', payload);
+        const response = await fetch('/api/gestionMantenimiento/activos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const res = await response.json();
 
         if (res.success) {
             notifications.show({ title: 'Éxito', message: 'Activo creado correctamente', color: 'green' });
-            router.push(`/superuser/flota/activos/${res.data.id}`); // Redirigir al detalle
+            router.push(`/superuser/flota/activos/${res.data.id}`);
         } else {
-            throw new Error(res.error || 'Error al guardar');
+            throw new Error(res.error || 'Error al guardar activo');
         }
 
     } catch (error) {
@@ -249,6 +234,7 @@ export default function CrearActivoPage() {
         <LoadingOverlay visible={loading} />
         
         <Stepper active={active} onStepClick={setActive} allowNextStepsSelect={false}>
+          {/* PASO 1: TIPO */}
           <Stepper.Step label="Tipo" description="Categoría del activo">
             <Stack mt="xl" align="center">
               <Text size="lg" mb="md">¿Qué tipo de activo deseas registrar?</Text>
@@ -256,13 +242,14 @@ export default function CrearActivoPage() {
                 value={form.values.tipoActivo} 
                 onChange={(val) => {
                   form.setFieldValue('tipoActivo', val);
-                  form.setFieldValue('plantillaId', ''); // Reset modelo si cambia tipo
+                  form.setFieldValue('plantillaId', '');
                   nextStep();
                 }} 
               />
             </Stack>
           </Stepper.Step>
 
+          {/* PASO 2: MODELO */}
           <Stepper.Step label="Modelo" description="Selección de plantilla">
              <Stack mt="xl" maxW={600} mx="auto">
                 <Text>Selecciona el modelo base para este {form.values.tipoActivo?.toLowerCase()}:</Text>
@@ -294,16 +281,12 @@ export default function CrearActivoPage() {
              </Stack>
           </Stepper.Step>
 
+          {/* PASO 3: DETALLES */}
           <Stepper.Step label="Detalles" description="Datos específicos">
             <SimpleGrid cols={{ base: 1, sm: 2 }} mt="xl" spacing="xl">
-                {/* COLUMNA IZQUIERDA: FORMULARIO */}
                 <Stack>
                     <TextInput label="Código Interno" placeholder="ej. V-045" required {...form.getInputProps('codigoInterno')} />
-                    <Select 
-                        label="Estado Inicial" 
-                        data={['Operativo', 'En Mantenimiento', 'Inactivo']} 
-                        {...form.getInputProps('estado')} 
-                    />
+                    <Select label="Estado Inicial" data={['Operativo', 'En Mantenimiento', 'Inactivo']} {...form.getInputProps('estado')} />
                     <TextInput label="Ubicación" placeholder="Base Principal" {...form.getInputProps('ubicacionActual')} />
                     
                     <Divider my="sm" label="Identificación" />
@@ -329,12 +312,11 @@ export default function CrearActivoPage() {
                     )}
                 </Stack>
 
-                {/* COLUMNA DERECHA: FOTO */}
                 <Stack>
                     <Text fw={500} size="sm">Fotografía del Activo</Text>
                     <ImageDropzone 
                         value={imagenFile} 
-                        onChange={setImagenFile} // Asumiendo que Dropzone devuelve el File
+                        onChange={setImagenFile} 
                         height={300}
                     />
                     {imagenFile && <Text size="xs" c="dimmed" align="center">Archivo listo para subir: {imagenFile.name}</Text>}
@@ -342,20 +324,18 @@ export default function CrearActivoPage() {
             </SimpleGrid>
           </Stepper.Step>
 
+          {/* PASO 4: CONFIGURACIÓN */}
           <Stepper.Step label="Configuración" description="Subsistemas iniciales">
             <Stack mt="xl">
                 <Alert icon={<IconTool size={16}/>} title="Instalación Inicial de Componentes">
-                    El modelo seleccionado tiene definidos los siguientes subsistemas. 
-                    Si conoces qué consumibles (filtros, correas, baterías) tiene instalados actualmente, selecciónalos aquí.
-                    Si no, puedes dejarlos vacíos e instalarlos luego.
+                    Selecciona los componentes instalados si los conoces. Si no, déjalos vacíos.
                 </Alert>
 
                 {subsistemasPlantilla.length === 0 ? (
-                    <Text c="dimmed" align="center" py="xl">Este modelo no tiene subsistemas definidos (Motor, Frenos, etc.). Puedes crearlos luego en "Editar Modelo".</Text>
+                    <Text c="dimmed" align="center" py="xl">Este modelo no tiene subsistemas definidos. Puedes crearlos luego.</Text>
                 ) : (
                     <SimpleGrid cols={1} spacing="md">
                         {subsistemasPlantilla.map((sub) => {
-                            // Buscar si ya seleccionamos algo para este subsistema
                             const instalacionActual = form.values.instalacionesIniciales.find(i => i.subsistemaId === sub.id);
                             
                             return (
@@ -363,12 +343,11 @@ export default function CrearActivoPage() {
                                     <Stack gap={0}>
                                         <Text fw={600}>{sub.nombre}</Text>
                                         <Text size="xs" c="dimmed">{sub.descripcion || 'Sin descripción'}</Text>
-                                        {/* Aquí podrías mostrar la recomendación teórica si la trajiste del back */}
                                     </Stack>
 
                                     <Select 
                                         placeholder="Seleccionar pieza instalada..."
-                                        data={consumiblesCompatibles} // Aquí deberías filtrar por tipo si tuvieras la metadata
+                                        data={consumiblesCompatibles} 
                                         searchable
                                         clearable
                                         style={{ width: 300 }}
@@ -382,7 +361,6 @@ export default function CrearActivoPage() {
                                                 if (index >= 0) currentList[index] = newItem;
                                                 else currentList.push(newItem);
                                             } else {
-                                                // Si limpia el select, removemos
                                                 if (index >= 0) currentList.splice(index, 1);
                                             }
                                             form.setFieldValue('instalacionesIniciales', currentList);
@@ -403,8 +381,7 @@ export default function CrearActivoPage() {
                 </ThemeIcon>
                 <Title order={3}>¡Todo listo!</Title>
                 <Text c="dimmed" align="center" maxW={500}>
-                    Estás a punto de crear el activo <b>{form.values.codigoInterno}</b> ({form.values.tipoActivo}).
-                    Se generarán automáticamente las instancias de sus subsistemas y se registrará la instalación de {form.values.instalacionesIniciales.length} componentes iniciales.
+                    Estás a punto de crear el activo <b>{form.values.codigoInterno}</b>.
                 </Text>
                 <Button size="lg" onClick={() => handleSubmit(form.values)} loading={loading}>
                     Confirmar y Crear Activo
@@ -413,13 +390,11 @@ export default function CrearActivoPage() {
           </Stepper.Completed>
         </Stepper>
 
-        {/* BOTONES DE NAVEGACIÓN (Solo si no está completado) */}
         {active < 4 && (
             <Group justify="right" mt="xl">
                 {active > 0 && <Button variant="default" onClick={prevStep}>Atrás</Button>}
                 {active < 3 && (
                     <Button onClick={() => {
-                        // Validaciones manuales por paso
                         if(active === 0 && !form.values.tipoActivo) return form.validateField('tipoActivo');
                         if(active === 1 && !form.values.plantillaId) return form.validateField('plantillaId');
                         nextStep();
@@ -434,21 +409,19 @@ export default function CrearActivoPage() {
         )}
       </Paper>
 
-      {/* MODAL PARA CREAR MODELO ON-THE-FLY */}
       <Modal 
         opened={modalModeloOpen} 
+        fullScreen
         onClose={() => setModalModeloOpen(false)}
-        title={`Crear Nuevo Modelo de ${form.values.tipoActivo}`}
+        title={`Definir Nuevo Modelo de ${form.values.tipoActivo}`}
         size="lg"
       >
         <ModeloActivoForm 
             tipoPreseleccionado={form.values.tipoActivo}
             onSuccess={(nuevoModelo) => {
-                // Callback mágico: Se cierra el modal y se selecciona el nuevo modelo
                 cargarModelos().then(() => {
                     form.setFieldValue('plantillaId', nuevoModelo.id.toString());
                     setModalModeloOpen(false);
-                    notifications.show({ message: 'Modelo creado y seleccionado', color: 'blue' });
                 });
             }}
             onCancel={() => setModalModeloOpen(false)}

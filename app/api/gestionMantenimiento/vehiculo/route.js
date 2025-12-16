@@ -136,7 +136,15 @@ async function buscarHermanosEquivalentes(consumible, transaction) {
 // ----------------------------------------------------------------------
 // MAIN HANDLER
 // ----------------------------------------------------------------------
-
+// GET: Listar Plantillas de Vehículos
+export async function GET(request) {
+    try {
+        const vehiculos = await Vehiculo.findAll();
+        return NextResponse.json({ success: true, data: vehiculos });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+}
 export async function POST(request) {
     const t = await sequelize.transaction();
 

@@ -6,7 +6,8 @@ const sequelize = new Sequelize(
   process.env.NODE_ENVIRONMENT === "DEVELOPMENT" ? process.env.DB_URI_LOCAL : process.env.DB_URI,
   {
     dialect: 'postgres',
-    logging: (msg) => console.log(`[SEQUELIZE SQL]: ${msg}`),
+    // logging: (msg) => console.log(`[SEQUELIZE SQL]: ${msg}`),
+    logging: false,
     dialectOptions: {
       ssl: process.env.NODE_ENVIRONMENT === "DEVELOPMENT" ? false : {
         require: true,

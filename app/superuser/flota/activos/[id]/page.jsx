@@ -4,9 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Paper, Title, Text, Group, Button, Loader, Alert, Grid, Badge, Divider, Image, Center, Stack } from '@mantine/core';
 import { IconTool, IconClipboardCheck, IconPencil, IconPhotoOff, IconBook } from '@tabler/icons-react';
-import RenderActivoDetails from '../components/RenderActivoDetails';
 import HallazgosPendientes from './inspecciones/HallazgosPendientes';
-import PaddedPaper from '../../components/PaddedPaper';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function DetalleActivoPage() {
@@ -50,7 +48,7 @@ export default function DetalleActivoPage() {
     if (!activo) return <Alert color="yellow" title="Aviso">No se encontraron datos para el activo.</Alert>;
 
     return (
-        <PaddedPaper>
+        <Paper>
             <Title order={2}>Detalles del activo {activo.codigoActivo}</Title>
             <Title order={4} mb={20}>Modelo: {activo.modelo.nombre}</Title>
 
@@ -121,11 +119,10 @@ export default function DetalleActivoPage() {
 
 
             <Paper p="lg"   radius="md" mt={10}>
-                <RenderActivoDetails
-                    schema={Object.values(activo.modelo.especificaciones)}
-                    data={activo.datosPersonalizados}
-                />
+               <div>
+                <Title order={4} mb={20}>Información Detallada del Activo</Title>
+               </div>
             </Paper>
-        </PaddedPaper>
+        </Paper>
     );
 }

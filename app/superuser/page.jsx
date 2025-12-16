@@ -15,7 +15,6 @@ import {
 } from '@tabler/icons-react';
 import './superuser.css';
 import { useAuth } from '@/hooks/useAuth';
-import PaddedPaper from './flota/components/PaddedPaper';
 import { eliminarTodasSuscripcionesInactivas } from '../handlers/push';
 
 export default function SuperUserHome() {
@@ -96,7 +95,7 @@ export default function SuperUserHome() {
     ];
 
     return (
-        <PaddedPaper>
+        <Paper>
             {isLoading ?
                 <Center>
                     <Loader />
@@ -166,6 +165,6 @@ export default function SuperUserHome() {
                         </Button>
                     </Flex>
                 </>}
-        </PaddedPaper>
+        </Paper>
     );
 }

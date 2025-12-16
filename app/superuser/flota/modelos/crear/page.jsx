@@ -1,5 +1,4 @@
-import ModeloActivoForm from '../components/ModeloActivoForm';
-
+'use client';
 export default function CrearModeloPage() {
-  return <ModeloActivoForm />;
+    return <div>Crear Modelo Page</div>;
 }
