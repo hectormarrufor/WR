@@ -11,7 +11,7 @@ Subsistema.associate = (models) => {
   Subsistema.belongsTo(models.Maquina, { foreignKey: 'maquinaId', as: 'maquina' });
   Subsistema.belongsTo(models.Remolque, { foreignKey: 'remolqueId', as: 'remolque' });
   Subsistema.hasMany(models.SubsistemaInstancia, { foreignKey: 'subsistemaId', as: 'instancias' });
-  Subsistema.hasMany(models.ConsumibleRecomendado, { foreignKey: 'subsistemaId', as: 'recomendados' });
+  Subsistema.hasMany(models.ConsumibleRecomendado, { foreignKey: 'subsistemaId', as: 'listaRecomendada' });
 }
 
 Subsistema.afterCreate(async (subsistema, options) => {

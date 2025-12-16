@@ -9,9 +9,11 @@ const SubsistemaInstancia = sequelize.define('SubsistemaInstancia', {
 
 SubsistemaInstancia.associate = (models) => {
   SubsistemaInstancia.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'vehiculoInstancia' });
+  SubsistemaInstancia.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'maquinaInstancia' });
+  SubsistemaInstancia.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'remolqueInstancia' });
   SubsistemaInstancia.belongsTo(models.Subsistema, { foreignKey: 'subsistemaId', as: 'subsistemaPlantilla' });
   SubsistemaInstancia.hasMany(models.Consumible, { foreignKey: 'subsistemaInstanciaId', as: 'consumibles' });
   SubsistemaInstancia.hasMany(models.ConsumibleSerializado, { foreignKey: 'subsistemaInstanciaId', as: 'consumiblesSerializados' });
-  SubsistemaInstancia.hasMany(models.ConsumibleUsado, { foreignKey: 'subsistemaInstanciaId', as: 'consumiblesUsados' });
+  SubsistemaInstancia.hasMany(models.ConsumibleUsado, { foreignKey: 'subsistemaInstanciaId', as: 'instalaciones' });
 };
 module.exports = SubsistemaInstancia;

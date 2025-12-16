@@ -1,76 +1,62 @@
-// app/models/gestionMantenimiento/Activo.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const Activo = sequelize.define('Activo', {
-    nombre: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-    },
-    grupo: {
-        type: DataTypes.ENUM(
-            'vehiculo',
-            'remolque',
-            'maquina',
-            'generador',
-            'otro'
-        ),
-    },
-    categoria: {
-        type: DataTypes.ENUM(
-            'chuto',
-            'vaccum',
-            'batea',
-            'montacargas',
-            'camioneta',
-            'maquina de soldar',
-            'retroexcavadora',
-            'planta electrica',
-            'otro',
-            "bomba de agua"
-        ),
-        allowNull: false,
-    },
-    estadoOperativo: {
-        type: DataTypes.ENUM('Operativo', 'No operativo', 'Operativo con advertencias'),
-        allowNull: false,
-        defaultValue: 'Operativo',
-    },
-    valor: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: true,
-    },
-    imagen: {
-        type: DataTypes.TEXT, // Usamos TEXT para almacenar la imagen en formato Base64
-        allowNull: true,
-    },
+  codigoInterno: { // Tu identificador único de empresa (Ej: V-01, M-04)
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false
+  },
+  tipoActivo: {
+    type: DataTypes.ENUM('Vehiculo', 'Remolque', 'Maquina'),
+    allowNull: false
+  },
+  imagen: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  estado: {
+    type: DataTypes.ENUM('Operativo', 'En Mantenimiento', 'Inactivo', 'Desincorporado'),
+    defaultValue: 'Operativo'
+  },
+  ubicacionActual: {
+    type: DataTypes.STRING,
+    defaultValue: 'Base Principal'
+  },
+  // CLAVES FORÁNEAS (Solo una estará llena)
+  vehiculoInstanciaId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'vehiculo_instancias', key: 'id' }
+  },
+  remolqueInstanciaId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'remolque_instancias', key: 'id' }
+  },
+  maquinaInstanciaId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'maquina_instancias', key: 'id' }
+  }
 }, {
-    tableName: 'Activos',
-    timestamps: true,
+  tableName: 'activos',
+  timestamps: true,
+  indexes: [
+    { unique: true, fields: ['vehiculoInstanciaId'], where: { vehiculoInstanciaId: { [DataTypes.Op.ne]: null } } },
+    { unique: true, fields: ['remolqueInstanciaId'], where: { remolqueInstanciaId: { [DataTypes.Op.ne]: null } } },
+    { unique: true, fields: ['maquinaInstanciaId'], where: { maquinaInstanciaId: { [DataTypes.Op.ne]: null } } }
+  ]
 });
 
 Activo.associate = (models) => {
-    Activo.hasMany(models.ConsumibleSerializado, { foreignKey: 'activoId', as: 'consumiblesSerializados' });
-
-    Activo.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'instancia' });
-    Activo.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'instancia' });
-    Activo.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'instancia' });
-
-
-
-    Activo.hasMany(models.Inspeccion, {
-        foreignKey: 'activoId',
-        as: 'inspecciones'
-    });
-    Activo.hasMany(models.Hallazgo, {
-        foreignKey: 'activoId',
-        as: 'hallazgos'
-    });
-    Activo.hasMany(models.Mantenimiento, {
-        foreignKey: 'activoId',
-        as: 'mantenimientos'
-    });
-};
+    Activo.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'vehiculoInstancia' });
+    Activo.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'remolqueInstancia' });
+    Activo.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'maquinaInstancia' });
+    Activo.hasMany(models.Mantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
+    Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
+    Activo.hasMany(models.ConsumibleUsado, { foreignKey: 'activoId', as: 'consumiblesUsados' });
+    Activo.hasMany(models.SubsistemaInstancia, { foreignKey: 'activoId', as: 'subsistemasInstancia' });
+}
 
 module.exports = Activo;

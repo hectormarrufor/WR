@@ -1,182 +1,164 @@
-import db from '@/models';
 import { NextResponse } from 'next/server';
-import { del } from '@vercel/blob';
+import sequelize from '@/sequelize';
+import { del } from '@vercel/blob'; // Solo se usa en DELETE
+import { 
+    Activo, 
+    VehiculoInstancia, 
+    RemolqueInstancia, 
+    MaquinaInstancia,
+    SubsistemaInstancia,
+    OrdenMantenimiento,
+    Inspeccion,
+    Vehiculo, Remolque, Maquina
+} from '@/models';
 
-// Reutilizamos la función helper que creamos para poblar la jerarquía de modelos.
-// Puedes mover esta función a un archivo de 'utils' para no repetirla.
-async function poblarComponentesRecursivo(especificaciones, visited = new Set()) {
-    const especificacionesPobladas = JSON.parse(JSON.stringify(especificaciones));
-    for (const attrId in especificacionesPobladas) {
-        const atributo = especificacionesPobladas[attrId];
-        if (atributo.dataType === 'object' && atributo.definicion) {
-            const defObjeto = Array.isArray(atributo.definicion) ? atributo.definicion.reduce((acc, item) => ({ ...acc, [item.id]: item }), {}) : atributo.definicion;
-            atributo.definicion = await poblarComponentesRecursivo(defObjeto, visited);
-        }
-        if (atributo.dataType === 'grupo' && atributo.refId) {
-            if (visited.has(atributo.refId)) {
-                atributo.componente = { error: 'Referencia circular detectada', id: atributo.refId };
-                continue;
-            }
-            visited.add(atributo.refId);
-            const componente = await db.Modelo.findByPk(atributo.refId, {
-                include: [{ model: db.Categoria, as: 'categoria', attributes: ['id', 'nombre'] }]
-            });
-            if (componente) {
-                const especificacionesComponentePobladas = await poblarComponentesRecursivo(componente.especificaciones, new Set(visited));
-                atributo.componente = { ...componente.toJSON(), especificaciones: especificacionesComponentePobladas };
-            }
-        }
-    }
-    return especificacionesPobladas;
-}
-
-
-/**
- * GET para obtener un activo específico y la estructura completa de su modelo.
- */
+// ----------------------------------------------------------------------
+// GET: Obtener Expediente Completo
+// ----------------------------------------------------------------------
 export async function GET(request, { params }) {
-    const { id } = await params;
-    try {
-        const activo = await db.Activo.findByPk(id, {
-            include: [{
-                model: db.Modelo,
-                as: 'modelo',
-            },
+    const { id } = params;
 
-            {
-                model: db.Kilometraje,
-                as: 'kilometrajes',
-                attributes: ['id', 'fecha_registro', 'valor'],
-                order: [['fecha_registro', 'DESC']],
-                limit: 1 // Solo queremos el último registro de kilometraje
-            },
-            {
-                model: db.Horometro,
-                as: 'horometros',
-                attributes: ['id', 'fecha_registro', 'valor'],
-                order: [['fecha_registro', 'DESC']],
-                limit: 1 // Solo queremos el último registro de horómetro
-            },
-            {
-                model: db.Hallazgo,
-                as: 'hallazgos',
-                // Solo queremos los hallazgos que aún no se han resuelto.
-                where: { estado: 'Pendiente' },
-                required: false, // Importante: si no hay hallazgos pendientes, el activo se debe mostrar igual.
-                include: [{ model: db.Inspeccion, as: 'inspeccion',
-                    include: [{ model: db.User, as: 'inspector', attributes: ['empleadoId'],
-                        include: [{ model: db.Empleado, as: 'empleado', attributes: ['nombre', 'apellido'] }]   
-                     }]
-                 }] // Traemos la inspección asociada al hallazgo
-            }
+    try {
+        const activo = await Activo.findByPk(id, {
+            include: [
+                {
+                    model: VehiculoInstancia,
+                    as: 'detalleVehiculo',
+                    include: [{ model: Vehiculo, as: 'plantilla' }]
+                },
+                {
+                    model: RemolqueInstancia,
+                    as: 'detalleRemolque',
+                    include: [{ model: Remolque, as: 'plantilla' }]
+                },
+                {
+                    model: MaquinaInstancia,
+                    as: 'detalleMaquina',
+                    include: [{ model: Maquina, as: 'plantilla' }]
+                },
+                {
+                    model: SubsistemaInstancia,
+                    as: 'subsistemas'
+                },
+                {
+                    model: OrdenMantenimiento,
+                    as: 'ordenesMantenimiento',
+                    limit: 5,
+                    order: [['createdAt', 'DESC']]
+                },
+                {
+                    model: Inspeccion,
+                    as: 'inspecciones',
+                    limit: 5,
+                    order: [['createdAt', 'DESC']]
+                }
             ]
         });
 
         if (!activo) {
-            return NextResponse.json({ message: 'Activo no encontrado' }, { status: 404 });
+            return NextResponse.json({ success: false, message: 'Activo no encontrado' }, { status: 404 });
         }
 
-        // Una vez que tenemos el activo y su modelo base, poblamos la jerarquía del modelo.
-        const especificacionesPobladas = await poblarComponentesRecursivo(activo.modelo.especificaciones);
+        return NextResponse.json({ success: true, data: activo });
 
-        const resultadoFinal = {
-            ...activo.toJSON(),
-            modelo: {
-                ...activo.modelo.toJSON(),
-                especificaciones: especificacionesPobladas,
-            }
-        };
-
-        return NextResponse.json(resultadoFinal);
     } catch (error) {
-        console.error(`Error al obtener el activo ${id}:`, error);
-        return NextResponse.json({ message: 'Error al obtener el activo', error: error.message }, { status: 500 });
+        console.error("Error fetching activo:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
 
+// ----------------------------------------------------------------------
+// PUT: Actualizar (Sin borrar imagen anterior en Vercel Blob)
+// ----------------------------------------------------------------------
 export async function PUT(request, { params }) {
-  const { id } = params;
-  const transaction = await db.sequelize.transaction();
-  try {
-    const body = await request.json();
+    const { id } = params;
+    const t = await sequelize.transaction();
 
-    const activoExistente = await db.Activo.findByPk(id, { transaction });
-    if (!activoExistente) {
-      await transaction.rollback();
-      return NextResponse.json({ message: 'Activo no encontrado' }, { status: 404 });
-    }
-
-    const urlImagenAntigua = activoExistente.imagen;
-
-    // Actualizamos el registro del activo (body debe contener los campos permitidos)
-    await activoExistente.update(body, { transaction });
-
-    // Si la URL de imagen cambió y había una antigua, la eliminamos
-    const urlImagenNueva = body.imagen;
-    if (urlImagenNueva !== urlImagenAntigua && urlImagenAntigua) {
-      try {
-        await del(urlImagenAntigua);
-      } catch (blobErr) {
-        console.error('Error eliminando imagen antigua del blob:', blobErr);
-      }
-    }
-
-    await transaction.commit();
-    console.log(`[SUCCESS]: Activo ${id} actualizado correctamente.`);
-    return NextResponse.json({ message: 'Activo actualizado correctamente.' }, { status: 200 });
-  } catch (error) {
-    await transaction.rollback();
-    console.log(`[ERROR]: Error al actualizar activo: ${error.message}`);
-    return NextResponse.json({ message: 'Error al actualizar el activo', error: error.message }, { status: 500 });
-  }
-}
-
-
-export async function DELETE(request, { params }) {
-    const { id } = await params;
-    const transaction = await db.sequelize.transaction();
     try {
-        await db.Kilometraje.destroy({
-            where: { activoId: id },
-            transaction
-        });
+        const activo = await Activo.findByPk(id, { transaction: t });
+        if (!activo) throw new Error('Activo no encontrado');
 
-        await db.Horometro.destroy({
-            where: { activoId: id },
-            transaction
-        });
-        await db.Hallazgo.destroy({
-            where: { activoId: id },
-            transaction
-        });
-        
-        const activoAEliminar = await db.Activo.findByPk(id, { transaction });
-        if (!activoAEliminar) {
-            await transaction.rollback();
-            return NextResponse.json({ message: 'Activo no encontrado' }, { status: 404 });
+        const body = await request.json();
+        const { 
+            codigoInterno, estado, ubicacionActual, imagen,
+            placa, serialCarroceria, serialMotor, color, kilometrajeActual, horometroActual 
+        } = body;
+
+        // 1. Actualizar Activo Padre
+        // Simplemente actualizamos el string de la URL si viene uno nuevo
+        await activo.update({
+            codigoInterno: codigoInterno || activo.codigoInterno,
+            estado: estado || activo.estado,
+            ubicacionActual: ubicacionActual || activo.ubicacionActual,
+            imagen: imagen !== undefined ? imagen : activo.imagen 
+        }, { transaction: t });
+
+        // 2. Actualizar Instancia Hija
+        if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
+            await VehiculoInstancia.update({
+                placa, serialCarroceria, serialMotor, color, kilometrajeActual, horometroActual
+            }, { where: { id: activo.vehiculoInstanciaId }, transaction: t });
+        }
+        else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
+            await RemolqueInstancia.update({
+                placa, color
+            }, { where: { id: activo.remolqueInstanciaId }, transaction: t });
+        }
+        else if (activo.tipoActivo === 'Maquina' && activo.maquinaInstanciaId) {
+            await MaquinaInstancia.update({
+                serialMotor, horometroActual
+            }, { where: { id: activo.maquinaInstanciaId }, transaction: t });
         }
 
-        const urlImagenAEliminar = activoAEliminar.imagen;
-
-        // 1. Eliminamos el registro del activo de la base de datos.
-        await activoAEliminar.destroy({ transaction });
-
-        // 2. ✨ LÓGICA DE ELIMINACIÓN DE BLOB ✨
-        // Si el activo tenía una URL de imagen...
-        if (urlImagenAEliminar) {
-            // ...la eliminamos de Vercel Blob.
-            // Esto se hace después de confirmar la transacción de la BD.
-            await del(urlImagenAEliminar);
-        }
-
-        await transaction.commit();
-        console.log(`\x1b[32m [SUCCESS]: Activo ${id} eliminado correctamente. \x1b[0m`);
-        return NextResponse.json({ message: 'Activo eliminado correctamente.' }, { status: 200 });
+        await t.commit();
+        return NextResponse.json({ success: true, message: 'Activo actualizado', data: activo });
 
     } catch (error) {
-        await transaction.rollback();
-        console.log(`\x1b[41m [ERROR]: Error al eliminar el activo: ${error.message} \x1b[0m`);
-        return NextResponse.json({ message: 'Error al eliminar el activo', error: error.message }, { status: 500 });
+        await t.rollback();
+        console.error("Error actualizando activo:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+}
 
+// ----------------------------------------------------------------------
+// DELETE: Eliminar Activo (Aquí SÍ borramos la imagen)
+// ----------------------------------------------------------------------
+export async function DELETE(request, { params }) {
+    const { id } = params;
+    const t = await sequelize.transaction();
+
+    try {
+        const activo = await Activo.findByPk(id, { transaction: t });
+        if (!activo) throw new Error('Activo no encontrado');
+
+        // 1. Eliminar imagen de Vercel Blob (Limpieza)
+        if (activo.imagen) {
+            try {
+                await del(activo.imagen);
+            } catch (e) {
+                console.warn("Advertencia: No se pudo borrar imagen del blob:", e.message);
+                // Continuamos con el borrado de BD aunque falle el blob
+            }
+        }
+
+        // 2. Eliminar Instancia Hija
+        if (activo.tipoActivo === 'Vehiculo') {
+            await VehiculoInstancia.destroy({ where: { id: activo.vehiculoInstanciaId }, transaction: t });
+        } else if (activo.tipoActivo === 'Remolque') {
+            await RemolqueInstancia.destroy({ where: { id: activo.remolqueInstanciaId }, transaction: t });
+        } else if (activo.tipoActivo === 'Maquina') {
+            await MaquinaInstancia.destroy({ where: { id: activo.maquinaInstanciaId }, transaction: t });
+        }
+
+        // 3. Eliminar el Activo Padre
+        await activo.destroy({ transaction: t });
+
+        await t.commit();
+        return NextResponse.json({ success: true, message: 'Activo eliminado correctamente' });
+
+    } catch (error) {
+        await t.rollback();
+        console.error("Error eliminando activo:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

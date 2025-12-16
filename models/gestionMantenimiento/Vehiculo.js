@@ -7,7 +7,7 @@ const Vehiculo = sequelize.define('Vehiculo', {
 });
 
 Vehiculo.associate = (models) => {
-  Vehiculo.hasMany(models.InstanciaVehiculo, { foreignKey: 'vehiculoId', as: 'instancias' });
+  Vehiculo.hasMany(models.VehiculoInstancia, { foreignKey: 'vehiculoId', as: 'instancias' });
   Vehiculo.hasMany(models.Subsistema, { foreignKey: 'vehiculoId', as: 'subsistemas' });
 }
 module.exports = Vehiculo;

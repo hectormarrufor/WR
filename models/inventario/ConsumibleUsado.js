@@ -36,9 +36,10 @@ const ConsumibleUsado = sequelize.define('ConsumibleUsado', {
 });
 
 ConsumibleUsado.associate = (models) => {
-  ConsumibleUsado.belongsTo(models.ConsumibleSerializado, { foreignKey: 'consumibleSerializadoId' });
+  ConsumibleUsado.belongsTo(models.ConsumibleSerializado, { foreignKey: 'consumibleSerializadoId', as: 'serializado' });
   ConsumibleUsado.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId' });
-  ConsumibleUsado.belongsTo(models.Consumible, { foreignKey: 'consumibleId' });
+  ConsumibleUsado.belongsTo(models.Consumible, { foreignKey: 'consumibleId' , as: 'consumible'});
+  ConsumibleUsado.belongsTo(models.TareaMantenimiento, { foreignKey: 'tareaMantenimientoId' });
 };
 
 module.exports = ConsumibleUsado;
