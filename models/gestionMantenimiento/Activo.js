@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const Activo = sequelize.define('Activo', {
@@ -24,28 +24,15 @@ const Activo = sequelize.define('Activo', {
     defaultValue: 'Base Principal'
   },
   // CLAVES FORÁNEAS (Solo una estará llena)
-  vehiculoInstanciaId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: { model: 'vehiculo_instancias', key: 'id' }
-  },
-  remolqueInstanciaId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: { model: 'remolque_instancias', key: 'id' }
-  },
-  maquinaInstanciaId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: { model: 'maquina_instancias', key: 'id' }
-  }
+
+ 
 }, {
-  tableName: 'activos',
+  tableName: 'Activos',
   timestamps: true,
   indexes: [
-    { unique: true, fields: ['vehiculoInstanciaId'], where: { vehiculoInstanciaId: { [DataTypes.Op.ne]: null } } },
-    { unique: true, fields: ['remolqueInstanciaId'], where: { remolqueInstanciaId: { [DataTypes.Op.ne]: null } } },
-    { unique: true, fields: ['maquinaInstanciaId'], where: { maquinaInstanciaId: { [DataTypes.Op.ne]: null } } }
+    { unique: true, fields: ['vehiculoInstanciaId'], where: { vehiculoInstanciaId: { [Op.ne]: null } } },
+    { unique: true, fields: ['remolqueInstanciaId'], where: { remolqueInstanciaId: { [Op.ne]: null } } },
+    { unique: true, fields: ['maquinaInstanciaId'], where: { maquinaInstanciaId: { [Op.ne]: null } } }
   ]
 });
 

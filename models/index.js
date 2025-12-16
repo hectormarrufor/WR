@@ -13,6 +13,7 @@ const db = {
     PushSubscription: require('./pushSubscription'),
     
     // FLOTA Y GESTION DE MANTENIMIENTO
+    VehiculoInstancia: require('./gestionMantenimiento/VehiculoInstancia'),
     Activo: require('./gestionMantenimiento/Activo'),
     Hallazgo: require('./gestionMantenimiento/Hallazgo'),
     Mantenimiento: require('./gestionMantenimiento/mantenimiento'),
@@ -22,10 +23,11 @@ const db = {
     Horometro: require('./gestionMantenimiento/Horometro'),
     SubsistemaInstancia: require('./gestionMantenimiento/SubsistemaInstancia'),
     Subsistema: require('./gestionMantenimiento/Subsistema'),
-    VehiculoInstancia: require('./gestionMantenimiento/VehiculoInstancia'),
     Vehiculo: require('./gestionMantenimiento/Vehiculo'),
     Remolque: require('./gestionMantenimiento/Remolque'),
     RemolqueInstancia: require('./gestionMantenimiento/RemolqueInstancia'),
+    Maquina: require('./gestionMantenimiento/Maquina'),
+    MaquinaInstancia: require('./gestionMantenimiento/MaquinaInstancia'),
     
     // INVENTARIO
     Consumible: require('./inventario/Consumible'),

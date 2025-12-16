@@ -7,15 +7,11 @@ const RemolqueInstancia = sequelize.define('RemolqueInstancia', {
   serialChasis: { type: DataTypes.STRING, allowNull: false },
   serialMotor: { type: DataTypes.STRING, allowNull: false },
 }, {
-  tableName: 'InstanciasRemolques'
+  tableName: 'RemolquesInstancias'
 });
 
 RemolqueInstancia.associate = (models) => {
   RemolqueInstancia.belongsTo(models.Remolque, { foreignKey: 'remolqueId', as: 'plantilla' });
-  RemolqueInstancia.hasMany(models.SubsistemaInstancia, { foreignKey: 'remolqueInstanciaId', as: 'subsistemas' });
-  RemolqueInstancia.hasMany(models.Mantenimiento, { foreignKey: 'remolqueInstanciaId', as: 'mantenimientos' });
-  RemolqueInstancia.hasMany(models.ConsumibleUsado, { foreignKey: 'remolqueInstanciaId', as: 'consumiblesUsados' });
-  RemolqueInstancia.hasMany(models.Inspeccion, { foreignKey: 'remolqueInstanciaId', as: 'inspecciones' });
   RemolqueInstancia.hasOne(models.Activo, { foreignKey: 'remolqueInstanciaId', as: 'activo' });
 }
 

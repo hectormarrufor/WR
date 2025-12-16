@@ -25,27 +25,17 @@ const sequelize = require('../../sequelize');
       },
       allowNull: false,
     },
-    fechaAsignacion: {
-      type: DataTypes.DATEONLY,
-      defaultValue: DataTypes.NOW,
-    },
-    fechaFin: {
-      type: DataTypes.DATEONLY,
-      allowNull: true,
-    },
+
   }, {
     tableName: 'EmpleadoPuestos',
     timestamps: true,
     // Asegurarse de que un empleado no tenga el mismo puesto activo dos veces al mismo tiempo
     indexes: [
-        {
-            unique: true,
-            fields: ['empleadoId', 'puestoId'],
-            where: {
-                fechaFin: null // Solo para asignaciones activas
-            }
-        }
-    ]
+      {
+        unique: true,
+        fields: ['empleadoId', 'puestoId'],
+      },
+    ],
   });
 
   EmpleadoPuesto.associate = (models) => {

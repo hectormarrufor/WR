@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
-const OrdenMantenimiento = sequelize.define('OrdenMantenimiento', {
+const Mantenimiento = sequelize.define('Mantenimiento', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -11,7 +11,6 @@ const OrdenMantenimiento = sequelize.define('OrdenMantenimiento', {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    comment: "Ej: OM-2024-001"
   },
   fechaIngreso: {
     type: DataTypes.DATE,
@@ -37,53 +36,44 @@ const OrdenMantenimiento = sequelize.define('OrdenMantenimiento', {
   },
   descripcionGeneral: {
     type: DataTypes.TEXT,
-    comment: "Descripción del jefe de taller sobre el trabajo a realizar"
   },
   kilometrajeAlIngreso: {
     type: DataTypes.FLOAT,
     allowNull: false
   },
-  // Relaciones
-  vehiculoInstanciaId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'vehiculo_instancias',
-      key: 'id'
-    }
-  },
-  // Por si el activo no es un vehículo (ej. una Planta Eléctrica o Maquina Amarilla)
-  maquinaInstanciaId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-  }
+
+ 
 }, {
-  tableName: 'ordenes_mantenimiento',
+  tableName: 'Mantenimientos',
   timestamps: true,
 });
 
-OrdenMantenimiento.associate = function(models) {
-  OrdenMantenimiento.belongsTo(models.VehiculoInstancia, {
+Mantenimiento.associate = function(models) {
+  Mantenimiento.belongsTo(models.VehiculoInstancia, {
     foreignKey: 'vehiculoInstanciaId',
     as: 'vehiculoInstancia'
   });
-  OrdenMantenimiento.belongsTo(models.MaquinaInstancia, {
+  Mantenimiento.hasMany(models.Requisicion, {
+    foreignKey: 'mantenimientoId',
+    as: 'requisiciones'
+  });
+  Mantenimiento.belongsTo(models.MaquinaInstancia, {
     foreignKey: 'maquinaInstanciaId',
     as: 'maquinaInstancia'
   });
-  OrdenMantenimiento.belongsTo(models.RemolqueInstancia, {
+  Mantenimiento.belongsTo(models.RemolqueInstancia, {
     foreignKey: 'remolqueInstanciaId',
     as: 'remolqueInstancia'
   });
-  OrdenMantenimiento.hasMany(models.TareaMantenimiento, {
-    foreignKey: 'ordenMantenimientoId',
+  Mantenimiento.hasMany(models.TareaMantenimiento, {
+    foreignKey: 'mantenimientoId',
     as: 'tareasMantenimiento'
   });
-  OrdenMantenimiento.hasMany(models.Hallazgo, {
-    foreignKey: 'ordenMantenimientoId',
+  Mantenimiento.hasMany(models.Hallazgo, {
+    foreignKey: 'mantenimientoId',
     as: 'hallazgos'
   });
-  C
+  
 };
 
-module.exports = OrdenMantenimiento;
+module.exports = Mantenimiento;

@@ -8,12 +8,14 @@ const VehiculoInstancia = sequelize.define('VehiculoInstancia', {
   serialMotor: { type: DataTypes.STRING, allowNull: true },
   vehiculoId: { type: DataTypes.INTEGER, allowNull: false } // referencia a la plantilla
 }, {
-  tableName: 'InstanciasVehiculos'
+  tableName: 'VehiculosInstancias'
 });
 
 VehiculoInstancia.associate = (models) => {
   VehiculoInstancia.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoId', as: 'plantilla' });
   VehiculoInstancia.hasOne(models.Activo, { foreignKey: 'vehiculoInstanciaId', as: 'activo' });
+
+
 }
 
 module.exports = VehiculoInstancia;

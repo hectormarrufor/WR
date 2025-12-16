@@ -14,22 +14,4 @@ Subsistema.associate = (models) => {
   Subsistema.hasMany(models.ConsumibleRecomendado, { foreignKey: 'subsistemaId', as: 'listaRecomendada' });
 }
 
-Subsistema.afterCreate(async (subsistema, options) => {
-  const { VehiculoInstancia, SubsistemaInstancia } = subsistema.sequelize.models;
-
-  const instancias = await VehiculoInstancia.findAll({
-    where: { vehiculoId: subsistema.vehiculoId },
-    transaction: options.transaction
-  });
-
-  for (const instancia of instancias) {
-    await SubsistemaInstancia.create({
-      vehiculoInstanciaId: instancia.id,
-      subsistemaId: subsistema.id,
-      nombre: subsistema.nombre
-    }, { transaction: options.transaction });
-  }
-});
-
-
 module.exports = Subsistema;

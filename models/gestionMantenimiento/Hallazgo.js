@@ -23,29 +23,6 @@ const Hallazgo = sequelize.define('Hallazgo', {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   },
-  // Origen del hallazgo
-  inspeccionId: { 
-    type: DataTypes.INTEGER,
-    allowNull: true, // Puede venir de una inspección formal...
-    references: { model: 'inspecciones', key: 'id' }
-  },
-  reportadoPorId: { // ...o ser un reporte manual de un conductor
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
-  // Ubicación del problema (CRUCIAL para tu lógica nueva)
-  subsistemaInstanciaId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: { model: 'subsistema_instancias', key: 'id' }
-  },
-  // Resolución
-  ordenMantenimientoId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: "La orden que se creó para corregir este hallazgo",
-    references: { model: 'ordenes_mantenimiento', key: 'id' }
-  }
 }, {
   tableName: 'hallazgos',
   timestamps: true
@@ -56,9 +33,9 @@ Hallazgo.associate = function(models) {
     foreignKey: 'inspeccionId',
     as: 'inspeccion'
   });
-  Hallazgo.belongsTo(models.OrdenMantenimiento, {
-    foreignKey: 'ordenMantenimientoId',
-    as: 'ordenMantenimiento'
+  Hallazgo.belongsTo(models.Mantenimiento, {
+    foreignKey: 'mantenimientoId',
+    as: 'mantenimiento'
   });
 };
 

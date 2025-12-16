@@ -18,27 +18,24 @@ const TareaMantenimiento = sequelize.define('TareaMantenimiento', {
   costoManoObraEstimado: {
     type: DataTypes.FLOAT,
     defaultValue: 0
-  },
-  ordenMantenimientoId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: { model: 'ordenes_mantenimiento', key: 'id' }
-  },
-  // Scope: ¿Sobre qué subsistema se actúa?
-  subsistemaInstanciaId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: { model: 'subsistema_instancias', key: 'id' }
   }
 }, {
-  tableName: 'tareas_mantenimiento',
+  tableName: 'TareasMantenimiento',
   timestamps: true
 });
 
 TareaMantenimiento.associate = function(models) {
-  TareaMantenimiento.belongsTo(models.OrdenMantenimiento, {
+  TareaMantenimiento.belongsTo(models.Mantenimiento, {
     foreignKey: 'ordenMantenimientoId',
     as: 'ordenMantenimiento'
+  });
+  TareaMantenimiento.belongsTo(models.SubsistemaInstancia, {
+    foreignKey: 'subsistemaInstanciaId',
+    as: 'subsistemaInstancia'
+  });
+  TareaMantenimiento.belongsTo(models.Mantenimiento, {
+    foreignKey: 'mantenimientoId',
+    as: 'mantenimiento'
   });
   TareaMantenimiento.hasMany(models.ConsumibleUsado, {
     foreignKey: 'tareaMantenimientoId',

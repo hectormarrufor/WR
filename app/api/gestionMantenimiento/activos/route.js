@@ -2,123 +2,110 @@ import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
 import { 
     Activo, 
-    VehiculoInstancia, 
-    RemolqueInstancia, 
-    MaquinaInstancia,
-    Vehiculo, Remolque, Maquina
+    VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
+    Vehiculo, Remolque, Maquina,
+    Subsistema, SubsistemaInstancia,
+    ConsumibleUsado // <--- IMPORTANTE
 } from '@/models';
 
-// ----------------------------------------------------------------------
-// GET: Listar todos los activos (Vehículos, Remolques, Máquinas mezclados)
-// ----------------------------------------------------------------------
+// GET: Listar (Sin cambios)
 export async function GET(request) {
     try {
         const activos = await Activo.findAll({
             include: [
-                {
-                    model: VehiculoInstancia,
-                    as: 'detalleVehiculo',
-                    include: [{ model: Vehiculo, as: 'plantilla' }]
-                },
-                {
-                    model: RemolqueInstancia,
-                    as: 'detalleRemolque',
-                    include: [{ model: Remolque, as: 'plantilla' }]
-                },
-                {
-                    model: MaquinaInstancia,
-                    as: 'detalleMaquina',
-                    include: [{ model: Maquina, as: 'plantilla' }]
-                }
+                { model: VehiculoInstancia, as: 'detalleVehiculo', include: [{ model: Vehiculo, as: 'plantilla' }] },
+                { model: RemolqueInstancia, as: 'detalleRemolque', include: [{ model: Remolque, as: 'plantilla' }] },
+                { model: MaquinaInstancia, as: 'detalleMaquina', include: [{ model: Maquina, as: 'plantilla' }] }
             ],
             order: [['createdAt', 'DESC']]
         });
-
         return NextResponse.json({ success: true, data: activos });
     } catch (error) {
-        console.error("Error obteniendo activos:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
 
-// ----------------------------------------------------------------------
-// POST: Crear Activo + Instancia Específica
-// ----------------------------------------------------------------------
+// POST: Crear Activo + Inicialización de Subsistemas + Instalación de Piezas
 export async function POST(request) {
     const t = await sequelize.transaction();
 
     try {
         const body = await request.json();
-        
         const { 
-            codigoInterno, 
-            tipoActivo, 
-            estado = 'Operativo', 
-            ubicacionActual, 
-            imagen, // URL string que viene del Frontend
-            plantillaId, // ID del modelo base
-            // Campos específicos de las instancias:
-            placa, serialCarroceria, serialMotor, color, anioFabricacion, 
-            kilometrajeActual, horometroActual 
+            codigoInterno, tipoActivo, estado = 'Operativo', ubicacionActual, imagen, plantillaId,
+            placa, serialCarroceria, serialMotor, color, anioFabricacion, kilometrajeActual, horometroActual,
+            // NUEVO CAMPO: Array de objetos { subsistemaId (Abstracto), consumibleId (Real), fechaInstalacion }
+            instalacionesIniciales = [] 
         } = body;
 
         let nuevaInstancia = null;
         let campoId = '';
 
-        // 1. Crear la Instancia Específica
+        // 1. CREAR LA INSTANCIA FÍSICA ESPECÍFICA
         if (tipoActivo === 'Vehiculo') {
             campoId = 'vehiculoInstanciaId';
             nuevaInstancia = await VehiculoInstancia.create({
-                vehiculoId: plantillaId,
-                placa,
-                serialCarroceria,
-                serialMotor,
-                color,
-                anioFabricacion,
-                kilometrajeActual: kilometrajeActual || 0,
-                horometroActual: horometroActual || 0,
+                vehiculoId: plantillaId, placa, serialCarroceria, serialMotor, color, anioFabricacion,
+                kilometrajeActual: kilometrajeActual || 0, horometroActual: horometroActual || 0
             }, { transaction: t });
-
         } else if (tipoActivo === 'Remolque') {
             campoId = 'remolqueInstanciaId';
             nuevaInstancia = await RemolqueInstancia.create({
-                remolqueId: plantillaId,
-                placa,
-                serialCarroceria,
-                anioFabricacion,
-                color,
+                remolqueId: plantillaId, placa, serialCarroceria, anioFabricacion, color
             }, { transaction: t });
-
         } else if (tipoActivo === 'Maquina') {
             campoId = 'maquinaInstanciaId';
             nuevaInstancia = await MaquinaInstancia.create({
-                maquinaId: plantillaId,
-                serialCarroceria,
-                serialMotor,
-                anioFabricacion,
-                horometroActual: horometroActual || 0,
+                maquinaId: plantillaId, serialCarroceria, serialMotor, anioFabricacion, 
+                horometroActual: horometroActual || 0
             }, { transaction: t });
-        } else {
-            throw new Error('Tipo de activo no válido');
         }
 
-        // 2. Crear el Activo (Padre/Wrapper)
+        // 2. CREAR EL ACTIVO PADRE
         const nuevoActivo = await Activo.create({
-            codigoInterno,
-            tipoActivo,
-            estado,
-            ubicacionActual,
-            imagen: imagen || null, 
+            codigoInterno, tipoActivo, estado, ubicacionActual, imagen,
             [campoId]: nuevaInstancia.id
         }, { transaction: t });
 
-        await t.commit();
+        // 3. COPIAR SUBSISTEMAS Y APLICAR INSTALACIONES
+        let whereCondition = {};
+        if (tipoActivo === 'Vehiculo') whereCondition = { vehiculoId: plantillaId };
+        else if (tipoActivo === 'Remolque') whereCondition = { remolqueId: plantillaId };
+        else if (tipoActivo === 'Maquina') whereCondition = { maquinaId: plantillaId };
 
-        return NextResponse.json({ 
-            success: true, 
-            message: 'Activo creado exitosamente', 
-            data: nuevoActivo 
-        }, { status: 201 });
+        const subsistemasTeoricos = await Subsistema.findAll({ where: whereCondition, transaction: t });
+
+        if (subsistemasTeoricos.length > 0) {
+            
+            for (const subTeorico of subsistemasTeoricos) {
+                // A. Crear el hueco vacío (SubsistemaInstancia)
+                const nuevaSubInstancia = await SubsistemaInstancia.create({
+                    activoId: nuevoActivo.id,
+                    subsistemaId: subTeorico.id,
+                    estado: 'Operativo',
+                    fechaUltimoMantenimiento: new Date()
+                }, { transaction: t });
+
+                // B. Verificar si el usuario mandó una pieza para instalar AQUÍ
+                const instalacion = instalacionesIniciales.find(i => i.subsistemaId === subTeorico.id);
+                
+                if (instalacion) {
+                    await ConsumibleUsado.create({
+                        subsistemaInstanciaId: nuevaSubInstancia.id,
+                        consumibleId: instalacion.consumibleId, // El ID del filtro real (Inventario)
+                        consumibleSerializadoId: instalacion.consumibleSerializadoId || null,
+                        cantidad: instalacion.cantidad || 1,
+                        fechaInstalacion: instalacion.fechaInstalacion || new Date(),
+                        instaladoPorId: null // O el ID del usuario actual si lo tienes en el request
+                    }, { transaction: t });
+                    
+                    // OJO: Aquí podrías descontar stock si tu lógica de negocio lo exige al "nacer" el activo.
+                }
+            }
+        }
+
+        await t.commit();
+        return NextResponse.json({ success: true, data: nuevoActivo }, { status: 201 });
 
     } catch (error) {
         await t.rollback();

@@ -29,7 +29,7 @@ const ConsumibleUsado = sequelize.define('ConsumibleUsado', {
       fields: ['consumibleSerializadoId'],
       unique: true, // Un ítem serializado físico no puede estar en dos sitios a la vez (mientras esté activo)
       where: {
-        consumibleSerializadoId: { [DataTypes.Op.ne]: null }
+        consumibleSerializadoId: { [Op.ne]: null }
       }
     }
   ]

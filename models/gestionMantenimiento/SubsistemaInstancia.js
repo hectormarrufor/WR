@@ -2,18 +2,16 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const SubsistemaInstancia = sequelize.define('SubsistemaInstancia', {
-  vehiculoInstanciaId: { type: DataTypes.INTEGER, allowNull: false }, // referencia al vehículo real
-  subsistemaId: { type: DataTypes.INTEGER, allowNull: false }, // referencia al subsistema de plantilla
   nombre: { type: DataTypes.STRING, allowNull: false }, // Copia del nombre del subsistema
+},
+{
+  tableName: 'SubsistemaInstancias'
 });
 
+
 SubsistemaInstancia.associate = (models) => {
-  SubsistemaInstancia.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'vehiculoInstancia' });
-  SubsistemaInstancia.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'maquinaInstancia' });
-  SubsistemaInstancia.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'remolqueInstancia' });
+  SubsistemaInstancia.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
   SubsistemaInstancia.belongsTo(models.Subsistema, { foreignKey: 'subsistemaId', as: 'subsistemaPlantilla' });
-  SubsistemaInstancia.hasMany(models.Consumible, { foreignKey: 'subsistemaInstanciaId', as: 'consumibles' });
-  SubsistemaInstancia.hasMany(models.ConsumibleSerializado, { foreignKey: 'subsistemaInstanciaId', as: 'consumiblesSerializados' });
   SubsistemaInstancia.hasMany(models.ConsumibleUsado, { foreignKey: 'subsistemaInstanciaId', as: 'instalaciones' });
 };
 module.exports = SubsistemaInstancia;
