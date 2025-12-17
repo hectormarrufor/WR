@@ -2,34 +2,38 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  TextInput, NumberInput, Select, Button, Group, 
-  Stack, LoadingOverlay, Divider 
+import {
+    TextInput, NumberInput, Select, Button, Group,
+    Stack, LoadingOverlay, Divider, Text, ActionIcon, Paper, SimpleGrid,
+    Accordion,
+    Badge
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconDeviceFloppy } from '@tabler/icons-react';
+import { IconDeviceFloppy, IconPlus, IconTrash, IconSitemap, IconTool } from '@tabler/icons-react';
 import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
+import ConsumibleSelector from './ConsumibleSelector';
 
-// IMPORTA TU COMPONENTE AQUÍ (Ajusta la ruta según tu estructura)
 
-export default function ModeloActivoForm({ 
-    tipoPreseleccionado = 'Vehiculo', 
-    onSuccess, 
-    onCancel 
+export default function ModeloActivoForm({
+    tipoPreseleccionado = 'Vehiculo',
+    onSuccess,
+    onCancel
 }) {
     const [loading, setLoading] = useState(false);
 
+    // Estado para la lista dinámica de subsistemas
+    const [subsistemas, setSubsistemas] = useState([]);
+
     const form = useForm({
         initialValues: {
-            marca: "", // Ahora solo guardamos el ID
+            marca: null,
             modelo: '',
-            anio: "",
-            // Campos específicos
-            tipoVehiculo: '',  
-            tipoRemolque: '',  
-            tipoMaquina: '',   
-            ejes: 2,           
+            anio: new Date().getFullYear(),
+            tipoVehiculo: '',
+            tipoRemolque: '',
+            tipoMaquina: '',
+            ejes: 2,
             capacidadCarga: '',
         },
         validate: {
@@ -38,12 +42,33 @@ export default function ModeloActivoForm({
         }
     });
 
+    // Helpers para la lista de subsistemas
+    const addSubsistema = () => {
+        setSubsistemas([...subsistemas, {
+            nombre: '',
+            descripcion: '',
+            recomendaciones: [] // Array de IDs de consumibles (SKUs)
+        }]);
+    };
+
+    const removeSubsistema = (index) => {
+        const updated = [...subsistemas];
+        updated.splice(index, 1);
+        setSubsistemas(updated);
+    };
+
+    const updateSubsistema = (index, field, value) => {
+        const updated = [...subsistemas];
+        updated[index][field] = value;
+        setSubsistemas(updated);
+    };
+
+
+
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
-            // Ya no necesitamos crear la marca aquí, el AsyncCatalogCombobox ya nos da el ID listo
-            
-            // 1. Preparar Payload según el Tipo
+            // 1. CREAR LA PLANTILLA BASE
             let endpoint = '';
             let payload = {
                 marca: parseInt(values.marca),
@@ -52,32 +77,23 @@ export default function ModeloActivoForm({
 
             if (tipoPreseleccionado === 'Vehiculo') {
                 endpoint = '/api/gestionMantenimiento/vehiculo';
-                payload = {
-                    ...payload,
-                    modelo: values.modelo,
-                    tipoVehiculo: values.tipoVehiculo,
-                    numeroEjes: values.ejes
-                };
+                payload = { ...payload, modelo: values.modelo, tipoVehiculo: values.tipoVehiculo, numeroEjes: values.ejes };
             } 
             else if (tipoPreseleccionado === 'Remolque') {
                 endpoint = '/api/gestionMantenimiento/remolque';
-                payload = {
-                    ...payload,
-                    tipoRemolque: values.tipoRemolque,
-                    numeroEjes: values.ejes,
-                    capacidad: values.capacidadCarga
-                };
+                payload = { ...payload, tipoRemolque: values.tipoRemolque, numeroEjes: values.ejes, capacidad: values.capacidadCarga };
             }
             else if (tipoPreseleccionado === 'Maquina') {
                 endpoint = '/api/gestionMantenimiento/maquina';
-                payload = {
-                    ...payload,
-                    modelo: values.modelo,
-                    tipoMaquina: values.tipoMaquina
-                };
+                payload = { ...payload, modelo: values.modelo, tipoMaquina: values.tipoMaquina };
             }
 
-            // 2. Enviar a la API
+            // AHORA ENVIAMOS TODO JUNTO EN EL PAYLOAD DEL MODELO
+            // Para simplificar transacciones, es mejor que el endpoint de crear modelo
+            // reciba también los subsistemas. Si tu endpoint actual no lo soporta,
+            // tendremos que hacerlo en pasos como antes. 
+            // VOY A ASUMIR EL MÉTODO DE 2 PASOS que usamos antes, pero mejorado.
+            
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -85,12 +101,35 @@ export default function ModeloActivoForm({
             });
             const res = await response.json();
 
-            if (res.success) {
-                notifications.show({ title: 'Éxito', message: 'Plantilla creada correctamente', color: 'green' });
-                if (onSuccess) onSuccess(res.data);
-            } else {
-                throw new Error(res.error || 'No se pudo crear el modelo');
+            if (!res.success) throw new Error(res.error || 'No se pudo crear el modelo');
+
+            const nuevoModeloId = res.data.id;
+
+            // 2. CREAR SUBSISTEMAS + RECOMENDACIONES
+            // Ahora enviamos no solo nombre, sino también la lista de compatibilidad
+            if (subsistemas.length > 0) {
+                const validos = subsistemas.filter(s => s.nombre.trim() !== '');
+                
+                if (validos.length > 0) {
+                    await Promise.all(validos.map(sub => 
+                        fetch('/api/gestionMantenimiento/subsistemas', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                nombre: sub.nombre,
+                                descripcion: sub.descripcion,
+                                plantillaId: nuevoModeloId,
+                                tipoPlantilla: tipoPreseleccionado,
+                                // NUEVO CAMPO: Array de IDs de Consumibles
+                                recomendacionesIds: sub.recomendaciones.map(Number)
+                            })
+                        })
+                    ));
+                }
             }
+
+            notifications.show({ title: 'Éxito', message: 'Modelo configurado correctamente', color: 'green' });
+            if (onSuccess) onSuccess(res.data);
 
         } catch (error) {
             console.error(error);
@@ -101,49 +140,39 @@ export default function ModeloActivoForm({
     };
 
     return (
-        <Stack pos="relative">
+        <Stack pos="relative" mah="80vh" style={{ overflowY: 'auto' }}>
             <LoadingOverlay visible={loading} />
-            
+
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="md">
-                    {/* COMPONENTE REUTILIZABLE DE MARCAS */}
+                    {/* --- DATOS GENERALES --- */}
                     <AsyncCatalogComboBox
                         label="Marca"
                         placeholder="Buscar o crear marca..."
-                        fieldKey="marca"
                         form={form}
-                        catalogo="marcasVehiculos"
+                        fieldKey="marca"
+                        catalogo="marcas"
                     />
 
-                    {/* MODELO COMERCIAL */}
                     {tipoPreseleccionado !== 'Remolque' && (
-                        <TextInput 
-                            label="Modelo Comercial" 
+                        <TextInput
+                            label="Modelo Comercial"
                             placeholder={tipoPreseleccionado === 'Vehiculo' ? "ej. Granite, Stralis" : "ej. 416E, D6T"}
-                            required 
-                            {...form.getInputProps('modelo')} 
+                            required
+                            {...form.getInputProps('modelo')}
                         />
                     )}
 
                     <Group grow>
-                        <NumberInput 
-                            label="Año del Modelo" 
-                            min={1980} max={2030} 
-                            {...form.getInputProps('anio')} 
-                        />
-                        
+                        <NumberInput label="Año" min={1980} max={2030} {...form.getInputProps('anio')} />
+
                         {(tipoPreseleccionado === 'Vehiculo' || tipoPreseleccionado === 'Remolque') && (
-                            <NumberInput 
-                                label="Nro. Ejes" 
-                                min={1} max={12} 
-                                {...form.getInputProps('ejes')} 
-                            />
+                            <NumberInput label="Nro. Ejes" min={1} max={12} {...form.getInputProps('ejes')} />
                         )}
                     </Group>
 
-                    {/* CAMPOS ESPECÍFICOS */}
                     {tipoPreseleccionado === 'Vehiculo' && (
-                        <Select 
+                        <Select
                             label="Tipo de Vehículo"
                             placeholder="Seleccione..."
                             data={['Chuto', 'Camión 350', 'Camión 750', 'Volqueta', 'Bus', 'Camioneta', 'Automóvil']}
@@ -152,7 +181,7 @@ export default function ModeloActivoForm({
                     )}
 
                     {tipoPreseleccionado === 'Remolque' && (
-                        <Select 
+                        <Select
                             label="Tipo de Remolque"
                             placeholder="Seleccione..."
                             required
@@ -162,7 +191,7 @@ export default function ModeloActivoForm({
                     )}
 
                     {tipoPreseleccionado === 'Maquina' && (
-                        <Select 
+                        <Select
                             label="Tipo de Máquina"
                             placeholder="Seleccione..."
                             data={['Retroexcavadora', 'Excavadora', 'Payloader', 'Motoniveladora', 'Vibrocompactador', 'Grúa', 'Montacargas', 'Planta Eléctrica', 'Taladro']}
@@ -172,10 +201,78 @@ export default function ModeloActivoForm({
 
                     <Divider my="sm" />
 
+                    {/* --- SECCIÓN SUBSISTEMAS AVANZADA --- */}
+                    <Paper withBorder p="md" bg="gray.0">
+                        <Group justify="space-between" mb="sm">
+                            <Group gap={5}>
+                                <IconSitemap size={18} />
+                                <Text fw={600} size="sm">Definición de Subsistemas y Partes</Text>
+                            </Group>
+                            <Button variant="subtle" size="xs" leftSection={<IconPlus size={14}/>} onClick={addSubsistema}>
+                                Agregar
+                            </Button>
+                        </Group>
+                        
+                        {subsistemas.length === 0 ? (
+                            <Text size="xs" c="dimmed" align="center">Sin subsistemas definidos.</Text>
+                        ) : (
+                            <Accordion variant="separated" radius="md">
+                                {subsistemas.map((sub, index) => (
+                                    <Accordion.Item key={index} value={`item-${index}`} bg="white">
+                                        <Accordion.Control icon={<IconTool size={16} />}>
+                                            <Group justify="space-between" w="100%" pr="md">
+                                                <Text fw={500}>{sub.nombre || '(Nuevo Sistema)'}</Text>
+                                                {sub.recomendaciones.length > 0 && (
+                                                    <Badge size="sm" variant="light">{sub.recomendaciones.length} Partes</Badge>
+                                                )}
+                                            </Group>
+                                        </Accordion.Control>
+                                        <Accordion.Panel>
+                                            <Stack gap="sm">
+                                                <Group grow>
+                                                    <TextInput 
+                                                        label="Nombre"
+                                                        placeholder="ej. Motor" 
+                                                        value={sub.nombre}
+                                                        onChange={(e) => updateSubsistema(index, 'nombre', e.currentTarget.value)}
+                                                    />
+                                                    <TextInput 
+                                                        label="Descripción"
+                                                        placeholder="ej. ISX 450HP" 
+                                                        value={sub.descripcion}
+                                                        onChange={(e) => updateSubsistema(index, 'descripcion', e.currentTarget.value)}
+                                                    />
+                                                </Group>
+                                                
+                                                {/* AQUÍ ESTÁ LA MAGIA: SELECTOR DE CONSUMIBLES */}
+                                                <ConsumibleSelector 
+                                                    value={sub.recomendaciones}
+                                                    onChange={(val) => updateSubsistema(index, 'recomendaciones', val)}
+                                                />
+
+                                                <Group justify="right" mt="xs">
+                                                    <Button 
+                                                        color="red" variant="subtle" size="xs" 
+                                                        leftSection={<IconTrash size={14} />}
+                                                        onClick={() => removeSubsistema(index)}
+                                                    >
+                                                        Eliminar Subsistema
+                                                    </Button>
+                                                </Group>
+                                            </Stack>
+                                        </Accordion.Panel>
+                                    </Accordion.Item>
+                                ))}
+                            </Accordion>
+                        )}
+                    </Paper>
+
+                    <Divider my="sm" />
+
                     <Group justify="right">
                         <Button variant="default" onClick={onCancel}>Cancelar</Button>
                         <Button type="submit" leftSection={<IconDeviceFloppy size={18} />}>
-                            Guardar Modelo
+                            Guardar Modelo Completo
                         </Button>
                     </Group>
                 </Stack>

@@ -12,36 +12,33 @@ export function AsyncCatalogComboBox({
   tipo = "",
   catalogo
 }) {
-  const store = useCombobox({ onDropdownClose: () => store.resetSelectedOption() });
+  // CORRECCIÓN 1: Eliminado el bucle infinito. 
+  // Solo reseteamos la selección visual, no forzamos el cierre (ya se está cerrando).
+  const store = useCombobox({ 
+    onDropdownClose: () => store.resetSelectedOption() 
+  });
+  
   const { options, loading, setOptions } = useCatalogOptions(catalogo, tipo);
 
   const handleCreateNew = async (nuevoValor) => {
     try {
       const res = await axios.post(`/api/inventario/catalogo/${catalogo}`, { valor: nuevoValor, tipo });
-      const nuevo = res.data; // {id, nombre}
+      const nuevo = res.data; 
 
-      // Evitar duplicados
       setOptions(prevOptions => {
+        // Aseguramos no duplicar al insertar la respuesta del servidor
         const exists = prevOptions.some(opt => opt.nombre === nuevo.nombre);
         return exists ? prevOptions : [...prevOptions, nuevo];
       });
-
-      // Selecciona directamente el nombre en el form
-      form.setFieldValue(fieldKey, nuevo.nombre);
-
-      store.closeDropdown();
+      
     } catch (err) {
       console.error("Error creando nuevo valor", err);
     }
   };
 
-  useEffect(() => {
-    console.log("Opciones del catálogo actualizadas:", options);
-  }, [options]);
-
   const query = (form.values[fieldKey] || "").toLowerCase();
 
-  // Filtrar y eliminar duplicados
+  // Filtrado robusto de duplicados
   const filteredOptions = options
     .filter(opt => (opt?.nombre ?? "").toLowerCase().includes(query))
     .reduce((acc, curr) => {
@@ -49,8 +46,10 @@ export function AsyncCatalogComboBox({
       return acc;
     }, []);
 
-  const mappedOptions = filteredOptions.map(opt => (
-    <Combobox.Option value={opt.nombre} key={opt.id || opt.nombre}>
+  // CORRECCIÓN 2: Key única garantizada
+  // Usamos el nombre directamente combinada con el índice como respaldo
+  const mappedOptions = filteredOptions.map((opt, index) => (
+    <Combobox.Option value={opt.nombre} key={`${opt.nombre}-${index}`}>
       {opt.nombre}
     </Combobox.Option>
   ));
@@ -60,7 +59,10 @@ export function AsyncCatalogComboBox({
       store={store}
       onOptionSubmit={(val) => {
         if (val.startsWith("+")) {
-          handleCreateNew(val.replace('+ Añadir "', '').replace('"', ''), tipo);
+          const rawValue = val.replace('+ Añadir "', '').replace('"', '');
+          // Actualización Optimista
+          form.setFieldValue(fieldKey, rawValue);
+          handleCreateNew(rawValue);
         } else {
           form.setFieldValue(fieldKey, val);
         }
@@ -79,6 +81,7 @@ export function AsyncCatalogComboBox({
             store.openDropdown();
             store.updateSelectedOptionIndex("active");
           }}
+          onClick={() => store.openDropdown()}
           onFocus={() => store.openDropdown()}
           onBlur={() => store.closeDropdown()}
         />
@@ -92,13 +95,17 @@ export function AsyncCatalogComboBox({
           ) : (
             <>
               {mappedOptions}
-              {(form.values[fieldKey] || "").length > 0 && (
+              
+              {(form.values[fieldKey] || "").length > 0 && 
+               !filteredOptions.some(o => o.nombre.toLowerCase() === (form.values[fieldKey] || "").toLowerCase()) && (
                 <Combobox.Option value={`+ Añadir "${form.values[fieldKey]}"`}>
                   {`+ Añadir "${form.values[fieldKey]}"`}
                 </Combobox.Option>
               )}
-              {(!mappedOptions.length && (form.values[fieldKey] || "").length > 0) && (
-                <Combobox.Empty>No hay opciones que coincidan</Combobox.Empty>
+
+              {(!mappedOptions.length && (form.values[fieldKey] || "").length > 0) && 
+               !filteredOptions.some(o => o.nombre.toLowerCase() === (form.values[fieldKey] || "").toLowerCase()) && (
+                 <Combobox.Empty>No hay opciones que coincidan</Combobox.Empty>
               )}
             </>
           )}

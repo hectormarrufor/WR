@@ -1,83 +1,124 @@
-import db from '@/models';
 import { NextResponse } from 'next/server';
+import sequelize from '@/sequelize';
 import { Op } from 'sequelize';
+import { 
+    Consumible, 
+    // Importa tus modelos específicos según tu estructura exacta
+    Filtro, 
+    Correa, 
+    AceiteMotor, 
+    EquivalenciaFiltro 
+} from '@/models';
 
-/**
- * GET para obtener una lista de consumibles con filtros avanzados.
- * Puede filtrar por: tipo, codigoParte, grupoId, y/o especificaciones (JSON).
- */
+// GET: Buscar Consumibles (soporta ?search=... y ?tipo=...)
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
-    const tipo = searchParams.get('tipo');
-    const codigoParte = searchParams.get('codigoParte');
-    const grupoId = searchParams.get('grupoId');
-    const especificacionesQuery = searchParams.get('especificaciones');
+    const search = searchParams.get('search');
+    const tipo = searchParams.get('tipo'); // Opcional, para filtrar solo Filtros
+    const limit = parseInt(searchParams.get('limit')) || 50;
 
     try {
-        const whereClause = {};
+        let whereCondition = {};
 
-        // Filtro por tipo (ej: 'Aceite', 'Filtro')
+        if (search) {
+            whereCondition = {
+                [Op.or]: [
+                    { nombre: { [Op.iLike]: `%${search}%` } },
+                    { codigo: { [Op.iLike]: `%${search}%` } },
+                    { descripcion: { [Op.iLike]: `%${search}%` } } // Busca en keywords/equivalencias
+                ]
+            };
+        }
+
+        // Si tienes una columna 'tipoConsumible' en la tabla padre, úsala
         if (tipo) {
-            whereClause.tipo = tipo;
-        }
-        // Filtro por código de parte exacto
-        if (codigoParte) {
-            whereClause.codigoParte = codigoParte;
-        }
-        // Filtro por grupo de compatibilidad
-        if (grupoId) {
-            whereClause.grupoCompatibilidadId = grupoId;
+            whereCondition.tipoConsumible = tipo; 
         }
 
-        // ✨ LÓGICA UNIFICADA: Filtro por propiedades dentro del JSONB 'especificaciones' ✨
-        if (especificacionesQuery) {
-            try {
-                const especificaciones = JSON.parse(especificacionesQuery);
-                // Por cada propiedad en el objeto, añadimos una condición a la consulta
-                // Sequelize es lo suficientemente inteligente para buscar dentro del JSONB
-                for (const key in especificaciones) {
-                    // Esto se traduce a una consulta como: WHERE especificaciones->>'viscosidad' = '15W40'
-                    whereClause[`especificaciones.${key}`] = especificaciones[key];
-                }
-            } catch (e) {
-                console.error("Error al parsear el JSON de especificaciones:", e);
-                // Ignoramos el filtro si el JSON es inválido
-            }
-        }
-
-        const consumibles = await db.Consumible.findAll({
-            where: whereClause,
+        const consumibles = await Consumible.findAll({
+            where: whereCondition,
+            limit: limit,
             order: [['nombre', 'ASC']]
         });
-        return NextResponse.json(consumibles);
-        
+
+        return NextResponse.json({ success: true, data: consumibles });
+
     } catch (error) {
-        console.error("Error al obtener consumibles:", error);
-        return NextResponse.json({ message: 'Error al obtener consumibles' }, { status: 500 });
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
 
-/**
- * POST para crear un nuevo consumible.
- */
+// POST: Crear Consumible + Datos Técnicos + Equivalencias
 export async function POST(request) {
-    const transaction = await db.sequelize.transaction();
+    const t = await sequelize.transaction();
+
     try {
         const body = await request.json();
-        const { compatibilidades, ...consumibleData } = body;
-        
-        const nuevoConsumible = await db.Consumible.create(consumibleData, { transaction });
+        const { 
+            nombre, 
+            codigo, 
+            marca, 
+            stockActual = 0, 
+            stockMinimo = 0, 
+            datosTecnicos // Objeto { tipo: 'Filtro', datos: {...}, equivalenciaExistenteId: 123 }
+        } = body;
 
-        if (compatibilidades && Array.isArray(compatibilidades) && compatibilidades.length > 0) {
-            const modelosIds = compatibilidades.map(comp => comp.modeloId);
-            await nuevoConsumible.setModelosCompatibles(modelosIds, { transaction });
+        // 1. Crear el Registro Padre (Consumible SKU)
+        const nuevoConsumible = await Consumible.create({
+            nombre,
+            codigo,
+            marca,
+            stockActual,
+            stockMinimo,
+            tipoConsumible: datosTecnicos?.tipo || 'Generico'
+        }, { transaction: t });
+
+        // 2. Crear el Registro Específico (Herencia)
+        if (datosTecnicos?.tipo === 'Filtro') {
+            const nuevoFiltro = await Filtro.create({
+                consumibleId: nuevoConsumible.id,
+                tipoFiltro: datosTecnicos.datos.tipoFiltro
+            }, { transaction: t });
+
+            // 3. Crear Equivalencia si aplica
+            if (datosTecnicos.equivalenciaExistenteId) {
+                // Buscamos el filtro "hermano" asociado al consumible seleccionado
+                const filtroHermano = await Filtro.findOne({ 
+                    where: { consumibleId: datosTecnicos.equivalenciaExistenteId },
+                    transaction: t
+                });
+
+                if (filtroHermano) {
+                    await EquivalenciaFiltro.create({
+                        filtroAId: filtroHermano.id,
+                        filtroBId: nuevoFiltro.id
+                    }, { transaction: t });
+                }
+            }
+        } 
+        else if (datosTecnicos?.tipo === 'Correa') {
+            await Correa.create({
+                consumibleId: nuevoConsumible.id,
+                perfil: datosTecnicos.datos.perfil,
+                canales: datosTecnicos.datos.canales,
+                longitud: datosTecnicos.datos.longitud
+            }, { transaction: t });
         }
-        
-        await transaction.commit();
-        return NextResponse.json(nuevoConsumible, { status: 201 });
+        else if (datosTecnicos?.tipo === 'Aceite') {
+            await AceiteMotor.create({ // O tu modelo genérico de Aceite
+                consumibleId: nuevoConsumible.id,
+                viscosidad: datosTecnicos.datos.viscosidad,
+                base: datosTecnicos.datos.base,
+                aplicacion: datosTecnicos.datos.aplicacion
+            }, { transaction: t });
+        }
+
+        await t.commit();
+        return NextResponse.json({ success: true, data: nuevoConsumible }, { status: 201 });
+
     } catch (error) {
-        await transaction.rollback();
-        console.error("Error al crear el consumible:", error);
-        return NextResponse.json({ message: error.message }, { status: 400 });
+        await t.rollback();
+        console.error("Error creando consumible:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
