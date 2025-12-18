@@ -153,7 +153,7 @@ export async function POST(request) {
 
         // 1. Crear Vehículo
         const vehiculo = await Vehiculo.create({
-            marcaId: body.marcaId,
+            marca: body.marca,
             modelo: body.modelo,
             anio: body.anio,
             tipoVehiculo: body.tipoVehiculo,
@@ -161,7 +161,6 @@ export async function POST(request) {
             capacidadCarga: body.capacidadCarga,
             numeroEjes: body.numeroEjes,
             tipoCombustible: body.tipoCombustible,
-            imagen: body.imagen
         }, { transaction: t });
 
         // 2. Subsistemas

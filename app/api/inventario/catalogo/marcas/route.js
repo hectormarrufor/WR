@@ -4,9 +4,15 @@ import { NextResponse } from 'next/server';
 /**
  * GET: Obtiene una lista de todas las marcas.
  */
-export async function GET() {
+export async function GET(request) {
+     const { searchParams } = new URL(request.url);
+        const tipo = searchParams.get('tipo');
+
+        const whereClause = tipo ? { where: { tipo } } : {};
+        console.log("tipo recibido en marcas:", tipo);
     try {
         const marcas = await db.Marca.findAll({
+            ...whereClause,
             attributes: ['id', 'nombre'],
             order: [['nombre', 'ASC']]
         });
@@ -24,7 +30,8 @@ export async function POST(request) {
     try {
         const body = await request.json();
         const nombreMarca = body.valor;
-        console.log("nombre de la marca", nombreMarca)
+        const tipo = body.tipo;
+        console.log("nombre de la marca", nombreMarca, "tipo", tipo)
 
         if (!nombreMarca) {
             return NextResponse.json({ success: false, error: "El nombre de la marca es obligatorio." }, { status: 400 });
@@ -32,8 +39,8 @@ export async function POST(request) {
 
         // Utilizamos findOrCreate para evitar duplicados.
         const [marca, created] = await db.Marca.findOrCreate({
-            where: { nombre: nombreMarca },
-            defaults: { nombre: nombreMarca }
+            where: { nombre: nombreMarca, tipo: tipo },
+            defaults: { nombre: nombreMarca, tipo: tipo }
         });
 
         // Retornamos la marca creada o encontrada.

@@ -2,18 +2,19 @@ const sequelize = require('../../sequelize');
 const { DataTypes } = require('sequelize');
 
 
-const ViscosidadAceite = sequelize.define('ViscosidadAceite', {
-    viscosidades: {
+const Modelo = sequelize.define('Modelo', {
+    nombre: {
         type: DataTypes.STRING,
         allowNull: false,
+        unique: true,
     },
     tipo: {
-        type: DataTypes.ENUM("motor", "hidraulico"),
+        type: DataTypes.ENUM("vehiculo", "bateria", "aceite", "neumatico", "general"),
         allowNull: true,
     }
-},{
-    tableName: 'ViscosidadesAceite',
+}, {
+    tableName: 'Modelos',
     timestamps: true,
 });
 
-module.exports = ViscosidadAceite;
+module.exports = Modelo;

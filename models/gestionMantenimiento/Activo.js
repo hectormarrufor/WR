@@ -8,7 +8,7 @@ const Activo = sequelize.define('Activo', {
     allowNull: false
   },
   tipoActivo: {
-    type: DataTypes.ENUM('Vehiculo', 'Remolque', 'Maquina'),
+    type: DataTypes.ENUM('Vehiculo', 'Remolque', 'Maquina', 'Equipo estacionario', 'Otro'),
     allowNull: false
   },
   imagen: {
@@ -18,6 +18,10 @@ const Activo = sequelize.define('Activo', {
   estado: {
     type: DataTypes.ENUM('Operativo', 'En Mantenimiento', 'Inactivo', 'Desincorporado'),
     defaultValue: 'Operativo'
+  },
+  fechaAdquisicion: {
+    type: DataTypes.DATE,
+    allowNull: true
   },
   ubicacionActual: {
     type: DataTypes.STRING,

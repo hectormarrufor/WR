@@ -54,7 +54,13 @@ const NeumaticoForm = ({ onSuccess, onCancel }) => {
     };
 
     return (
-        <form onSubmit={form.onSubmit(handleSubmit)}>
+        <form onSubmit={(e) => {
+                    // 1. Detiene la propagación para que no llegue al formulario padre (Vehículo)
+                    e.stopPropagation(); 
+                    
+                    // 2. Ejecuta el submit de este formulario (Consumible)
+                    form.onSubmit(handleSubmit)(e);
+                }}>
             <AsyncCatalogComboBox
                 label="Marca"
                 placeholder="Selecciona una marca"

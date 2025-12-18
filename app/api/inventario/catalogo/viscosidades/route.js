@@ -8,11 +8,10 @@ import { NextResponse } from 'next/server';
  */
 export async function GET(request) {
 
-        console.log("GET /api/inventario/catalogo/viscosidades");
     try {
         const { searchParams } = new URL(request.url);
         const tipo = searchParams.get('tipo');
-
+        console.log("tipo recibido en viscosidades:", tipo);
         const where = {};
         if (tipo) {
             where.tipo = tipo;
@@ -54,14 +53,14 @@ export async function POST(request) {
         }
 
         // Utilizamos findOrCreate para evitar duplicados.
-        const where = { viscosidades: nombreViscosidad };
+        let where = { viscosidades: nombreViscosidad };
         if (tipo) {
             where.tipo = tipo;
         }
 
         const [viscosidad, created] = await db.ViscosidadAceite.findOrCreate({
             where,
-            defaults: { viscosidades: nombreViscosidad, tipo }
+            defaults: { viscosidades: nombreViscosidad, tipo: tipo }
         });
 
         // Retornamos la viscosidad creada o encontrada.

@@ -2,8 +2,9 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const MaquinaInstancia = sequelize.define('MaquinaInstancia', {
-  tipo: { type: DataTypes.STRING, allowNull: false }, // Ej: "soldadora"
-  potencia: { type: DataTypes.STRING, allowNull: true }
+  serialChasis: { type: DataTypes.STRING, allowNull: false, unique: true },
+  serialMotor: { type: DataTypes.STRING, allowNull: true },
+  placa: { type: DataTypes.STRING, allowNull: true, unique: true },
 },
 {
   tableName: 'MaquinasInstancias'

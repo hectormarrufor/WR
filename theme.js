@@ -282,15 +282,21 @@ export const theme = {
     "Modal": {
       "defaultProps": {
         "radius": 'md',
-        "mt": 60,
         "shadow": 'xl',
+        "zIndex": 200,
       },
+      "styles": (theme, props) => ({
+        "header": {
+          "paddingTop": props.fullScreen ? "4rem" : undefined,
+          "backgroundColor": 'transparent',                // desenfoque tipo vidrio
+        }
+      }),
     },
     "Paper": {
       "defaultProps": {
         "radius": 'sm',
         "shadow": 'md',
-        "bg": '#ffffff70',
+        "bg": '#ffffffa8',
         "p": 'sm',
 
       },

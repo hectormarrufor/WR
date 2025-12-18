@@ -113,7 +113,7 @@ export default function RootLayout({ children }) {
           <Notifications />
           <AuthProvider>
             <AppShell
-              header={{}}
+              header={{height: isMobile ? 50 : 66}}
               navbar={{ width: 300, breakpoint: 'sm', collapsed: { desktop: true, mobile: !opened } }}
               padding="md"
             >
@@ -134,7 +134,7 @@ export default function RootLayout({ children }) {
               >
                 <Group justify='space-between' px={isMobile ? 0 : 40}>
                   <UnstyledButton p={0} m={0} onClick={() => router.push('/')} >
-                    <Image src="/logo.png" w={isMobile ? "25vw" :"12vw"} alt="logo" p={0} py={0} m={5} />
+                    <Image src="/logo.png" h={isMobile ? 40 : 55} alt="logo" p={0} py={0} m={5} />
                   </UnstyledButton>
                   <Group h="100%" px="md">
                     <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="md" />
@@ -178,7 +178,7 @@ export default function RootLayout({ children }) {
                   }}
                   src="/fondo.jpg"
                 />
-                <Box mt={showHeader ? isMobile ? 33 : 35 : 0}>{children}</Box>
+                <Box>{children}</Box>
                 {/* <InstallationIOSBanner /> */}
               </AppShell.Main>
             </AppShell>

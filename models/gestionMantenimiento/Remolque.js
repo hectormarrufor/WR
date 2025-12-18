@@ -2,12 +2,13 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const Remolque = sequelize.define('Remolque', {
-    tipo: { type: DataTypes.STRING, allowNull: false },
     marca: { type: DataTypes.STRING, allowNull: false },
     modelo: { type: DataTypes.STRING, allowNull: false },
     anio: { type: DataTypes.INTEGER, allowNull: false },
     nroEjes: { type: DataTypes.INTEGER, allowNull: false },
     capacidadCarga: { type: DataTypes.STRING, allowNull: true },
+    peso: { type: DataTypes.STRING, allowNull: true },
+    tipoRemolque: { type: DataTypes.ENUM('Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Vaccum', 'Tolva'), allowNull: true },
     
 }, {
     tableName: 'Remolques',

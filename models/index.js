@@ -65,6 +65,7 @@ const db = {
     Codigo: require('./catalogos/Codigo'),
     Color: require('./catalogos/Color'),
     Marca: require('./catalogos/Marca'),
+    Modelo: require('./catalogos/Modelo'),
     MedidaNeumatico: require('./catalogos/MedidaNeumatico'),
     Banco: require('./catalogos/Banco'),
 

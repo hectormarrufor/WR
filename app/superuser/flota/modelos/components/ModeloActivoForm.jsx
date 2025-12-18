@@ -78,7 +78,7 @@ export default function ModeloActivoForm({
             if (tipoPreseleccionado === 'Vehiculo') {
                 endpoint = '/api/gestionMantenimiento/vehiculo';
                 payload = { ...payload, modelo: values.modelo, tipoVehiculo: values.tipoVehiculo, numeroEjes: values.ejes };
-            } 
+            }
             else if (tipoPreseleccionado === 'Remolque') {
                 endpoint = '/api/gestionMantenimiento/remolque';
                 payload = { ...payload, tipoRemolque: values.tipoRemolque, numeroEjes: values.ejes, capacidad: values.capacidadCarga };
@@ -93,7 +93,7 @@ export default function ModeloActivoForm({
             // reciba también los subsistemas. Si tu endpoint actual no lo soporta,
             // tendremos que hacerlo en pasos como antes. 
             // VOY A ASUMIR EL MÉTODO DE 2 PASOS que usamos antes, pero mejorado.
-            
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -109,9 +109,9 @@ export default function ModeloActivoForm({
             // Ahora enviamos no solo nombre, sino también la lista de compatibilidad
             if (subsistemas.length > 0) {
                 const validos = subsistemas.filter(s => s.nombre.trim() !== '');
-                
+                    
                 if (validos.length > 0) {
-                    await Promise.all(validos.map(sub => 
+                    await Promise.all(validos.map(sub =>
                         fetch('/api/gestionMantenimiento/subsistemas', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -155,14 +155,14 @@ export default function ModeloActivoForm({
                         tipo='vehiculo'
                     />
 
-                    {tipoPreseleccionado !== 'Remolque' && (
-                        <TextInput
-                            label="Modelo Comercial"
-                            placeholder={tipoPreseleccionado === 'Vehiculo' ? "ej. Granite, Stralis" : "ej. 416E, D6T"}
-                            required
-                            {...form.getInputProps('modelo')}
-                        />
-                    )}
+                    <AsyncCatalogComboBox
+                        label="Modelo"
+                        placeholder="Buscar o crear modelo..."
+                        form={form}
+                        fieldKey="modelo"
+                        catalogo="modelos"
+                        tipo='vehiculo'
+                    />
 
                     <Group grow>
                         <NumberInput label="Año" min={1980} max={2030} {...form.getInputProps('anio')} />
@@ -176,7 +176,7 @@ export default function ModeloActivoForm({
                         <Select
                             label="Tipo de Vehículo"
                             placeholder="Seleccione..."
-                            data={['Chuto', 'Camión 350', 'Camión 750', 'Volqueta', 'Bus', 'Camioneta', 'Automóvil']}
+                            data={['Chuto', 'Carro', 'Camioneta', 'Moto', 'Bus', "Van", "Volqueta", "Camion"]}
                             {...form.getInputProps('tipoVehiculo')}
                         />
                     )}
@@ -186,19 +186,70 @@ export default function ModeloActivoForm({
                             label="Tipo de Remolque"
                             placeholder="Seleccione..."
                             required
-                            data={['Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Jaula', 'Tolva', 'Portacontenedor']}
+                            data={['Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Vaccum', 'Tolva']}
                             {...form.getInputProps('tipoRemolque')}
                         />
                     )}
 
                     {tipoPreseleccionado === 'Maquina' && (
-                        <Select
-                            label="Tipo de Máquina"
-                            placeholder="Seleccione..."
-                            data={['Retroexcavadora', 'Excavadora', 'Payloader', 'Motoniveladora', 'Vibrocompactador', 'Grúa', 'Montacargas', 'Planta Eléctrica', 'Taladro']}
-                            {...form.getInputProps('tipoMaquina')}
-                        />
+                        <>
+                            <Select
+                                label="Tipo de Máquina"
+                                placeholder="Seleccione..."
+                                data={['Retroexcavadora', 'Excavadora', 'Payloader', 'Motoniveladora', 'Vibrocompactador', 'Grúa', 'Montacargas', 'Planta Eléctrica', 'Taladro']}
+                                {...form.getInputProps('tipoMaquina')}
+                            />
+                            <Select
+                                label="Tipo de Tracción"
+                                placeholder="Seleccione..."
+                                data={['oruga', 'ruedas']}
+                                {...form.getInputProps('traccion')}
+                            />
+                            <NumberInput
+                                {...form.getInputProps('capacidadLevante')}
+                                label="Capacidad de Levante (tons) (opcional)"
+                                placeholder="Seleccione..."
+                                min={0}
+                                step={0.5}
+                            />
+                            <NumberInput
+                                {...form.getInputProps('capacidadCucharon')}
+                                label="Capacidad de Cucharón (m³) (opcional)"
+                                placeholder="Seleccione..."
+                                min={0}
+                                step={0.1}
+                            />
+                            <NumberInput
+                                {...form.getInputProps('alcanceMaximo')}
+                                label="Alcance Máximo (mts) (opcional)"
+                                placeholder="Seleccione..."
+                                min={0}
+                                step={0.5}
+                            />
+                        </>
                     )}
+
+                    {(tipoPreseleccionado === 'Remolque' || tipoPreseleccionado === 'Vehiculo') && (
+                        <>
+                            <TextInput
+                                label="Capacidad de Carga (tons) (opcional)"
+                                placeholder="ej. 15.5"
+                                {...form.getInputProps('capacidadCarga')}
+                            />
+                            <TextInput
+                                label="Peso (tons) (opcional)"
+                                placeholder="ej. 15.5"
+                                {...form.getInputProps('peso')}
+                            />
+                            <Select
+                                label="Tipo de Combustible"
+                                placeholder="Seleccione..."
+                                data={['Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"]}
+                                {...form.getInputProps('tipoCombustible')}
+                            />
+                        </>
+                    )}
+
 
                     <Divider my="sm" />
 
@@ -209,11 +260,11 @@ export default function ModeloActivoForm({
                                 <IconSitemap size={18} />
                                 <Text fw={600} size="sm">Definición de Subsistemas y Partes</Text>
                             </Group>
-                            <Button variant="subtle" size="xs" leftSection={<IconPlus size={14}/>} onClick={addSubsistema}>
+                            <Button variant="subtle" size="xs" leftSection={<IconPlus size={14} />} onClick={addSubsistema}>
                                 Agregar
                             </Button>
                         </Group>
-                        
+
                         {subsistemas.length === 0 ? (
                             <Text size="xs" c="dimmed" align="center">Sin subsistemas definidos.</Text>
                         ) : (
@@ -231,29 +282,29 @@ export default function ModeloActivoForm({
                                         <Accordion.Panel>
                                             <Stack gap="sm">
                                                 <Group grow>
-                                                    <TextInput 
+                                                    <TextInput
                                                         label="Nombre"
-                                                        placeholder="ej. Motor" 
+                                                        placeholder="ej. Motor"
                                                         value={sub.nombre}
                                                         onChange={(e) => updateSubsistema(index, 'nombre', e.currentTarget.value)}
                                                     />
-                                                    <TextInput 
+                                                    <TextInput
                                                         label="Descripción"
-                                                        placeholder="ej. ISX 450HP" 
+                                                        placeholder="ej. ISX 450HP"
                                                         value={sub.descripcion}
                                                         onChange={(e) => updateSubsistema(index, 'descripcion', e.currentTarget.value)}
                                                     />
                                                 </Group>
-                                                
+
                                                 {/* AQUÍ ESTÁ LA MAGIA: SELECTOR DE CONSUMIBLES */}
-                                                <ConsumibleSelector 
+                                                <ConsumibleSelector
                                                     value={sub.recomendaciones}
                                                     onChange={(val) => updateSubsistema(index, 'recomendaciones', val)}
                                                 />
 
                                                 <Group justify="right" mt="xs">
-                                                    <Button 
-                                                        color="red" variant="subtle" size="xs" 
+                                                    <Button
+                                                        color="red" variant="subtle" size="xs"
                                                         leftSection={<IconTrash size={14} />}
                                                         onClick={() => removeSubsistema(index)}
                                                     >

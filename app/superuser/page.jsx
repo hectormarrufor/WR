@@ -1,7 +1,7 @@
 // app/superuser/page.js
 'use client';
 
-import { Button, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge, Flex, LoadingOverlay, Loader, Center } from '@mantine/core';
+import { Button, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge, Flex, LoadingOverlay, Loader, Center, Paper } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
