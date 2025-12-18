@@ -7,6 +7,10 @@ const ViscosidadAceite = sequelize.define('ViscosidadAceite', {
         type: DataTypes.ARRAY(DataTypes.STRING),
         allowNull: false,
         defaultValue: []
+    },
+    tipo: {
+        type: DataTypes.ENUM("motor", "hidraulico"),
+        allowNull: true,
     }
 },{
     tableName: 'ViscosidadesAceite',

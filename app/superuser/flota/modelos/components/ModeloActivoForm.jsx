@@ -152,6 +152,7 @@ export default function ModeloActivoForm({
                         form={form}
                         fieldKey="marca"
                         catalogo="marcas"
+                        tipo='vehiculo'
                     />
 
                     {tipoPreseleccionado !== 'Remolque' && (

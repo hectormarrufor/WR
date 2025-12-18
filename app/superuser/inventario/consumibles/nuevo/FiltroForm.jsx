@@ -8,7 +8,7 @@ import ODTSelectableGrid from '@/app/superuser/odt/ODTSelectableGrid';
 import ImageDropzone from '@/app/superuser/flota/activos/components/ImageDropzone';
 import { useRouter } from 'next/navigation';
 
-const FiltroForm = () => {
+const FiltroForm = ({ onSuccess, onCancel }) => {
     const router = useRouter();
     const [filtros, setFiltros] = useState([]);
 
@@ -66,7 +66,8 @@ const FiltroForm = () => {
               }
 
         try {
-            await axios.post('/api/inventario/filtros', payload);
+            const res = await axios.post('/api/inventario/filtros', payload);
+            const createdFiltro = res.data;
             // Handle success (e.g., show a success message or reset the form)
             form.reset();
             notifications.show({
@@ -74,7 +75,12 @@ const FiltroForm = () => {
                 message: 'Filtro creado exitosamente',
                 color: 'green',
             });
+            if (onSuccess) {
+                // Si me pasaron onSuccess (estoy en Modal), lo ejecuto y le paso el objeto creado
+                onSuccess(createdFiltro); 
+            } else {
             router.push('/superuser/inventario/consumibles');
+            }
         } catch (error) {
             // Handle error (e.g., show an error message)
             console.error('Error submitting form:', error);
@@ -104,6 +110,7 @@ const FiltroForm = () => {
                 fieldKey="marca"
                 form={form}
                 catalogo="marcas"
+                tipo='filtro'
             />
             <AsyncCatalogComboBox
                 label="Código"
@@ -111,7 +118,13 @@ const FiltroForm = () => {
                 fieldKey="codigo"
                 form={form}
                 catalogo="codigos"
-                tipo={form.values.tipo}
+                tipo={
+                    form.values.tipo === "aceite" ? 'filtroAceite' :
+                    form.values.tipo === "aire" ? 'filtroAire' :
+                    form.values.tipo === "combustible" ? 'filtroCombustible' :
+                    form.values.tipo === "cabina" ? 'filtroCabina' :
+                    '' 
+                }
             />
             <ImageDropzone 
                 label="Imagen del filtro"
@@ -130,6 +143,7 @@ const FiltroForm = () => {
             }
 
             <Group position="right" mt="md">
+                {onCancel && <Button variant="outline" color="red" onClick={onCancel}>Cancelar</Button>}
                 <Button type="submit">Submit</Button>
             </Group>
 

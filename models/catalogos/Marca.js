@@ -7,8 +7,12 @@ const Marca = sequelize.define('Marca', {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
+    },
+    tipo: {
+        type: DataTypes.ENUM("vehiculo", "filtro", "bateria", "aceite", "correa", "neumatico", "general"),
+        allowNull: true,
     }
-},{
+}, {
     tableName: 'Marcas',
     timestamps: true,
 });

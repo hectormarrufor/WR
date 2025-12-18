@@ -9,7 +9,7 @@ const Codigo = sequelize.define('Codigo', {
         unique: true,
     },
     tipo: {
-        type: DataTypes.ENUM('filtroAceite', 'filtroAire', 'filtroCombustible', 'filtroCabina', "correa", 'sensor'),
+        type: DataTypes.ENUM('filtroAceite', 'filtroAire', 'filtroCombustible', 'filtroCabina', "correa", 'sensor', 'bateria', 'otro'),
         allowNull: false,
     }
 },{

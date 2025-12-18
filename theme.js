@@ -279,6 +279,13 @@ export const theme = {
         }
       }
     },
+    "Modal": {
+      "defaultProps": {
+        "radius": 'md',
+        "mt": 60,
+        "shadow": 'xl',
+      },
+    },
     "Paper": {
       "defaultProps": {
         "radius": 'sm',
