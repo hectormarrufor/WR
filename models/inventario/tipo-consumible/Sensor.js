@@ -10,6 +10,10 @@ const Sensor = sequelize.define('Sensor', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    nombre: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
  }, {
     tableName: 'Sensores',
     timestamps: true,

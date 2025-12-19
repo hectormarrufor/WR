@@ -6,8 +6,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 
 // Importa TUS componentes existentes (ajusta las rutas si es necesario)
 import FiltroForm from './FiltroForm'; 
-import AceiteMotorForm from './AceiteMotorForm';
-import AceiteHidraulicoForm from './AceiteHidraulicoForm';
+import AceiteForm from './AceiteForm';
 import NeumaticoForm from './NeumaticoForm';
 import BateriaForm from './BateriaForm';
 import SensorForm from './SensorForm';
@@ -26,10 +25,8 @@ export default function ConsumibleFormManager({
         const commonProps = { onSuccess, onCancel }; 
 
         switch (tipo) {
-            case 'aceiteMotor':
-                return <AceiteMotorForm {...commonProps} />;
-            case 'aceiteHidraulico':
-                 return <AceiteHidraulicoForm {...commonProps} />;
+            case 'aceite':
+                return <AceiteForm {...commonProps} />;
             case 'neumatico':
                  return <NeumaticoForm {...commonProps} />;
             case 'bateria':
@@ -52,8 +49,7 @@ export default function ConsumibleFormManager({
             <Select
                 label="Tipo de Repuesto / Consumible"
                 data={[
-                    { value: 'aceiteMotor', label: 'Aceite de Motor' },
-                    { value: 'aceiteHidraulico', label: 'Aceite Hidráulico' },
+                    { value: 'aceite', label: 'Aceite' },
                     { value: 'neumatico', label: 'Neumático' },
                     { value: 'bateria', label: 'Batería' },
                     { value: 'filtro', label: 'Filtro' },

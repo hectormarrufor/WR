@@ -30,5 +30,9 @@ const Filtro = sequelize.define('Filtro', {
 
 Filtro.associate = (models) => {
     Filtro.belongsTo(models.Consumible, { foreignKey: 'consumibleId' });
+    Filtro.belongsTo(models.GrupoEquivalencia, { 
+        foreignKey: 'grupoEquivalenciaId', 
+        as: 'grupoEquivalencia' 
+    });
 }
 module.exports = Filtro;

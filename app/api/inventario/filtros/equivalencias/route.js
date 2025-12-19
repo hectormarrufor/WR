@@ -1,60 +1,40 @@
 import { NextResponse } from 'next/server';
-import { Filtro, Consumible, EquivalenciaFiltro } from '@/models';
+import { Filtro, Consumible } from '@/models';
 import { Op } from 'sequelize';
 
+// api/inventario/filtros/equivalencias/route.js
+
 export async function GET(request) {
+    // ... obtener consumibleId ...
     const { searchParams } = new URL(request.url);
     const consumibleId = searchParams.get('consumibleId');
-
     if (!consumibleId) {
-        return NextResponse.json({ success: false, error: 'Falta consumibleId' }, { status: 400 });
+        return NextResponse.json({ success: false, error: "consumibleId es requerido" }, { status: 400 });
+    }
+    // Buscar el filtro asociado al consumibleId
+
+
+    const filtroOrigen = await Filtro.findOne({ where: { consumibleId } });
+    
+    if (!filtroOrigen || !filtroOrigen.grupoEquivalenciaId) {
+        // No es filtro o no tiene grupo (no tiene equivalencias)
+        return NextResponse.json({ success: true, data: [] });
     }
 
-    try {
-        // 1. Buscamos el Filtro asociado a este Consumible
-        const filtroOrigen = await Filtro.findOne({ where: { consumibleId } });
+    // Buscar TODOS los miembros del mismo grupo
+    const filtrosHermanos = await Filtro.findAll({
+        where: {
+            grupoEquivalenciaId: filtroOrigen.grupoEquivalenciaId,
+            id: { [Op.ne]: filtroOrigen.id } // Excluir al mismo filtro que consultamos
+        },
+        include: [{ 
+            model: Consumible, // Traemos la info del padre (Nombre, Stock, Marca)
+            as: 'consumible' 
+        }]
+    });
 
-        if (!filtroOrigen) {
-            // No es un filtro o no existe, devolvemos array vacío
-            return NextResponse.json({ success: true, data: [] });
-        }
+    // Mapeamos para devolver solo la info útil del consumible
+    const data = filtrosHermanos.map(f => f.consumible);
 
-        // 2. Buscamos en la tabla de equivalencias
-        // OJO: La relación puede estar en ambas direcciones (filtroA -> filtroB O filtroB -> filtroA)
-        // Asumiendo que tu tabla EquivalenciaFiltro tiene filtroAId y filtroBId
-        
-        const equivalencias = await EquivalenciaFiltro.findAll({
-            where: {
-                [Op.or]: [
-                    { filtroAId: filtroOrigen.id },
-                    { filtroBId: filtroOrigen.id }
-                ]
-            }
-        });
-
-        // 3. Extraemos los IDs de los filtros "hermanos"
-        const idsFiltrosHermanos = equivalencias.map(eq => 
-            eq.filtroAId === filtroOrigen.id ? eq.filtroBId : eq.filtroAId
-        );
-
-        if (idsFiltrosHermanos.length === 0) {
-            return NextResponse.json({ success: true, data: [] });
-        }
-
-        // 4. Buscamos los Consumibles padres de esos filtros hermanos
-        // Para devolver la info completa (ID, Nombre) al frontend
-        const consumiblesHermanos = await Consumible.findAll({
-            include: [{
-                model: Filtro,
-                where: { id: idsFiltrosHermanos }, // Filtramos por los IDs de filtros encontrados
-                required: true
-            }]
-        });
-
-        return NextResponse.json({ success: true, data: consumiblesHermanos });
-
-    } catch (error) {
-        console.error("Error buscando equivalencias:", error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-    }
+    return NextResponse.json({ success: true, data });
 }

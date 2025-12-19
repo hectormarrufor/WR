@@ -5,11 +5,11 @@ async function crearConsumibleEspecifico(tipo, datos) {
   let nombre;
 
   switch (tipo) {
-    case 'aceiteMotor':
-      modeloEspecifico = AceiteMotor;
-      categoria = 'aceiteMotor';
+    case 'aceite':
+      modeloEspecifico = Aceite;
+      categoria = 'aceite';
       unidadMedida = 'litros';
-      nombre = `Aceite Motor ${datos.marca} ${datos.viscosidad} ${datos.tipo}`;
+      nombre = `Aceite ${datos.marca} ${datos.viscosidad} ${datos.tipo}`;
       break;
 
     case 'neumatico':

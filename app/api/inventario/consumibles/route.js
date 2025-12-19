@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
 import { Op } from 'sequelize';
-import { 
-    Consumible, 
+import {
+    Consumible,
     // Importa tus modelos específicos según tu estructura exacta
-    Filtro, 
-    Correa, 
-    AceiteMotor, 
-    EquivalenciaFiltro 
+    Filtro,
+    Correa,
+    Aceite,
+    GrupoEquivalencia
 } from '@/models';
 
 // GET: Buscar Consumibles (soporta ?search=... y ?tipo=...)
@@ -32,7 +32,7 @@ export async function GET(request) {
 
         // Si tienes una columna 'tipoConsumible' en la tabla padre, úsala
         if (tipo) {
-            whereCondition.tipoConsumible = tipo; 
+            whereCondition.tipoConsumible = tipo;
         }
 
         const consumibles = await Consumible.findAll({
@@ -54,12 +54,12 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const { 
-            nombre, 
-            codigo, 
-            marca, 
-            stockActual = 0, 
-            stockMinimo = 0, 
+        const {
+            nombre,
+            codigo,
+            marca,
+            stockActual = 0,
+            stockMinimo = 0,
             datosTecnicos // Objeto { tipo: 'Filtro', datos: {...}, equivalenciaExistenteId: 123 }
         } = body;
 
@@ -73,29 +73,50 @@ export async function POST(request) {
             tipoConsumible: datosTecnicos?.tipo || 'Generico'
         }, { transaction: t });
 
-        // 2. Crear el Registro Específico (Herencia)
+        // 2. Lógica Específica FILTRO
         if (datosTecnicos?.tipo === 'Filtro') {
-            const nuevoFiltro = await Filtro.create({
-                consumibleId: nuevoConsumible.id,
-                tipoFiltro: datosTecnicos.datos.tipoFiltro
-            }, { transaction: t });
+            
+            let grupoId = null;
 
-            // 3. Crear Equivalencia si aplica
+            // ¿El usuario seleccionó un hermano?
             if (datosTecnicos.equivalenciaExistenteId) {
-                // Buscamos el filtro "hermano" asociado al consumible seleccionado
+                
+                // Buscamos al hermano para ver si ya tiene grupo
                 const filtroHermano = await Filtro.findOne({ 
-                    where: { consumibleId: datosTecnicos.equivalenciaExistenteId },
-                    transaction: t
+                    where: { consumibleId: datosTecnicos.equivalenciaExistenteId }, // OJO: Verifica si tu ID es de consumible o de filtro. 
+                    // Si tu modal devuelve ID de Consumible, usa 'consumibleId'.
+                    transaction: t 
                 });
 
                 if (filtroHermano) {
-                    await EquivalenciaFiltro.create({
-                        filtroAId: filtroHermano.id,
-                        filtroBId: nuevoFiltro.id
-                    }, { transaction: t });
+                    // ESCENARIO 2: El hermano ya tiene grupo. Nos unimos.
+                    if (filtroHermano.grupoEquivalenciaId) {
+                        grupoId = filtroHermano.grupoEquivalenciaId;
+                    } 
+                    // ESCENARIO 3: El hermano es huérfano. Creamos grupo y lo adoptamos.
+                    else {
+                        const nuevoGrupo = await GrupoEquivalencia.create({ 
+                            descripcion: `Grupo Auto-generado` 
+                        }, { transaction: t });
+                        
+                        grupoId = nuevoGrupo.id;
+
+                        // Actualizamos al hermano
+                        await filtroHermano.update({ 
+                            grupoEquivalenciaId: grupoId 
+                        }, { transaction: t });
+                    }
                 }
             }
-        } 
+            // ESCENARIO 1: No hay equivalencia (grupoId se queda en null)
+
+            // Creamos el Filtro vinculado al grupo (o null)
+            await Filtro.create({
+                consumibleId: nuevoConsumible.id,
+                tipoFiltro: datosTecnicos.datos.tipoFiltro,
+                grupoEquivalenciaId: grupoId // <--- Aquí se cierra el círculo
+            }, { transaction: t });
+        }
         else if (datosTecnicos?.tipo === 'Correa') {
             await Correa.create({
                 consumibleId: nuevoConsumible.id,
@@ -105,7 +126,7 @@ export async function POST(request) {
             }, { transaction: t });
         }
         else if (datosTecnicos?.tipo === 'Aceite') {
-            await AceiteMotor.create({ // O tu modelo genérico de Aceite
+            await Aceite.create({ // O tu modelo genérico de Aceite
                 consumibleId: nuevoConsumible.id,
                 viscosidad: datosTecnicos.datos.viscosidad,
                 base: datosTecnicos.datos.base,

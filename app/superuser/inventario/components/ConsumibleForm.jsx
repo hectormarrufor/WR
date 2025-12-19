@@ -1,122 +1,200 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-    Stack, Select, TextInput, NumberInput, 
+import { useState, useEffect } from 'react';
+import {
+    Stack, Select, TextInput, NumberInput,
     Button, Group, Text, Divider, Alert, LoadingOverlay,
-    Paper 
+    SimpleGrid,
+    Paper
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconDeviceFloppy, IconLink } from '@tabler/icons-react';
+import { IconDeviceFloppy, IconInfoCircle, IconLink, IconTrash } from '@tabler/icons-react';
 
-export default function ConsumibleForm({ onSuccess, onCancel, noShadow = false }) {
+// Importamos el componente de inputs serializados
+import SerializadosInputs from './SerializadosInputs';
+import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
+import ImageDropzone from '../../flota/activos/components/ImageDropzone';
+import ModalEquivalencias from '../consumibles/nuevo/ModalEquivalencias';
+
+export default function ConsumibleForm({ onSuccess, onCancel }) {
     const [loading, setLoading] = useState(false);
-    const [tipoEspecifico, setTipoEspecifico] = useState('Filtro'); // Filtro, Correa, Aceite...
-    
-    // Estados para búsqueda de equivalencias
-    const [filtrosExistentes, setFiltrosExistentes] = useState([]);
-    const [loadingFiltros, setLoadingFiltros] = useState(false);
 
+    // Control de UI
+    const [tipoEspecifico, setTipoEspecifico] = useState('Filtro'); // Default
+    const [esSerializado, setEsSerializado] = useState(false);
+    const [showEquivalencias, setShowEquivalencias] = useState(false);
+    const [equivalenciaSeleccionada, setEquivalenciaSeleccionada] = useState(null); // Guardará el ID y Nombre
+
+    // Configuración del Formulario Maestro
     const form = useForm({
         initialValues: {
+            nombre: '',         // Se generará auto o manual
+            marca: '',
+            modelo: '',
             stockMinimo: 5,
-            marca: '', 
-            // FILTROS
-            codigoFiltro: '',
-            tipoFiltro: 'Aceite', 
-            equivalenciaId: null,
-            // CORREAS
-            perfilCorrea: 'PK', 
-            canales: 6,
-            longitudMm: 2000,
-            // ACEITES
-            viscosidad: '15W40',
-            tipoAceite: 'Mineral', 
-            aplicacion: 'Motor'
+            stockActual: 0,
+            categoria: '',
+
+            // Lógica Serializados
+            clasificacion: 'Fungible', // 'Fungible' | 'Serializado'
+            unidadMedida: 'unidades', // Valor por defecto
+            itemsSerializados: [],     // Array de objetos { serial: '...' }
+
+            //CAMPO COMÚN
+            codigo: '',
+            tipo: '',
+
+            // CAMPOS ESPECÍFICOS (Todos conviven aquí)
+            // Filtros
+            posicion: 'Primario',
+            imagen: '',
+            equivalencias: [],
+            // Aceites
+            viscosidad: '', // O id de viscosidad si usas relación
+            aplicacion: 'Motor',
+            // Correas
+            // Baterias (Ejemplo de algo serializado por defecto)
+            amperaje: 800,
+            voltaje: 12,
+            capacidad: 60,
+            // Neumáticos
+            medida: '',
+            //Sensores
+            nombre: '',
         },
         validate: {
             marca: (val) => !val ? 'Marca requerida' : null,
+            // Validaciones condicionales
             codigoFiltro: (val) => (tipoEspecifico === 'Filtro' && !val ? 'Código requerido' : null),
+            itemsSerializados: (val, values) => {
+                if (values.clasificacion === 'Serializado' && val.some(i => !i.serial)) {
+                    return 'Todos los seriales son obligatorios';
+                }
+                return null;
+            }
         }
     });
 
-    const handleSearchFiltros = async (query) => {
-        if (!query) return;
-        setLoadingFiltros(true);
-        try {
-            const res = await fetch(`/api/inventario/consumibles?search=${encodeURIComponent(query)}&tipo=Filtro`);
-            const data = await res.json();
-            if (data.success) {
-                setFiltrosExistentes(data.data.map(c => ({
-                    value: c.id.toString(),
-                    label: `${c.nombre} (${c.codigo})`
-                })));
+    // Efecto: Auto-configurar Serializado según el tipo
+    useEffect(() => {
+        if (['Bateria', 'Neumatico'].includes(tipoEspecifico)) {
+            setEsSerializado(true);
+            form.setFieldValue('clasificacion', 'Serializado');
+            form.setFieldValue('stockActual', 1); // Empezamos con 1 unidad
+        } else {
+            setEsSerializado(false);
+            form.setFieldValue('clasificacion', 'Fungible');
+        }
+        console.log(tipoEspecifico)
+    }, [tipoEspecifico]);
+
+    useEffect(() => {
+        if (form.values.clasificacion === 'Serializado') {
+            // Si es serializado, FORZAMOS que sea Unidad
+            form.setFieldValue('unidadMedida', 'Unidad');
+        }
+    }, [form.values.clasificacion]);
+
+    // Efecto para ajustar la categoria del consumible según el tipo específico
+    useEffect(() => {
+        if (tipoEspecifico === 'Filtro') {
+            form.setFieldValue('categoria', form.values.tipo ? `filtro de ${form.values.tipo.toLowerCase()}` : 'filtro de aceite');
+            form.setFieldValue('unidadMedida', 'unidades');
+        } else {
+            const categoriaMap = {
+                'Aceite': 'aceite',
+                'Bateria': 'bateria',
+                'Neumatico': 'neumatico',
+                'Correa': 'correa',
+            };
+            if (tipoEspecifico === "Aceite") {
+                form.setFieldValue('unidadMedida', 'litros');
             }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoadingFiltros(false);
+            if (tipoEspecifico === "Correa") {
+                form.setFieldValue('unidadMedida', 'unidades');
+            }
+            if (tipoEspecifico === "Sensor") {
+                form.setFieldValue('unidadMedida', 'unidades');
+            }
+            form.setFieldValue('categoria', categoriaMap[tipoEspecifico] || '');
+        }
+
+    }, [tipoEspecifico, form.values.tipo]);
+
+
+
+    // Función que recibe la selección del Modal
+    const handleConfirmEquivalencia = (selectedIds) => {
+        // Como el modal devuelve un Set o Array, tomamos el primero
+        const id = Array.from(selectedIds)[0];
+
+        if (id) {
+            // Aquí idealmente el modal debería devolver el objeto completo, 
+            // pero si solo devuelve ID, lo guardamos.
+            setEquivalenciaSeleccionada({ id: id, nombre: `Filtro ID: ${id}` });
+            setShowEquivalencias(false);
         }
     };
 
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
-            // 1. GENERAR NOMBRE Y CÓDIGO
+            // 1. GENERACIÓN DE NOMBRE Y DATOS TÉCNICOS
             let nombreGenerado = '';
-            let codigoGenerado = '';
             let datosTecnicos = {};
 
             if (tipoEspecifico === 'Filtro') {
-                codigoGenerado = values.codigoFiltro;
                 nombreGenerado = `Filtro ${values.tipoFiltro} ${values.marca} ${values.codigoFiltro}`;
                 datosTecnicos = {
                     tipo: 'Filtro',
                     datos: { tipoFiltro: values.tipoFiltro },
-                    equivalenciaExistenteId: values.equivalenciaId ? parseInt(values.equivalenciaId) : null
-                };
-            } 
-            else if (tipoEspecifico === 'Correa') {
-                const codigoCorrea = `${values.canales}${values.perfilCorrea}${values.longitudMm}`; 
-                codigoGenerado = codigoCorrea;
-                nombreGenerado = `Correa ${values.marca} ${codigoCorrea}`;
-                datosTecnicos = {
-                    tipo: 'Correa',
-                    datos: { perfil: values.perfilCorrea, canales: values.canales, longitud: values.longitudMm }
+                    equivalenciaExistenteId: equivalenciaSeleccionada?.id
                 };
             }
             else if (tipoEspecifico === 'Aceite') {
-                codigoGenerado = `${values.aplicacion.substring(0,3).toUpperCase()}-${values.viscosidad}`;
-                nombreGenerado = `Aceite ${values.aplicacion} ${values.viscosidad} ${values.tipoAceite} (${values.marca})`;
+                nombreGenerado = `Aceite ${values.aplicacion} ${values.marca} ${values.viscosidad} ${values.tipoAceite}`;
                 datosTecnicos = {
                     tipo: 'Aceite',
                     datos: { viscosidad: values.viscosidad, base: values.tipoAceite, aplicacion: values.aplicacion }
                 };
             }
+            else if (tipoEspecifico === 'Bateria') {
+                nombreGenerado = `Batería ${values.marca} Gr.${values.grupoBateria} ${values.cca}CCA`;
+                datosTecnicos = {
+                    tipo: 'Bateria',
+                    datos: { grupo: values.grupoBateria, cca: values.cca }
+                };
+            }
+            // ... Otros tipos ...
 
-            // 2. ENVIAR A API
+            // 2. PREPARAR PAYLOAD
+            const payload = {
+                nombre: nombreGenerado,
+                codigo: values.codigoFiltro || nombreGenerado, // Simplificado
+                marca: values.marca,
+                stockMinimo: values.stockMinimo,
+                stockActual: values.clasificacion === 'Serializado' ? values.itemsSerializados.length : values.stockActual,
+                tipo: values.clasificacion, // 'Fungible' o 'Serializado'
+
+                datosTecnicos: datosTecnicos,
+                itemsSerializados: values.itemsSerializados // Enviamos los hijos
+            };
+
+            // 3. FETCH
             const response = await fetch('/api/inventario/consumibles', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    nombre: nombreGenerado,
-                    codigo: codigoGenerado,
-                    marca: values.marca,
-                    stockActual: 0, 
-                    stockMinimo: values.stockMinimo,
-                    datosTecnicos: datosTecnicos 
-                })
+                body: JSON.stringify(payload)
             });
 
             const res = await response.json();
 
             if (res.success) {
-                notifications.show({ title: 'Creado', message: `${nombreGenerado} guardado`, color: 'green' });
-                if (onSuccess) onSuccess(res.data);
-                form.reset();
+                notifications.show({ title: 'Éxito', message: 'Consumible creado', color: 'green' });
+                if (onSuccess) onSuccess(res.data); // Retornamos la data completa (con hijos serializados)
             } else {
-                throw new Error(res.error || 'Error al crear');
+                throw new Error(res.error || 'Error al guardar');
             }
 
         } catch (error) {
@@ -127,87 +205,215 @@ export default function ConsumibleForm({ onSuccess, onCancel, noShadow = false }
         }
     };
 
+    const tipoCatalogo = {
+        'Aceite': 'aceite',
+        'Bateria': 'bateria',
+        'Neumatico': 'neumatico',
+        'Correa': 'correa',
+        'Filtro': 'filtro'
+    }[tipoEspecifico] || 'general';
+
+    const tipoFiltro = {
+        'Aceite': 'filtroAceite',
+        'Aire': 'filtroAire',
+        'Combustible': 'filtroCombustible'
+    }[form.values.tipoFiltro] || 'filtroAceite';
+
+
     return (
         <Stack pos="relative">
             <LoadingOverlay visible={loading} />
 
-            <Select 
-                label="Tipo de Repuesto"
-                data={['Filtro', 'Correa', 'Aceite']}
-                value={tipoEspecifico}
-                onChange={(val) => { setTipoEspecifico(val); form.reset(); }}
-                allowDeselect={false}
-            />
+            <SimpleGrid cols={2} breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
+
+                {/* SELECCIÓN DEL TIPO (Esto define qué inputs mostramos) */}
+                <Select
+                    label="Tipo de Repuesto"
+                    data={['Filtro', 'Aceite', 'Bateria', 'Correa', 'Neumatico']}
+                    value={tipoEspecifico}
+                    onChange={(val) => { setTipoEspecifico(val); form.reset(); }}
+                    allowDeselect={false}
+                />
+                <Select
+                    label="Unidad de Medida"
+                    disabled={esSerializado} // Si es serializado, no se puede cambiar
+                    data={['unidades', 'litros', 'kilogramos', 'metros', 'galones']}
+                    value={form.values.unidadMedida}
+                    onChange={(val) => form.setFieldValue('unidadMedida', val)}
+                />
+                {/* El select de clasificación puede ser manual o auto */}
+                <Select
+                    label="Clasificación"
+                    disabled
+                    data={['Fungible', 'Serializado']}
+                    value={form.values.clasificacion}
+                    onChange={(val) => {
+                        setEsSerializado(val === 'Serializado');
+                        form.setFieldValue('clasificacion', val);
+                        if (val === 'Serializado') form.setFieldValue('stockActual', 1);
+                    }}
+                />
+            </SimpleGrid>
+
 
             <Divider />
-            
-            <form onSubmit={(e) => {
-                    // 1. Detiene la propagación para que no llegue al formulario padre (Vehículo)
-                    e.stopPropagation(); 
-                    
-                    // 2. Ejecuta el submit de este formulario (Consumible)
-                    form.onSubmit(handleSubmit)(e);
-                }}>
+
+            {/* FORMULARIO ÚNICO - USANDO EL TRUCO DEL STOPPROPAGATION */}
+            <form onSubmit={(e) => { e.stopPropagation(); form.onSubmit(handleSubmit)(e); }}>
                 <Stack gap="md">
+
+                    {/* --- DATOS COMUNES --- */}
                     <Group grow>
-                        <TextInput label="Marca" placeholder="WIX, Gates..." required {...form.getInputProps('marca')} />
-                        <NumberInput label="Stock Mínimo" {...form.getInputProps('stockMinimo')} />
+                        <AsyncCatalogComboBox
+                            // LA CLAVE MÁGICA: Al cambiar el tipo, React destruye el anterior y crea uno nuevo
+                            key={tipoCatalogo}
+
+                            label="Marca"
+                            placeholder="Selecciona una marca"
+                            fieldKey="marca"
+                            form={form}
+                            catalogo="marcas"
+                            tipo={tipoCatalogo}
+                        />
+
+
                     </Group>
 
-                    {/* FILTROS */}
+                    {/* --- INPUTS ESPECÍFICOS (Renderizado Condicional) --- */}
+
+                    {/* CASO: FILTRO */}
                     {tipoEspecifico === 'Filtro' && (
                         <>
                             <Group grow>
-                                <TextInput label="Código Exacto" placeholder="ej. 51515" required {...form.getInputProps('codigoFiltro')} />
-                                <Select label="Función" data={['Aceite', 'Aire', 'Combustible', 'Separador', 'Hidráulico', 'Cabina']} {...form.getInputProps('tipoFiltro')} />
+                                <AsyncCatalogComboBox
+                                    label="Código"
+                                    placeholder="Ej. WF1036"
+                                    fieldKey="codigoFiltro"
+                                    form={form}
+                                    catalogo="codigos"
+                                    tipo={tipoFiltro}
+                                />
+                                <Select label="Función" placeholder="seleccione un tipo" data={['Aceite', 'Aire', 'Combustible']} {...form.getInputProps('tipo')} />
+                                <Select label="Posición" data={['Primario', 'Secundario']} {...form.getInputProps('posicion')} />
+                                <ImageDropzone
+                                    label="Imagen del Filtro" form={form} fieldPath="imagen"
+                                />
+
                             </Group>
-                            
-                            <Alert variant="light" color="blue" title="Equivalencias" icon={<IconLink size={16}/>}>
-                                Si es igual a uno existente (ej. WIX vs Millard), vincúlalos aquí.
+                            <Paper withBorder p="md" bg="gray.0">
+                                <Text size="sm" fw={500} mb="xs">Equivalencias</Text>
+
+                                {equivalenciaSeleccionada ? (
+                                    <Group justify="space-between">
+                                        <Group>
+                                            <IconLink size={18} color="blue" />
+                                            <Text size="sm">
+                                                Vinculado con: <b>{equivalenciaSeleccionada.nombre}</b> (y su grupo)
+                                            </Text>
+                                        </Group>
+                                        <Button
+                                            color="red" variant="subtle" size="xs"
+                                            onClick={() => setEquivalenciaSeleccionada(null)}
+                                        >
+                                            <IconTrash size={16} />
+                                        </Button>
+                                    </Group>
+                                ) : (
+                                    <Group>
+                                        <Alert variant="light" color="blue" title="¿Es igual a otro?" icon={<IconLink size={16} />} style={{ flex: 1 }}>
+                                            Si este filtro es equivalente a uno existente (ej. WIX vs Millard), vincúlalos.
+                                        </Alert>
+                                        <Button variant="white" onClick={() => setShowEquivalencias(true)}>
+                                            Buscar Equivalente
+                                        </Button>
+                                    </Group>
+                                )}
+                            </Paper>
+                        </>
+                    )}
+
+                    {/* CASO: ACEITE */}
+                    {tipoEspecifico === 'Aceite' && (
+                        <Group grow>
+                            <AsyncCatalogComboBox
+                                label="Modelo"
+                                placeholder="X-cess 8100"
+                                fieldKey="modelo"
+                                form={form}
+                                catalogo="modelos"
+                                tipo={tipoCatalogo}
+                            />
+                            <AsyncCatalogComboBox
+                                label="Viscosidad"
+                                placeholder="Ej. 15W-40"
+                                fieldKey="viscosidad"
+                                form={form}
+                                catalogo="viscosidades"
+                                tipo='motor'
+                            />
+                            <Select label="Base" data={['Mineral', 'Sintetico']} {...form.getInputProps('tipoAceite')} />
+                            <Select label="Aplicación" data={['Motor', 'Hidraulico']} {...form.getInputProps('aplicacion')} />
+                        </Group>
+                    )}
+
+                    {/* CASO: BATERÍA */}
+                    {tipoEspecifico === 'Bateria' && (
+                        <Group grow>
+                            <AsyncCatalogComboBox
+                                label="Grupo/Código"
+                                placeholder="Ej. 24F"
+                                fieldKey="codigo"
+                                form={form}
+                                catalogo="codigos"
+                                tipo="bateria"
+                            />
+                            <NumberInput label="CCA (Arranque)" suffix=" A" {...form.getInputProps('amperaje')} />
+                            <NumberInput label="Capacidad" suffix=" Ah" {...form.getInputProps('capacidad')} />
+                            <NumberInput label="Voltaje" suffix=" V" {...form.getInputProps('voltaje')} />
+                        </Group>
+                    )}
+
+
+                    {/* --- SECCIÓN DE STOCK Y SERIALES --- */}
+                    <Divider label="Inventario Inicial" labelPosition="center" />
+
+                    <NumberInput
+                        label={esSerializado ? "Cantidad a Ingresar (Unidades)" : "Stock Inicial"}
+                        min={esSerializado ? 1 : 0}
+                        {...form.getInputProps('stockActual')}
+                    />
+
+                    {esSerializado && (
+                        <>
+                            <Alert variant="light" color="blue" title="Detalle de Seriales" icon={<IconInfoCircle size={16} />}>
+                                Ingrese los datos únicos de cada unidad.
                             </Alert>
-                            
-                            <Select
-                                label="Vincular con Filtro Existente"
-                                placeholder="Buscar por código..."
-                                data={filtrosExistentes}
-                                searchable
-                                clearable
-                                onSearchChange={handleSearchFiltros}
-                                rightSection={loadingFiltros ? <Text size="xs">...</Text> : null}
-                                {...form.getInputProps('equivalenciaId')}
+
+                            <SerializadosInputs
+                                cantidad={form.values.stockActual}
+                                values={form.values.itemsSerializados}
+                                onChange={(newItems) => form.setFieldValue('itemsSerializados', newItems)}
                             />
                         </>
                     )}
 
-                    {/* CORREAS */}
-                    {tipoEspecifico === 'Correa' && (
-                        <>
-                            <Text size="sm" c="dimmed">Generador de Código: 8PK2000</Text>
-                            <Group grow>
-                                <NumberInput label="Canales" min={1} max={20} {...form.getInputProps('canales')} />
-                                <Select label="Perfil" data={['PK', 'A', 'B', 'C', 'V']} {...form.getInputProps('perfilCorrea')} />
-                                <NumberInput label="Longitud (mm)" min={100} suffix=" mm" {...form.getInputProps('longitudMm')} />
-                            </Group>
-                        </>
-                    )}
-
-                    {/* ACEITES */}
-                    {tipoEspecifico === 'Aceite' && (
-                        <Group grow>
-                            <Select label="Aplicación" data={['Motor', 'Hidraulico', 'Transmision']} {...form.getInputProps('aplicacion')} />
-                            <Select label="Viscosidad" data={['15W40', '20W50', '5W30', '80W90']} searchable creatable getCreateLabel={q => `+ ${q}`} {...form.getInputProps('viscosidad')} />
-                            <Select label="Base" data={['Mineral', 'Semi-Sintetico', 'Sintetico']} {...form.getInputProps('tipoAceite')} />
-                        </Group>
-                    )}
-
-                    <Group justify="right" mt="md">
-                        {onCancel && <Button variant="default" onClick={onCancel}>Cancelar</Button>}
-                        <Button type="submit" leftSection={<IconDeviceFloppy size={18}/>}>
-                            Guardar Consumible
+                    {/* --- BOTONES --- */}
+                    <Group justify="right" mt="xl">
+                        {onCancel && <Button variant="default" onClick={onCancel} type="button">Cancelar</Button>}
+                        <Button type="submit" leftSection={<IconDeviceFloppy size={18} />}>
+                            Guardar Repuesto
                         </Button>
                     </Group>
                 </Stack>
             </form>
+            {/* MODAL DE EQUIVALENCIAS */}
+            <ModalEquivalencias
+                open={showEquivalencias}
+                onClose={() => setShowEquivalencias(false)}
+                onConfirm={handleConfirmEquivalencia}
+                // Asegúrate de pasar props para que busque solo Filtros
+                initialSelected={equivalenciaSeleccionada ? [equivalenciaSeleccionada.id] : []}
+            />
         </Stack>
     );
 }

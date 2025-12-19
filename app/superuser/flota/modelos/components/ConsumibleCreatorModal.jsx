@@ -1,22 +1,23 @@
 'use client';
 
-import ConsumibleFormManager from '@/app/superuser/inventario/consumibles/nuevo/ConsumibleFormManager';
 import { Modal } from '@mantine/core';
+// IMPORTAMOS EL FORMULARIO MAESTRO DIRECTAMENTE
+import ConsumibleForm from '@/app/superuser/inventario/components/ConsumibleForm';
 
 export default function ConsumibleCreatorModal({ opened, onClose, onSuccess }) {
     return (
         <Modal 
             opened={opened} 
+            fullScreen
             onClose={onClose} 
-            centered
-            title="Registrar Nuevo Repuesto" 
-            size="lg"
-            // Mantine 7 recomienda trapFocus para formularios dentro de modales
-            trapFocus 
+            title="Crear Nuevo Repuesto / Consumible" 
+            size="lg" // Un poco más ancho para los inputs serializados
+            trapFocus
         >
-            <ConsumibleFormManager 
+            {/* Renderizamos el formulario único que ya tiene toda la lógica */}
+            <ConsumibleForm 
                 onSuccess={(newItem) => {
-                    // Lógica específica del MODAL: Avisar al padre y cerrar
+                    // newItem trae toda la data, incluyendo itemsSerializados si aplicó
                     if (onSuccess) onSuccess(newItem);
                     onClose();
                 }}

@@ -6,9 +6,8 @@ import { notifications } from '@mantine/notifications';
 import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
 import { useRouter } from 'next/navigation';
 
-// filepath: c:\Users\Hector Marrufo\Documents\App Web DADICA hector marrufo\WR\app\superuser\inventario\consumibles\nuevo\AceiteMotorForm.jsx
 
-const AceiteMotorForm = ({ onSuccess, onCancel }) => {
+const AceiteForm = ({ onSuccess, onCancel }) => {
     const router = useRouter();
 
     const form = useForm({
@@ -16,6 +15,7 @@ const AceiteMotorForm = ({ onSuccess, onCancel }) => {
             marca: '',
             viscosidad: '',
             tipo: '', // Mineral, Sintético, Semi-sintético
+            aplicacion: '', // Motor, Hidráulico
             presentacion: '', // Litro, Galón, Tambor
         },
         validate: {
@@ -89,6 +89,12 @@ const AceiteMotorForm = ({ onSuccess, onCancel }) => {
                     placeholder="Selecciona tipo..."
                     {...form.getInputProps('tipo')}
                 />
+                <Select
+                    label="Aplicación"
+                    data={['Motor', 'Hidráulico']}
+                    placeholder="Selecciona aplicación..."
+                    {...form.getInputProps('aplicacion')}
+                />
             </Group>
 
             <TextInput
@@ -108,4 +114,4 @@ const AceiteMotorForm = ({ onSuccess, onCancel }) => {
     );
 };
 
-export default AceiteMotorForm;
+export default AceiteForm;

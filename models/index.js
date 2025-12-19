@@ -2,7 +2,7 @@
 const sequelize = require('../sequelize');
 
 const db = {
-    
+
     // RECURSOS HUMANOS
     User: require('./user'),
     Empleado: require('./recursosHumanos/Empleado'),
@@ -11,7 +11,7 @@ const db = {
     EmpleadoPuesto: require('./recursosHumanos/EmpleadoPuesto'),
     Departamento: require('./recursosHumanos/Departamento'),
     PushSubscription: require('./pushSubscription'),
-    
+
     // FLOTA Y GESTION DE MANTENIMIENTO
     VehiculoInstancia: require('./gestionMantenimiento/VehiculoInstancia'),
     Activo: require('./gestionMantenimiento/Activo'),
@@ -28,38 +28,36 @@ const db = {
     RemolqueInstancia: require('./gestionMantenimiento/RemolqueInstancia'),
     Maquina: require('./gestionMantenimiento/Maquina'),
     MaquinaInstancia: require('./gestionMantenimiento/MaquinaInstancia'),
-    
+
     // INVENTARIO
     Consumible: require('./inventario/Consumible'),
     ConsumibleRecomendado: require('./inventario/ConsumibleRecomendado'),
     ConsumibleSerializado: require('./inventario/ConsumibleSerializado'),
     ConsumibleUsado: require('./inventario/ConsumibleUsado'),
-    AceiteHidraulico: require('./inventario/tipo-consumible/AceiteHidraulico'),
     Correa: require('./inventario/tipo-consumible/Correa'),
     Neumatico: require('./inventario/tipo-consumible/Neumatico'),
-    AceiteMotor: require('./inventario/tipo-consumible/AceiteMotor'),
+    Aceite: require('./inventario/tipo-consumible/Aceite'),
+    GrupoEquivalencia: require('./inventario/tipo-consumible/GrupoEquivalencia'),
     Filtro: require('./inventario/tipo-consumible/Filtro'),
     Sensor: require('./inventario/tipo-consumible/Sensor'),
     Bateria: require('./inventario/tipo-consumible/Bateria'),
-    EquivalenciaFiltro: require('./inventario/tipo-consumible/EquivalenciaFiltro'),
-
     EntradaInventario: require('./inventario/EntradaInventario'),
     SalidaInventario: require('./inventario/SalidaInventario'),
     Requisicion: require('./inventario/requisicion/Requisicion'),
     RequisicionDetalle: require('./inventario/requisicion/RequisicionDetalle'),
-    
+
     //Estimacion de Costos
     CostParameters: require('./estimacion/CostParameters'),
     CostEstimate: require('./estimacion/CostEstimate'),
     FixedExpense: require('./gastos/FixedExpense'),
-    
+
     //Operaciones
     Flete: require('./operaciones/Flete'),
     ConsumibleUsado: require('./inventario/ConsumibleUsado'),
     ODT: require('./recursosHumanos/ODT'),
     ODT_Vehiculos: require('./recursosHumanos/ODTVehiculos'),
     ODT_Empleados: require('./recursosHumanos/ODTEmpleados'),
-    
+
     //CATALOGOS
     ViscosidadAceite: require('./catalogos/ViscosidadAceite'),
     Codigo: require('./catalogos/Codigo'),
@@ -71,10 +69,10 @@ const db = {
 
     // TESORERIA
     CuentaBancaria: require('./tesoreria/CuentaBancaria'),
-    MovimientoTesoreria: require('./tesoreria/MovimientoTesoreria'),    
+    MovimientoTesoreria: require('./tesoreria/MovimientoTesoreria'),
     CuentaTerceros: require('./tesoreria/CuentaTercero'),
     PagoMovil: require('./tesoreria/PagoMovil'),
-    
+
     //Compras
     Proveedor: require('./compras/Proveedor'),
     RecepcionCompra: require('./compras/recepcion-compra/RecepcionCompra'),
@@ -84,7 +82,7 @@ const db = {
 
     //Facturacion
     Cliente: require('./Cliente'),
-  
+
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

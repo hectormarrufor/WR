@@ -32,8 +32,8 @@ import { IconCheck, IconSearch } from "@tabler/icons-react";
 
 export default function ModalEquivalencias({
     open = false,
-    onClose = () => {},
-    onConfirm = () => {},
+    onClose = () => { },
+    onConfirm = () => { },
     initialSelected = [],
 }) {
     const [filters, setFilters] = useState({ categorias: [], estados: [] });
@@ -58,7 +58,8 @@ export default function ModalEquivalencias({
         if (!open) return;
         (async () => {
             try {
-                const res = await fetch(`/api/inventario/filtros/${form.values.tipo}`);
+                // Dentro de ModalEquivalencias.jsx
+                const res = await fetch(`/api/inventario/consumibles?tipo=Filtro&search=${filterValues.q}`);
                 if (!res.ok) throw new Error("Error al obtener filtros");
                 const data = await res.json();
                 if (!mounted.current) return;
@@ -71,11 +72,33 @@ export default function ModalEquivalencias({
             }
         })();
 
-       
+
     }, [open]);
 
+    const toggleSelection = (id) => {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                // OPCIONAL: Si quieres forzar selección única (ya que para el grupo basta con uno)
+                // descomenta la siguiente línea y comenta el resto:
+                // return new Set([id]); 
 
-  
+                next.add(id);
+            }
+            return next;
+        });
+    };
+
+    const handleSave = () => {
+        // Enviamos el Set de IDs seleccionados al padre
+        onConfirm(selected);
+        onClose();
+    };
+
+
+
     return (
         <Modal
             centered
