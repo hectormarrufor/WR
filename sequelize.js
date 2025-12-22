@@ -8,6 +8,14 @@ const sequelize = new Sequelize(
     dialect: 'postgres',
     logging: (msg) => console.log(`[SEQUELIZE SQL]: ${msg}`),
     // logging: false,
+    pool: {
+      max: 2,       // REDUCE ESTO A 2. En Serverless (Vercel), cada instancia 
+      // solo necesita 1 o 2 conexiones.
+      min: 0,
+      idle: 5000,   // Tiempo corto para liberar la conexión rápido
+      evict: 5000,
+      acquire: 30000
+    },
     dialectOptions: {
       ssl: process.env.NODE_ENVIRONMENT === "DEVELOPMENT" ? false : {
         require: true,

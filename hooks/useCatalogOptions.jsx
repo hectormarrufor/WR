@@ -16,7 +16,6 @@ export function useCatalogOptions(catalogo, tipo) {
       .then(data => {
         // Tu API devuelve [{id, nombre}, ...]
         // Guardamos tal cual, pero el combobox usará solo `nombre`
-        console.log("Datos del catálogo", data);
         setOptions(Array.isArray(data.data) ? data.data : []);
       })
       .catch(err => console.error(err))

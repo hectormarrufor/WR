@@ -1,53 +1,98 @@
 import { NextResponse } from 'next/server';
-import sequelize from '@/sequelize';
 import { Op } from 'sequelize';
+import sequelize from '@/sequelize'; // <--- IMPORTANTE: Necesario para el cast
 import {
     Consumible,
-    // Importa tus modelos específicos según tu estructura exacta
     Filtro,
-    Correa,
     Aceite,
+    Bateria,
+    Neumatico,
+    Correa,
+    Sensor,
     GrupoEquivalencia
 } from '@/models';
 
-// GET: Buscar Consumibles (soporta ?search=... y ?tipo=...)
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
-    const tipo = searchParams.get('tipo'); // Opcional, para filtrar solo Filtros
-    const limit = parseInt(searchParams.get('limit')) || 50;
+    
+    // 1. Obtener parámetros de paginación y filtros
+    const search = searchParams.get('search') || '';
+    const tipoFilter = searchParams.get('tipo'); // Ej: 'Filtro', 'Aceite'
+    const page = parseInt(searchParams.get('page')) || 1;
+    const limit = parseInt(searchParams.get('limit')) || 10;
+    const sortBy = searchParams.get('sortBy') || 'createdAt';
+    const sortOrder = searchParams.get('sortOrder') || 'DESC';
+    
+    const offset = (page - 1) * limit;
 
     try {
+        // 2. Construir la condición WHERE
         let whereCondition = {};
 
+        // Búsqueda por texto (Solo en 'nombre')
         if (search) {
             whereCondition = {
-                [Op.or]: [
-                    { nombre: { [Op.iLike]: `%${search}%` } },
-                    { codigo: { [Op.iLike]: `%${search}%` } },
-                    { descripcion: { [Op.iLike]: `%${search}%` } } // Busca en keywords/equivalencias
-                ]
+                nombre: { [Op.iLike]: `%${search}%` }
             };
         }
 
-        // Si tienes una columna 'tipoConsumible' en la tabla padre, úsala
-        if (tipo) {
-            whereCondition.tipoConsumible = tipo;
+        // Filtro por Categoría (SOLUCIÓN AL ERROR DE ENUM)
+        if (tipoFilter) {
+            // Definimos el patrón de búsqueda
+            let pattern = '';
+            if (tipoFilter.toLowerCase() === 'filtro') {
+                pattern = 'filtro%'; // Todo lo que empiece con filtro
+            } else {
+                pattern = `%${tipoFilter}%`; // Cualquier coincidencia
+            }
+
+            // Creamos la lógica de CASTING para Postgres
+            const categoryCondition = sequelize.where(
+                sequelize.cast(sequelize.col('Consumible.categoria'), 'text'),
+                { [Op.iLike]: pattern }
+            );
+
+            // Integramos esto al whereCondition existente usando AND
+            if (!whereCondition[Op.and]) {
+                whereCondition[Op.and] = [];
+            }
+            whereCondition[Op.and].push(categoryCondition);
         }
 
-        const consumibles = await Consumible.findAll({
+        // 3. Ejecutar la consulta con Paginación e Includes
+        const { count, rows } = await Consumible.findAndCountAll({
             where: whereCondition,
             limit: limit,
-            order: [['nombre', 'ASC']]
+            offset: offset,
+            order: [[sortBy, sortOrder]],
+            distinct: true, // Importante para que el count sea correcto con includes
+            include: [
+                // Incluimos todos los hijos posibles
+                { model: Filtro },
+                { model: Aceite },
+                { model: Bateria },
+                { model: Neumatico },
+                { model: Correa },
+                { model: Sensor }
+            ]
         });
 
-        return NextResponse.json({ success: true, data: consumibles });
+        // 4. Calcular total de páginas
+        const totalPages = Math.ceil(count / limit);
+
+        // 5. Retornar estructura
+        return NextResponse.json({
+            items: rows,       // El array de datos
+            total: count,      // Total de registros
+            totalPages: totalPages,
+            currentPage: page
+        });
 
     } catch (error) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error("Error API Consumibles:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
-
 // POST: Crear Consumible + Datos Técnicos + Equivalencias
 export async function POST(request) {
     const t = await sequelize.transaction();
@@ -83,14 +128,14 @@ export async function POST(request) {
             
             let grupoId = null;
 
-            const { equivalenciaExistenteId, datosGrupo } = datosTecnicos;
+            const { equivalenciaSeleccionada } = datosTecnicos;
 
             // ¿El usuario seleccionó un hermano?
-            if (equivalenciaExistenteId) {
+            if (equivalenciaSeleccionada && equivalenciaSeleccionada.id) {
                 
                 // Buscamos al hermano para ver si ya tiene grupo
                 const filtroHermano = await Filtro.findOne({ 
-                    where: { consumibleId: equivalenciaExistenteId }, // OJO: Verifica si tu ID es de consumible o de filtro. 
+                    where: { id: equivalenciaSeleccionada.id }, // OJO: Verifica si tu ID es de consumible o de filtro. 
                     // Si tu modal devuelve ID de Consumible, usa 'consumibleId'.
                     transaction: t 
                 });

@@ -34,6 +34,7 @@ export default function ModalEquivalencias({
     open = false,
     onClose = () => { },
     onConfirm = () => { },
+    tipo = "",
     initialSelected = [],
 }) {
     const [filters, setFilters] = useState({ categorias: [], estados: [] });
@@ -53,27 +54,50 @@ export default function ModalEquivalencias({
         };
     }, []);
 
-    // cargar filtros al abrir modal
-    useEffect(() => {
-        if (!open) return;
-        (async () => {
-            try {
-                // Dentro de ModalEquivalencias.jsx
-                const res = await fetch(`/api/inventario/consumibles?tipo=Filtro&search=${filterValues.q}`);
-                if (!res.ok) throw new Error("Error al obtener filtros");
-                const data = await res.json();
-                if (!mounted.current) return;
+    const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Construimos la URL con todos los filtros actuales
+            const params = new URLSearchParams({
+                tipo: tipo, // Tipo base (ej: si estoy creando un filtro de aceite)
+                search: filterValues.q,
+                categoria: filterValues.categoria, // Valor del Select del modal
+                estado: filterValues.estado
+            });
+
+            const res = await fetch(`/api/inventario/filtros?${params.toString()}`);
+            if (!res.ok) throw new Error("Error al obtener filtros");
+
+            const data = await res.json();
+
+            if (!mounted.current) return;
+
+            // Actualizamos los items de la rejilla
+            setItems(data.items || []);
+
+            // Solo actualizamos las opciones de los Selects la primera vez o si vienen de la API
+            if (filters.categorias.length === 0) {
                 setFilters({
                     categorias: data.categorias || [],
                     estados: data.estados || [],
                 });
-            } catch (err) {
-                console.error(err);
             }
-        })();
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                setError(err.message);
+            }
+        } finally {
+            if (mounted.current) setLoading(false);
+        }
+    };
 
-
-    }, [open]);
+    // Efecto para recargar cuando cambie cualquier filtro o se abra el modal
+    useEffect(() => {
+        if (open) {
+            fetchData();
+        }
+    }, [open, filterValues.q, filterValues.categoria, filterValues.estado]);
 
     const toggleSelection = (id) => {
         setSelected((prev) => {
@@ -83,17 +107,26 @@ export default function ModalEquivalencias({
             } else {
                 // OPCIONAL: Si quieres forzar selección única (ya que para el grupo basta con uno)
                 // descomenta la siguiente línea y comenta el resto:
-                // return new Set([id]); 
+                return new Set([id]);
 
-                next.add(id);
+                // next.add(id);
             }
             return next;
         });
     };
 
     const handleSave = () => {
-        // Enviamos el Set de IDs seleccionados al padre
-        onConfirm(selected);
+        // // Enviamos el Set de IDs seleccionados al padre
+        // onConfirm(selected);
+        // onClose();
+
+        // Obtenemos los objetos completos de los filtros seleccionados
+        const selectedItems = Array.from(selected).map(id =>
+            items.find(item => item.id === id)
+        ).filter(Boolean); // Limpiamos posibles nulls
+
+        // Enviamos el array de objetos al padre
+        onConfirm(selectedItems);
         onClose();
     };
 
@@ -114,7 +147,11 @@ export default function ModalEquivalencias({
                         icon={<IconSearch size={14} />}
                         placeholder="Buscar..."
                         value={filterValues.q}
-                        onChange={(e) => setFilterValues((s) => ({ ...s, q: e.currentTarget.value }))}
+                        // CORRECCIÓN AQUÍ:
+                        onChange={(e) => {
+                            const val = e.currentTarget.value; // Extraemos el valor primero
+                            setFilterValues((s) => ({ ...s, q: val })); // Luego actualizamos el estado
+                        }}
                         sx={{ flex: 1 }}
                     />
                     <Select
@@ -200,12 +237,12 @@ export default function ModalEquivalencias({
                                                     <Stack align="center">
                                                         <Avatar
                                                             src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen || ""}?${Date.now()}`}
-                                                            alt={item.nombre}
+                                                            alt={item.codigo}
                                                             radius="xl"
                                                             size={90}
                                                         />
                                                         <Title order={5} weight={500} align="center" style={{ wordBreak: "break-word" }}>
-                                                            {item.codigo ? `${item.codigo} — ${item.nombre}` : item.nombre}
+                                                            {`${item.marca} ${item.codigo}`}
                                                         </Title>
                                                         {item.categoria && (
                                                             <Text size="sm" color="dimmed">
