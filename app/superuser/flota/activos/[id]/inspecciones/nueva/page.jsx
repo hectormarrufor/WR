@@ -6,7 +6,6 @@ import { Paper, Title, Text, Loader, Alert, NumberInput, Group, Button, Segmente
 import { useAuth } from '@/hooks/useAuth';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
-import PaddedPaper from '@/app/superuser/flota/components/PaddedPaper';
 
 export default function NuevaInspeccionPage() {
     const { id: activoId } = useParams();
@@ -116,7 +115,7 @@ export default function NuevaInspeccionPage() {
     if (!activo) return <Alert color="red">Activo no encontrado</Alert>;
 
     return (
-        <PaddedPaper>
+        <Paper>
             <Box component="form" onSubmit={form.onSubmit(handleSubmit)} p={0} m={0}>
                 <Title order={2}>Nueva Inspección para: {activo.codigoActivo}</Title>
                 <Title order={4}>{activo.modelo.nombre}, placa {activo.datosPersonalizados.placa}</Title>
@@ -144,6 +143,6 @@ export default function NuevaInspeccionPage() {
                 </Paper>
                 <Button type="submit" mt="xl" size="md">Finalizar y Guardar Inspección</Button>
             </Box>
-        </PaddedPaper>
+        </Paper>
     );
 }

@@ -7,7 +7,6 @@ import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import PaddedPaper from '@/app/superuser/flota/components/PaddedPaper';
 
 // --- Sub-componente SugerenciasConsumibles (CON LA CORRECCIÓN) ---
 function SugerenciasConsumibles({ activoId, descripcionTarea, onConsumibleSelect }) {
@@ -44,7 +43,7 @@ function SugerenciasConsumibles({ activoId, descripcionTarea, onConsumibleSelect
     if (sugerencias.length === 0) return null;
 
     return (
-        <PaddedPaper>
+        <Paper>
             <Text fw={500} size="sm">Sugerencias de Repuestos:</Text>
             {sugerencias.map((sug, index) => (
                 <Group key={index} grow mt="xs">
@@ -68,7 +67,7 @@ function SugerenciasConsumibles({ activoId, descripcionTarea, onConsumibleSelect
                     />
                 </Group>
             ))}
-        </PaddedPaper>
+        </Paper>
     );
 }
 
