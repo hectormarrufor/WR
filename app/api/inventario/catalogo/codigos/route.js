@@ -31,7 +31,7 @@ export async function POST(request) {
         const tipo = body.tipo === "aceite" ? "filtroAceite" :
                      body.tipo === "aire" ? "filtroAire" :
                      body.tipo === "combustible" ? "filtroCombustible" :
-                     body.tipo === "cabina" ? "filtroCabina" : null;
+                     body.tipo === "cabina" ? "filtroCabina" : body.tipo;
         
         console.log("nombre del código", nombreCodigo)
 

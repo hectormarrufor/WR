@@ -5,6 +5,7 @@ import { capitalizeUnlessUppercase } from "../handlers/capitalizeUnlessUppercase
 import { useEffect } from "react";
 
 export function AsyncCatalogComboBox({
+  disabled=false,
   label,
   placeholder,
   fieldKey,
@@ -71,6 +72,7 @@ export function AsyncCatalogComboBox({
     >
       <Combobox.Target>
         <TextInput
+          disabled={disabled}
           label={label}
           placeholder={placeholder}
           value={form.values[fieldKey] || ""}

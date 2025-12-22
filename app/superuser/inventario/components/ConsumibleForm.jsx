@@ -33,7 +33,7 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
             marca: '',
             modelo: '',
             stockMinimo: 5,
-            stockActual: 0,
+            stockAlmacen: 0,
             categoria: '',
 
             // Lógica Serializados
@@ -52,7 +52,7 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
             equivalencias: [],
             // Aceites
             viscosidad: '', // O id de viscosidad si usas relación
-            aplicacion: 'Motor',
+            aplicacion: '',
             // Correas
             // Baterias (Ejemplo de algo serializado por defecto)
             amperaje: 800,
@@ -75,6 +75,14 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
             }
         }
     });
+
+    useEffect(() => {
+        console.log("Valores del formulario:", form.values);
+        console.log("Tipo específico:", tipoEspecifico);
+        console.log("Es serializado:", esSerializado);
+        console.log("Equivalencia seleccionada:", equivalenciaSeleccionada);
+        console.log("-----");
+    }, [form.values, tipoEspecifico, esSerializado, equivalenciaSeleccionada]);
 
     // Efecto: Auto-configurar Serializado según el tipo
     useEffect(() => {
@@ -99,7 +107,7 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
     // Efecto para ajustar la categoria del consumible según el tipo específico
     useEffect(() => {
         if (tipoEspecifico === 'Filtro') {
-            form.setFieldValue('categoria', form.values.tipo ? `filtro de ${form.values.tipo.toLowerCase()}` : 'filtro de aceite');
+            form.setFieldValue('categoria', form.values.tipo ? `filtro de ${form.values.tipo.toLowerCase()}` : '');
             form.setFieldValue('unidadMedida', 'unidades');
         } else {
             const categoriaMap = {
@@ -139,6 +147,7 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
 
     const handleSubmit = async (values) => {
         setLoading(true);
+
         try {
             // 1. GENERACIÓN DE NOMBRE Y DATOS TÉCNICOS
             let nombreGenerado = '';
@@ -147,39 +156,81 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
             if (tipoEspecifico === 'Filtro') {
                 nombreGenerado = `Filtro ${values.tipoFiltro} ${values.marca} ${values.codigoFiltro}`;
                 datosTecnicos = {
-                    tipo: 'Filtro',
-                    datos: { tipoFiltro: values.tipoFiltro },
-                    equivalenciaExistenteId: equivalenciaSeleccionada?.id
+                    marca: values.marca,
+                    tipo: values.tipo.toLowerCase(),
+                    codigo: values.codigo,
+                    posicion: values.posicion,
+                    imagen: values.imagen,
+                    equivalenciaExistenteId: equivalenciaSeleccionada?.id || null
                 };
             }
             else if (tipoEspecifico === 'Aceite') {
                 nombreGenerado = `Aceite ${values.aplicacion} ${values.marca} ${values.viscosidad} ${values.tipoAceite}`;
                 datosTecnicos = {
-                    tipo: 'Aceite',
-                    datos: { viscosidad: values.viscosidad, base: values.tipoAceite, aplicacion: values.aplicacion }
+                    marca: values.marca,
+                    modelo: values.modelo,
+                    tipo: values.tipo,
+                    viscosidad: values.viscosidad,
+                    aplicacion: values.aplicacion,
                 };
             }
             else if (tipoEspecifico === 'Bateria') {
-                nombreGenerado = `Batería ${values.marca} Gr.${values.grupoBateria} ${values.cca}CCA`;
+                nombreGenerado = `Batería ${values.marca} Gr.${values.codigo} ${values.amperaje}CCA`;
                 datosTecnicos = {
-                    tipo: 'Bateria',
-                    datos: { grupo: values.grupoBateria, cca: values.cca }
+                    marca: values.marca,
+                    codigo: values.codigo,
+                    amperaje: values.amperaje,
+                    voltaje: values.voltaje,
+                    capacidad: values.capacidad
                 };
             }
-            // ... Otros tipos ...
+            else if (tipoEspecifico === 'Neumatico') {
+                nombreGenerado = `Neumático ${values.marca} ${values.modelo} ${values.medida}`;
+                datosTecnicos = {
+                    marca: values.marca,
+                    modelo: values.modelo,
+                    medida: values.medida
+                };
+            }
+            else if (tipoEspecifico === 'Correa') {
+                nombreGenerado = `Correa ${values.marca} ${values.codigo}`;
+                datosTecnicos = {
+                    marca: values.marca,
+                    codigo: values.codigo
+                };
+            }
 
             // 2. PREPARAR PAYLOAD
             const payload = {
                 nombre: nombreGenerado,
-                codigo: values.codigoFiltro || nombreGenerado, // Simplificado
-                marca: values.marca,
-                stockMinimo: values.stockMinimo,
-                stockActual: values.clasificacion === 'Serializado' ? values.itemsSerializados.length : values.stockActual,
                 tipo: values.clasificacion, // 'Fungible' o 'Serializado'
-
+                categoria: values.categoria,
+                stockAlmacen: values.clasificacion === 'Serializado' ? values.itemsSerializados.length : values.stockAlmacen,
+                stockMinimo: values.stockMinimo,
+                unidadMedida: values.unidadMedida,
+                precioPromedio: values.precioPromedio,
                 datosTecnicos: datosTecnicos,
                 itemsSerializados: values.itemsSerializados // Enviamos los hijos
             };
+
+            if (datosTecnicos.imagen && typeof datosTecnicos.imagen.arrayBuffer === 'function') {
+                notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
+                const imagenFile = datosTecnicos.imagen;
+                const fileExtension = imagenFile.name.split('.').pop();
+                const uniqueFilename = `${values.marca}${values.codigo}.${fileExtension}`;
+
+                const response = await fetch(`/api/upload?filename=${encodeURIComponent(uniqueFilename)}`, {
+                    method: 'POST',
+                    body: imagenFile,
+                });
+                console.log(response)
+
+
+                if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
+                const newBlob = await response.json();
+                payload.datosTecnicos.imagen = uniqueFilename;
+                notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
+            }
 
             // 3. FETCH
             const response = await fetch('/api/inventario/consumibles', {
@@ -250,7 +301,7 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
                     onChange={(val) => {
                         setEsSerializado(val === 'Serializado');
                         form.setFieldValue('clasificacion', val);
-                        if (val === 'Serializado') form.setFieldValue('stockActual', 1);
+                        if (val === 'Serializado') form.setFieldValue('stockAlmacen', 1);
                     }}
                 />
             </SimpleGrid>
@@ -285,7 +336,9 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
                     {tipoEspecifico === 'Filtro' && (
                         <>
                             <Group grow>
+                                <Select label="Función" placeholder="seleccione un tipo" data={['Aceite', 'Aire', 'Combustible']} {...form.getInputProps('tipo')} />
                                 <AsyncCatalogComboBox
+                                    disabled={!form.values.categoria}
                                     label="Código"
                                     placeholder="Ej. WF1036"
                                     fieldKey="codigoFiltro"
@@ -293,7 +346,6 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
                                     catalogo="codigos"
                                     tipo={tipoFiltro}
                                 />
-                                <Select label="Función" placeholder="seleccione un tipo" data={['Aceite', 'Aire', 'Combustible']} {...form.getInputProps('tipo')} />
                                 <Select label="Posición" data={['Primario', 'Secundario']} {...form.getInputProps('posicion')} />
                                 <ImageDropzone
                                     label="Imagen del Filtro" form={form} fieldPath="imagen"
@@ -378,9 +430,14 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
                     <Divider label="Inventario Inicial" labelPosition="center" />
 
                     <NumberInput
-                        label={esSerializado ? "Cantidad a Ingresar (Unidades)" : "Stock Inicial"}
+                        label="Stock Mínimo"
+                        min={0}
+                        {...form.getInputProps('stockMinimo')}
+                    />
+                    <NumberInput
+                        label={esSerializado ? "Cantidad a Ingresar (Unidades)" : "Stock Almacen"}
                         min={esSerializado ? 1 : 0}
-                        {...form.getInputProps('stockActual')}
+                        {...form.getInputProps('stockAlmacen')}
                     />
 
                     {esSerializado && (
@@ -390,7 +447,7 @@ export default function ConsumibleForm({ onSuccess, onCancel }) {
                             </Alert>
 
                             <SerializadosInputs
-                                cantidad={form.values.stockActual}
+                                cantidad={form.values.stockAlmacen}
                                 values={form.values.itemsSerializados}
                                 onChange={(newItems) => form.setFieldValue('itemsSerializados', newItems)}
                             />

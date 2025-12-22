@@ -23,7 +23,7 @@ export async function POST(request) {
                           data.tipo === "cabina" ? "filtro de cabina" : null,
                 stock: nuevoFiltro.descripcion,
                 cantidad: nuevoFiltro.cantidad,
-                tipo: "filtro",
+                tipo: "fungible",
                 filtroId: nuevoFiltro.id,
             }, { transaction: t });
 

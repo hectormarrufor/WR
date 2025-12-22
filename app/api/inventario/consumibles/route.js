@@ -56,34 +56,41 @@ export async function POST(request) {
         const body = await request.json();
         const {
             nombre,
-            codigo,
-            marca,
-            stockActual = 0,
-            stockMinimo = 0,
+            tipo, // 'fungible' o 'serializado'
+            categoria, // 'filtro de aceite', 'filtro de aire', etc.
+            stockAlmacen,
+            stockAsignado = 0,
+            stockMinimo,
+            precioPromedio,
+            unidadMedida,
             datosTecnicos // Objeto { tipo: 'Filtro', datos: {...}, equivalenciaExistenteId: 123 }
         } = body;
 
         // 1. Crear el Registro Padre (Consumible SKU)
         const nuevoConsumible = await Consumible.create({
             nombre,
-            codigo,
-            marca,
-            stockActual,
+            tipo,
+            categoria,
+            stockAlmacen,
+            stockAsignado,
             stockMinimo,
-            tipoConsumible: datosTecnicos?.tipo || 'Generico'
+            precioPromedio,
+            unidadMedida,
         }, { transaction: t });
 
         // 2. Lógica Específica FILTRO
-        if (datosTecnicos?.tipo === 'Filtro') {
+        if (categoria.startsWith('filtro')) {
             
             let grupoId = null;
 
+            const { equivalenciaExistenteId, datosGrupo } = datosTecnicos;
+
             // ¿El usuario seleccionó un hermano?
-            if (datosTecnicos.equivalenciaExistenteId) {
+            if (equivalenciaExistenteId) {
                 
                 // Buscamos al hermano para ver si ya tiene grupo
                 const filtroHermano = await Filtro.findOne({ 
-                    where: { consumibleId: datosTecnicos.equivalenciaExistenteId }, // OJO: Verifica si tu ID es de consumible o de filtro. 
+                    where: { consumibleId: equivalenciaExistenteId }, // OJO: Verifica si tu ID es de consumible o de filtro. 
                     // Si tu modal devuelve ID de Consumible, usa 'consumibleId'.
                     transaction: t 
                 });
@@ -96,7 +103,7 @@ export async function POST(request) {
                     // ESCENARIO 3: El hermano es huérfano. Creamos grupo y lo adoptamos.
                     else {
                         const nuevoGrupo = await GrupoEquivalencia.create({ 
-                            descripcion: `Grupo Auto-generado` 
+                            nombre: `Grupo para el filtro ${filtroHermano.marca} ${filtroHermano.codigo}` 
                         }, { transaction: t });
                         
                         grupoId = nuevoGrupo.id;
@@ -112,25 +119,57 @@ export async function POST(request) {
 
             // Creamos el Filtro vinculado al grupo (o null)
             await Filtro.create({
+                marca: datosTecnicos.marca,
+                tipo: datosTecnicos.tipo,
+                codigo: datosTecnicos.codigo,
+                posicion: datosTecnicos.posicion,
+                imagen: datosTecnicos.imagen || null,
                 consumibleId: nuevoConsumible.id,
-                tipoFiltro: datosTecnicos.datos.tipoFiltro,
                 grupoEquivalenciaId: grupoId // <--- Aquí se cierra el círculo
             }, { transaction: t });
         }
-        else if (datosTecnicos?.tipo === 'Correa') {
+        else if (categoria === 'correa') {
             await Correa.create({
                 consumibleId: nuevoConsumible.id,
-                perfil: datosTecnicos.datos.perfil,
-                canales: datosTecnicos.datos.canales,
-                longitud: datosTecnicos.datos.longitud
+                marca: datosTecnicos.marca,
+                codigo: datosTecnicos.codigo,
             }, { transaction: t });
         }
-        else if (datosTecnicos?.tipo === 'Aceite') {
+        else if (categoria === 'aceite') {
             await Aceite.create({ // O tu modelo genérico de Aceite
                 consumibleId: nuevoConsumible.id,
-                viscosidad: datosTecnicos.datos.viscosidad,
-                base: datosTecnicos.datos.base,
-                aplicacion: datosTecnicos.datos.aplicacion
+                viscosidad: datosTecnicos.viscosidad,
+                tipo: datosTecnicos.tipo,
+                aplicacion: datosTecnicos.aplicacion
+            }, { transaction: t });
+        }
+        else if (categoria === 'neumatico') {
+            // Lógica para Neumático
+            await Neumatico.create({
+                consumibleId: nuevoConsumible.id,
+                marca: datosTecnicos.marca,
+                modelo: datosTecnicos.modelo,
+                medida: datosTecnicos.medida
+            }, { transaction: t });
+        }
+        else if (categoria === 'bateria') {
+            // Lógica para Batería
+            await Bateria.create({
+                consumibleId: nuevoConsumible.id,
+                marca: datosTecnicos.marca,
+                codigo: datosTecnicos.codigo,
+                capacidad: datosTecnicos.capacidad,
+                amperaje: datosTecnicos.amperaje,
+                voltaje: datosTecnicos.voltaje
+            }, { transaction: t });
+        }
+        else if (categoria === 'sensor') {
+            // Lógica para Sensor
+            await Sensor.create({
+                consumibleId: nuevoConsumible.id,
+                marca: datosTecnicos.marca,
+                codigo: datosTecnicos.codigo,
+                nombre: datosTecnicos.nombre
             }, { transaction: t });
         }
 

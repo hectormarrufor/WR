@@ -4,7 +4,6 @@ import { Container, Title, Text, SimpleGrid, Paper, Group, ThemeIcon, rem, Menu,
 import { IconBuildingWarehouse, IconAssembly, IconTruck, IconTool, IconPlus, IconShip, IconRectangleRoundedTop, IconLayersUnion, IconCar4wd, IconCar4wdFilled, IconCar, IconCategory, IconBoxModel } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import classes from './flota.module.css';
 
 // Datos para las nuevas tarjetas de navegación
 const mockdata = [
@@ -45,10 +44,6 @@ export default function FlotaDashboardPage() {
   const items = mockdata.map((item) => (
     <Paper
       key={item.title}
-       
-      p="md"
-      radius="md"
-      className={classes.card}
       onClick={() => router.push(item.href)}
     >
       <Flex>

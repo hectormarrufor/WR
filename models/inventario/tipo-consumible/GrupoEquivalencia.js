@@ -8,11 +8,6 @@ const GrupoEquivalencia = sequelize.define('GrupoEquivalencia', {
         allowNull: false,
         unique: true,
         // Ej: "Equivalentes al filtro fleetguard LF3403"
-    },
-    descripcion: {
-        type: DataTypes.STRING,
-        allowNull: true, 
-        // Ej: "Filtros de Aceite Rosca 3/4 - 16" (Opcional) para el chuto mack modelo xyz
     }
 }, { timestamps: true,
  });
