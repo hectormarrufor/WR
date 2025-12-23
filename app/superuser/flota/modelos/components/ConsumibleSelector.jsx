@@ -1,20 +1,24 @@
-// app/superuser/flota/modelos/components/ConsumibleSelector.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MultiSelect, Loader, Group, Text, Button, Badge } from '@mantine/core';
+import { Select, Loader, Group, Text, Button, Badge, Stack, Paper, ActionIcon, NumberInput, Tooltip } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconPlus, IconLink } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconSearch, IconAlertTriangle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import ConsumibleCreatorModal from './ConsumibleCreatorModal';
 
-export default function ConsumibleSelector({ value = [], onChange, error }) {
+export default function ConsumibleSelector({ value = [], onChange }) {
     const [searchValue, setSearchValue] = useState('');
     const [debouncedSearch] = useDebouncedValue(searchValue, 300);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
 
+    // Estado para la "pre-selección" antes de agregar
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [cantidad, setCantidad] = useState(1);
+
+    // 1. Fetch de consumibles (igual que antes)
     useEffect(() => {
         fetchConsumibles(debouncedSearch);
     }, [debouncedSearch]);
@@ -25,130 +29,161 @@ export default function ConsumibleSelector({ value = [], onChange, error }) {
             const url = query 
                 ? `/api/inventario/consumibles?search=${encodeURIComponent(query)}` 
                 : '/api/inventario/consumibles?limit=20';
-
             const response = await fetch(url);
             const res = await response.json();
-
-            if (res.success) {
-                // Mapeamos los datos y nos aseguramos de que los seleccionados actualmente
-                // también estén en la lista para que no desaparezcan visualmente
-                const items = res.data.map(c => ({
+            if (res.items) {
+                const items = res.items.map(c => ({
                     value: c.id.toString(),
-                    label: `${c.nombre} (${c.codigo || 'S/C'})`,
-                    // Guardamos info extra oculta para usarla en la lógica
-                    tipo: c.tipoConsumible // 'Filtro', 'Correa', etc.
+                    label: `${c.nombre} (${c.categoria})`,
+                    raw: c 
                 }));
                 setData(items);
             }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
+        } catch (error) { console.error(error); } 
+        finally { setLoading(false); }
+    };
+
+    // 2. Procesar la selección del Dropdown
+    const handleSelect = (consumibleId) => {
+        const item = data.find(d => d.value === consumibleId);
+        if (item) {
+            setSelectedItem(item);
+            setCantidad(1); // Resetear cantidad
         }
     };
 
-    // --- LÓGICA DE EQUIVALENCIAS AUTOMÁTICAS ---
-    const handleChange = async (newSelectedIds) => {
-        // 1. Detectar qué ID se acaba de agregar (si creció el array)
-        const addedId = newSelectedIds.find(id => !value.includes(id));
-        
-        let finalSelection = [...newSelectedIds];
+    // 3. Confirmar y Agregar (Generar Slots)
+    const confirmAdd = () => {
+        if (!selectedItem) return;
 
-        if (addedId) {
-            setLoading(true);
-            try {
-                // Consultamos si este consumible tiene equivalencias
-                const res = await fetch(`/api/inventario/filtros/equivalencias?consumibleId=${addedId}`);
-                const dataEquiv = await res.json();
-
-                if (dataEquiv.success && dataEquiv.data.length > 0) {
-                    const nuevosHermanos = [];
-                    
-                    dataEquiv.data.forEach(hermano => {
-                        const hermanoId = hermano.id.toString();
-                        
-                        // Si no estaba seleccionado ya, lo preparamos para agregar
-                        if (!finalSelection.includes(hermanoId)) {
-                            finalSelection.push(hermanoId);
-                            nuevosHermanos.push({
-                                value: hermanoId,
-                                label: `${hermano.nombre} (${hermano.codigo})`
-                            });
-                        }
-                    });
-
-                    if (nuevosHermanos.length > 0) {
-                        // Agregamos visualmente las opciones al Select si no estaban cargadas
-                        setData(prev => {
-                            // Filtramos duplicados por si acaso
-                            const currentIds = new Set(prev.map(p => p.value));
-                            const uniqueNew = nuevosHermanos.filter(n => !currentIds.has(n.value));
-                            return [...prev, ...uniqueNew];
-                        });
-
-                        notifications.show({
-                            title: 'Equivalencias Encontradas',
-                            message: `Se agregaron automáticamente ${nuevosHermanos.length} filtros compatibles.`,
-                            color: 'blue',
-                            icon: <IconLink size={16} />
-                        });
-                    }
-                }
-            } catch (e) {
-                console.error("Error buscando equivalencias auto:", e);
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        // 2. Propagar el cambio final al padre
-        onChange(finalSelection);
-    };
-
-    const handleSuccessCreate = (nuevoConsumible) => {
-        const newItem = {
-            value: nuevoConsumible.id.toString(),
-            label: `${nuevoConsumible.nombre} (${nuevoConsumible.codigo})`
+        const c = selectedItem.raw;
+        let baseRecomendacion = {
+            categoria: c.categoria,
+            criterioId: null,
+            tipoCriterio: '',
+            labelOriginal: ''
         };
-        setData((prev) => [newItem, ...prev]);
-        
-        // Al crear, también disparamos el handleChange por si creaste una equivalencia (avanzado)
-        // Por ahora solo lo seleccionamos directo.
-        onChange([...value.map(String), newItem.value]);
+
+        // Extracción de Criterio (Igual que antes)
+        if (c.categoria.startsWith('filtro')) {
+            const filtroData = c.Filtro;
+            if (filtroData?.grupoEquivalenciaId) {
+                baseRecomendacion.criterioId = filtroData.grupoEquivalenciaId;
+                baseRecomendacion.tipoCriterio = 'grupo';
+                baseRecomendacion.labelOriginal = `Grupo ${filtroData.marca}`;
+            } else {
+                baseRecomendacion.criterioId = filtroData.id;
+                baseRecomendacion.tipoCriterio = 'individual';
+                baseRecomendacion.labelOriginal = `${filtroData.marca} ${filtroData.codigo}`;
+            }
+        } 
+        else if (c.categoria === 'neumatico') {
+            baseRecomendacion.criterioId = c.Neumatico?.medida;
+            baseRecomendacion.tipoCriterio = 'medida';
+            baseRecomendacion.labelOriginal = `Medida ${c.Neumatico?.medida}`;
+        }
+        else if (['bateria', 'sensor', 'correa'].includes(c.categoria)) {
+            const hijo = c.Baterium || c.Sensor || c.Correa;
+            baseRecomendacion.criterioId = hijo?.codigo;
+            baseRecomendacion.tipoCriterio = 'codigo';
+            baseRecomendacion.labelOriginal = `Código ${hijo?.codigo}`;
+        }
+
+        // GENERACIÓN DE MÚLTIPLES SLOTS
+        const nuevosSlots = [];
+        for (let i = 0; i < cantidad; i++) {
+            nuevosSlots.push({
+                ...baseRecomendacion,
+                // Agregamos un identificador visual si son varios
+                label: cantidad > 1 
+                    ? `${baseRecomendacion.labelOriginal} (Pos. ${value.length + i + 1})`
+                    : baseRecomendacion.labelOriginal
+            });
+        }
+
+        onChange([...value, ...nuevosSlots]);
+        setSelectedItem(null); // Limpiar selección
+        setSearchValue('');
+    };
+
+    const removeRecomendacion = (index) => {
+        const copy = [...value];
+        copy.splice(index, 1);
+        onChange(copy);
     };
 
     return (
-        <>
-            <MultiSelect
-                label="Repuestos Homologados"
-                description="Selecciona uno y el sistema buscará sus equivalentes automáticamente."
-                placeholder="Buscar (ej. WIX 51515)"
-                data={data}
-                value={value.map(String)}
-                onChange={handleChange} // Usamos nuestro handler inteligente
-                searchable
-                searchValue={searchValue}
-                onSearchChange={setSearchValue}
-                nothingFoundMessage={
-                    <Group justify="center" p="xs">
-                        <Button variant="light" size="xs" leftSection={<IconPlus size={14}/>} onClick={() => setModalOpen(true)}>
-                            Crear Nuevo Repuesto
+        <Stack gap="xs">
+            <Group align="flex-end" grow>
+                {/* Selector */}
+                <Select
+                    label="Agregar Requisito / Parte"
+                    placeholder="Buscar repuesto modelo..."
+                    data={data}
+                    searchable
+                    searchValue={searchValue}
+                    onSearchChange={setSearchValue}
+                    value={selectedItem?.value || null}
+                    onChange={handleSelect}
+                    rightSection={loading ? <Loader size="xs" /> : <IconSearch size={14} />}
+                    nothingFoundMessage={
+                         <Button variant="light" size="xs" fullWidth onClick={() => setModalOpen(true)}>
+                            + Crear Nuevo
                         </Button>
-                    </Group>
-                }
-                limit={20}
-                clearable
-                hidePickedOptions
-                maxDropdownHeight={250}
-                leftSection={loading ? <Loader size="xs" /> : null}
-                error={error}
-            />
+                    }
+                />
+                
+                {/* Input de Cantidad (Solo aparece si seleccionaste algo) */}
+                {selectedItem && (
+                    <NumberInput
+                        label="Cantidad"
+                        value={cantidad}
+                        onChange={setCantidad}
+                        min={1}
+                        max={16}
+                        w={80}
+                    />
+                )}
+
+                {/* Botón Agregar */}
+                {selectedItem && (
+                    <Button onClick={confirmAdd} variant="filled" color="blue">
+                        Agregar
+                    </Button>
+                )}
+            </Group>
+
+            {/* Lista de Slots Definidos */}
+            <Paper withBorder p="xs" bg="gray.0" radius="md">
+                <Text size="xs" c="dimmed" mb={5} fw={700}>POSICIONES DEFINIDAS PARA ESTE SISTEMA:</Text>
+                
+                {value.length === 0 && <Text size="xs" c="dimmed" fs="italic">Sin partes definidas.</Text>}
+
+                <Stack gap={4}>
+                    {value.map((item, idx) => (
+                        <Group key={idx} justify="space-between" bg="white" p={4} style={{ border: '1px solid #eee', borderRadius: 4 }}>
+                            <Group gap={5}>
+                                <Badge size="sm" variant="dot" color="gray">Slot #{idx + 1}</Badge>
+                                <Text size="sm" fw={500}>{item.categoria.toUpperCase()}:</Text>
+                                <Text size="sm">{item.label}</Text>
+                                {/* Indicador de Flexibilidad */}
+                                <Tooltip label="El sistema permitirá montar otra medida bajo advertencia">
+                                    <Badge size="xs" variant="outline" color="orange" style={{cursor: 'help'}}>Flexible</Badge>
+                                </Tooltip>
+                            </Group>
+                            <ActionIcon color="red" variant="subtle" size="sm" onClick={() => removeRecomendacion(idx)}>
+                                <IconTrash size={14} />
+                            </ActionIcon>
+                        </Group>
+                    ))}
+                </Stack>
+            </Paper>
 
             <ConsumibleCreatorModal 
                 opened={modalOpen} 
                 onClose={() => setModalOpen(false)}
-                onSuccess={handleSuccessCreate}
+                onSuccess={(nuevo) => fetchConsumibles(nuevo.nombre)}
             />
-        </>
+        </Stack>
     );
 }

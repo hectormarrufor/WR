@@ -6,7 +6,8 @@ import {
     Container, Grid, Paper, Text, Title, Group, Badge,
     Image, Tabs, Table, LoadingOverlay, Button,
     ThemeIcon, Stack, RingProgress, Center, Card, Divider,
-    Alert, Timeline
+    Alert, Timeline,
+    Avatar
 } from '@mantine/core';
 import {
     IconArrowLeft, IconEdit, IconCheck, IconX,
@@ -257,27 +258,39 @@ export default function DetalleConsumiblePage() {
 
                             {/* TAB 4: EQUIVALENCIAS (Solo Filtros) */}
                             <Tabs.Panel value="equivalencias" pt="xl">
-                                {data.Filtro?.GrupoEquivalencia ? (
+                                {data.Filtro?.grupoEquivalencia ? (
                                     <Stack>
-                                        <Alert variant="light" color="green" title={data.Filtro.GrupoEquivalencia.nombre}>
-                                            {data.Filtro.GrupoEquivalencia.descripcion}
+                                        <Alert variant="light" color="green" title={data.Filtro.grupoEquivalencia.nombre}>
+                                            {data.Filtro.grupoEquivalencia.nombre}
                                         </Alert>
                                         
                                         <Table withTableBorder>
                                             <Table.Thead>
                                                 <Table.Tr>
+                                                    <Table.Th>Imagen</Table.Th>
                                                     <Table.Th>Marca</Table.Th>
                                                     <Table.Th>Código</Table.Th>
+                                                    <Table.Th>Precio Promedio</Table.Th>
+                                                    <Table.Th>Stock Almacén</Table.Th>
                                                     <Table.Th>Link</Table.Th>
                                                 </Table.Tr>
                                             </Table.Thead>
                                             <Table.Tbody>
-                                                {data.Filtro.GrupoEquivalencia.Filtros
+                                                {data?.Filtro.grupoEquivalencia.filtros
                                                     .filter(f => f.id !== data.Filtro.id) // Excluir el actual
                                                     .map(hermano => (
                                                     <Table.Tr key={hermano.id}>
+                                                        <Table.Td>
+                                                            <Avatar 
+                                                                src={hermano.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${hermano.imagen}` : null} 
+                                                                alt={hermano.codigo}
+                                                                radius="xl"
+                                                            />
+                                                        </Table.Td>
                                                         <Table.Td>{hermano.marca}</Table.Td>
                                                         <Table.Td fw={700}>{hermano.codigo}</Table.Td>
+                                                        <Table.Td fw={700}>{hermano.Consumible.precioPromedio}</Table.Td>
+                                                        <Table.Td fw={700}>{hermano.Consumible.stockAlmacen}</Table.Td>
                                                         <Table.Td>
                                                             <Button 
                                                                 size="xs" 

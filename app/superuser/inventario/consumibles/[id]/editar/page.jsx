@@ -82,50 +82,77 @@ export default function EditarConsumiblePage() {
 }
 
 // --- FUNCIÓN DE ADAPTACIÓN ---
-// Esta función toma el objeto complejo de Sequelize (con Includes)
-// y lo aplana al formato que usa tu ConsumibleForm.
 function adaptarDatosParaFormulario(bdData) {
-    let tipoEspecifico = '';
-    let datosTecnicos = {};
+    if (!bdData) return {};
 
-    // Detectar qué hijo existe y extraer sus datos
+    // 1. Extraemos los datos del Padre (Consumible)
+    const base = {
+        nombre: bdData.nombre || '',
+        categoria: bdData.categoria || '',
+        stockMinimo: Number(bdData.stockMinimo) || 0,
+        stockAlmacen: Number(bdData.stockAlmacen) || 0,
+        precioPromedio: Number(bdData.precioPromedio) || 0,
+        unidadMedida: bdData.unidadMedida,
+        clasificacion: bdData.tipo === 'serializado' ? 'Serializado' : 'Fungible',
+        // Si es serializado, mapeamos los seriales
+        itemsSerializados: bdData.serializados?.map(s => ({ 
+            serial: s.serial, 
+            garantia: s.fechaGarantia // Ajusta según tu modelo
+        })) || [],
+    };
+
+    // 2. Extraemos y APLANAMOS los datos del Hijo
+    let datosHijo = {};
+
     if (bdData.Filtro) {
-        tipoEspecifico = 'Filtro';
-        datosTecnicos = {
-            marcaId: bdData.Filtro.marcaId?.toString(), // Mantine suele preferir strings en Selects
-            codigo: bdData.Filtro.codigo,
-            grupoEquivalenciaId: bdData.Filtro.grupoEquivalenciaId
+        datosHijo = {
+            marca: bdData.Filtro.marca || '',
+            codigo: bdData.Filtro.codigo || '',
+            tipo: bdData.Filtro.tipo === "aire" ? "Aire" : bdData.Filtro.tipo === "aceite" ? "Aceite" : bdData.Filtro.tipo === "combustible" ? "Combustible" : "", // 'aire', 'aceite', etc.
+            posicion: bdData.Filtro.posicion === "primario" ? "Primario" : "Secundario",
+            imagen: bdData.Filtro.imagen || '',
+            // Guardamos la info de equivalencia para el UI
+            grupoEquivalenciaId: bdData.Filtro.grupoEquivalenciaId,
         };
     } else if (bdData.Aceite) {
-        tipoEspecifico = 'Aceite';
-        datosTecnicos = {
-            marcaId: bdData.Aceite.marcaId?.toString(),
-            viscosidad: bdData.Aceite.viscosidad,
-            tipoBase: bdData.Aceite.tipoBase
+        datosHijo = {
+            marca: bdData.Aceite.marca || '',
+            viscosidad: bdData.Aceite.viscosidad || '',
+            aplicacion: bdData.Aceite.aplicacion || '',
+            tipo: bdData.Aceite.tipo || '', // ej: Sintético
+            modelo: bdData.Aceite.modelo || '',
         };
-    } else if (bdData.Bateria) {
-        tipoEspecifico = 'Bateria';
-        datosTecnicos = {
-            marcaId: bdData.Bateria.marcaId?.toString(),
-            modelo: bdData.Bateria.modelo,
-            amperaje: bdData.Bateria.amperaje,
-            voltaje: bdData.Bateria.voltaje,
-            borne: bdData.Bateria.borne
+    } else if (bdData.Baterium || bdData.Bateria) {
+        const bat = bdData.Baterium || bdData.Bateria;
+        datosHijo = {
+            marca: bat.marca || '',
+            codigo: bat.codigo || '', // El grupo
+            amperaje: bat.amperaje || 0,
+            voltaje: bat.voltaje || 12,
+            capacidad: bat.capacidad || 0,
         };
-    } 
-    // ... agregar lógica para Neumatico, Correa, etc.
+    } else if (bdData.Neumatico) {
+        datosHijo = {
+            marca: bdData.Neumatico.marca || '',
+            medida: bdData.Neumatico.medida || '',
+            modelo: bdData.Neumatico.modelo || '',
+        };
+    } else if (bdData.Correa) {
+        datosHijo = {
+            marca: bdData.Correa.marca || '',
+            codigo: bdData.Correa.codigo || '',
+        };
+    } else if (bdData.Sensor) {
+        datosHijo = {
+            marca: bdData.Sensor.marca || '',
+            codigo: bdData.Sensor.codigo || '',
+            nombreEspecifico: bdData.Sensor.nombre || '',
+        };
+    }
 
+    // 3. RETORNAMOS TODO EN UN SOLO NIVEL (Spread operator)
     return {
-        // Datos Generales
-        nombre: bdData.nombre,
-        tipo: bdData.tipo, // 'fungible' o 'serializado'
-        categoria: bdData.categoria, // 'filtro de aceite', etc.
-        stockMinimo: bdData.stockMinimo,
-        unidadMedida: bdData.unidadMedida,
-        imagen: bdData.imagen, // Si manejas preview de imagen
-        
-        // Datos Calculados para el Form
-        tipoSpecifico: tipoEspecifico, // Para que el form sepa qué campos mostrar
-        datosTecnicos: datosTecnicos   // Los valores de los inputs específicos
+        ...base,
+        ...datosHijo
     };
 }

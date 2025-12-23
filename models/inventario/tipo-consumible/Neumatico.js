@@ -14,6 +14,14 @@ const Neumatico = sequelize.define('Neumatico', {
         type: DataTypes.STRING,
         allowNull: true,
     },
+    esTubeless: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false, // false = usa tripa/cámara, true = sello matic
+    },
+    esRecauchable: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false, // Define si el casco permite recauchado
+    }
 }, {
     tableName: 'Neumaticos',
     timestamps: true,

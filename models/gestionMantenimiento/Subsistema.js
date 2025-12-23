@@ -2,8 +2,10 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const Subsistema = sequelize.define('Subsistema', {
-  activoId: { type: DataTypes.INTEGER, allowNull: false },
-  nombre: { type: DataTypes.STRING, allowNull: false } // Ej: Motor, Iluminación delantera
+  nombre: { type: DataTypes.STRING, allowNull: false }, // Ej: Motor, Iluminación delantera
+  categoria: { type: DataTypes.ENUM('motor', 'transmision', 'frenos', 'tren de rodaje', 'suspension', 'electrico', 'iluminacion', 'sistema de escape', 'sistema hidraulico', 'sistema de direccion','sistema de combustible', 'otros'), allowNull: false },
+
+
 });
 
 Subsistema.associate = (models) => {

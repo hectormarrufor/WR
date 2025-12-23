@@ -28,6 +28,12 @@ const ConsumibleSerializado = sequelize.define('ConsumibleSerializado', {
         allowNull: false,
         defaultValue: 'almacen'
     },
+    recauchado: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
+
 
 }, {
     tableName: 'ConsumiblesSerializados',
@@ -45,5 +51,6 @@ ConsumibleSerializado.associate = (models) => {
     ConsumibleSerializado.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
     ConsumibleSerializado.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId', as: 'subsistemaInstancia' });
     ConsumibleSerializado.hasOne(models.ConsumibleUsado, { foreignKey: 'consumibleSerializadoId' });
+    ConsumibleSerializado.hasMany(models.Recauchado, { foreignKey: 'consumibleSerializadoId', as: 'historialRecauchado' });
 }
 module.exports = ConsumibleSerializado;

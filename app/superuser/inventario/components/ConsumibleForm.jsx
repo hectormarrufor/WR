@@ -5,7 +5,8 @@ import {
     Stack, Select, TextInput, NumberInput,
     Button, Group, Text, Divider, Alert, LoadingOverlay,
     SimpleGrid,
-    Paper
+    Paper,
+    Checkbox
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -61,12 +62,14 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             capacidad: 60,
             // Neumáticos
             medida: '',
+            esTubeless: false,
+            esRecauchable: false,
             //Sensores
         },
         validate: {
             marca: (val) => !val ? 'Marca requerida' : null,
             // Validaciones condicionales
-            codigoFiltro: (val) => (tipoEspecifico === 'Filtro' && !val ? 'Código requerido' : null),
+            codigo: (val) => (tipoEspecifico === 'Filtro' && !val ? 'Código requerido' : null),
             itemsSerializados: (val, values) => {
                 if (values.clasificacion === 'Serializado' && val.some(i => !i.serial)) {
                     return 'Todos los seriales son obligatorios';
@@ -104,11 +107,12 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
 
     // Debugging (Existente)
     useEffect(() => {
-        console.log("Valores del formulario:", form.values);
-        console.log("Tipo específico:", tipoEspecifico);
-        console.log("Es serializado:", esSerializado);
         console.log("Equivalencia seleccionada:", equivalenciaSeleccionada);
-    }, [form.values, tipoEspecifico, esSerializado, equivalenciaSeleccionada]);
+    }, [equivalenciaSeleccionada]);
+
+    useEffect(() => {
+        console.log("Valores del formulario:", form.values);
+    }, [form.values]);
 
     // Efecto: Auto-configurar Serializado según el tipo
     useEffect(() => {
@@ -187,11 +191,11 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             let datosTecnicos = {};
 
             if (tipoEspecifico === 'Filtro') {
-                nombreGenerado = `${values.categoria} ${values.marca} ${values.codigoFiltro || values.codigo}`;
+                nombreGenerado = `${values.categoria} ${values.marca} ${values.codigo}`;
                 datosTecnicos = {
                     marca: values.marca, // Asegurar enviar ID si es combobox
                     tipo: values.tipo?.toLowerCase(),
-                    codigo: values.codigo || values.codigoFiltro, // Manejar ambos keys
+                    codigo: values.codigo, // Manejar ambos keys
                     posicion: values.posicion?.toLowerCase(),
                     imagen: values.imagen,
                     equivalenciaSeleccionada: equivalenciaSeleccionada || null,
@@ -223,7 +227,9 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 datosTecnicos = {
                     marca: values.marca,
                     modelo: values.modelo,
-                    medida: values.medida
+                    medida: values.medida,
+                    esTubeless: values.esTubeless,
+                    esRecauchable: values.esRecauchable
                 };
             }
             else if (tipoEspecifico === 'Correa') {
@@ -389,7 +395,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                                     disabled={!form.values.categoria}
                                     label="Código"
                                     placeholder="Ej. WF1036"
-                                    fieldKey="codigoFiltro"
+                                    fieldKey="codigo"
                                     form={form}
                                     catalogo="codigos"
                                     tipo={tipoFiltro}
@@ -477,7 +483,10 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                     {tipoEspecifico === 'Neumatico' && (
                         <Group grow>
                             <AsyncCatalogComboBox label="Modelo" fieldKey="modelo" form={form} catalogo="modelos" tipo="neumatico" />
-                            <TextInput label="Medida" placeholder="11R22.5" {...form.getInputProps('medida')} />
+                            <AsyncCatalogComboBox label="Medida" fieldKey="medida" form={form} catalogo="medida-neumaticos" />
+                            <Checkbox label="¿Neumático con cámara?" {...form.getInputProps('esTubeless', { type: 'checkbox' })} />
+                            <Checkbox label="¿Neumático recauchable?" {...form.getInputProps('esRecauchable', { type: 'checkbox' })} />
+                            
                         </Group>
                     )}
 
@@ -520,7 +529,9 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                             <SerializadosInputs
                                 cantidad={form.values.stockAlmacen}
                                 values={form.values.itemsSerializados}
+                                form={form}
                                 onChange={(newItems) => form.setFieldValue('itemsSerializados', newItems)}
+                                esRecauchable={form.values.esRecauchable}
                             />
                         </>
                     )}

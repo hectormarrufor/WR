@@ -45,6 +45,7 @@ const db = {
     SalidaInventario: require('./inventario/SalidaInventario'),
     Requisicion: require('./inventario/requisicion/Requisicion'),
     RequisicionDetalle: require('./inventario/requisicion/RequisicionDetalle'),
+    Recauchado: require('./inventario/Recauchado'),
 
     //Estimacion de Costos
     CostParameters: require('./estimacion/CostParameters'),
@@ -79,6 +80,7 @@ const db = {
     RecepcionCompraItem: require('./compras/recepcion-compra/RecepcionCompraItem'),
     OrdenCompra: require('./compras/ordenCompra/OrdenCompra'),
     OrdenCompraItem: require('./compras/ordenCompra/OrdenCompraItem'),
+    Taller: require('./compras/Taller'),
 
     //Facturacion
     Cliente: require('./Cliente'),

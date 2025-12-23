@@ -12,6 +12,7 @@ export async function GET() {
             attributes: ['id', 'medida'],
             order: [['medida', 'ASC']]
         });
+        console.log("Medidas obtenidas:", medidas);
         return NextResponse.json({ success: true, data: medidas });
     } catch (error) {
         console.error("Error al obtener las medidas:", error);

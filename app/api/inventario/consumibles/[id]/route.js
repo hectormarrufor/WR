@@ -31,7 +31,9 @@ export async function GET(request, { params }) {
                         as: 'grupoEquivalencia', // <--- SINGULAR (Validado por tus logs)
                         include: [{ 
                             model: Filtro,
-                            as: 'filtros' // <--- PLURAL (Validado por tus logs)
+                            as: 'filtros', // <--- PLURAL (Validado por tus logs)
+                            include: [{ model: Consumible }]
+
                         }] 
                     }]
                 },
@@ -64,6 +66,7 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: 'Consumible no encontrado' }, { status: 404 });
         }
 
+
         return NextResponse.json(consumible);
 
     } catch (error) {
@@ -73,63 +76,80 @@ export async function GET(request, { params }) {
 }
 
 
-// PUT: Actualizar un consumible
 export async function PUT(request, { params }) {
-    const { id } = await params;
+    const { id } = await params; // ID del Consumible
     const body = await request.json();
     const t = await sequelize.transaction();
 
     try {
-        // 1. Buscar el consumible existente
         const consumible = await Consumible.findByPk(id, { transaction: t });
         if (!consumible) throw new Error('Consumible no encontrado');
 
-        // 2. Actualizar datos generales (Tabla Consumible)
+        // 1. Actualizar datos generales
         await consumible.update({
             nombre: body.nombre,
             descripcion: body.descripcion,
-            categoria: body.categoria, // Ojo: cambiar categoría es riesgoso si ya tiene hijo creado
+            categoria: body.categoria,
             stockMinimo: body.stockMinimo,
             unidadMedida: body.unidadMedida,
-            // ... otros campos generales
-            // Nota: stockAlmacen y precioPromedio usualmente no se editan directamente aquí, sino por movimientos
             precioPromedio: body.precioPromedio,
             stockAlmacen: body.stockAlmacen
         }, { transaction: t });
 
-        // 3. Actualizar datos específicos (Hijos)
-        // body.datosTecnicos debe traer los campos específicos
         const datosTecnicos = body.datosTecnicos || {};
 
-        // Detectar tipo y actualizar el modelo hijo correspondiente
-        // Aquí asumimos que no cambias de "Filtro" a "Batería" en la edición, solo actualizas valores.
-
+        // 2. Lógica de Filtro en Edición
         if (body.tipoSpecifico === 'Filtro') {
-            // Upsert o Update del hijo
-            // Buscamos si ya existe el registro hijo
             const filtro = await Filtro.findOne({ where: { consumibleId: id }, transaction: t });
+            
+            let grupoId = datosTecnicos.grupoEquivalenciaId || (filtro ? filtro.grupoEquivalenciaId : null);
+
+            // Si el usuario seleccionó una NUEVA equivalencia en el modal durante la edición
+            if (datosTecnicos.equivalenciaSeleccionada && datosTecnicos.equivalenciaSeleccionada.id) {
+                const filtroHermano = await Filtro.findByPk(datosTecnicos.equivalenciaSeleccionada.id, { transaction: t });
+                
+                if (filtroHermano) {
+                    if (filtroHermano.grupoEquivalenciaId) {
+                        grupoId = filtroHermano.grupoEquivalenciaId;
+                    } else {
+                        const nuevoGrupo = await GrupoEquivalencia.create({ 
+                            nombre: `Grupo para ${filtroHermano.marca} ${filtroHermano.codigo}` 
+                        }, { transaction: t });
+                        grupoId = nuevoGrupo.id;
+                        await filtroHermano.update({ grupoEquivalenciaId: grupoId }, { transaction: t });
+                    }
+                }
+            }
+
             if (filtro) {
                 await filtro.update({
-                    marcaId: datosTecnicos.marcaId,
+                    marca: datosTecnicos.marca,
                     codigo: datosTecnicos.codigo,
-                    grupoEquivalenciaId: datosTecnicos.grupoEquivalenciaId
+                    tipo: datosTecnicos.tipo,
+                    posicion: datosTecnicos.posicion,
+                    grupoEquivalenciaId: grupoId
                 }, { transaction: t });
             } else {
-                // Si por alguna razón no existía (error de datos previos), lo creamos
-                await Filtro.create({ ...datosTecnicos, consumibleId: id }, { transaction: t });
+                await Filtro.create({ 
+                    ...datosTecnicos, 
+                    consumibleId: id, 
+                    grupoEquivalenciaId: grupoId 
+                }, { transaction: t });
             }
         }
 
-        // ... Repetir bloques IF para Aceite, Bateria, etc.
-        // Ejemplo Aceite:
+        // Lógica de Aceite (Ejemplo de consistencia)
         if (body.tipoSpecifico === 'Aceite') {
             const aceite = await Aceite.findOne({ where: { consumibleId: id }, transaction: t });
+            const dataAceite = {
+                viscosidad: datosTecnicos.viscosidad,
+                tipoBase: datosTecnicos.tipoBase,
+                marca: datosTecnicos.marca
+            };
             if (aceite) {
-                await aceite.update({
-                    viscosidad: datosTecnicos.viscosidad,
-                    tipoBase: datosTecnicos.tipoBase,
-                    marcaId: datosTecnicos.marcaId
-                }, { transaction: t });
+                await aceite.update(dataAceite, { transaction: t });
+            } else {
+                await Aceite.create({ ...dataAceite, consumibleId: id }, { transaction: t });
             }
         }
 
@@ -138,7 +158,7 @@ export async function PUT(request, { params }) {
 
     } catch (error) {
         await t.rollback();
-        console.error(error);
+        console.error("Error en PUT:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
