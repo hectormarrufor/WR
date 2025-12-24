@@ -13,7 +13,6 @@ export default function ConsumibleSelector({ value = [], onChange }) {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
-
     // Estado para la "pre-selección" antes de agregar
     const [selectedItem, setSelectedItem] = useState(null);
     const [cantidad, setCantidad] = useState(1);
@@ -52,6 +51,11 @@ export default function ConsumibleSelector({ value = [], onChange }) {
         }
     };
 
+    const esConsumibleGranel = (categoria) => {
+        // Agrega aquí otras categorías líquidas si tienes (ej: 'refrigerante', 'grasa')
+        return ['aceite', 'refrigerante', 'grasa'].includes(categoria?.toLowerCase());
+    };
+
     // 3. Confirmar y Agregar (Generar Slots)
     const confirmAdd = () => {
         if (!selectedItem) return;
@@ -61,16 +65,19 @@ export default function ConsumibleSelector({ value = [], onChange }) {
             categoria: c.categoria,
             criterioId: null,
             tipoCriterio: '',
-            labelOriginal: ''
+            labelOriginal: '',
+            // Guardamos la cantidad requerida explícitamente
+            cantidad: 1 
         };
 
-        // Extracción de Criterio (Igual que antes)
+        // --- 1. EXTRACCIÓN DEL CRITERIO (Igual que antes) ---
         if (c.categoria.startsWith('filtro')) {
             const filtroData = c.Filtro;
+            console.log(filtroData);
             if (filtroData?.grupoEquivalenciaId) {
                 baseRecomendacion.criterioId = filtroData.grupoEquivalenciaId;
                 baseRecomendacion.tipoCriterio = 'grupo';
-                baseRecomendacion.labelOriginal = `Grupo ${filtroData.marca}`;
+                baseRecomendacion.labelOriginal = `${filtroData.grupoEquivalencia.nombre}`;
             } else {
                 baseRecomendacion.criterioId = filtroData.id;
                 baseRecomendacion.tipoCriterio = 'individual';
@@ -88,21 +95,43 @@ export default function ConsumibleSelector({ value = [], onChange }) {
             baseRecomendacion.tipoCriterio = 'codigo';
             baseRecomendacion.labelOriginal = `Código ${hijo?.codigo}`;
         }
+        else if (c.categoria === 'aceite') {
+             // Para aceite, el criterio suele ser la viscosidad o el tipo base
+             const hijo = c.Aceite;
+             // Puedes usar el ID del modelo de aceite o su viscosidad como criterio
+             baseRecomendacion.criterioId = hijo?.id || c.id; 
+             baseRecomendacion.tipoCriterio = 'modelo'; // o 'viscosidad'
+             baseRecomendacion.labelOriginal = `${c.nombre}`; // Ej: Aceite 15W40
+        }
 
-        // GENERACIÓN DE MÚLTIPLES SLOTS
+
+        // --- 2. LÓGICA DE CANTIDAD (DIFERENCIADA) ---
+        
         const nuevosSlots = [];
-        for (let i = 0; i < cantidad; i++) {
+
+        if (esConsumibleGranel(c.categoria)) {
+            // CASO FLUIDOS (Aceite): 1 solo slot con la cantidad total
             nuevosSlots.push({
                 ...baseRecomendacion,
-                // Agregamos un identificador visual si son varios
-                label: cantidad > 1 
-                    ? `${baseRecomendacion.labelOriginal} (Pos. ${value.length + i + 1})`
-                    : baseRecomendacion.labelOriginal
+                cantidad: cantidad, // Aquí van los 40 litros
+                label: `${baseRecomendacion.labelOriginal} (${cantidad} Lts)` // Visualmente claro
             });
+        } else {
+            // CASO DISCRETO (Cauchos, Filtros): N slots de 1 unidad
+            for (let i = 0; i < cantidad; i++) {
+                nuevosSlots.push({
+                    ...baseRecomendacion,
+                    cantidad: 1, // Cada slot representa 1 unidad física
+                    label: cantidad > 1 
+                        ? `${baseRecomendacion.labelOriginal} (Pos. ${value.length + i + 1})`
+                        : baseRecomendacion.labelOriginal
+                });
+            }
         }
 
         onChange([...value, ...nuevosSlots]);
-        setSelectedItem(null); // Limpiar selección
+        setSelectedItem(null);
+        setCantidad(1); // Reset a 1 por defecto
         setSearchValue('');
     };
 
@@ -136,12 +165,13 @@ export default function ConsumibleSelector({ value = [], onChange }) {
                 {/* Input de Cantidad (Solo aparece si seleccionaste algo) */}
                 {selectedItem && (
                     <NumberInput
-                        label="Cantidad"
+                        // Cambiamos el label dinámicamente para dar feedback al usuario
+                        label={esConsumibleGranel(selectedItem.raw.categoria) ? "Litros / Cantidad" : "Unidades"}
                         value={cantidad}
                         onChange={setCantidad}
                         min={1}
-                        max={16}
-                        w={80}
+                        max={100} // Aumenta el max para permitir 40 litros
+                        w={100}
                     />
                 )}
 
@@ -160,6 +190,7 @@ export default function ConsumibleSelector({ value = [], onChange }) {
                 {value.length === 0 && <Text size="xs" c="dimmed" fs="italic">Sin partes definidas.</Text>}
 
                 <Stack gap={4}>
+                    {console.log(value)}
                     {value.map((item, idx) => (
                         <Group key={idx} justify="space-between" bg="white" p={4} style={{ border: '1px solid #eee', borderRadius: 4 }}>
                             <Group gap={5}>

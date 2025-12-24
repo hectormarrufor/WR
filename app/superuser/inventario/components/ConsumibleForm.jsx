@@ -457,8 +457,8 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                                 catalogo="viscosidades"
                                 tipo='motor'
                             />
-                            <Select label="Base" data={['Mineral', 'Sintetico']} {...form.getInputProps('tipoAceite')} />
-                            <Select label="Aplicación" data={['Motor', 'Hidraulico']} {...form.getInputProps('aplicacion')} />
+                            <Select label="Base" data={['mineral', 'sintético', 'semi']} {...form.getInputProps('tipoAceite')} />
+                            <Select label="Aplicación" data={['motor', 'hidraulico']} {...form.getInputProps('aplicacion')} />
                         </Group>
                     )}
 

@@ -13,9 +13,9 @@ export async function GET(request) {
     try {
         const activos = await Activo.findAll({
             include: [
-                { model: VehiculoInstancia, as: 'detalleVehiculo', include: [{ model: Vehiculo, as: 'plantilla' }] },
-                { model: RemolqueInstancia, as: 'detalleRemolque', include: [{ model: Remolque, as: 'plantilla' }] },
-                { model: MaquinaInstancia, as: 'detalleMaquina', include: [{ model: Maquina, as: 'plantilla' }] }
+                { model: VehiculoInstancia, as: 'vehiculoInstancia', include: [{ model: Vehiculo, as: 'plantilla' }] },
+                { model: RemolqueInstancia, as: 'remolqueInstancia', include: [{ model: Remolque, as: 'plantilla' }] },
+                { model: MaquinaInstancia, as: 'maquinaInstancia', include: [{ model: Maquina, as: 'plantilla' }] }
             ],
             order: [['createdAt', 'DESC']]
         });
