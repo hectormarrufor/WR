@@ -26,8 +26,8 @@ export default function ConsumibleSelector({ value = [], onChange }) {
     const fetchConsumibles = async (query) => {
         setLoading(true);
         try {
-            const url = query 
-                ? `/api/inventario/consumibles?search=${encodeURIComponent(query)}` 
+            const url = query
+                ? `/api/inventario/consumibles?search=${encodeURIComponent(query)}`
                 : '/api/inventario/consumibles?limit=20';
             const response = await fetch(url);
             const res = await response.json();
@@ -35,11 +35,11 @@ export default function ConsumibleSelector({ value = [], onChange }) {
                 const items = res.items.map(c => ({
                     value: c.id.toString(),
                     label: `${c.nombre} (${c.categoria})`,
-                    raw: c 
+                    raw: c
                 }));
                 setData(items);
             }
-        } catch (error) { console.error(error); } 
+        } catch (error) { console.error(error); }
         finally { setLoading(false); }
     };
 
@@ -52,57 +52,100 @@ export default function ConsumibleSelector({ value = [], onChange }) {
         }
     };
 
-    // 3. Confirmar y Agregar (Generar Slots)
+const esConsumibleGranel = (categoria) => {
+        return ['aceite', 'refrigerante', 'grasa', 'liquido'].includes(categoria?.toLowerCase());
+    };
+
     const confirmAdd = () => {
         if (!selectedItem) return;
 
         const c = selectedItem.raw;
-        let baseRecomendacion = {
-            categoria: c.categoria,
-            criterioId: null,
+        
+        // 1. Inicializamos la variable con el nombre CORRECTO
+        let baseRecomendacion = { 
+            categoria: c.categoria, 
+            cantidad: 1,
+            criterioId: null, 
             tipoCriterio: '',
             labelOriginal: ''
         };
 
-        // Extracción de Criterio (Igual que antes)
+        // 2. Lógica para FILTROS (Sigue siendo especial por los Grupos)
         if (c.categoria.startsWith('filtro')) {
-            const filtroData = c.Filtro;
-            if (filtroData?.grupoEquivalenciaId) {
-                baseRecomendacion.criterioId = filtroData.grupoEquivalenciaId;
+            if (c.Filtro?.grupoEquivalenciaId) {
+                baseRecomendacion.criterioId = c.Filtro.grupoEquivalenciaId;
                 baseRecomendacion.tipoCriterio = 'grupo';
-                baseRecomendacion.labelOriginal = `Grupo ${filtroData.marca}`;
+                baseRecomendacion.labelOriginal = `Grupo ${c.Filtro.marca}`;
             } else {
-                baseRecomendacion.criterioId = filtroData.id;
+                baseRecomendacion.criterioId = c.Filtro.id;
                 baseRecomendacion.tipoCriterio = 'individual';
-                baseRecomendacion.labelOriginal = `${filtroData.marca} ${filtroData.codigo}`;
+                baseRecomendacion.labelOriginal = `${c.nombre}`;
             }
         } 
-        else if (c.categoria === 'neumatico') {
-            baseRecomendacion.criterioId = c.Neumatico?.medida;
-            baseRecomendacion.tipoCriterio = 'medida';
-            baseRecomendacion.labelOriginal = `Medida ${c.Neumatico?.medida}`;
-        }
-        else if (['bateria', 'sensor', 'correa'].includes(c.categoria)) {
-            const hijo = c.Baterium || c.Sensor || c.Correa;
-            baseRecomendacion.criterioId = hijo?.codigo;
-            baseRecomendacion.tipoCriterio = 'codigo';
-            baseRecomendacion.labelOriginal = `Código ${hijo?.codigo}`;
+        // 3. Lógica para TODO LO DEMÁS (Criterio Técnico)
+        else {
+            let valorTecnico = null;
+            let etiqueta = '';
+
+            switch (c.categoria) {
+                case 'neumatico':
+                    valorTecnico = c.Neumatico?.medida;     // "11R22.5"
+                    etiqueta = `Medida ${valorTecnico}`;
+                    break;
+                case 'aceite':
+                    valorTecnico = c.Aceite?.viscosidad;    // "15W40"
+                    etiqueta = `Viscosidad ${valorTecnico}`;
+                    break;
+                case 'bateria':
+                    valorTecnico = c.Baterium?.codigo;       // "24F"
+                    etiqueta = `Grupo ${valorTecnico}`;
+                    break;
+                case 'correa':
+                case 'sensor':
+                    const hijo = c.Correa || c.Sensor;
+                    valorTecnico = hijo?.codigo;            // "6PK..."
+                    etiqueta = `Código ${valorTecnico}`;
+                    break;
+            }
+
+            if (valorTecnico) {
+                baseRecomendacion.criterioId = valorTecnico;
+                baseRecomendacion.tipoCriterio = 'tecnico';
+                baseRecomendacion.labelOriginal = etiqueta;
+            } else {
+                // Fallback si falta el dato técnico o es otra categoría
+                baseRecomendacion.criterioId = c.id;
+                baseRecomendacion.tipoCriterio = 'individual';
+                baseRecomendacion.labelOriginal = c.nombre;
+            }
         }
 
-        // GENERACIÓN DE MÚLTIPLES SLOTS
+        // --- 4. LÓGICA DE CANTIDAD Y GENERACIÓN DE SLOTS ---
         const nuevosSlots = [];
-        for (let i = 0; i < cantidad; i++) {
+
+        if (esConsumibleGranel(c.categoria)) {
+            // CASO FLUIDOS (Aceite): 1 solo slot con la cantidad total
             nuevosSlots.push({
                 ...baseRecomendacion,
-                // Agregamos un identificador visual si son varios
-                label: cantidad > 1 
-                    ? `${baseRecomendacion.labelOriginal} (Pos. ${value.length + i + 1})`
-                    : baseRecomendacion.labelOriginal
+                cantidad: cantidad, // Ej: 40 Litros
+                label: `${baseRecomendacion.labelOriginal} (${cantidad} Lts)`
             });
+        } else {
+            // CASO DISCRETO (Cauchos, Filtros): N slots de 1 unidad
+            for (let i = 0; i < cantidad; i++) {
+                nuevosSlots.push({
+                    ...baseRecomendacion, // Aquí es donde daba el error antes
+                    cantidad: 1, 
+                    label: cantidad > 1 
+                        ? `${baseRecomendacion.labelOriginal} (Pos. ${value.length + i + 1})`
+                        : baseRecomendacion.labelOriginal
+                });
+            }
         }
 
         onChange([...value, ...nuevosSlots]);
-        setSelectedItem(null); // Limpiar selección
+        setSelectedItem(null);
+        setCantidad(1);
         setSearchValue('');
     };
 
@@ -127,12 +170,12 @@ export default function ConsumibleSelector({ value = [], onChange }) {
                     onChange={handleSelect}
                     rightSection={loading ? <Loader size="xs" /> : <IconSearch size={14} />}
                     nothingFoundMessage={
-                         <Button variant="light" size="xs" fullWidth onClick={() => setModalOpen(true)}>
+                        <Button variant="light" size="xs" fullWidth onClick={() => setModalOpen(true)}>
                             + Crear Nuevo
                         </Button>
                     }
                 />
-                
+
                 {/* Input de Cantidad (Solo aparece si seleccionaste algo) */}
                 {selectedItem && (
                     <NumberInput
@@ -140,7 +183,7 @@ export default function ConsumibleSelector({ value = [], onChange }) {
                         value={cantidad}
                         onChange={setCantidad}
                         min={1}
-                        max={16}
+                        max={50}
                         w={80}
                     />
                 )}
@@ -156,7 +199,7 @@ export default function ConsumibleSelector({ value = [], onChange }) {
             {/* Lista de Slots Definidos */}
             <Paper withBorder p="xs" bg="gray.0" radius="md">
                 <Text size="xs" c="dimmed" mb={5} fw={700}>POSICIONES DEFINIDAS PARA ESTE SISTEMA:</Text>
-                
+
                 {value.length === 0 && <Text size="xs" c="dimmed" fs="italic">Sin partes definidas.</Text>}
 
                 <Stack gap={4}>
@@ -168,7 +211,7 @@ export default function ConsumibleSelector({ value = [], onChange }) {
                                 <Text size="sm">{item.label}</Text>
                                 {/* Indicador de Flexibilidad */}
                                 <Tooltip label="El sistema permitirá montar otra medida bajo advertencia">
-                                    <Badge size="xs" variant="outline" color="orange" style={{cursor: 'help'}}>Flexible</Badge>
+                                    <Badge size="xs" variant="outline" color="orange" style={{ cursor: 'help' }}>Flexible</Badge>
                                 </Tooltip>
                             </Group>
                             <ActionIcon color="red" variant="subtle" size="sm" onClick={() => removeRecomendacion(idx)}>
@@ -179,8 +222,8 @@ export default function ConsumibleSelector({ value = [], onChange }) {
                 </Stack>
             </Paper>
 
-            <ConsumibleCreatorModal 
-                opened={modalOpen} 
+            <ConsumibleCreatorModal
+                opened={modalOpen}
                 onClose={() => setModalOpen(false)}
                 onSuccess={(nuevo) => fetchConsumibles(nuevo.nombre)}
             />

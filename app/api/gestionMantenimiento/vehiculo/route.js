@@ -152,64 +152,80 @@ export async function POST(request) {
         const body = await request.json();
 
         // 1. Crear Vehículo
-        const vehiculo = await Vehiculo.create({
+        const nuevoModelo = await Vehiculo.create({
             marca: body.marca,
             modelo: body.modelo,
             anio: body.anio,
             tipoVehiculo: body.tipoVehiculo,
             peso: body.peso,
-            capacidadCarga: body.capacidadCarga,
+            capacidadArrastre: body.capacidadArrastre,
+            pesoMaximoCombinado: body.pesoMaximoCombinado,
+            imagen: body.imagen || null,
             numeroEjes: body.numeroEjes,
             tipoCombustible: body.tipoCombustible,
         }, { transaction: t });
 
-        // 2. Subsistemas
-        if (body.subsistemas && Array.isArray(body.subsistemas)) {
+        // 2. Procesar Subsistemas (Hijos)
+        if (body.subsistemas && body.subsistemas.length > 0) {
+            
             for (const subData of body.subsistemas) {
-                const subsistema = await Subsistema.create({
+                // Crear el Subsistema (Ej: Motor)
+                const nuevoSubsistema = await Subsistema.create({
                     nombre: subData.nombre,
-                    descripcion: subData.descripcion,
-                    vehiculoId: vehiculo.id
+                    categoria: subData.categoria, // 'motor', 'tren_rodaje', etc.
+                    modeloVehiculoId: nuevoModelo.id // Relación con el padre
                 }, { transaction: t });
 
-                // 3. Consumibles
-                if (subData.consumibles && Array.isArray(subData.consumibles)) {
-                    for (const itemInput of subData.consumibles) {
-                        
-                        // A. Resolver (Buscar o Crear + Vincular)
-                        // Aquí ocurre la magia: si es nuevo y trae 'equivalenteA', se une al grupo.
-                        const consumiblePrincipal = await resolverConsumible(itemInput, t);
+                // 3. Procesar Recomendaciones (Nietos - Detalles)
+                if (subData.recomendaciones && subData.recomendaciones.length > 0) {
+                    
+                    const detallesParaGuardar = subData.recomendaciones.map(rec => {
+                        // Objeto base
+                        let detalle = {
+                            subsistemaId: nuevoSubsistema.id,
+                            label: rec.label,
+                            categoria: rec.categoria,
+                            cantidad: rec.cantidad || 1,
+                            tipoCriterio: rec.tipoCriterio, // 'grupo', 'tecnico', 'individual'
+                            valorCriterio: null,
+                            grupoEquivalenciaId: null,
+                            consumibleId: null
+                        };
 
-                        // B. Expandir (Traer a toda la familia)
-                        // Como ya se unió al grupo en el paso A, aquí traerá a los hermanos.
-                        const todosLosIds = await buscarHermanosEquivalentes(consumiblePrincipal, t);
+                        // LÓGICA DE MAPEO (EL TRADUCTOR)
+                        // Aquí decidimos en qué columna guardar el 'criterioId' que viene del front
 
-                        // C. Insertar relaciones
-                        const cantidad = (typeof itemInput === 'object' && itemInput.cantidad) ? itemInput.cantidad : 1;
+                        if (rec.tipoCriterio === 'grupo') {
+                            // Si es grupo, guardamos el ID en la Foreign Key correspondiente
+                            detalle.grupoEquivalenciaId = rec.criterioId; 
+                            detalle.valorCriterio = null; // No aplica texto
+                        } 
+                        else if (rec.tipoCriterio === 'tecnico') {
+                            // Si es técnico (medida, viscosidad, código), guardamos el STRING
+                            detalle.valorCriterio = rec.criterioId; // Ej: "11R22.5" o "15W40"
+                        } 
+                        else if (rec.tipoCriterio === 'individual') {
+                            // Si es individual, guardamos el ID del consumible específico
+                            detalle.consumibleId = rec.criterioId;
+                            // Opcional: guardar nombre en valorCriterio como respaldo visual
+                            detalle.valorCriterio = rec.labelOriginal || null; 
+                        }
 
-                        const promesasInsert = todosLosIds.map(id => {
-                            return ConsumibleRecomendado.findOrCreate({
-                                where: { subsistemaId: subsistema.id, consumibleId: id },
-                                defaults: {
-                                    subsistemaId: subsistema.id,
-                                    consumibleId: id,
-                                    cantidadRecomendada: cantidad
-                                },
-                                transaction: t
-                            });
-                        });
-                        await Promise.all(promesasInsert);
-                    }
+                        return detalle;
+                    });
+
+                    // Guardamos todas las recomendaciones de este subsistema de golpe
+                    await ConsumibleRecomendado.bulkCreate(detallesParaGuardar, { transaction: t });
                 }
             }
         }
 
         await t.commit();
-        return NextResponse.json({ success: true, data: vehiculo }, { status: 201 });
+        return NextResponse.json({ success: true, data: nuevoModelo }, { status: 201 });
 
     } catch (error) {
         await t.rollback();
-        console.error("Error:", error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        console.error("Error creando modelo:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

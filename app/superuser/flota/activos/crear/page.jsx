@@ -127,7 +127,7 @@ export default function CrearActivoPage() {
       if (res.success) {
         const lista = res.data.map(m => ({
           value: m.id.toString(),
-          label: `${m.marca?.nombre || 'S/M'} ${m.modelo || m.tipoRemolque || ''} ${m.anio || ''}`
+          label: `${m.marca || 'S/M'} ${m.modelo || m.tipoRemolque || ''} ${m.anio || ''}`
         }));
         setModelosDisponibles(lista);
       } else {

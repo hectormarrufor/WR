@@ -8,7 +8,9 @@ const Vehiculo = sequelize.define('Vehiculo', {
   numeroEjes: { type: DataTypes.INTEGER, allowNull: true },
   tipoVehiculo: { type: DataTypes.ENUM('Chuto', 'Carro', 'Camioneta', 'Moto', 'Bus', "Van", "Volqueta", "Camion"), allowNull: true },
   peso: { type: DataTypes.FLOAT, allowNull: true },
-  capacidadCarga: { type: DataTypes.FLOAT, allowNull: true },
+  imagen: { type: DataTypes.STRING, allowNull: true },
+  capacidadArrastre: { type: DataTypes.FLOAT, allowNull: true },
+  pesoMaximoCombinado: { type: DataTypes.FLOAT, allowNull: true },
   tipoCombustible: { type: DataTypes.ENUM('Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"), allowNull: true },
 });
 

@@ -1,7 +1,7 @@
 // app/superuser/flota/modelos/components/ModeloActivoForm.jsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     TextInput, NumberInput, Select, Button, Group,
     Stack, LoadingOverlay, Divider, Text, ActionIcon, Paper, SimpleGrid,
@@ -13,6 +13,7 @@ import { notifications } from '@mantine/notifications';
 import { IconDeviceFloppy, IconPlus, IconTrash, IconSitemap, IconTool } from '@tabler/icons-react';
 import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
 import ConsumibleSelector from './ConsumibleSelector';
+import ImageDropzone from '../../activos/components/ImageDropzone';
 
 
 export default function ModeloActivoForm({
@@ -34,13 +35,22 @@ export default function ModeloActivoForm({
             tipoRemolque: '',
             tipoMaquina: '',
             ejes: 2,
-            capacidadCarga: '',
+            imagen: '',
+            peso: '',
+            tipoCombustible: '',
+            capacidadArrastre: '',
+            pesoMaximoCombinado: '',
         },
         validate: {
             marca: (val) => (!val ? 'La marca es obligatoria' : null),
             modelo: (val) => (tipoPreseleccionado !== 'Remolque' && !val ? 'El modelo es obligatorio' : null),
         }
     });
+
+    useEffect(() => {
+        console.log('Form values changed: ', form.values);
+    }, [form.values]);
+
 
     // Helpers para la lista de subsistemas
     const addSubsistema = () => {
@@ -71,13 +81,29 @@ export default function ModeloActivoForm({
             // 1. CREAR LA PLANTILLA BASE
             let endpoint = '';
             let payload = {
-                marca: parseInt(values.marca),
-                anio: values.anio
+                marca: values.marca,
+                anio: values.anio,
             };
 
             if (tipoPreseleccionado === 'Vehiculo') {
+                if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
+                    notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
+                    const imagenFile = values.imagen;
+                    const fileExtension = imagenFile.name.split('.').pop();
+                    const uniqueFilename = `${values.marca.replace(/\s+/g, '_')}${values.modelo.replace(/\s+/g, '_')}${values.anio.toString().replace(/\s+/g, '_')}.${fileExtension}`;
+
+                    const response = await fetch(`/api/upload?filename=${encodeURIComponent(uniqueFilename)}`, {
+                        method: 'POST',
+                        body: imagenFile,
+                    });
+
+                    if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
+                    const newBlob = await response.json();
+                    payload.imagen = `${values.marca.replace(/\s+/g, '_')}${values.modelo.replace(/\s+/g, '_')}${values.anio.toString().replace(/\s+/g, '_')}.${fileExtension}`;
+                    notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
+                }
                 endpoint = '/api/gestionMantenimiento/vehiculo';
-                payload = { ...payload, modelo: values.modelo, tipoVehiculo: values.tipoVehiculo, numeroEjes: values.ejes };
+                payload = { ...payload, modelo: values.modelo, tipoVehiculo: values.tipoVehiculo, numeroEjes: values.ejes, peso: values.peso, tipoCombustible: values.tipoCombustible, capacidadArrastre: values.capacidadArrastre, pesoMaximoCombinado: values.pesoMaximoCombinado};
             }
             else if (tipoPreseleccionado === 'Remolque') {
                 endpoint = '/api/gestionMantenimiento/remolque';
@@ -109,7 +135,7 @@ export default function ModeloActivoForm({
             // Ahora enviamos no solo nombre, sino también la lista de compatibilidad
             if (subsistemas.length > 0) {
                 const validos = subsistemas.filter(s => s.nombre.trim() !== '');
-                    
+
                 if (validos.length > 0) {
                     await Promise.all(validos.map(sub =>
                         fetch('/api/gestionMantenimiento/subsistemas', {
@@ -173,12 +199,23 @@ export default function ModeloActivoForm({
                     </Group>
 
                     {tipoPreseleccionado === 'Vehiculo' && (
-                        <Select
-                            label="Tipo de Vehículo"
-                            placeholder="Seleccione..."
-                            data={['Chuto', 'Carro', 'Camioneta', 'Moto', 'Bus', "Van", "Volqueta", "Camion"]}
-                            {...form.getInputProps('tipoVehiculo')}
-                        />
+                        <>
+                            <Select
+                                label="Tipo de Vehículo"
+                                placeholder="Seleccione..."
+                                data={['Chuto', 'Carro', 'Camioneta', 'Moto', 'Bus', "Van", "Volqueta", "Camion"]}
+                                {...form.getInputProps('tipoVehiculo')}
+                            />
+                            <ImageDropzone
+                                label="Imagen del Vehículo (opcional)"
+                                form={form} fieldPath="imagen"
+                            />
+                            <NumberInput
+                                label="Peso Maximo Combinado (GCWR) (tons)"
+                                placeholder="ej. 36.5"
+                                {...form.getInputProps('pesoMaximoCombinado')}
+                            />
+                        </>
                     )}
 
                     {tipoPreseleccionado === 'Remolque' && (
@@ -232,14 +269,14 @@ export default function ModeloActivoForm({
                     {(tipoPreseleccionado === 'Remolque' || tipoPreseleccionado === 'Vehiculo') && (
                         <>
                             <TextInput
-                                label="Capacidad de Carga (tons) (opcional)"
-                                placeholder="ej. 15.5"
-                                {...form.getInputProps('capacidadCarga')}
-                            />
-                            <TextInput
                                 label="Peso (tons) (opcional)"
                                 placeholder="ej. 15.5"
                                 {...form.getInputProps('peso')}
+                                />
+                                <TextInput
+                                label="Capacidad de Arrastre (tons) (opcional)"
+                                placeholder="ej. 15.5"
+                                {...form.getInputProps('capacidadArrastre')}
                             />
                             <Select
                                 label="Tipo de Combustible"

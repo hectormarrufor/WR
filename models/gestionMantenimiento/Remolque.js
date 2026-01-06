@@ -5,6 +5,7 @@ const Remolque = sequelize.define('Remolque', {
     marca: { type: DataTypes.STRING, allowNull: false },
     modelo: { type: DataTypes.STRING, allowNull: false },
     anio: { type: DataTypes.INTEGER, allowNull: false },
+    imagen: { type: DataTypes.STRING, allowNull: true },
     nroEjes: { type: DataTypes.INTEGER, allowNull: false },
     capacidadCarga: { type: DataTypes.STRING, allowNull: true },
     peso: { type: DataTypes.STRING, allowNull: true },
