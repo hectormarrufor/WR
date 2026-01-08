@@ -12,12 +12,15 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconDeviceFloppy, IconPlus, IconTrash, IconSitemap, IconTool } from '@tabler/icons-react';
 import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
-import ConsumibleSelector from './ConsumibleSelector';
 import ImageDropzone from '../../activos/components/ImageDropzone';
+import ConsumibleRecomendadoCreator from './ConsumibleRecomendadoCreator';
 
 
 export default function ModeloActivoForm({
     tipoPreseleccionado = 'Vehiculo',
+    initialValues = null,
+    isEdit = false,
+    id = null,
     onSuccess,
     onCancel
 }) {
@@ -27,7 +30,7 @@ export default function ModeloActivoForm({
     const [subsistemas, setSubsistemas] = useState([]);
 
     const form = useForm({
-        initialValues: {
+        initialValues: initialValues || {
             marca: null,
             modelo: '',
             anio: new Date().getFullYear(),
@@ -47,16 +50,31 @@ export default function ModeloActivoForm({
         }
     });
 
+    // Efecto para actualizar el form si initialValues llega tarde (asincrono)
+    useEffect(() => {
+        if (initialValues) {
+            form.setValues(initialValues);
+            // Si manejas estados locales aparte del form (ej: steps), actualízalos aquí
+        }
+    }, [initialValues]);
+
     useEffect(() => {
         console.log('Form values changed: ', form.values);
+        setSubsistemas(form.values.subsistemas || []);
     }, [form.values]);
+
+    useEffect(() => {
+      console.log("Subsistemas", subsistemas)
+
+    }, [subsistemas])
+    
 
 
     // Helpers para la lista de subsistemas
     const addSubsistema = () => {
         setSubsistemas([...subsistemas, {
             nombre: '',
-            descripcion: '',
+            categoria: '',
             recomendaciones: [] // Array de IDs de consumibles (SKUs)
         }]);
     };
@@ -102,17 +120,19 @@ export default function ModeloActivoForm({
                     payload.imagen = `${values.marca.replace(/\s+/g, '_')}${values.modelo.replace(/\s+/g, '_')}${values.anio.toString().replace(/\s+/g, '_')}.${fileExtension}`;
                     notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
                 }
-                endpoint = '/api/gestionMantenimiento/vehiculo';
+                endpoint = initialValues ? `/api/gestionMantenimiento/vehiculo/${id}` : '/api/gestionMantenimiento/vehiculo';
                 payload = { ...payload, modelo: values.modelo, tipoVehiculo: values.tipoVehiculo, numeroEjes: values.ejes, peso: values.peso, tipoCombustible: values.tipoCombustible, capacidadArrastre: values.capacidadArrastre, pesoMaximoCombinado: values.pesoMaximoCombinado};
             }
             else if (tipoPreseleccionado === 'Remolque') {
-                endpoint = '/api/gestionMantenimiento/remolque';
+                endpoint = initialValues ? `/api/gestionMantenimiento/remolque/${id}` : '/api/gestionMantenimiento/remolque';
                 payload = { ...payload, tipoRemolque: values.tipoRemolque, numeroEjes: values.ejes, capacidad: values.capacidadCarga };
             }
             else if (tipoPreseleccionado === 'Maquina') {
-                endpoint = '/api/gestionMantenimiento/maquina';
+                endpoint = initialValues ? `/api/gestionMantenimiento/maquina/${id}` : '/api/gestionMantenimiento/maquina';
                 payload = { ...payload, modelo: values.modelo, tipoMaquina: values.tipoMaquina };
             }
+
+            payload.subsistemas = subsistemas
 
             // AHORA ENVIAMOS TODO JUNTO EN EL PAYLOAD DEL MODELO
             // Para simplificar transacciones, es mejor que el endpoint de crear modelo
@@ -121,38 +141,13 @@ export default function ModeloActivoForm({
             // VOY A ASUMIR EL MÉTODO DE 2 PASOS que usamos antes, pero mejorado.
 
             const response = await fetch(endpoint, {
-                method: 'POST',
+                method: initialValues ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const res = await response.json();
 
             if (!res.success) throw new Error(res.error || 'No se pudo crear el modelo');
-
-            const nuevoModeloId = res.data.id;
-
-            // 2. CREAR SUBSISTEMAS + RECOMENDACIONES
-            // Ahora enviamos no solo nombre, sino también la lista de compatibilidad
-            if (subsistemas.length > 0) {
-                const validos = subsistemas.filter(s => s.nombre.trim() !== '');
-
-                if (validos.length > 0) {
-                    await Promise.all(validos.map(sub =>
-                        fetch('/api/gestionMantenimiento/subsistemas', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                nombre: sub.nombre,
-                                descripcion: sub.descripcion,
-                                plantillaId: nuevoModeloId,
-                                tipoPlantilla: tipoPreseleccionado,
-                                // NUEVO CAMPO: Array de IDs de Consumibles
-                                recomendacionesIds: sub.recomendaciones.map(Number)
-                            })
-                        })
-                    ));
-                }
-            }
 
             notifications.show({ title: 'Éxito', message: 'Modelo configurado correctamente', color: 'green' });
             if (onSuccess) onSuccess(res.data);
@@ -318,25 +313,28 @@ export default function ModeloActivoForm({
                                         </Accordion.Control>
                                         <Accordion.Panel>
                                             <Stack gap="sm">
-                                                <Group grow>
+                                                <Group bg='lightgray' p={10}  grow>
                                                     <TextInput
                                                         label="Nombre"
                                                         placeholder="ej. Motor"
                                                         value={sub.nombre}
                                                         onChange={(e) => updateSubsistema(index, 'nombre', e.currentTarget.value)}
                                                     />
-                                                    <TextInput
-                                                        label="Descripción"
-                                                        placeholder="ej. ISX 450HP"
-                                                        value={sub.descripcion}
-                                                        onChange={(e) => updateSubsistema(index, 'descripcion', e.currentTarget.value)}
+                                                    <Select
+                                                        label="Categoría"
+                                                        placeholder="Seleccione..."
+                                                        data={[
+                                                            'motor', 'transmision', 'frenos', 'tren de rodaje', 'suspension', 'electrico', 'iluminacion', 'sistema de escape', 'sistema hidraulico', 'sistema de direccion','sistema de combustible', 'otros'
+                                                        ]}
+                                                        value={sub.categoria}
+                                                        onChange={(val) => updateSubsistema(index, 'categoria', val)}
                                                     />
                                                 </Group>
 
                                                 {/* AQUÍ ESTÁ LA MAGIA: SELECTOR DE CONSUMIBLES */}
-                                                <ConsumibleSelector
+                                                <ConsumibleRecomendadoCreator
                                                     value={sub.recomendaciones}
-                                                    onChange={(val) => updateSubsistema(index, 'recomendaciones', val)}
+                                                    onChange={(newRecs) => updateSubsistema(index, 'recomendaciones', newRecs)}
                                                 />
 
                                                 <Group justify="right" mt="xs">
@@ -361,7 +359,7 @@ export default function ModeloActivoForm({
                     <Group justify="right">
                         <Button variant="default" onClick={onCancel}>Cancelar</Button>
                         <Button type="submit" leftSection={<IconDeviceFloppy size={18} />}>
-                            Guardar Modelo Completo
+                            {initialValues ? "Actualizar Modelo" : "Guardar Modelo Completo"}
                         </Button>
                     </Group>
                 </Stack>

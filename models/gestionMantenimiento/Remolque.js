@@ -17,8 +17,8 @@ const Remolque = sequelize.define('Remolque', {
 });
 
 Remolque.associate = (models) => {
-    Remolque.hasMany(models.RemolqueInstancia, { foreignKey: 'remolqueId', as: 'instancias' });
-    Remolque.hasMany(models.Subsistema, { foreignKey: 'remolqueId', as: 'subsistemas' });
+    Remolque.hasMany(models.RemolqueInstancia, { foreignKey: 'remolqueId', as: 'instancias', onDelete: 'CASCADE' });
+    Remolque.hasMany(models.Subsistema, { foreignKey: 'remolqueId', as: 'subsistemas' , onDelete: 'CASCADE' });
 }
 
 module.exports = Remolque;

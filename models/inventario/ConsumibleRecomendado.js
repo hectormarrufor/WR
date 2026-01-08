@@ -11,10 +11,6 @@ const ConsumibleRecomendado = sequelize.define('ConsumibleRecomendado', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  tipo: { 
-    type: DataTypes.ENUM('fungible','serializado'),
-    allowNull: false
-  },
   tipoCriterio: {
     type: DataTypes.ENUM('grupo', 'tecnico', 'individual'),
     allowNull: false,

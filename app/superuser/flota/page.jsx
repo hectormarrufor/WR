@@ -14,26 +14,11 @@ const mockdata = [
     description: 'Gestiona cada activo físico individual: vehículos, skids, motores, power packs y más.',
     href: '/superuser/flota/activos', // <-- RUTA CORREGIDA
   },
-  
-  {
-    title: 'Grupos',
-    icon: IconLayersUnion,
-    color: 'yellow',
-    description: 'Configura y gestiona los grupos de activos (motor, vehiculo, bombas, transmision, gabarra).',
-    href: '/superuser/flota/grupos', // <-- RUTA CORREGIDA
-  },
-  {
-    title: 'Categorias',
-    icon: IconCategory,
-    color: 'green',
-    description: 'Configura y gestiona las categorias de activos (Taladro autopropulsado, camioneta, Chuto, Lowboys).',
-    href: '/superuser/flota/categorias', // <-- RUTA CORREGIDA
-  },
   {
     title: 'Modelos',
     icon: IconBoxModel,
     color: 'magenta',
-    description: 'Configura y gestiona los modelos (Silverado, Ikaicene, Motor Cummins IS12).',
+    description: 'Ver y configuar los modelos (Silverado, Granite...).',
     href: '/superuser/flota/modelos', // <-- RUTA CORREGIDA
   },
 ];

@@ -15,7 +15,7 @@ const Vehiculo = sequelize.define('Vehiculo', {
 });
 
 Vehiculo.associate = (models) => {
-  Vehiculo.hasMany(models.VehiculoInstancia, { foreignKey: 'vehiculoId', as: 'instancias' });
-  Vehiculo.hasMany(models.Subsistema, { foreignKey: 'vehiculoId', as: 'subsistemas' });
+  Vehiculo.hasMany(models.VehiculoInstancia, { foreignKey: 'vehiculoId', as: 'instancias' , onDelete: 'CASCADE' });
+  Vehiculo.hasMany(models.Subsistema, { foreignKey: 'vehiculoId', as: 'subsistemas', onDelete: 'CASCADE' });
 }
 module.exports = Vehiculo;

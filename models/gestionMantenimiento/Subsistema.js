@@ -9,11 +9,11 @@ const Subsistema = sequelize.define('Subsistema', {
 });
 
 Subsistema.associate = (models) => {
-  Subsistema.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoId', as: 'vehiculo' });
-  Subsistema.belongsTo(models.Maquina, { foreignKey: 'maquinaId', as: 'maquina' });
-  Subsistema.belongsTo(models.Remolque, { foreignKey: 'remolqueId', as: 'remolque' });
-  Subsistema.hasMany(models.SubsistemaInstancia, { foreignKey: 'subsistemaId', as: 'instancias' });
-  Subsistema.hasMany(models.ConsumibleRecomendado, { foreignKey: 'subsistemaId', as: 'listaRecomendada' });
+  Subsistema.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoId', as: 'vehiculo', onDelete: 'CASCADE' });
+  Subsistema.belongsTo(models.Maquina, { foreignKey: 'maquinaId', as: 'maquina', onDelete: 'CASCADE' });
+  Subsistema.belongsTo(models.Remolque, { foreignKey: 'remolqueId', as: 'remolque', onDelete: 'CASCADE' });
+  Subsistema.hasMany(models.SubsistemaInstancia, { foreignKey: 'subsistemaId', as: 'instancias' , onDelete: 'CASCADE' });
+  Subsistema.hasMany(models.ConsumibleRecomendado, { foreignKey: 'subsistemaId', as: 'listaRecomendada', onDelete: 'CASCADE' });
 }
 
 module.exports = Subsistema;

@@ -12,8 +12,8 @@ const VehiculoInstancia = sequelize.define('VehiculoInstancia', {
 });
 
 VehiculoInstancia.associate = (models) => {
-  VehiculoInstancia.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoId', as: 'plantilla' });
-  VehiculoInstancia.hasOne(models.Activo, { foreignKey: 'vehiculoInstanciaId', as: 'activo' });
+  VehiculoInstancia.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoId', as: 'plantilla', onDelete: 'CASCADE' });
+  VehiculoInstancia.hasOne(models.Activo, { foreignKey: 'vehiculoInstanciaId', as: 'activo', onDelete: 'CASCADE' });
 
 
 }
