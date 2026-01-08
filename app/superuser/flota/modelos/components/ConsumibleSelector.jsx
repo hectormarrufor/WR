@@ -13,7 +13,6 @@ export default function ConsumibleSelector({ value = [], onChange }) {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
-
     // Estado para la "pre-selección" antes de agregar
     const [selectedItem, setSelectedItem] = useState(null);
     const [cantidad, setCantidad] = useState(1);
@@ -67,7 +66,9 @@ const esConsumibleGranel = (categoria) => {
             cantidad: 1,
             criterioId: null, 
             tipoCriterio: '',
-            labelOriginal: ''
+            labelOriginal: '',
+            // Guardamos la cantidad requerida explícitamente
+            cantidad: 1 
         };
 
         // 2. Lógica para FILTROS (Sigue siendo especial por los Grupos)
@@ -125,6 +126,9 @@ const esConsumibleGranel = (categoria) => {
 
         if (esConsumibleGranel(c.categoria)) {
             // CASO FLUIDOS (Aceite): 1 solo slot con la cantidad total
+
+        if (esConsumibleGranel(c.categoria)) {
+            // CASO FLUIDOS (Aceite): 1 solo slot con la cantidad total
             nuevosSlots.push({
                 ...baseRecomendacion,
                 cantidad: cantidad, // Ej: 40 Litros
@@ -179,7 +183,8 @@ const esConsumibleGranel = (categoria) => {
                 {/* Input de Cantidad (Solo aparece si seleccionaste algo) */}
                 {selectedItem && (
                     <NumberInput
-                        label="Cantidad"
+                        // Cambiamos el label dinámicamente para dar feedback al usuario
+                        label={esConsumibleGranel(selectedItem.raw.categoria) ? "Litros / Cantidad" : "Unidades"}
                         value={cantidad}
                         onChange={setCantidad}
                         min={1}
@@ -203,6 +208,7 @@ const esConsumibleGranel = (categoria) => {
                 {value.length === 0 && <Text size="xs" c="dimmed" fs="italic">Sin partes definidas.</Text>}
 
                 <Stack gap={4}>
+                    {console.log(value)}
                     {value.map((item, idx) => (
                         <Group key={idx} justify="space-between" bg="white" p={4} style={{ border: '1px solid #eee', borderRadius: 4 }}>
                             <Group gap={5}>
@@ -228,5 +234,5 @@ const esConsumibleGranel = (categoria) => {
                 onSuccess={(nuevo) => fetchConsumibles(nuevo.nombre)}
             />
         </Stack>
-    );
+    );}
 }

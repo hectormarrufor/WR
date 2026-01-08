@@ -61,7 +61,9 @@ export default function ODTForm({ mode, odtId }) {
         .then((data) => setEmpleados(data));
       fetch(`/api/gestionMantenimiento/activos`)
         .then((res) => res.json())
-        .then((data) => setActivos(data));
+        .then((data) => {
+          setActivos(data.success ? data.data : []);
+        });
       fetch(`/api/contratos/clientes`)
         .then((res) => res.json())
         .then((data) => setClientes(data));
@@ -178,11 +180,11 @@ export default function ODTForm({ mode, odtId }) {
           <Box>
             <ODTSelectableGrid
               label="Vehículos Principales"
-              data={activos.map(v => ({
+              data={activos?.map(v => ({
                 id: v.id,
                 nombre: v.modelo.nombre + v.datosPersonalizados.placa,
                 imagen: v.imagen,
-              }))}
+              })) || []}
               onChange={(values) => form.setFieldValue("vehiculosPrincipales", values)}
             />
             <Divider my="sm" />
@@ -190,11 +192,11 @@ export default function ODTForm({ mode, odtId }) {
           <Box>
             <ODTSelectableGrid
               label="Vehículos Principales"
-              data={activos.map(v => ({
+              data={activos?.map(v => ({
                 id: v.id,
                 nombre: v.modelo.nombre + v.datosPersonalizados.placa,
                 imagen: v.imagen,
-              }))}
+              })) || []}
               onChange={(values) => form.setFieldValue("vehiculosRemolque", values)}
             />
             <Divider my="sm" />

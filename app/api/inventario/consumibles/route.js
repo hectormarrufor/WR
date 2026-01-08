@@ -69,7 +69,7 @@ export async function GET(request) {
             distinct: true, // Importante para que el count sea correcto con includes
             include: [
                 // Incluimos todos los hijos posibles
-                { model: Filtro },
+                { model: Filtro, include: [{ model: GrupoEquivalencia, as: 'grupoEquivalencia' }] },
                 { model: Aceite },
                 { model: Bateria },
                 { model: Neumatico },

@@ -20,6 +20,8 @@ import {
     UnstyledButton,
     Modal,
     Flex,
+    SimpleGrid,
+    Box,
 } from "@mantine/core"
 import { useParams, useRouter } from "next/navigation"
 import calcularEdad from "@/app/helpers/calcularEdad";
@@ -29,6 +31,7 @@ import { IconEdit } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/useAuth";
 import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
 import ModalCuentaBancaria from "./ModalCuentaBancaria";
+import ModalPagoMovil from "./ModalPagoMovil";
 
 /**
  * Página adaptada a Mantine: /superuser/rrhh/empleados/[id]/page.jsx
@@ -47,6 +50,8 @@ export default function Page({ params }) {
     const [preview, setPreview] = useState(null)
     const [modalCrearHora, setModalCrearHora] = useState(false);
     const { rol, isAdmin } = useAuth();
+    const [modalCuenta, setModalCuenta] = useState(false);
+    const [modalPagoMovil, setModalPagoMovil] = useState(false);
 
 
     useEffect(() => {
@@ -178,36 +183,7 @@ export default function Page({ params }) {
                                 <strong>Sueldo Mensual:</strong> {empleado?.sueldo}$
                             </Text>}
                             <Button variant="filled" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}><IconEdit /> Editar Empleado</Button>
-                            {empleado?.cuentasBancarias?.length > 0 ?
-                                <>
-                                    <Title order={4}>Cuentas bancarias asociadas:</Title>
-                                    {empleado.cuentasBancarias.map((cuenta) => (
-                                        <Stack key={cuenta.id} align="center">
-                                            <Title order={5}>Cuenta ban asociado: </Title>
-                                            <Text>Banco: {empleado.nombreBanco}</Text>
-                                            <Text>Titular: {empleado.titularCuenta}</Text>
-                                            <Text>cedula del titular: {empleado.cedulaTitular}</Text>
-                                            <Text>numero de cuenta: {empleado.numeroCuenta}</Text>
-                                            <Text>tipo de cuenta: {empleado.tipoCuenta}</Text>
 
-                                        </Stack>))}
-                                </>
-                                : <Title order={6}>No hay cuentas bancarias asociadas</Title>}
-                            <Button variant="filled" onClick={() => setModalCuenta(true)}><IconEdit /> Añadir cuenta bancaria</Button>
-
-                            {empleado?.pagosMovil?.length > 0 ?
-                                empleado.pagosMovil.map((pagoMovil) => (
-                                <Stack align="center">
-                                    <Title order={5}>Pago Móvil asociado: </Title>
-                                    <Text>Banco: {empleado.pagoMovil.nombreBanco}</Text>
-                                    <Text>Titular: {empleado.pagoMovil.titularCuenta}</Text>
-                                    <Text>Numero pago movil: {empleado.pagoMovil.numeroPagoMovil} </Text>
-                                    <Text>Cedula: {empleado.pagoMovil.cedulaCuenta} </Text>
-                                </Stack> ))
-                                :
-                                <Title order={6}>No hay Pago Móvil asociado</Title>
-                            }
-                            <Button variant="filled" onClick={() => setModalPagoMovil(true)}><IconEdit /> Añadir Pago Móvil</Button>
                         </Stack>
                     </Grid.Col>
 
@@ -230,6 +206,41 @@ export default function Page({ params }) {
                                     </Title>
                                 </>
                             }
+                            <SimpleGrid cols={2} spacing="md" mt={20}>
+                                <Paper withBorder shadow="sm" p="md" radius="md">
+                                    {empleado?.cuentasBancarias?.length > 0 ?
+                                        <>
+                                            <Title order={4}>Cuentas bancarias asociadas:</Title>
+                                            {empleado.cuentasBancarias.map((cuenta) => (
+                                                <Stack key={cuenta.id} align="center">
+                                                    <Title order={5}>Cuenta ban asociado: </Title>
+                                                    <Text>Banco: {cuenta.nombreBanco}</Text>
+                                                    <Text>Titular: {cuenta.titularCuenta}</Text>
+                                                    <Text>cedula del titular: {cuenta.cedulaTitular}</Text>
+                                                    <Text>numero de cuenta: {cuenta.numeroCuenta}</Text>
+                                                    <Text>tipo de cuenta: {cuenta.tipoCuenta}</Text>
+                                                </Stack>))}
+                                        </>
+                                        : <Title order={6}>No hay cuentas bancarias asociadas</Title>}
+                                    <Button variant="filled" onClick={() => setModalCuenta(true)}><IconEdit /> Añadir cuenta bancaria</Button>
+                                </Paper>
+                                <Paper withBorder shadow="sm" p="md" radius="md">
+
+                                    {empleado?.pagosMoviles?.length > 0 ?
+                                        empleado.pagosMoviles.map((pagoMovil) => (
+                                            <Stack align="center">
+                                                <Title order={5}>Pago Móvil asociado: </Title>
+                                                <Text>Banco: {pagoMovil.nombreBanco}</Text>
+                                                <Text>Titular: {pagoMovil.titularCuenta}</Text>
+                                                <Text>Numero pago movil: {pagoMovil.numeroPagoMovil} </Text>
+                                                <Text>Cedula: {pagoMovil.cedulaCuenta} </Text>
+                                            </Stack>))
+                                        :
+                                        <Title order={6}>No hay Pago Móvil asociado</Title>
+                                    }
+                                    <Button variant="filled" onClick={() => setModalPagoMovil(true)}><IconEdit /> Añadir Pago Móvil</Button>
+                                </Paper>
+                            </SimpleGrid>
 
                         </Stack>
                     </Grid.Col>
@@ -283,6 +294,16 @@ export default function Page({ params }) {
             <ModalCuentaBancaria
                 opened={modalCuenta}
                 onClose={() => setModalCuenta(false)}
+                tipoEntidad="empleado"
+                entidadId={id}
+                onCreated={() => {
+                    // Recargar la página para ver las nuevas horas
+                    router.refresh();
+                }}
+            />
+            <ModalPagoMovil
+                opened={modalPagoMovil}
+                onClose={() => setModalPagoMovil(false)}
                 tipoEntidad="empleado"
                 entidadId={id}
                 onCreated={() => {
