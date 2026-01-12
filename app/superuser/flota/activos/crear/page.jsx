@@ -155,25 +155,6 @@ export default function CrearActivoPage() {
     setActive((curr) => (curr > 0 ? curr - 1 : curr));
   };
 
-  const handleActivoSuccess = async (payload) => {
-      // POST Final al Backend
-      try {
-          const res = await fetch('/api/gestionMantenimiento/activos', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          if (data.success) {
-              notifications.show({ title: 'Éxito', message: 'Activo creado correctamente', color: 'green' });
-              router.push(`/superuser/flota/activos/${data.data.id}`);
-          } else {
-              throw new Error(data.error);
-          }
-      } catch (error) {
-          notifications.show({ title: 'Error', message: error.message, color: 'red' });
-      }
-  };
 
   return (
     <Paper>
@@ -236,7 +217,6 @@ export default function CrearActivoPage() {
                             plantilla={modeloFullData}
                             tipoActivo={form.values.tipoActivo}
                             onCancel={handlePrev} // Para que el botón "Atrás" del hijo controle al padre
-                            onSuccess={handleActivoSuccess}
                         />
                     </div>
                 )}

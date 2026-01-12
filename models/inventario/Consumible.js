@@ -12,7 +12,7 @@ const Consumible = sequelize.define('Consumible', {
         allowNull: false
 
     },
-    categoria: { type: DataTypes.ENUM('aceite', 'filtro de aceite', 'filtro de aire', 'filtro de combustible', 'filtro de cabina', 'neumatico', 'bateria', 'sensor', 'correa'), allowNull: false },
+    categoria: { type: DataTypes.ENUM('aceite', 'gasoil', 'filtro de aceite', 'filtro de aire', 'filtro de combustible', 'filtro de cabina', 'neumatico', 'bateria', 'sensor', 'correa'), allowNull: false },
     stockAlmacen: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,

@@ -2,47 +2,52 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Paper, Group, Stack, Text, Select, 
-  TextInput, NumberInput, Badge, Divider, 
-  SimpleGrid, Tooltip, ActionIcon, Loader, Switch, ThemeIcon
+  Paper, Group, Stack, Text, Select, NumberInput, Badge, 
+  ActionIcon, Tooltip, Switch, Table, Button, Autocomplete, 
+  SimpleGrid, TextInput, Divider 
 } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { 
-  IconBucket, IconTrash, IconDatabase, IconBarcode, 
-  IconCircleDot, IconFilter, IconEngine, IconBolt 
+  IconTrash, IconScan, IconPlus, IconHistory, IconSettings 
 } from '@tabler/icons-react';
+import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
+import ConsumibleCreatorModal from '../../modelos/components/ConsumibleCreatorModal';
 
 // Helpers
-const esFungible = (cat) => ['aceite', 'refrigerante', 'grasa', 'liquido', 'combustible'].includes((cat || '').toLowerCase());
-const exigeSerial = (cat) => ['neumatico', 'bateria', 'extintor'].includes((cat || '').toLowerCase());
-
-// Helper visual para iconos
-const getIconoCategoria = (cat) => {
+const esFungible = (cat) => {
     const c = (cat || '').toLowerCase();
-    if (c.includes('aceite') || c.includes('liquido')) return IconBucket;
-    if (c.includes('filtro')) return IconFilter;
-    if (c.includes('neumatico') || c.includes('caucho')) return IconCircleDot;
-    if (c.includes('bateria') || c.includes('elect')) return IconBolt;
-    return IconEngine;
+    return ['aceite', 'refrigerante', 'grasa', 'liquido', 'combustible', 'filtro', 'bombillo', 'fusible', 'tornillo', 'abrazadera'].some(f => c.includes(f));
 };
 
-export default function ComponenteInstaller({ subsistema, inventarioGlobal, instalaciones, onChange }) {
+const exigeSerial = (cat) => {
+    const c = (cat || '').toLowerCase();
+    return ['neumatico', 'caucho', 'bateria', 'extintor', 'alternador', 'arranque', 'turbo', 'motor'].some(s => c.includes(s));
+};
+
+export default function ComponenteInstaller({ subsistema, inventarioGlobal, instalaciones, onChange, form }) {
   return (
     <Paper p="md" withBorder bg="gray.0" radius="md">
-      {/* Título del Subsistema (Ej: MOTOR) */}
-      <Group mb="md">
-         <IconEngine size={20} style={{ opacity: 0.5 }} />
-         <Text fw={800} size="sm" tt="uppercase" c="dimmed">{subsistema.nombre}</Text>
-      </Group>
-
-      <Stack gap="md">
+      <Text fw={700} size="sm" mb="sm" tt="uppercase" c="dimmed">{subsistema.nombre}</Text>
+      <Stack gap="lg">
         {subsistema.listaRecomendada.map((regla) => {
+          // Buscamos la instalación actual
           const instalacionActual = instalaciones.find(i => i.recomendacionId === regla.id) || null;
+          
+          // CALCULAMOS EL ÍNDICE GLOBAL para poder usar AsyncCatalogComboBox
+          // Necesitamos saber en qué posición del array 'instalacionesIniciales' está este objeto
+          const globalIndex = instalaciones.findIndex(i => i.recomendacionId === regla.id);
+
           return (
             <InstallerRow 
               key={regla.id}
               regla={regla}
-              inventarioGlobal={inventarioGlobal} 
+              inventarioGlobal={inventarioGlobal}
               value={instalacionActual}
+              
+              // Pasamos datos para construir rutas del form
+              form={form} 
+              formBasePath={globalIndex >= 0 ? `instalacionesIniciales.${globalIndex}` : null}
+
               onChange={(newVal) => {
                 const others = instalaciones.filter(i => i.recomendacionId !== regla.id);
                 onChange(newVal ? [...others, newVal] : others);
@@ -55,15 +60,15 @@ export default function ComponenteInstaller({ subsistema, inventarioGlobal, inst
   );
 }
 
-function InstallerRow({ regla, inventarioGlobal, value, onChange }) {
+function InstallerRow({ regla, inventarioGlobal, value, onChange, form, formBasePath }) {
   const cantidadRequerida = parseFloat(regla.cantidad);
   const isFungible = esFungible(regla.categoria);
-  const isSerialized = exigeSerial(regla.categoria);
-  const Icono = getIconoCategoria(regla.categoria);
+  const modoInterfaz = (exigeSerial(regla.categoria) && !isFungible) ? 'serializado' : 'fungible';
 
   const [opcionesCompatibles, setOpcionesCompatibles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modoManual, setModoManual] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchCompatibles = async () => {
@@ -72,127 +77,289 @@ function InstallerRow({ regla, inventarioGlobal, value, onChange }) {
         const res = await fetch(`/api/inventario/compatibles?recomendacionId=${regla.id}`);
         const result = await res.json();
         if (result.success) setOpcionesCompatibles(result.data || []);
-      } catch (err) { console.error(err); } 
-      finally { setLoading(false); }
+      } catch (err) { console.error(err); } finally { setLoading(false); }
     };
     if (regla.id) fetchCompatibles();
   }, [regla.id]);
 
   const dataToShow = modoManual ? inventarioGlobal : opcionesCompatibles;
-  
-  // Extraemos seriales usando el alias correcto 'serializados' que definiste
-  // Nota: El backend los manda dentro de "serialesDisponibles" porque lo mapeamos en el route.js
-  const selectedProduct = dataToShow.find(p => p.value === value?.consumibleId?.toString());
-  const listaSeriales = selectedProduct?.serialesDisponibles || [];
 
-  const handleProductSelect = (consumibleId) => {
-    if (!consumibleId) { onChange(null); return; }
-    onChange({
-      subsistemaPlantillaId: regla.subsistemaId,
-      recomendacionId: regla.id,
-      consumibleId: consumibleId,
-      cantidad: isFungible ? cantidadRequerida : 1,
-      seriales: isSerialized ? Array(Math.ceil(cantidadRequerida)).fill('') : [],
-      esFungible: isFungible,
-      esSerializado: isSerialized
-    });
+  // -- HANDLERS --
+  const handleProductoCreado = (nuevoConsumible) => {
+    const nuevoItem = {
+        value: nuevoConsumible.id.toString(),
+        label: `${nuevoConsumible.nombre} (Nuevo)`,
+        categoria: nuevoConsumible.categoria,
+        stockActual: 0, 
+        serialesDisponibles: [],
+        raw: nuevoConsumible
+    };
+    setOpcionesCompatibles((prev) => [nuevoItem, ...prev]);
+    setModalOpen(false);
   };
 
-  const handleSerialSelect = (index, val) => {
-    const newSeriales = [...(value.seriales || [])];
-    newSeriales[index] = val;
-    onChange({ ...value, seriales: newSeriales });
+  const handleFungibleChange = (updates) => {
+    const current = value || {
+        subsistemaPlantillaId: regla.subsistemaId,
+        recomendacionId: regla.id,
+        consumibleId: null,
+        cantidad: cantidadRequerida,
+        origen: 'externo', 
+        esFungible: true,
+        esSerializado: false
+    };
+    onChange({ ...current, ...updates });
+  };
+
+  const handleSlotUpdates = (index, updates) => {
+    const base = value || {
+        subsistemaPlantillaId: regla.subsistemaId,
+        recomendacionId: regla.id,
+        esFungible: false,
+        esSerializado: true,
+        detalles: Array(Math.ceil(cantidadRequerida)).fill({})
+    };
+    const nuevosDetalles = [...(base.detalles || [])];
+    if (!nuevosDetalles[index]) nuevosDetalles[index] = {};
+    nuevosDetalles[index] = { ...nuevosDetalles[index], ...updates };
+    onChange({ ...base, detalles: nuevosDetalles });
   };
 
   return (
-    <Paper p="sm" withBorder bg="white" shadow="xs">
-      {/* --- ENCABEZADO MEJORADO --- */}
-      <Group justify="space-between" mb="sm" align="flex-start">
-        <Group align="center">
-            <ThemeIcon size="lg" variant="light" color={isFungible ? 'cyan' : 'blue'}>
-                <Icono size={20} />
-            </ThemeIcon>
-            <div>
-                {/* AQUI ESTA EL LABEL QUE FALTABA */}
-                <Text fw={700} size="sm" tt="capitalize">
-                    {regla.categoria} 
-                </Text>
-                <Text size="xs" c="dimmed">
-                    {regla.valorCriterio || 'Estándar'} • Requeridos: {cantidadRequerida}
-                </Text>
-            </div>
+    <Paper p="xs" withBorder bg="white">
+      <Group justify="space-between" mb="xs">
+        <Group gap="xs">
+          <Badge variant="light" color={modoInterfaz === 'fungible' ? 'cyan' : 'blue'}>{regla.categoria}</Badge>
+          <Text size="sm" fw={500}>{regla.valorCriterio || 'Estándar'} <span style={{color: '#868e96'}}>• Req: {cantidadRequerida}</span></Text>
         </Group>
-
         <Group gap={5}>
-            <Tooltip label={modoManual ? "Volver a sugerencias" : "Ver todo el inventario"}>
-                <Switch 
-                    size="xs" onLabel="ALL" offLabel="AUTO" 
-                    checked={modoManual} 
-                    onChange={(e) => setModoManual(e.currentTarget.checked)} 
-                    color="orange" 
-                />
-            </Tooltip>
-            {value && (
-              <ActionIcon color="red" variant="subtle" onClick={() => onChange(null)}>
-                <IconTrash size={16} />
-              </ActionIcon>
-            )}
+             <Tooltip label="Ver todo el inventario">
+                <Switch size="xs" label="TODO" checked={modoManual} onChange={(e) => setModoManual(e.currentTarget.checked)} />
+             </Tooltip>
+             {value && <ActionIcon color="red" variant="subtle" size="xs" onClick={() => onChange(null)}><IconTrash size={12}/></ActionIcon>}
         </Group>
       </Group>
 
-      {/* SELECTOR */}
-      <Select 
-        label="Componente a Instalar" // Label explícito
-        placeholder={loading ? "Buscando compatibles..." : "Seleccionar de almacén..."}
-        data={dataToShow}
-        searchable clearable size="xs" mb="xs"
-        value={value?.consumibleId?.toString() || null}
-        onChange={handleProductSelect}
-        rightSection={loading ? <Loader size={12} /> : null}
-        leftSection={!modoManual && opcionesCompatibles.length > 0 && <IconDatabase size={12} color="green"/>}
-      />
-
-      {/* INPUTS */}
-      {value && (
-        <>
-          <Divider my="xs" label="Detalles de Instalación" labelPosition="center" />
-          
-          {isFungible ? (
-             <Group grow>
-                <NumberInput 
-                    label="Cantidad Real Despachada" 
-                    description={`Sugerido: ${cantidadRequerida}`}
-                    size="xs" suffix=" Lts"
-                    value={value.cantidad}
-                    onChange={(val) => onChange({ ...value, cantidad: val })}
+      {modoInterfaz === 'fungible' ? (
+        // UI FUNGIBLE
+        <Group align="flex-end">
+             <div style={{ flex: 1, display: 'flex', gap: 4 }}>
+                <Select 
+                    placeholder={loading ? "Buscando..." : "Seleccionar Producto..."} 
+                    data={dataToShow} searchable size="xs" style={{ flex: 1 }}
+                    value={value?.consumibleId?.toString() || null}
+                    onChange={(val) => handleFungibleChange({ consumibleId: val })}
                 />
-             </Group>
-          ) : (
-            <SimpleGrid cols={isSerialized ? 2 : 3} spacing="xs">
-              {Array.from({ length: Math.ceil(cantidadRequerida) }).map((_, idx) => {
-                const serialesUsados = value.seriales.filter((s, i) => i !== idx && s);
-                const disponibles = listaSeriales.filter(s => !serialesUsados.includes(s.value));
+                <ActionIcon variant="default" size="30px" onClick={() => setModalOpen(true)}><IconPlus size={16} /></ActionIcon>
+            </div>
+            <NumberInput 
+                placeholder="Cant." size="xs" min={0} w={80}
+                value={value?.cantidad || cantidadRequerida}
+                onChange={(val) => handleFungibleChange({ cantidad: val })}
+            />
+        </Group>
+      ) : (
+        // UI SERIALIZADA
+        <Table withTableBorder withColumnBorders size="xs">
+            <Table.Thead>
+                <Table.Tr>
+                    <Table.Th w={30}>#</Table.Th>
+                    <Table.Th>Producto</Table.Th>
+                    <Table.Th>Serial</Table.Th>
+                </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+                {Array.from({ length: Math.ceil(cantidadRequerida) }).map((_, idx) => {
+                    const slotData = value?.detalles?.[idx] || {};
+                    const selectedProdId = slotData.consumibleId?.toString();
+                    const productoObj = dataToShow.find(p => p.value === selectedProdId);
+                    
+                    const todosLosSeriales = (productoObj?.serialesDisponibles || []).map(s => s.value);
+                    let serialesFiltrados = todosLosSeriales;
 
-                return isSerialized ? (
-                    <Select
-                        key={idx}
-                        label={`Serial Posición #${idx + 1}`}
-                        placeholder="Seleccionar Serial"
-                        size="xs" searchable clearable
-                        data={disponibles}
-                        value={value.seriales?.[idx] || null}
-                        onChange={(val) => handleSerialSelect(idx, val)}
-                        leftSection={<IconBarcode size={12} />}
-                        disabled={listaSeriales.length === 0}
-                    />
-                ) : (
-                    <TextInput key={idx} label={`Posición #${idx + 1}`} placeholder="N/A" size="xs" disabled />
-                );
-              })}
-            </SimpleGrid>
-          )}
-        </>
+                    if (selectedProdId) {
+                        const serialesUsadosEnOtros = (value?.detalles || [])
+                            .filter((d, i) => i !== idx && d.consumibleId?.toString() === selectedProdId && d.serial)
+                            .map(d => d.serial);
+                        serialesFiltrados = todosLosSeriales.filter(s => !serialesUsadosEnOtros.includes(s));
+                    }
+
+                    return (
+                        <>
+                            {/* FILA PRINCIPAL */}
+                            <Table.Tr key={`row-${idx}`} bg={slotData.esNuevo ? 'var(--mantine-color-orange-0)' : undefined}>
+                                <Table.Td>{idx + 1}</Table.Td>
+                                <Table.Td>
+                                    <Group gap={4} wrap="nowrap">
+                                        <Select 
+                                            variant="unstyled" placeholder="Seleccionar Marca..." 
+                                            data={dataToShow} searchable clearable style={{ flex: 1 }}
+                                            value={selectedProdId || null}
+                                            onChange={(val) => handleSlotUpdates(idx, { consumibleId: val, serial: '', esNuevo: false })}
+                                        />
+                                        <ActionIcon variant="subtle" color="blue" size="xs" onClick={() => setModalOpen(true)}><IconPlus size={14} /></ActionIcon>
+                                    </Group>
+                                </Table.Td>
+                                <Table.Td>
+                                    <Autocomplete 
+                                        variant="unstyled"
+                                        placeholder={selectedProdId ? "Escanear..." : "-"}
+                                        data={serialesFiltrados}
+                                        disabled={!selectedProdId}
+                                        value={slotData.serial || ''}
+                                        onChange={(val) => {
+                                            const existe = todosLosSeriales.includes(val);
+                                            const esNuevo = !!val && !existe;
+                                            handleSlotUpdates(idx, { serial: val, esNuevo: esNuevo });
+                                        }}
+                                        rightSection={slotData.esNuevo ? <Badge size="xs" color="orange">NUEVO</Badge> : (selectedProdId && <IconScan size={12} color="gray"/>)}
+                                    />
+                                </Table.Td>
+                            </Table.Tr>
+
+                            {/* FILA EXPANDIBLE: DETALLE NUEVO SERIAL */}
+                            {slotData.esNuevo && (
+                                <Table.Tr key={`detail-${idx}`}>
+                                    <Table.Td colSpan={3} p={0}>
+                                        <DetalleNuevoSerial 
+                                            data={slotData}
+                                            form={form} 
+                                            // Construimos la ruta base para este slot específico
+                                            // Ej: instalacionesIniciales.0.detalles.2
+                                            pathPrefix={formBasePath ? `${formBasePath}.detalles.${idx}` : null}
+                                            
+                                            onUpdate={(newData) => handleSlotUpdates(idx, newData)}
+                                        />
+                                    </Table.Td>
+                                </Table.Tr>
+                            )}
+                        </>
+                    );
+                })}
+            </Table.Tbody>
+        </Table>
       )}
+
+      <ConsumibleCreatorModal 
+         opened={modalOpen}
+         onClose={() => setModalOpen(false)}
+         onSuccess={handleProductoCreado}
+         initialValues={{ categoria: regla.categoria, stockMinimo: 0 }}
+      />
     </Paper>
   );
+}
+
+// --- SUBCOMPONENTE CON TU ASYNC CATALOG COMBOBOX ---
+function DetalleNuevoSerial({ data, onUpdate, form, pathPrefix }) {
+    const historial = data.historialRecauchado || [];
+
+    const handleChange = (field, val) => {
+        onUpdate({ [field]: val });
+    };
+
+    const addRecauchado = () => {
+        const nuevoHistorial = [
+            ...historial,
+            { fecha: new Date(), costo: 0, tallerId: null, tallerNombre: '' }
+        ];
+        onUpdate({ 
+            historialRecauchado: nuevoHistorial,
+            esRecauchado: true 
+        });
+    };
+
+    const removeRecauchado = (rIndex) => {
+        const nuevoHistorial = [...historial];
+        nuevoHistorial.splice(rIndex, 1);
+        onUpdate({ 
+            historialRecauchado: nuevoHistorial,
+            esRecauchado: nuevoHistorial.length > 0 
+        });
+    };
+
+    // Para inputs simples usamos el onUpdate local
+    const updateRecauchadoSimple = (rIndex, field, val) => {
+        const nuevoHistorial = [...historial];
+        nuevoHistorial[rIndex] = { ...nuevoHistorial[rIndex], [field]: val };
+        onUpdate({ historialRecauchado: nuevoHistorial });
+    };
+
+    return (
+        <Paper p="sm" bg="gray.1" radius={0} withBorder style={{ borderTop: 'none' }}>
+            <Stack gap="xs">
+                <Text size="xs" fw={700} c="orange" tt="uppercase">
+                    Configuración de Carga Inicial
+                </Text>
+                
+                <SimpleGrid cols={3}>
+                    <DatePickerInput 
+                        label="Fecha Compra" size="xs" 
+                        value={data.fechaCompra || new Date()} 
+                        onChange={(d) => handleChange('fechaCompra', d)}
+                    />
+                    <DatePickerInput 
+                        label="Garantía" size="xs" placeholder="Opcional"
+                        value={data.fechaVencimientoGarantia} 
+                        onChange={(d) => handleChange('fechaVencimientoGarantia', d)}
+                    />
+                     <Select
+                        label="Estado Físico" size="xs"
+                        data={['Nuevo', 'Usado', 'Dañado']}
+                        defaultValue="Nuevo"
+                        onChange={(v) => handleChange('estadoFisico', v)}
+                    />
+                </SimpleGrid>
+
+                <Divider my={4} label="Recauchado / Renovación" labelPosition="left" />
+
+                <Group>
+                    <Button 
+                        size="xs" variant="light" color="blue" 
+                        leftSection={<IconHistory size={14}/>}
+                        onClick={addRecauchado}
+                    >
+                        Agregar Historial Recauchado
+                    </Button>
+                </Group>
+
+                {historial.map((rec, rIndex) => (
+                    <Paper key={rIndex} withBorder p="xs" bg="white">
+                        <Group justify="flex-end">
+                            <ActionIcon color="red" variant="subtle" size="xs" onClick={() => removeRecauchado(rIndex)}>
+                                <IconTrash size={12}/>
+                            </ActionIcon>
+                        </Group>
+                        <SimpleGrid cols={3}>
+                            <DatePickerInput 
+                                label="Fecha" size="xs" value={rec.fecha}
+                                onChange={(d) => updateRecauchadoSimple(rIndex, 'fecha', d)}
+                            />
+                            <TextInput 
+                                label="Costo" size="xs" type="number" value={rec.costo}
+                                onChange={(e) => updateRecauchadoSimple(rIndex, 'costo', e.target.value)}
+                            />
+                            
+                            {/* AQUI ESTA TU COMBOBOX INTEGRADO */}
+                            {form && pathPrefix ? (
+                                <AsyncCatalogComboBox
+                                    label="Taller"
+                                    placeholder="Seleccionar..."
+                                    catalogo="talleres"
+                                    form={form}
+                                    // Construimos la ruta dinámica: 
+                                    // Ej: instalacionesIniciales.0.detalles.2.historialRecauchado.0.tallerNombre
+                                    fieldKey={`${pathPrefix}.historialRecauchado.${rIndex}.tallerNombre`}
+                                    idFieldKey={`${pathPrefix}.historialRecauchado.${rIndex}.tallerId`}
+                                />
+                            ) : (
+                                <TextInput label="Taller (Error Path)" disabled value="Error" />
+                            )}
+
+                        </SimpleGrid>
+                    </Paper>
+                ))}
+            </Stack>
+        </Paper>
+    );
 }

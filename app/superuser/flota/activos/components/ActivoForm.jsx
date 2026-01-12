@@ -1,28 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import {
-    TextInput, NumberInput, ColorInput, Button, Group,
+    TextInput, NumberInput, Button, Group,
     SimpleGrid, Stack, Select, Text, Divider, Alert,
-    LoadingOverlay, Paper, Title, ThemeIcon, Stepper
+    LoadingOverlay, Title, ThemeIcon, Stepper
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconTool, IconCheck, IconAlertCircle } from '@tabler/icons-react';
-import ImageDropzone from '../components/ImageDropzone'; // Verifica que la ruta sea correcta
+import { IconTool, IconCheck } from '@tabler/icons-react';
 import { upload } from '@vercel/blob/client';
-import ConsumibleSelector from '../../modelos/components/ConsumibleSelector';
+// Asegúrate de que estas rutas existan en tu proyecto
+import ImageDropzone from '../components/ImageDropzone';
 import ComponenteInstaller from './ComponenteInstaller';
+import { notifications } from '@mantine/notifications';
+import { useRouter } from 'next/navigation';
 
-export default function ActivoForm({ plantilla, tipoActivo, onCancel, onSuccess }) {
-    // Este componente tiene su propio Stepper interno de 2 pasos:
-    // 1. Datos Físicos
-    // 2. Configuración de Componentes
+export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
     const [active, setActive] = useState(0);
     const [loading, setLoading] = useState(false);
     const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]);
     const [imagenFile, setImagenFile] = useState(null);
+    const router = useRouter();
 
-    // Formulario Interno (Solo maneja datos de la instancia)
     const form = useForm({
         initialValues: {
             codigoInterno: '',
@@ -36,7 +35,7 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel, onSuccess 
             anioFabricacion: plantilla?.anio || new Date().getFullYear(),
             kilometrajeActual: 0,
             horometroActual: 0,
-            instalacionesIniciales: [] // { subsistemaPlantillaId, consumibleId }
+            instalacionesIniciales: []
         },
         validate: {
             codigoInterno: (val) => (val.length < 2 ? 'Código requerido' : null),
@@ -44,123 +43,157 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel, onSuccess 
         }
     });
 
-useEffect(() => {
-    const fetchInventario = async () => {
-      try {
-        const res = await fetch('/api/inventario/consumibles?limit=1000'); 
-        const result = await res.json();
-
-        // 1. CORRECCIÓN: Extraer el array correctamente desde 'items'
-        const rawItems = result.items || result.data || [];
-
-        if (rawItems.length > 0) {
-          const itemsFormateados = rawItems.map(c => {
-            // 2. CORRECCIÓN: Parsear stockAlmacen (string "200.00") a número
-            const stockNumerico = parseFloat(c.stockAlmacen || 0);
-
-            // 3. MEJORA: Extraer detalles técnicos para filtrado inteligente
-            // Esto ayudará al ComponenteInstaller a ser más preciso
-            const detalleTecnico = c.Aceite?.viscosidad || c.Neumatico?.medida || c.Filtro?.codigo || c.Baterium?.codigo || '';
-
-            return {
-              value: c.id.toString(),
-              // Label informativo para el humano
-              label: `${c.nombre} - Stock: ${stockNumerico}`,
-              
-              // Propiedades para la lógica de filtrado
-              categoria: c.categoria,
-              stockActual: stockNumerico,
-              disabled: stockNumerico <= 0,
-              
-              // Pasamos los datos técnicos crudos para comparar viscosidad/medidas
-              raw: {
-                 viscosidad: c.Aceite?.viscosidad,
-                 medida: c.Neumatico?.medida,
-                 grupo: c.Filtro?.grupoEquivalenciaId,
-                 codigo: c.Filtro?.codigo
-              }
-            };
-          });
-          
-          setConsumiblesCompatibles(itemsFormateados);
-        } else {
-            console.warn("Inventario vacío o estructura desconocida", result);
-        }
-      } catch (err) {
-        console.error("Error cargando inventario", err);
-      }
-    };
-    fetchInventario();
-  }, []);
+    // 1. Cargar Inventario Global (Respaldo para búsqueda manual)
     useEffect(() => {
-        console.log("form", form.values);
+        const fetchInventario = async () => {
+            try {
+                const res = await fetch('/api/inventario/consumibles?limit=1000');
+                const result = await res.json();
+                const rawItems = result.items || result.data || [];
+
+                if (rawItems.length > 0) {
+                    const itemsFormateados = rawItems.map(c => ({
+                        value: c.id.toString(),
+                        label: `${c.nombre} - Stock: ${parseFloat(c.stockAlmacen || 0)}`,
+                        categoria: c.categoria,
+                        stockActual: parseFloat(c.stockAlmacen || 0),
+                        disabled: parseFloat(c.stockAlmacen || 0) <= 0,
+                        raw: c // Guardamos todo el objeto por si acaso
+                    }));
+                    setConsumiblesCompatibles(itemsFormateados);
+                }
+            } catch (err) {
+                console.error("Error cargando inventario", err);
+            }
+        };
+        fetchInventario();
+    }, []);
+
+    useEffect(() => {
+        console.log("form: ", form.values);
     }, [form.values]);
 
+    // 2. Lógica de Envío (Mega POST)
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
-            let imageUrl = null;
-            if (imagenFile) {
-                const blob = await upload(imagenFile.name, imagenFile, {
-                    access: 'public',
-                    handleUploadUrl: '/api/upload',
-                });
-                imageUrl = blob.url;
-            }
+            
 
-            // Preparamos el payload final
-            const payload = {
-                ...values,
-                imagen: imageUrl,
-                modeloVehiculoId: plantilla.id,
-                tipoActivo: tipoActivo,
-                // Mapeamos las instalaciones para que el backend las entienda
-                // APLANAMOS LA ESTRUCTURA PARA EL BACKEND
-                instalacionesIniciales: values.instalacionesIniciales.flatMap(inst => {
+            // ---------------------------------------------------------
+            // AQUÍ ESTÁ LA MAGIA DE LIMPIEZA Y MAPEO
+            // ---------------------------------------------------------
+            const instalacionesProcesadas = values.instalacionesIniciales.flatMap(inst => {
 
-                    // Si es un item SERIALIZADO (Ej: 8 Cauchos con seriales)
-                    // Generamos 8 registros para el backend
-                    if (inst.esSerializado && inst.seriales.length > 0) {
-                        return inst.seriales.map(serial => ({
-                            subsistemaPlantillaId: inst.subsistemaPlantillaId, // ID Motor
-                            recomendacionId: inst.recomendacionId,             // ID Regla (Opcional, útil para auditoría)
-                            consumibleId: parseInt(inst.consumibleId),
+                // CASO SERIALIZADO
+                if (inst.esSerializado && inst.detalles?.length > 0) {
+                    return inst.detalles
+                        // FILTRO CLAVE: Eliminamos los slots vacíos {} o que no tengan serial
+                        .filter(detalle => detalle && detalle.consumibleId && detalle.serial)
+                        .map(detalle => ({
+                            subsistemaPlantillaId: parseInt(inst.subsistemaPlantillaId),
+                            recomendacionId: parseInt(inst.recomendacionId),
+                            consumibleId: parseInt(detalle.consumibleId),
                             cantidad: 1,
-                            serial: serial || null, // Guardamos el serial
-                            fechaInstalacion: new Date()
-                        }));
-                    }
+                            serial: detalle.serial,
 
-                    // Si es FUNGIBLE o DISCRETO NO SERIALIZADO
-                    // Generamos 1 registro con la cantidad total
-                    return {
-                        subsistemaPlantillaId: inst.subsistemaPlantillaId,
-                        recomendacionId: inst.recomendacionId,
+                            // PASAMOS LA METADATA QUE VIENE DEL POPOVER
+                            esNuevoSerial: detalle.esNuevo || false,
+                            fechaCompra: detalle.fechaCompra || new Date(),
+                            fechaVencimientoGarantia: detalle.fechaVencimientoGarantia || null,
+
+                            // Si es nuevo serial, el origen siempre es externo (Dotación)
+                            // Si no es nuevo, el backend ignorará esto porque ya existe en almacen
+                            origen: detalle.esNuevo ? 'externo' : 'almacen'
+                        }));
+                }
+
+                // CASO FUNGIBLE (Aceite, Filtros)
+                // Solo enviamos si se seleccionó un consumible
+                if (inst.esFungible && inst.consumibleId) {
+                    return [{
+                        subsistemaPlantillaId: parseInt(inst.subsistemaPlantillaId),
+                        recomendacionId: parseInt(inst.recomendacionId),
                         consumibleId: parseInt(inst.consumibleId),
                         cantidad: parseFloat(inst.cantidad),
                         serial: null,
-                        fechaInstalacion: new Date()
-                    };
-                })
+                        esFungible: true,
+                        origen: inst.origen || 'externo' // 'externo' (Dotación) o 'almacen'
+                    }];
+                }
+
+                // Si no cumple nada (ej: regla fungible vacía), retornamos array vacío
+                return [];
+            });
+
+            // Validamos que haya algo que instalar (opcional)
+            // if (instalacionesProcesadas.length === 0) { ... }
+
+            let payload = {
+                codigoInterno: values.codigoInterno,
+                estado: values.estado,
+                ubicacionActual: values.ubicacionActual,
+                fechaAdquisicion: new Date(),
+                modeloVehiculoId: plantilla.id,
+                placa: values.placa,
+                color: values.color,
+                serialChasis: values.serialCarroceria,
+                serialMotor: values.serialMotor,
+                anioFabricacion: values.anioFabricacion,
+                kilometrajeActual: values.kilometrajeActual,
+                horometroActual: values.horometroActual,
+
+                instalacionesIniciales: instalacionesProcesadas
             };
 
+            if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
+                notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
+                const imagenFile = values.imagen;
+                const fileExtension = imagenFile.name.split('.').pop();
+                const uniqueFilename = `${values.codigoInterno}.${fileExtension}`;
 
-            await onSuccess(payload);
+                const response = await fetch(`/api/upload?filename=${encodeURIComponent(uniqueFilename)}`, {
+                    method: 'POST',
+                    body: imagenFile,
+                });
+
+                if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
+                const newBlob = await response.json();
+                payload.imagen = uniqueFilename;
+                notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
+            }
+
+            console.log("PAYLOAD FINAL A ENVIAR:", payload); // Para depurar
+
+            const response = await fetch('/api/gestionMantenimiento/activos/vehiculos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const res = await response.json();
+
+            if (res.success) {
+                // Notificar éxito y resetear formulario o cerrar modal
+                notifications.show({ title: 'Éxito', message: 'Activo creado correctamente', color: 'green' });
+                router.push('/superuser/flota/activos'); // Redirigir al listado de activos
+            } else {
+                throw new Error(res.error || 'Error al crear vehículo');
+            }
 
         } catch (error) {
             console.error(error);
+            // Usar notifications de Mantine es mejor que alert
+            alert(`Error: ${error.message}`);
         } finally {
             setLoading(false);
         }
     };
 
     const nextStep = () => {
-        if (active === 0) {
-            if (form.validate().hasErrors) return;
-        }
-        setActive((current) => (current < 2 ? current + 1 : current));
+        if (active === 0 && form.validate().hasErrors) return;
+        setActive((c) => (c < 2 ? c + 1 : c));
     };
-    const prevStep = () => setActive((current) => (current > 0 ? current - 1 : current));
+    const prevStep = () => setActive((c) => (c > 0 ? c - 1 : c));
 
     const isVehiculo = tipoActivo === 'Vehiculo';
     const isMaquina = tipoActivo === 'Maquina';
@@ -170,67 +203,46 @@ useEffect(() => {
             <LoadingOverlay visible={loading} />
 
             <Stepper active={active} onStepClick={setActive} allowNextStepsSelect={false}>
-                <Stepper.Step label="Datos Generales" description="Identificación física">
+                <Stepper.Step label="Datos Físicos" description="Identificación">
                     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" mt="md">
                         <Stack>
                             <Text fw={700} size="lg" c="blue">Base: {plantilla.marca} {plantilla.modelo}</Text>
                             <Divider />
-
                             <TextInput label="Código Interno / Alias" placeholder="ej. V-045" required {...form.getInputProps('codigoInterno')} />
                             <Select label="Estado Inicial" data={['Operativo', 'En Mantenimiento', 'Inactivo']} {...form.getInputProps('estado')} />
                             <TextInput label="Ubicación Actual" placeholder="Base Principal" {...form.getInputProps('ubicacionActual')} />
-
-                            <Divider label="Identificación Legal" labelPosition="center" />
-
+                            <Divider label="Legal" labelPosition="center" />
                             <TextInput label="Placa / Patente" required {...form.getInputProps('placa')} />
                             <TextInput label="Serial Carrocería / VIN" {...form.getInputProps('serialCarroceria')} />
-                            {(isVehiculo || isMaquina) && (
-                                <TextInput label="Serial Motor" {...form.getInputProps('serialMotor')} />
-                            )}
+                            {(isVehiculo || isMaquina) && <TextInput label="Serial Motor" {...form.getInputProps('serialMotor')} />}
                         </Stack>
-
                         <Stack>
                             <Text fw={500} size="sm">Fotografía</Text>
-                            <ImageDropzone label="Imagen del Vehículo (opcional)"
-                                form={form} fieldPath="imagen" />
-
+                            <ImageDropzone label="Imagen del Vehículo" form={form} fieldPath="imagen" onDrop={setImagenFile} />
                             <Group grow>
-                                <Select label="Color"
-                                    data={[
-                                        "Blanco", "Negro", "Gris", "Azul", "Rojo", "Verde", "Amarillo", "Naranja", "Marrón", "Morado", "Rosa", "Dorado", "Plateado"
-                                    ]}
-                                    {...form.getInputProps('color')} />
-                                <NumberInput label="Año Fabricación" min={1980} max={2030} {...form.getInputProps('anioFabricacion')} />
+                                <Select label="Color" data={["Blanco", "Negro", "Gris", "Azul", "Rojo", "Amarillo"]} {...form.getInputProps('color')} />
+                                <NumberInput label="Año" min={1980} max={2030} {...form.getInputProps('anioFabricacion')} />
                             </Group>
-
-                            {isVehiculo && (
-                                <NumberInput label="Kilometraje Inicial" suffix=" km" min={0} {...form.getInputProps('kilometrajeActual')} />
-                            )}
-                            {(isVehiculo || isMaquina) && (
-                                <NumberInput label="Horómetro Inicial" suffix=" hrs" min={0} {...form.getInputProps('horometroActual')} />
-                            )}
+                            {isVehiculo && <NumberInput label="Kilometraje (km)" min={0} {...form.getInputProps('kilometrajeActual')} />}
+                            {(isVehiculo || isMaquina) && <NumberInput label="Horómetro (hrs)" min={0} {...form.getInputProps('horometroActual')} />}
                         </Stack>
                     </SimpleGrid>
                 </Stepper.Step>
 
-                {/* PASO 2: CONFIGURACIÓN ACTUALIZADO */}
-                <Stepper.Step label="Configuración" description="Componentes instalados">
+                <Stepper.Step label="Configuración" description="Componentes">
                     <Stack mt="md">
                         <Alert icon={<IconTool size={16} />} title="Instalación de Componentes" color="blue">
-                            El sistema ha detectado las siguientes reglas para este modelo. Indica qué componentes reales tiene instalados.
+                            Define qué componentes reales están instalados en cada subsistema.
                         </Alert>
-
                         <SimpleGrid cols={1} spacing="md">
                             {plantilla.subsistemas.map((sub) => (
                                 <ComponenteInstaller
                                     key={sub.id}
-                                    subsistema={sub} // Pasamos el objeto COMPLETO con listaRecomendada
-                                    inventario={consumiblesCompatibles}
-                                    // Pasamos TODAS las instalaciones actuales para filtrar dentro
+                                    form={form}
+                                    subsistema={sub}
+                                    inventarioGlobal={consumiblesCompatibles}
                                     instalaciones={form.values.instalacionesIniciales}
-                                    onChange={(newGlobalState) => {
-                                        form.setFieldValue('instalacionesIniciales', newGlobalState);
-                                    }}
+                                    onChange={(newGlobalState) => form.setFieldValue('instalacionesIniciales', newGlobalState)}
                                 />
                             ))}
                         </SimpleGrid>
@@ -238,29 +250,18 @@ useEffect(() => {
                 </Stepper.Step>
 
                 <Stepper.Completed>
-                    <Stack align="center" mt="xl" gap="lg">
-                        <ThemeIcon size={80} radius="xl" color="green" variant="light">
-                            <IconCheck size={50} />
-                        </ThemeIcon>
+                    <Stack align="center" mt="xl">
+                        <ThemeIcon size={80} radius="xl" color="green" variant="light"><IconCheck size={50} /></ThemeIcon>
                         <Title order={3}>Confirmar Creación</Title>
-                        <Text ta="center" c="dimmed" maxW={500}>
-                            Se registrará el activo <b>{form.values.codigoInterno}</b>.
-                        </Text>
-                        <Button size="lg" onClick={() => handleSubmit(form.values)} loading={loading}>
-                            Crear Activo Ahora
-                        </Button>
+                        <Text c="dimmed">Activo: <b>{form.values.codigoInterno}</b></Text>
+                        <Button size="lg" onClick={() => handleSubmit(form.values)} loading={loading}>Crear Activo</Button>
                     </Stack>
                 </Stepper.Completed>
             </Stepper>
 
             <Group justify="space-between" mt="xl">
-                <Button variant="default" onClick={active === 0 ? onCancel : prevStep}>
-                    {active === 0 ? 'Volver a Modelos' : 'Atrás'}
-                </Button>
-
-                {active < 2 && (
-                    <Button onClick={nextStep}>Siguiente</Button>
-                )}
+                <Button variant="default" onClick={active === 0 ? onCancel : prevStep}>{active === 0 ? 'Cancelar' : 'Atrás'}</Button>
+                {active < 2 && <Button onClick={nextStep}>Siguiente</Button>}
             </Group>
         </Stack>
     );

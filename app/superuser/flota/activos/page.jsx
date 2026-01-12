@@ -24,6 +24,7 @@ export default function ListarActivosPage() {
             const response = await fetch('/api/gestionMantenimiento/activos');
             if (!response.ok) throw new Error('No se pudieron cargar los activos');
             const data = await response.json();
+            console.log(data);
             setActivos(data.data);
         } catch (error) {
             notifications.show({ title: 'Error', message: error.message, color: 'red' });

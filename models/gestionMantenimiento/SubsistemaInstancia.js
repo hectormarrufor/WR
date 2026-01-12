@@ -12,6 +12,6 @@ const SubsistemaInstancia = sequelize.define('SubsistemaInstancia', {
 SubsistemaInstancia.associate = (models) => {
   SubsistemaInstancia.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
   SubsistemaInstancia.belongsTo(models.Subsistema, { foreignKey: 'subsistemaId', as: 'subsistemaPlantilla' });
-  SubsistemaInstancia.hasMany(models.ConsumibleUsado, { foreignKey: 'subsistemaInstanciaId', as: 'instalaciones' , onDelete: 'CASCADE' });
+  SubsistemaInstancia.hasMany(models.ConsumibleInstalado, { foreignKey: 'subsistemaInstanciaId', as: 'instalaciones' , onDelete: 'CASCADE' });
 };
 module.exports = SubsistemaInstancia;

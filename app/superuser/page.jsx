@@ -1,7 +1,7 @@
 // app/superuser/page.js
 'use client';
 
-import { Button, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge, Flex, LoadingOverlay, Loader, Center, Paper } from '@mantine/core';
+import { Button, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge, Flex, LoadingOverlay, Loader, Center, Paper, UnstyledButton } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -56,7 +56,7 @@ export default function SuperUserHome() {
                         setIsLoading(false);
                         router.push('/superuser/rrhh/empleados');
                         break;
-                        case rol.includes("Presidente"):
+                    case rol.includes("Presidente"):
                         setIsLoading(false);
                         router.push('/superuser/rrhh/empleados');
                         break;
@@ -108,9 +108,14 @@ export default function SuperUserHome() {
 
 
                     <Box mb="sm" style={{ display: 'flex', justifyContent: 'center' }}>
-                        <Badge color={precioBCV ? "green" : "gray"} size="lg">
-                            BCV: {precioBCV ? `${precioBCV} BS` : "Cargando..."}
-                        </Badge>
+                        <UnstyledButton
+                            onClick={() => router.push('/superuser/bcv')}
+                        >
+
+                            <Badge color={precioBCV ? "green" : "gray"} size="lg">
+                                BCV: {precioBCV ? `${precioBCV} BS` : "Cargando..."}
+                            </Badge>
+                        </UnstyledButton>
                     </Box>
                     <Flex
                         justify="center"

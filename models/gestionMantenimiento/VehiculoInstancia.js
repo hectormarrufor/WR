@@ -6,7 +6,6 @@ const VehiculoInstancia = sequelize.define('VehiculoInstancia', {
   color: { type: DataTypes.STRING, allowNull: true },
   serialChasis: { type: DataTypes.STRING, allowNull: true },
   serialMotor: { type: DataTypes.STRING, allowNull: true },
-  estado: { type: DataTypes.ENUM('operativo', 'en_mantenimiento', 'fuera_de_servicio'), allowNull: false, defaultValue: 'operativo' },
 }, {
   tableName: 'VehiculosInstancias'
 });

@@ -18,7 +18,7 @@ import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
 import ImageDropzone from '../../flota/activos/components/ImageDropzone';
 import ModalEquivalencias from '../consumibles/nuevo/ModalEquivalencias';
 
-export default function ConsumibleForm({ onSuccess, onCancel, initialValues = null, isEdit = false, onSubmit }) {
+export default function ConsumibleForm({ onSuccess, onCancel, initialValues = null, isEdit = false, onSubmit=null }) {
     const [loading, setLoading] = useState(false);
 
     // Control de UI
@@ -67,9 +67,6 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             //Sensores
         },
         validate: {
-            marca: (val) => !val ? 'Marca requerida' : null,
-            // Validaciones condicionales
-            codigo: (val) => (tipoEspecifico === 'Filtro' && !val ? 'Código requerido' : null),
             itemsSerializados: (val, values) => {
                 if (values.clasificacion === 'Serializado' && val.some(i => !i.serial)) {
                     return 'Todos los seriales son obligatorios';
@@ -134,7 +131,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
     useEffect(() => {
         if (form.values.clasificacion === 'Serializado') {
             // Si es serializado, FORZAMOS que sea Unidad
-            form.setFieldValue('unidadMedida', 'Unidad');
+            form.setFieldValue('unidadMedida', 'unidades');
         }
     }, [form.values.clasificacion]);
 
@@ -152,6 +149,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 'Bateria': 'bateria',
                 'Neumatico': 'neumatico',
                 'Correa': 'correa',
+                'Gasoil': 'gasoil'
             };
             if (tipoEspecifico === "Aceite" && !isEdit) {
                 form.setFieldValue('unidadMedida', 'litros');
@@ -159,6 +157,13 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             if ((tipoEspecifico === "Correa" || tipoEspecifico === "Sensor") && !isEdit) {
                 form.setFieldValue('unidadMedida', 'unidades');
             }
+            if (tipoEspecifico === "Gasoil" && !isEdit) {
+                form.setFieldValue('unidadMedida', 'litros');
+            }
+            if (tipoEspecifico === "Bateria" && !isEdit) {
+                form.setFieldValue('unidadMedida', 'unidades');
+            }
+
             form.setFieldValue('categoria', categoriaMap[tipoEspecifico] || '');
         }
 
@@ -184,6 +189,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
 
     const handleSubmit = async (values) => {
         setLoading(true);
+        console.log("Enviando datos del formulario:", values);
 
         try {
             // 1. GENERACIÓN DE NOMBRE Y DATOS TÉCNICOS
@@ -239,6 +245,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                     codigo: values.codigo
                 };
             }
+          
 
             // Si estamos editando y el usuario no cambió el nombre manualmente,
             // podemos optar por mantener el viejo o regenerarlo. 
@@ -312,7 +319,8 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
         'Bateria': 'bateria',
         'Neumatico': 'neumatico',
         'Correa': 'correa',
-        'Filtro': 'filtro'
+        'Filtro': 'filtro',
+        'Gasoil': 'gasoil'
     }[tipoEspecifico] || 'general';
 
     const tipoFiltro = {
@@ -330,8 +338,8 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
 
                 {/* SELECCIÓN DEL TIPO (Esto define qué inputs mostramos) */}
                 <Select
-                    label="Tipo de Repuesto"
-                    data={['Filtro', 'Aceite', 'Bateria', 'Correa', 'Neumatico']}
+                    label="Tipo de consumible"
+                    data={['Filtro', 'Gasoil', 'Aceite', 'Bateria', 'Correa', 'Neumatico']}
                     value={tipoEspecifico}
                     onChange={(val) => {
                         // Al cambiar tipo, resetear form PERO mantener valores iniciales si volvemos al mismo tipo en edit?
@@ -371,6 +379,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 <Stack gap="md">
 
                     {/* --- DATOS COMUNES --- */}
+                    {tipoEspecifico !== 'Gasoil' && (
                     <Group grow>
                         <AsyncCatalogComboBox
                             key={tipoCatalogo}
@@ -382,7 +391,8 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                             tipo={tipoCatalogo}
                         />
                     </Group>
-
+                    )
+}
                     {/* --- INPUTS ESPECÍFICOS (Renderizado Condicional) --- */}
 
                     {/* CASO: FILTRO */}
@@ -497,6 +507,12 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                         </Group>
                     )}
 
+                    {/* CASO: GASOIL */}
+                    {tipoEspecifico === 'Gasoil' && (
+                        <Group grow>
+                            <TextInput label="Nombre" placeholder="Gasoil (Tanque Principal)" {...form.getInputProps('nombre')} />
+                        </Group>
+                    )}
 
                     {/* --- SECCIÓN DE STOCK Y SERIALES --- */}
                     <Divider label="Inventario" labelPosition="center" />
