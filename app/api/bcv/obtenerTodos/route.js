@@ -1,6 +1,6 @@
+import BcvPrecioHistorico from '@/models/BcvPrecioHistorico';
 import { NextResponse } from 'next/server';
-import { sequelize, BcvPrecioHistorico } from '@/models'; // Ajusta tus imports según tu estructura
-
+    
 export const dynamic = 'force-dynamic'; // Para asegurar que no cachee datos viejos
 
 export async function GET() {
@@ -15,11 +15,11 @@ export async function GET() {
 
         // Formateamos para asegurar que el monto sea número (Sequelize a veces devuelve string en DECIMAL)
         const data = historico.map(h => ({
-            id: h.id,
+            // id: h.id,
             fecha: h.fecha, // YYYY-MM-DD
-            hora: h.hora,
+            // hora: h.hora,
             monto: parseFloat(h.monto), // Vital para el gráfico
-            fullDate: `${h.fecha} ${h.hora}`
+            // fullDate: `${h.fecha} ${h.hora}`
         }));
 
         return NextResponse.json({ success: true, data });

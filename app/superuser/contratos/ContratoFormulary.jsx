@@ -19,7 +19,7 @@ import { SelectClienteConCreacion } from './SelectClienteConCreacion';
 // Esta función ahora llama a tu API de Next.js /api/bcv/precio
 async function fetchTasaCambioReal() {
   try {
-    const response = await fetch('/api/bcv'); // Llama a tu API que gestiona el scraping y guardado
+    const response = await fetch('/api/bcv?force=true'); // Llama a tu API que gestiona el scraping y guardado
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Error desconocido al obtener la tasa de cambio del BCV.');

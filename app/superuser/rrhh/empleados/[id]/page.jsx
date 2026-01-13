@@ -59,7 +59,7 @@ export default function Page({ params }) {
         async function cargar() {
             try {
                 const res = fetch(`/api/rrhh/empleados/${id}`).then(r => r.json())
-                const bcv = fetch(`/api/bcv`).then(r => r.json())
+                const bcv = fetch(`/api/bcv?force=true`).then(r => r.json())
 
                 const [empleadofetched, bcvres] = await Promise.all([res, bcv]);
                 setBcvPrecio(bcvres.precio);

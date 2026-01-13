@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/bcv?force=true",
+      "schedule": "0 3 * * *" 
+    },
+    {
+      "path": "/api/bcv?force=true",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/bcv?force=true",
+      "schedule": "40 17 * * *"
+    }
+  ]
+}

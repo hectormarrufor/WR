@@ -1,6 +1,8 @@
 "use client"
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import '@mantine/dates/styles.css';
+import '@mantine/charts/styles.css';
 
 
 import { AppShell, Box, Burger, createTheme, Group, Image, LoadingOverlay, Text, Title, UnstyledButton } from '@mantine/core';
