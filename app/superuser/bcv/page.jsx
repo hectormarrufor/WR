@@ -10,6 +10,7 @@ import {
   IconTrendingUp, IconTrendingDown, IconCalendarStats,
   IconCurrencyDollar, IconArrowUpRight, IconArrowDownRight
 } from '@tabler/icons-react';
+import '@mantine/charts/styles.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es'; // Importar el idioma español
 dayjs.locale('es');
@@ -177,7 +178,7 @@ export default function BcvDashboard() {
         )}
 
         {/* GRÁFICO PRINCIPAL */}
-        <Paper withBorder p="md" radius="md">
+        <Paper withBorder p="md" radius="md" >
           <Title order={4} mb="md">Evolución del Precio</Title>
 
           <LineChart
