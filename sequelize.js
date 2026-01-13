@@ -27,11 +27,11 @@ const commonConfig = {
 ;
 
 if (process.env.NODE_ENV === 'production') {
-  sequelize = new Sequelize(process.env.DATABASE_URL, commonConfig);
+  sequelize = new Sequelize(process.env.DB_URI, commonConfig);
 } else {
   // Patrón Singleton para evitar fugas de conexiones en desarrollo
   if (!global.sequelize) {
-    global.sequelize = new Sequelize(process.env.DATABASE_URL, commonConfig);
+    global.sequelize = new Sequelize(process.env.DB_URI, commonConfig);
   }
   sequelize = global.sequelize;
 }
