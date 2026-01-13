@@ -9,7 +9,7 @@ const sequelize = new Sequelize(
     logging: (msg) => console.log(`[SEQUELIZE SQL]: ${msg}`),
     // logging: false,
     pool: {
-      max: 2,       // REDUCE ESTO A 2. En Serverless (Vercel), cada instancia 
+      max: 20,       // REDUCE ESTO A 2. En Serverless (Vercel), cada instancia 
       // solo necesita 1 o 2 conexiones.
       min: 0,
       idle: 5000,   // Tiempo corto para liberar la conexión rápido
