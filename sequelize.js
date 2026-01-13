@@ -1,24 +1,30 @@
-import { Sequelize } from 'sequelize';
+// sequelize.js
+const pg = require('pg');
+const { Sequelize } = require('sequelize');
+require('dotenv').config();
 
 let sequelize;
-
-// Configuración común de Aiven (requiere SSL)
 const commonConfig = {
-  dialect: 'postgres',
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false
-    }
-  },
-  pool: {
-    max: 2,         // Reducido a 2 para evitar saturar las 25 conexiones de Aiven
-    min: 0,
-    acquire: 30000,
-    idle: 5000      // Cerramos conexiones más rápido para liberar espacio en el plan gratuito
-  },
-  logging: false    // Limpia la consola de queries SQL (opcional)
-};
+  
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    },
+    pool: {
+      max: 2,       // REDUCE ESTO A 2. En Serverless (Vercel), cada instancia 
+      // solo necesita 1 o 2 conexiones.
+      min: 0,
+      idle: 5000,   // Tiempo corto para liberar la conexión rápido
+      evict: 5000,
+      acquire: 30000
+    },
+    dialectModule: pg,
+    logging: false, // Desactiva el logging para producción
+  }
+;
 
 if (process.env.NODE_ENV === 'production') {
   sequelize = new Sequelize(process.env.DATABASE_URL, commonConfig);
@@ -30,4 +36,5 @@ if (process.env.NODE_ENV === 'production') {
   sequelize = global.sequelize;
 }
 
-export default sequelize;
+
+module.exports = sequelize;
