@@ -1,33 +1,39 @@
-// sequelize.js
-const pg = require('pg');
-const { Sequelize } = require('sequelize');
-require('dotenv').config();
-const sequelize = new Sequelize(
-  process.env.DB_URI,
-  {
+import { Sequelize } from 'sequelize';
+
+// Evitar crear múltiples instancias en desarrollo debido al Hot Reloading
+let sequelize;
+
+if (process.env.NODE_ENV === 'production') {
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    logging: (msg) => console.log(`[SEQUELIZE SQL]: ${msg}`),
-    // logging: false,
-    pool: {
-      max: 2,       // REDUCE ESTO A 2. En Serverless (Vercel), cada instancia 
-      // solo necesita 1 o 2 conexiones.
-      min: 0,
-      idle: 5000,   // Tiempo corto para liberar la conexión rápido
-      evict: 5000,
-      acquire: 30000
-    },
     dialectOptions: {
-      ssl: 
-      // process.env.NODE_ENV === "development" ? false : 
-      {
+      ssl: {
         require: true,
         rejectUnauthorized: false
       }
-
     },
-    dialectModule: pg,
+    // LIMITA EL POOL DE CONEXIONES
+    pool: {
+      max: 5,      // Máximo de conexiones abiertas
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  });
+} else {
+  // En desarrollo usamos una variable global para que no se cree una instancia por cada cambio de código
+  if (!global.sequelize) {
+    global.sequelize = new Sequelize(process.env.DATABASE_URL, {
+      dialect: 'postgres',
+      pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    });
   }
-);
+  sequelize = global.sequelize;
+}
 
-
-module.exports = sequelize;
+export default sequelize;
