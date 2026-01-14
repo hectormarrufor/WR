@@ -1,9 +1,39 @@
 import axios from 'axios';
 import https from 'https';
-const cheerio = require('cheerio');
 import { NextResponse } from 'next/server';
+const cheerio = require  ('cheerio'); // Importación corregida para Next.js
 import BcvPrecioHistorico from '../../../models/BcvPrecioHistorico';
 import { notificarAdmins } from '../notificar/route';
+
+// Configuración para Binance
+const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
+const BINANCE_HEADERS = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+};
+
+// Helper para consultar Binance
+const fetchBinanceData = async (tradeType, amount = null, limit = 5) => {
+    try {
+        const payload = {
+            "fiat": "VES",
+            "page": 1,
+            "rows": limit,
+            "tradeType": tradeType,
+            "asset": "USDT",
+            "countries": [],
+            "proMerchantAds": false,
+            "shieldMerchantAds": false,
+            "payTypes": ["PagoMovil"],
+            "transAmount": amount 
+        };
+        const { data } = await axios.post(URL_BINANCE, payload, { headers: BINANCE_HEADERS });
+        return data.data || [];
+    } catch (e) {
+        console.warn('Fallo petición parcial a Binance:', e.message);
+        return [];
+    }
+};
 
 export async function GET(request) {
     try {
@@ -11,91 +41,137 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const forceUpdate = searchParams.get('force') === 'true';
 
-        // --- SOLUCIÓN DEFINITIVA DE ZONA HORARIA ---
-        // Creamos la fecha en el huso horario de Caracas, sin importar el servidor
+        // --- ZONA HORARIA CARACAS ---
         const now = new Date();
-
-        // Formateador para la fecha (YYYY-MM-DD)
         const fechaCaracas = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'America/Caracas',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
+            timeZone: 'America/Caracas', year: 'numeric', month: '2-digit', day: '2-digit',
         }).format(now);
 
-        // Formateador para la hora (HH:mm:ss)
         const horaCaracas = new Intl.DateTimeFormat('en-GB', {
-            timeZone: 'America/Caracas',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
+            timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', second: '2-digit',
         }).format(now);
 
-        const fechaActual = fechaCaracas; // Siempre será YYYY-MM-DD en Caracas
-        const horaActual = horaCaracas;   // Siempre será HH:mm:ss en Caracas
+        const fechaActual = fechaCaracas; 
+        const horaActual = horaCaracas;
 
-        // 1. Verificar si existe registro (solo si NO estamos forzando)
+        // 1. Verificar si existe registro en BD
         const existingPrice = await BcvPrecioHistorico.findOne({
             where: { fecha: fechaActual },
         });
 
         if (existingPrice && !forceUpdate) {
             return NextResponse.json({
-                message: 'Precio BCV obtenido de base de datos',
-                precio: parseFloat(existingPrice.monto),
+                message: 'Precios obtenidos de base de datos',
+                precio: parseFloat(existingPrice.monto),        // USD BCV
+                eur: parseFloat(existingPrice.montoEur || 0),   // EUR BCV
+                usdt: parseFloat(existingPrice.montoUsdt || 0), // USDT Binance
                 fecha: existingPrice.fecha,
                 hora: existingPrice.hora,
                 origen: 'base_de_datos'
             });
         }
 
-        // 2. Proceder con el scraping (porque no existe o porque forzamos actualización)
+        // ---------------------------------------------------------
+        // 2. SCRAPING BCV (USD y EUR)
+        // ---------------------------------------------------------
         const agent = new https.Agent({ rejectUnauthorized: false });
-        const { data } = await axios.get('https://www.bcv.org.ve/', { httpsAgent: agent, timeout: 10000 });
-        const $ = cheerio.load(data);
-        const dolarText = $('div#dolar .recuadrotsmc .centrado').first().text().trim();
-        const precioBCV = parseFloat(dolarText.replace(/\./g, '').replace(',', '.'));
+        // Pedimos la página del BCV
+        const { data: htmlBCV } = await axios.get('https://www.bcv.org.ve/', { httpsAgent: agent, timeout: 15000 });
+        const $ = cheerio.load(htmlBCV);
 
-        if (isNaN(precioBCV)) throw new Error("No se pudo parsear el precio del BCV.");
+        // Helper para limpiar el texto "36,4500000" -> 36.45
+        const parseBCV = (selector) => {
+            const text = $(selector).first().text().trim();
+            return parseFloat(text.replace(/\./g, '').replace(',', '.')).toFixed(2);
+        };
 
+        const precioDolarBCV = parseBCV('div#dolar .recuadrotsmc .centrado');
+        const precioEuroBCV = parseBCV('div#euro .recuadrotsmc .centrado');
 
+        if (isNaN(precioDolarBCV)) throw new Error("No se pudo parsear el precio del Dólar BCV.");
+
+        // ---------------------------------------------------------
+        // 3. CALCULO USDT BINANCE (Lógica Dinámica 50 USDT)
+        // ---------------------------------------------------------
+        let precioUsdtPromedio = 0;
+
+        try {
+            // A. Obtener referencia de 1 USDT para calcular monto base
+            const refData = await fetchBinanceData('BUY', null, 1);
+            
+            if (refData.length > 0) {
+                const precioUnitarioRef = parseFloat(refData[0].adv.price);
+                
+                // B. Calcular cuánto son 50 USDT hoy
+                const montoObjetivoVES = precioUnitarioRef * 50;
+
+                // C. Buscar ofertas BUY y SELL para ese monto exacto en paralelo
+                const [ofertasVenta, ofertasCompra] = await Promise.all([
+                    fetchBinanceData('BUY', montoObjetivoVES, 5),
+                    fetchBinanceData('SELL', montoObjetivoVES, 5)
+                ]);
+
+                if (ofertasVenta.length > 0 && ofertasCompra.length > 0) {
+                    const calcPromedio = (lista) => lista.reduce((acc, item) => acc + parseFloat(item.adv.price), 0) / lista.length;
+                    const promVenta = calcPromedio(ofertasVenta);
+                    const promCompra = calcPromedio(ofertasCompra);
+                    
+                    // Punto medio
+                    precioUsdtPromedio = (promVenta + promCompra) / 2;
+                }
+            }
+        } catch (errorBinance) {
+            console.error("Error obteniendo USDT:", errorBinance.message);
+            // No lanzamos throw para no detener el guardado del BCV
+        }
+
+        // ---------------------------------------------------------
+        // 4. Guardar en Base de Datos
+        // ---------------------------------------------------------
         let resultRecord;
         let operacion;
 
-        // 3. Guardar o Actualizar
+        // Datos a guardar
+        const datosAGuardar = {
+            monto: precioDolarBCV,              // USD
+            montoEur: precioEuroBCV || 0,       // EUR (si falla, 0)
+            montoUsdt: parseFloat(precioUsdtPromedio.toFixed(2)) || 0, // USDT (si falla, 0)
+            hora: horaActual
+        };
+
         if (existingPrice) {
-            // Si ya existe y estamos aquí, es porque forceUpdate es true. Actualizamos.
-            existingPrice.monto = precioBCV;
-            existingPrice.hora = horaActual;
-            await existingPrice.save();
+            // Actualizar
+            await existingPrice.update(datosAGuardar);
             resultRecord = existingPrice;
             operacion = 'actualizado_por_fuerza';
         } else {
-            // No existe, creamos nuevo
+            // Crear nuevo
             resultRecord = await BcvPrecioHistorico.create({
                 fecha: fechaActual,
-                hora: horaActual,
-                monto: precioBCV,
+                ...datosAGuardar
             });
             operacion = 'creado_nuevo';
         }
 
-        await notificarAdmins({
-            title: 'Precio BCV actualizado',
-            body: `Nuevo precio: ${precioBCV} VES`,
+        // Notificar Admin
+        await notificarTodos({
+            title: 'Tasas de Cambio Actualizadas',
+            body: `USD: ${precioDolarBCV}\nEUR: ${precioEuroBCV}\nUSDT: ${datosAGuardar.montoUsdt}`,
             url: '/superuser/bcv',
         });
 
         return NextResponse.json({
-            message: 'Precio BCV procesado exitosamente',
-            precio: parseFloat(resultRecord.monto),
+            message: 'Tasas procesadas exitosamente',
+            precio: parseFloat(resultRecord.monto),       // Mantengo key 'precio' por compatibilidad con tu front
+            eur: parseFloat(resultRecord.montoEur),
+            usdt: parseFloat(resultRecord.montoUsdt),
             fecha: resultRecord.fecha,
             hora: resultRecord.hora,
             origen: operacion
         });
 
     } catch (error) {
-        console.error('Error BCV API:', error.message);
-        return NextResponse.json({ message: 'Error', error: error.message }, { status: 500 });
+        console.error('Error API Tasas:', error.message);
+        return NextResponse.json({ message: 'Error crítico', error: error.message }, { status: 500 });
     }
 }

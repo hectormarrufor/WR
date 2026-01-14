@@ -4,15 +4,15 @@ const sequelize = require('../../sequelize');
 const EntradaInventario = sequelize.define('EntradaInventario', {
             cantidad: {
                 type: DataTypes.DECIMAL(18, 4),
-                allowNull: false
+                allowNull: true
                 },
             costoUnitario: {
                 type: DataTypes.DECIMAL(18, 4),
-                allowNull: false
+                allowNull: true
             },
             tipo: {
                 type: DataTypes.ENUM('Compra', 'Otro'),
-                allowNull: false,
+                allowNull: true,
                 defaultValue: 'Otro'
             },
             observacion: {
@@ -22,14 +22,10 @@ const EntradaInventario = sequelize.define('EntradaInventario', {
             },
             fecha: {
                 type: DataTypes.DATE,
-                allowNull: false,
+                allowNull: true,
                 defaultValue: DataTypes.NOW
             },
-            usuarioId: {
-                type: DataTypes.INTEGER,
-                allowNull: false,
-                defaultValue: 1 // TODO: ID real
-            }
+
 }, {
     tableName: 'EntradasInventario',
     timestamps: true,

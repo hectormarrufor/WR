@@ -1,56 +1,54 @@
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
-import { del } from '@vercel/blob'; // Solo se usa en DELETE
-import { 
-    Activo, 
-    VehiculoInstancia, 
-    RemolqueInstancia, 
-    MaquinaInstancia,
-    SubsistemaInstancia,
-    OrdenMantenimiento,
-    Inspeccion,
-    Vehiculo, Remolque, Maquina
-} from '@/models';
+import { del } from '@vercel/blob'; // <--- Importación vital para borrar imágenes
+import { Activo, VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
+         Vehiculo, Remolque, Maquina,
+         SubsistemaInstancia, Subsistema, Mantenimiento, Inspeccion } from '@/models';
+
+
 
 // ----------------------------------------------------------------------
-// GET: Obtener Expediente Completo
+// GET: Obtener Detalle (Con todas las relaciones explicadas anteriormente)
 // ----------------------------------------------------------------------
 export async function GET(request, { params }) {
-    const { id } = params;
+    const { id } = await params; // Next.js 15 requiere await
 
     try {
         const activo = await Activo.findByPk(id, {
             include: [
                 {
                     model: VehiculoInstancia,
-                    as: 'detalleVehiculo',
-                    include: [{ model: Vehiculo, as: 'plantilla' }]
+                    as: 'vehiculoInstancia',
+                    include: [{ model: Vehiculo, as: 'plantilla' }] 
                 },
                 {
                     model: RemolqueInstancia,
-                    as: 'detalleRemolque',
+                    as: 'remolqueInstancia',
                     include: [{ model: Remolque, as: 'plantilla' }]
                 },
                 {
                     model: MaquinaInstancia,
-                    as: 'detalleMaquina',
+                    as: 'maquinaInstancia',
                     include: [{ model: Maquina, as: 'plantilla' }]
                 },
                 {
                     model: SubsistemaInstancia,
-                    as: 'subsistemas'
+                    as: 'subsistemasInstancia',
+                    include: [{ model: Subsistema, as: 'subsistemaPlantilla' }]
                 },
                 {
-                    model: OrdenMantenimiento,
-                    as: 'ordenesMantenimiento',
+                    model: Mantenimiento,
+                    as: 'mantenimientos',
                     limit: 5,
-                    order: [['createdAt', 'DESC']]
+                    order: [['createdAt', 'DESC']],
+                    required: false
                 },
                 {
                     model: Inspeccion,
                     as: 'inspecciones',
                     limit: 5,
-                    order: [['createdAt', 'DESC']]
+                    order: [['fecha', 'DESC']],
+                    required: false
                 }
             ]
         });
@@ -62,16 +60,16 @@ export async function GET(request, { params }) {
         return NextResponse.json({ success: true, data: activo });
 
     } catch (error) {
-        console.error("Error fetching activo:", error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error('Error fetching activo:', error);
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }
 
 // ----------------------------------------------------------------------
-// PUT: Actualizar (Sin borrar imagen anterior en Vercel Blob)
+// PUT: Actualizar (Lógica original respetada + Transacciones)
 // ----------------------------------------------------------------------
 export async function PUT(request, { params }) {
-    const { id } = params;
+    const { id } = await params; // Next.js 15 requiere await
     const t = await sequelize.transaction();
 
     try {
@@ -79,24 +77,27 @@ export async function PUT(request, { params }) {
         if (!activo) throw new Error('Activo no encontrado');
 
         const body = await request.json();
+        
+        // Extraemos campos. Nota: cambié 'serialCarroceria' a 'serialChasis' para coincidir con tu JSON anterior
         const { 
             codigoInterno, estado, ubicacionActual, imagen,
-            placa, serialCarroceria, serialMotor, color, kilometrajeActual, horometroActual 
+            placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual 
         } = body;
 
         // 1. Actualizar Activo Padre
-        // Simplemente actualizamos el string de la URL si viene uno nuevo
         await activo.update({
             codigoInterno: codigoInterno || activo.codigoInterno,
             estado: estado || activo.estado,
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
+            // Si viene una imagen nueva (URL string), la actualizamos. 
+            // Si no viene (undefined), dejamos la que estaba.
             imagen: imagen !== undefined ? imagen : activo.imagen 
         }, { transaction: t });
 
-        // 2. Actualizar Instancia Hija
+        // 2. Actualizar Instancia Hija según tipo
         if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
             await VehiculoInstancia.update({
-                placa, serialCarroceria, serialMotor, color, kilometrajeActual, horometroActual
+                placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual
             }, { where: { id: activo.vehiculoInstanciaId }, transaction: t });
         }
         else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
@@ -111,7 +112,7 @@ export async function PUT(request, { params }) {
         }
 
         await t.commit();
-        return NextResponse.json({ success: true, message: 'Activo actualizado', data: activo });
+        return NextResponse.json({ success: true, message: 'Activo actualizado correctamente', data: activo });
 
     } catch (error) {
         await t.rollback();
@@ -121,10 +122,10 @@ export async function PUT(request, { params }) {
 }
 
 // ----------------------------------------------------------------------
-// DELETE: Eliminar Activo (Aquí SÍ borramos la imagen)
+// DELETE: Eliminar Activo (Con borrado de imagen en Vercel Blob)
 // ----------------------------------------------------------------------
 export async function DELETE(request, { params }) {
-    const { id } = params;
+    const { id } = await params; // Next.js 15 requiere await
     const t = await sequelize.transaction();
 
     try {
@@ -132,21 +133,29 @@ export async function DELETE(request, { params }) {
         if (!activo) throw new Error('Activo no encontrado');
 
         // 1. Eliminar imagen de Vercel Blob (Limpieza)
+        // NOTA: 'del' requiere la URL completa. Si en BD guardas solo el nombre,
+        // concatenamos la URL base. Si guardas la URL completa, usa activo.imagen directo.
         if (activo.imagen) {
             try {
-                await del(activo.imagen);
+                // Construimos la URL completa si lo que tienes guardado es solo el nombre del archivo
+                const blobUrl = activo.imagen.startsWith('http') 
+                    ? activo.imagen 
+                    : `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}`;
+                
+                await del(blobUrl);
+                console.log(`[Blob] Imagen eliminada: ${blobUrl}`);
             } catch (e) {
-                console.warn("Advertencia: No se pudo borrar imagen del blob:", e.message);
-                // Continuamos con el borrado de BD aunque falle el blob
+                console.warn("Advertencia: No se pudo borrar imagen del blob (posiblemente ya no exista):", e.message);
+                // No hacemos throw aquí para permitir que se borre el registro de la BD aunque falle el blob
             }
         }
 
-        // 2. Eliminar Instancia Hija
-        if (activo.tipoActivo === 'Vehiculo') {
+        // 2. Eliminar Instancia Hija (Borrado manual explícito para seguridad)
+        if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
             await VehiculoInstancia.destroy({ where: { id: activo.vehiculoInstanciaId }, transaction: t });
-        } else if (activo.tipoActivo === 'Remolque') {
+        } else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
             await RemolqueInstancia.destroy({ where: { id: activo.remolqueInstanciaId }, transaction: t });
-        } else if (activo.tipoActivo === 'Maquina') {
+        } else if (activo.tipoActivo === 'Maquina' && activo.maquinaInstanciaId) {
             await MaquinaInstancia.destroy({ where: { id: activo.maquinaInstanciaId }, transaction: t });
         }
 
@@ -154,7 +163,7 @@ export async function DELETE(request, { params }) {
         await activo.destroy({ transaction: t });
 
         await t.commit();
-        return NextResponse.json({ success: true, message: 'Activo eliminado correctamente' });
+        return NextResponse.json({ success: true, message: 'Activo y sus archivos eliminados correctamente' });
 
     } catch (error) {
         await t.rollback();

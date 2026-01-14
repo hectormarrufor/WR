@@ -20,6 +20,14 @@ const BcvPrecioHistorico = sequelize.define('BcvPrecioHistorico', {
     type: DataTypes.DECIMAL(10, 2), // Para almacenar el precio con 2 decimales
     allowNull: false,
   },
+  montoEur: {
+    type: DataTypes.DECIMAL(10, 2), // Precio en EUR
+    allowNull: true,
+  },
+  montoUsdt: {
+    type: DataTypes.DECIMAL(10, 2), // Precio en USDT
+    allowNull: true,
+  },
 }, {
   tableName: 'BcvPreciosHistoricos',
   timestamps: true, // Esto agregará createdAt y updatedAt automáticamente

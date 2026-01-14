@@ -31,7 +31,7 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   // Patrón Singleton para evitar fugas de conexiones en desarrollo
   if (!global.sequelize) {
-    global.sequelize = new Sequelize(process.env.DB_URI, commonConfig);
+    global.sequelize = new Sequelize(process.env.DB_URI, {...commonConfig, logging: false});
   }
   sequelize = global.sequelize;
 }
