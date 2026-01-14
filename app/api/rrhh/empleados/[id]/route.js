@@ -70,7 +70,7 @@ export async function PUT(request, { params }) {
         direccion: body.direccion,
         estado: body.estado,
         imagen: body.imagen,
-
+        tasaSueldo: body.tasaSueldo,
       },
       { where: { id }, transaction: t }
     );

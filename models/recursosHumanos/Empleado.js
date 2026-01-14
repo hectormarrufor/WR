@@ -46,6 +46,11 @@ const Empleado = sequelize.define('Empleado', {
     type: DataTypes.DECIMAL(15, 2),
     allowNull: false,
   },
+  tasaSueldo: {
+    type: DataTypes.ENUM('bcv', 'euro', 'usdt'),
+    allowNull: false,
+    defaultValue: 'bcv',
+  },
   fechaIngreso: {
     type: DataTypes.DATEONLY,
     defaultValue: DataTypes.NOW, // Fecha actual por defecto, pero modificable

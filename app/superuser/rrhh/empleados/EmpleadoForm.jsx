@@ -36,6 +36,7 @@ export function EmpleadoForm({ initialData = null }) {
       sueldoHorario: "",
       sueldoSemanal: "",
       sueldoMensual: "",
+      tasaSueldo: initialData?.tasaSueldo || 'bcv',
       genero: initialData?.genero || '',
       notas: initialData?.notas || "",
       imagen: initialData?.imagen || null
@@ -51,6 +52,7 @@ export function EmpleadoForm({ initialData = null }) {
       fechaRetorno: (value, values) =>
         values.estado !== 'Activo' ? (value ? null : 'Fecha de retorno requerida si el empleado no está activo') : null,
       genero: (value) => (value === 'Masculino' || value === 'Femenino' ? null : 'Selecciona el género'),
+      tasaSueldo: (value) => (value === 'bcv' || value === 'euro' || value === 'usdt' ? null : 'Selecciona la tasa de sueldo'),
     },
   });
 
@@ -209,6 +211,18 @@ export function EmpleadoForm({ initialData = null }) {
               onChange={(value) => {
                 console.log(value)
                 handleSueldo("mensual", value)}}
+              />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <Select
+                label="Tasa de Sueldo"
+                placeholder="Selecciona la tasa de sueldo"
+                data={[
+                  { value: 'bcv', label: 'BCV' },
+                  { value: 'euro', label: 'Euro' },
+                  { value: 'usdt', label: 'USDT' },
+                ]}
+                {...form.getInputProps('tasaSueldo')}
               />
             </Grid.Col>
             <Grid.Col span={12}>
