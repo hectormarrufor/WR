@@ -3,17 +3,18 @@ import https from 'https';
 const cheerio = require('cheerio');
 import { NextResponse } from 'next/server';
 import BcvPrecioHistorico from '../../../models/BcvPrecioHistorico';
+import { notificarAdmins } from '../notificar/route';
 
 export async function GET(request) {
     try {
         // Capturar parámetros de la URL
         const { searchParams } = new URL(request.url);
         const forceUpdate = searchParams.get('force') === 'true';
-        
+
         // --- SOLUCIÓN DEFINITIVA DE ZONA HORARIA ---
         // Creamos la fecha en el huso horario de Caracas, sin importar el servidor
         const now = new Date();
-        
+
         // Formateador para la fecha (YYYY-MM-DD)
         const fechaCaracas = new Intl.DateTimeFormat('en-CA', {
             timeZone: 'America/Caracas',
@@ -39,8 +40,8 @@ export async function GET(request) {
         });
 
         if (existingPrice && !forceUpdate) {
-            return NextResponse.json({ 
-                message: 'Precio BCV obtenido de base de datos', 
+            return NextResponse.json({
+                message: 'Precio BCV obtenido de base de datos',
                 precio: parseFloat(existingPrice.monto),
                 fecha: existingPrice.fecha,
                 hora: existingPrice.hora,
@@ -53,7 +54,7 @@ export async function GET(request) {
         const { data } = await axios.get('https://www.bcv.org.ve/', { httpsAgent: agent, timeout: 10000 });
         const $ = cheerio.load(data);
         const dolarText = $('div#dolar .recuadrotsmc .centrado').first().text().trim();
-        const precioBCV = parseFloat(dolarText.replace(/\./g, '').replace(',', '.')); 
+        const precioBCV = parseFloat(dolarText.replace(/\./g, '').replace(',', '.'));
 
         if (isNaN(precioBCV)) throw new Error("No se pudo parsear el precio del BCV.");
 
@@ -79,8 +80,14 @@ export async function GET(request) {
             operacion = 'creado_nuevo';
         }
 
-        return NextResponse.json({ 
-            message: 'Precio BCV procesado exitosamente', 
+        await notificarAdmins({
+            title: 'Precio BCV actualizado',
+            body: `Nuevo precio: ${precioBCV} VES`,
+            url: '/superuser/bcv',
+        });
+
+        return NextResponse.json({
+            message: 'Precio BCV procesado exitosamente',
             precio: parseFloat(resultRecord.monto),
             fecha: resultRecord.fecha,
             hora: resultRecord.hora,
