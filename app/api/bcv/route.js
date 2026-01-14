@@ -9,9 +9,13 @@ export async function GET(request) {
         // Capturar parámetros de la URL
         const { searchParams } = new URL(request.url);
         const forceUpdate = searchParams.get('force') === 'true';
-
+        
         const today = new Date();
-        const fechaActual = today.toISOString().split('T')[0]; 
+        // Restamos 4 horas (VET es UTC-4). 
+        // Si son las 03:00 AM del día 14 Zulu, esto lo lleva a las 23:00 PM del día 13.
+        const venezuelaTime = new Date(today.getTime() - (0 * 60 * 60 * 1000));
+        const fechaActual = venezuelaTime.toISOString().split('T')[0]; 
+        const horaActual = venezuelaTime.toTimeString().split(' ')[0];
 
         // 1. Verificar si existe registro (solo si NO estamos forzando)
         const existingPrice = await BcvPrecioHistorico.findOne({
@@ -37,8 +41,6 @@ export async function GET(request) {
 
         if (isNaN(precioBCV)) throw new Error("No se pudo parsear el precio del BCV.");
 
-        const now = new Date();
-        const horaActual = now.toTimeString().split(' ')[0];
 
         let resultRecord;
         let operacion;
