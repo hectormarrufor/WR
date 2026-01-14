@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/bcv?force=true",
-      "schedule": "0 3 * * *" 
+      "schedule": "0 22 * * *" 
     },
     {
       "path": "/api/bcv?force=true",
-      "schedule": "0 6 * * *"
+      "schedule": "0 10 * * *"
     }
   ]
 }
