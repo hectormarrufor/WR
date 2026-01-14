@@ -1,5 +1,7 @@
-import { Image, Title } from '@mantine/core';
+'use client';
+
 import React from 'react';
+import { Image, Box } from '@mantine/core';
 import { Fade } from 'react-slideshow-image';
 import 'react-slideshow-image/dist/styles.css';
 
@@ -10,86 +12,38 @@ const slideImages = [
 ];
 
 const Slideshow = () => {
-    const [isMobile, setIsMobile] = React.useState(false);
-    const [isBigScreen, setIsBigScreen] = React.useState(false);
-    const [is4k, setIs4KScreen] = React.useState(false);
-
-    React.useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth <= 768);
-            setIsBigScreen(window.innerWidth >= 1370 && window.innerWidth < 2000);
-            setIs4KScreen(window.innerWidth >= 2000);
-        };
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
     return (
-        <div className="slide-container" style={{
-
-            //   overflow: 'hidden',
-            // clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-            clipPath: 'polygon(0% 70%, 50% 94%, 100% 70%, 100% 0%, 0% 0%)',
-            zIndex: 99,
-            position: 'relative',
-        }}>
-            <div
-                style={{
-                    position: 'absolute',
-                    top: isMobile ? 15 : 40,
-                    left: isMobile ? 12 : 40,
-                    zIndex: 200,
-                    color: '#fff',
-                    padding: isMobile ? '8px 10px' : '14px 20px',
-                    borderRadius: 8,
-                    maxWidth: isMobile ? '70%' : '30%',
-                    fontWeight: 700,
-                    fontSize: isMobile ? 16 : 28,
-                    lineHeight: 1.05,
-                }}
-                aria-hidden={false}
+        <Box w="100%" h="100%" style={{ overflow: 'hidden' }}>
+            <Fade 
+                duration={5000} 
+                transitionDuration={1000} 
+                arrows={false} 
+                pauseOnHover={false}
+                infinite={true}
             >
-                <Title order={isMobile ? 4 : 1} align="left" style={{ color: '#fff', fontStyle: 'italic', lineHeight: 1.1, textShadow: '2px 2px 5px rgba(0, 0, 0, 1)' }}>
-                    Movemos tu industria con fuerza y precisión.
-                </Title>
-            </div>
-
-            {/* Overlay: sombra en gradiente desde la esquina superior izquierda */}
-            <div
-                aria-hidden="true"
-                style={{
-                    position: 'absolute',
-                    top: -20,
-                    left: -20,
-                    width: '60%',
-                    height: '80%',
-                    zIndex: 150, // debajo del título (200) pero encima de las imágenes
-                    pointerEvents: 'none',
-                    background: 'linear-gradient(135deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 0.56) 50% rgba(0, 0, 0, 0.07) 70%, rgba(0, 0, 0, 0) 100%)',
-                    filter: 'blur(20px)',
-                    transform: 'translateZ(0)',
-                }}
-            />
-
-            <Fade duration={6000} transitionDuration={1000} arrows={false}>
                 {slideImages.map((image, index) => (
-                    <Image
-                        key={image + index}
-                        src={image}
-                        alt={`Slide ${index + 1}`}
-                        radius={0}
-                        fit="cover"
-                        height={isMobile ? 300 : isBigScreen ? 600 : is4k ? 800 : 450}
-                        width="100%"
-                        style={{ aspectRatio: '2 / 1', objectFit: 'cover', objectPosition: 'center 70%', }}
-                        mb={isMobile ? 0 : 20}
-                        p={0}
-                    />
-
+                    // El contenedor de cada slide debe tener la altura del padre
+                    <div key={index} style={{ height: '100%', width: '100%' }}>
+                        <Image
+                            src={image}
+                            alt={`Slide ${index + 1}`}
+                            radius={0}
+                            // Mantine Image props para cubrir todo el fondo
+                            h="100%"
+                            w="100%"
+                            fit="cover"
+                            // Estilos CSS directos para asegurar que cubra el contenedor padre (Hero)
+                            style={{ 
+                                height: '100%', 
+                                width: '100%', 
+                                objectFit: 'cover',
+                                objectPosition: 'center' 
+                            }}
+                        />
+                    </div>
                 ))}
             </Fade>
-        </div>
+        </Box>
     );
 };
 

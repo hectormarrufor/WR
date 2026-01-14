@@ -1,32 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Button, Modal, SimpleGrid, Paper, Avatar, Text,
-  Group, ActionIcon, Transition, Stack, Title, Card, Badge, Box
+  Group, ActionIcon, Transition, Stack, Title, Card, Badge, Box, TextInput
 } from "@mantine/core";
-import { IconCheck, IconPlus } from "@tabler/icons-react";
+import { IconCheck, IconPlus, IconSearch, IconX } from "@tabler/icons-react";
 
 export default function ODTSelectableGrid({ label, data = [], onChange, value = [] }) {
   const [opened, setOpened] = useState(false);
-  // Sincronizamos el estado interno con el valor del formulario (útil para modo edición)
   const [selected, setSelected] = useState(value);
+  const [search, setSearch] = useState("");
 
-  // Actualizar el estado interno si el valor externo cambia (ej. al cargar datos de edición)
   useEffect(() => {
     setSelected(value);
   }, [value]);
+
+  // Filtrado en tiempo real dentro del modal
+  const filteredData = useMemo(() => {
+    return data.filter((item) =>
+      item.nombre.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [data, search]);
 
   const toggleSelection = (id) => {
     setSelected((prev) => {
       const isSelected = prev.includes(id);
       const next = isSelected ? prev.filter((x) => x !== id) : [...prev, id];
-      // Notificamos al formulario inmediatamente para mantener sincronía
       onChange(next);
       return next;
     });
-  };
-
-  const handleSave = () => {
-    setOpened(false);
   };
 
   return (
@@ -51,21 +52,31 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value = 
         title={`Seleccionar ${label}`}
         scrollAreaComponent={Modal.NativeScrollArea}
       >
+        {/* BUSCADOR INTERNO */}
+        <TextInput
+          placeholder={`Buscar ${label.toLowerCase()}...`}
+          mb="md"
+          leftSection={<IconSearch size={16} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          rightSection={
+            search && (
+              <ActionIcon variant="subtle" onClick={() => setSearch("")}>
+                <IconX size={14} />
+              </ActionIcon>
+            )
+          }
+        />
+
         <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md">
-          {data.map((item) => {
+          {filteredData.map((item) => {
             const isSelected = selected.includes(item.id);
-            
-            // Lógica para extraer la placa o cargo del string nombre si viene en formato "Nombre (PLACA)"
             const tieneDetalle = item.nombre.includes("(") && item.nombre.includes(")");
             const nombrePrincipal = tieneDetalle ? item.nombre.split("(")[0].trim() : item.nombre;
             const detalleExtra = tieneDetalle ? item.nombre.match(/\(([^)]+)\)/)[1] : null;
 
             return (
-              <Transition
-                mounted={true}
-                transition="fade"
-                key={item.id}
-              >
+              <Transition mounted={true} transition="fade" key={item.id}>
                 {(styles) => (
                   <Paper
                     shadow={isSelected ? "xs" : "sm"}
@@ -83,13 +94,7 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value = 
                     }}
                   >
                     {isSelected && (
-                      <ActionIcon
-                        color="blue"
-                        variant="filled"
-                        radius="xl"
-                        size="sm"
-                        style={{ position: "absolute", top: -8, right: -8, zIndex: 10 }}
-                      >
+                      <ActionIcon color="blue" variant="filled" radius="xl" size="sm" style={{ position: "absolute", top: -8, right: -8, zIndex: 10 }}>
                         <IconCheck size={14} />
                       </ActionIcon>
                     )}
@@ -102,15 +107,9 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value = 
                         radius="md"
                       />
                       <Box style={{ textAlign: 'center' }}>
-                        <Text size="sm" fw={700} lineClamp={1}>
-                          {nombrePrincipal}
-                        </Text>
-                        
-                        {/* Resaltado de Placa o Cargo */}
+                        <Text size="sm" fw={700} lineClamp={1}>{nombrePrincipal}</Text>
                         {detalleExtra ? (
-                          <Badge variant="filled" color="dark" size="sm" mt={4}>
-                            {detalleExtra}
-                          </Badge>
+                          <Badge variant="filled" color="dark" size="sm" mt={4}>{detalleExtra}</Badge>
                         ) : (
                            item.puestos && (
                             <Text size="xs" c="dimmed" lineClamp={1}>
@@ -126,43 +125,29 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value = 
             );
           })}
         </SimpleGrid>
-
         <Group justify="right" mt="xl">
-          <Button onClick={handleSave}>Finalizar Selección</Button>
+          <Button onClick={() => setOpened(false)}>Finalizar</Button>
         </Group>
       </Modal>
 
-      {/* Resumen visual en el formulario principal */}
+      {/* Lista de seleccionados resumida */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-        {selected.length === 0 ? (
-          <Text size="xs" c="dimmed" fs="italic">No hay {label.toLowerCase()} seleccionados</Text>
-        ) : (
-          selected.map((id) => {
-            const item = data.find((d) => d.id === id);
-            if (!item) return null;
-            return (
-              <Card key={id} p="xs" radius="md" withBorder>
-                <Group gap="sm" wrap="nowrap">
-                  <Avatar
-                    size="sm"
-                    src={item.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen}` : null}
-                    radius="xl"
-                  />
-                  <Box style={{ flex: 1 }}>
-                    <Text size="xs" fw={700} lineClamp={1}>{item.nombre}</Text>
-                  </Box>
-                  <ActionIcon 
-                    variant="subtle" 
-                    color="red" 
-                    size="xs" 
-                    onClick={() => toggleSelection(id)}
-                  >
-                    <IconCheck size={14} /> {/* Icono de check para desmarcar rápido */}
-                  </ActionIcon>
-                </Group>
-              </Card>
-            );
-          })
+        {selected.length > 0 ? selected.map((id) => {
+          const item = data.find((d) => d.id === id);
+          if (!item) return null;
+          return (
+            <Card key={id} p="xs" radius="md" withBorder>
+              <Group gap="sm" wrap="nowrap">
+                <Avatar size="sm" src={item.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen}` : null} radius="xl" />
+                <Box style={{ flex: 1 }}><Text size="xs" fw={700} lineClamp={1}>{item.nombre}</Text></Box>
+                <ActionIcon variant="subtle" color="red" size="xs" onClick={() => toggleSelection(id)}>
+                  <IconX size={14} />
+                </ActionIcon>
+              </Group>
+            </Card>
+          );
+        }) : (
+          <Text size="xs" c="dimmed" fs="italic">Ninguno seleccionado</Text>
         )}
       </SimpleGrid>
     </Box>

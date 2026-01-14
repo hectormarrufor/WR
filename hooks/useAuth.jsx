@@ -103,7 +103,21 @@ export function AuthProvider({ children }) {
 
     };
 
-    return <AuthContext.Provider value={{ imagen: user?.imagen, rol: user?.rol, userId: user?.id, nombre: user?.nombre, apellido: user?.apellido, isAuthenticated: user?.isAuthenticated || null, departamentos: user?.departamentos || [], puestos: user?.puestos || [], isAdmin: user?.isAdmin || null, loading: loading, login, logout, changePassword }}>{children}</AuthContext.Provider>;
+    return <AuthContext.Provider value={{ 
+        imagen: user?.imagen, 
+        rol: user?.rol, 
+        userId: user?.id, 
+        nombre: user?.nombre, 
+        apellido: user?.apellido, 
+        isAuthenticated: user?.isAuthenticated ?? false, 
+        departamentos: user?.departamentos || [], 
+        puestos: user?.puestos || [], 
+        isAdmin: user?.isAdmin || null, 
+        loading: loading, 
+        login, 
+        logout, 
+        changePassword,
+    }}>{children}</AuthContext.Provider>;
 }
 
 const changePassword = async ({userId, currentPassword, newPassword }) => {

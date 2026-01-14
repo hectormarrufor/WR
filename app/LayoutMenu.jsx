@@ -1,83 +1,101 @@
+import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Avatar, Box, Button, Flex, Group, Menu, Title, UnstyledButton } from '@mantine/core';
-import { IconKey, IconLogout } from '@tabler/icons-react';
-import React, { useState } from 'react'
-import ChangePasswordForm from './ChangePasswordForm';
+import { Avatar, Button, Group, Menu, Text, UnstyledButton, rem } from '@mantine/core';
+import { IconKey, IconLogout, IconChevronDown, IconLayoutDashboard } from '@tabler/icons-react';
+import ChangePasswordForm from './ChangePasswordForm'; // Asumo que este componente existe y funciona
 
-const LayoutMenu = ({ classes, router }) => {
-    const { isAuthenticated, logout, nombre, imagen, changePassword, userId } = useAuth();
-    const [opened, setOpened] = useState(false);
+const LayoutMenu = ({ router }) => {
+    const { isAuthenticated, logout, nombre, imagen, changePassword, userId, loading } = useAuth();
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
+    if (loading) return null; 
 
     if (!isAuthenticated) {
         return (
-            <Button 
-            onClick={() => router.push("/login")}
-            >
+            <Button onClick={() => router.push("/login")} variant="filled" color="blue" radius="xl">
                 Iniciar sesión
             </Button>
         );
     }
 
-
+    // Estado: Autenticado
     return (
         <>
-            <Group ml="xl" gap={0} visibleFrom="md">
-                <Menu shadow="md" width={200} zIndex={2000}>
-                    <Menu.Target>
-                        <Button variant='subtle'
-                            justify="center"
-                            p={0}
-                            px={10}
-                            h={50}
-                            align="center"
-                        >
-                            <Flex justify="center" align="center">
-                                <Title order={6}>Hola, {nombre} </Title><Avatar ml={10} h={45} w={45} src={imagen} /><Title order={6}>▼</Title>
-                            </Flex>
-                        </Button>
+            <Group gap="xs">
+                {/* Botón directo al Dashboard/Menú Principal */}
+                <Button 
+                    variant="subtle" 
+                    color="gray" 
+                    onClick={() => router.push('/superuser')}
+                    leftSection={<IconLayoutDashboard size={18} />}
+                >
+                    Menú Principal
+                </Button>
 
+                {/* Dropdown de Usuario */}
+                <Menu shadow="md" width={220} position="bottom-end" transitionProps={{ transition: 'pop-top-right' }}>
+                    <Menu.Target>
+                        <UnstyledButton 
+                            style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '30px', 
+                                transition: 'background-color 0.2s' 
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            <Group gap="xs">
+                                <Avatar 
+                                    src={imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${imagen}` : null} 
+                                    alt={nombre} 
+                                    radius="xl" 
+                                    size="md" 
+                                    color="blue"
+                                >
+                                    {nombre?.charAt(0)}
+                                </Avatar>
+                                <div style={{ flex: 1 }}>
+                                    <Text size="sm" fw={500} lh={1} mr={5}>
+                                        {nombre?.split(' ')[0]} {/* Solo primer nombre para ahorrar espacio */}
+                                    </Text>
+                                </div>
+                                <IconChevronDown size={14} stroke={1.5} color="gray" />
+                            </Group>
+                        </UnstyledButton>
                     </Menu.Target>
 
                     <Menu.Dropdown>
-                        <Menu.Item
-                            icon={<IconKey size={16} />}
-                            onClick={() => setOpened(true)}
+                        <Menu.Label>Cuenta</Menu.Label>
+                        
+                        <Menu.Item 
+                            leftSection={<IconKey style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}
+                            onClick={() => setPasswordModalOpen(true)}
                         >
                             Cambiar contraseña
                         </Menu.Item>
 
-                        <Menu.Item
-                            icon={<IconLogout size={16} />}
+                        <Menu.Divider />
+
+                        <Menu.Item 
+                            color="red" 
+                            leftSection={<IconLogout style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}
                             onClick={logout}
                         >
                             Cerrar sesión
                         </Menu.Item>
                     </Menu.Dropdown>
                 </Menu>
-
-                <Button
-                    variant='subtle'
-                    onClick={() => router.push('/superuser')}
-                    h={50}
-                    >
-                        
-                    <Title order={6}>Menu principal</Title>
-                </Button>
-
-
-
-                {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
             </Group>
+
+            {/* Modal de cambio de contraseña */}
             <ChangePasswordForm
-                opened={opened}
-                onClose={() => setOpened(false)}
+                opened={passwordModalOpen}
+                onClose={() => setPasswordModalOpen(false)}
                 onSubmit={changePassword}
-                userId = {userId}
+                userId={userId}
             />
         </>
+    );
+};
 
-    )
-}
-
-export default LayoutMenu
+export default LayoutMenu;

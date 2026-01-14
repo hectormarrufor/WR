@@ -15,7 +15,7 @@ export default function ODTForm({ mode = "create", odtId }) {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const { nombre } = useAuth();
-  
+
   // Inicializamos como arrays vacíos para evitar errores de .map antes de cargar
   const [empleados, setEmpleados] = useState([]);
   const [activos, setActivos] = useState([]);
@@ -139,31 +139,33 @@ export default function ODTForm({ mode = "create", odtId }) {
       <Title align="center" order={3} mb="lg">
         {mode === "create" ? "Nueva ODT" : "Editar ODT"}, registrada por: {nombre}
       </Title>
-      
+
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" placeholder='Selecciona un cliente' />
 
           <TextInput label="Nro ODT" placeholder="0000" {...form.getInputProps("nroODT")} />
-          
+
           <DateInput label="Fecha de ODT" valueFormat="DD/MM/YYYY" placeholder="Seleccione fecha" {...form.getInputProps('fecha')} />
-          
+
           <Textarea label="Descripción del servicio" placeholder="Detalles del trabajo..." {...form.getInputProps('descripcionServicio')} />
-          
+
           <TimeInput label="Hora de llegada" {...form.getInputProps('horaLlegada')} />
-          
+
           <TimeInput label="Hora de Salida" {...form.getInputProps('horaSalida')} />
 
           {/* Sección de Personal */}
           <Box>
             <ODTSelectableGrid
               label="Choferes"
-              data={empleados.map(e => ({
-                id: e.id,
-                nombre: `${e.nombre} ${e.apellido}`,
-                imagen: e.imagen,
-                puestos: e.puestos,
-              }))}
+              data={empleados
+                .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer")))
+                .map(e => ({
+                  id: e.id,
+                  nombre: `${e.nombre} ${e.apellido}`,
+                  imagen: e.imagen,
+                  puestos: e.puestos,
+                }))}
               onChange={(values) => form.setFieldValue("choferes", values)}
               value={form.values.choferes}
             />
@@ -173,12 +175,14 @@ export default function ODTForm({ mode = "create", odtId }) {
           <Box>
             <ODTSelectableGrid
               label="Ayudantes"
-              data={empleados.map(e => ({
-                id: e.id,
-                nombre: `${e.nombre} ${e.apellido}`,
-                imagen: e.imagen,
-                puestos: e.puestos,
-              }))}
+              data={empleados
+                .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante")))
+                .map(e => ({
+                  id: e.id,
+                  nombre: `${e.nombre} ${e.apellido}`,
+                  imagen: e.imagen,
+                  puestos: e.puestos,
+                }))}
               onChange={(values) => form.setFieldValue("ayudantes", values)}
               value={form.values.ayudantes}
             />

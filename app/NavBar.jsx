@@ -1,29 +1,73 @@
+'use client';
+
 import { useAuth } from '@/hooks/useAuth';
-import { Stack, Title, UnstyledButton } from '@mantine/core';
-import React from 'react'
+import { Box, Stack, Title, UnstyledButton, rem } from '@mantine/core';
+import { IconHome, IconUser, IconLogout, IconLogin, IconDashboard } from '@tabler/icons-react';
+import React from 'react';
+// 1. IMPORTAMOS EL CSS AQUÍ DIRECTAMENTE
+import classes from './MobileNavbar.module.css'; 
 
-const NavBar = ({ classes, router }) => {
-    const { isAuthenticated, logout, nombre } = useAuth();
+const NavBar = ({ router, close }) => { // Recibimos 'close' para cerrar el menú al navegar
+    const { isAuthenticated, logout, nombre, loading } = useAuth();
 
+    // Helper para navegar y cerrar el menú
+    const handleNavigate = (path) => {
+        router.push(path);
+        if (close) close();
+    };
+
+    const handleLogout = () => {
+        logout();
+        if (close) close();
+    };
+    if (loading) return <Box p="md">Cargando...</Box>;
     return (
-                <Stack mt={120} gap={20} justify='space-between' h="30%" align='center'>
-                    {!isAuthenticated && <UnstyledButton className={classes.control} onClick={() => router.push('/')}><Title order={6}>Inicio</Title></UnstyledButton>}
-                    {isAuthenticated && <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}><Title order={6}>Hola, {nombre}</Title></UnstyledButton>}
-                    {/* <UnstyledButton className={classes.control} onClick={() => router.push('/stones')}>Nuestros Productos</UnstyledButton> */}
-                    {!isAuthenticated ?
-                        <UnstyledButton className={classes.control} onClick={() => router.push('/login')}><Title order={6}>Iniciar Sesion</Title></UnstyledButton>
-                        :
-                        <UnstyledButton className={classes.control} onClick={logout}><Title order={6}>Cerrar sesion</Title></UnstyledButton>
-                    }
-                    {isAuthenticated &&
-                        <UnstyledButton className={classes.control} onClick={() => router.push('/superuser')}><Title order={6}>Panel de administracion</Title></UnstyledButton>
-                    }
+        <Stack mt="xl" gap="sm" align='stretch' px="md">
+            
+            {/* Inicio (Visible siempre o condicional según prefieras) */}
+            <UnstyledButton className={classes.control} onClick={() => handleNavigate('/')}>
+                <Title order={6} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <IconHome size={20} /> Inicio
+                </Title>
+            </UnstyledButton>
 
+            {/* Usuario Autenticado */}
+            {isAuthenticated && (
+                <>
+                    <UnstyledButton className={classes.control} onClick={() => handleNavigate('/superuser')}>
+                         <Title order={6} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <IconUser size={20} /> Hola, {nombre?.split(' ')[0]}
+                        </Title>
+                    </UnstyledButton>
 
-                    {/* <UnstyledButton className={classes.control} onClick={() => router.push('/drawings')}>Get Instant Estimates</UnstyledButton> */}
-                </Stack>
+                    <UnstyledButton className={classes.control} onClick={() => handleNavigate('/superuser')}>
+                        <Title order={6} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <IconDashboard size={20} /> Panel Admin
+                        </Title>
+                    </UnstyledButton>
+                </>
+            )}
 
-    )
-}
+            {/* Login / Logout */}
+            {!isAuthenticated ? (
+                <UnstyledButton className={classes.control} onClick={() => handleNavigate('/login')}>
+                    <Title order={6} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <IconLogin size={20} /> Iniciar Sesión
+                    </Title>
+                </UnstyledButton>
+            ) : (
+                <UnstyledButton 
+                    className={classes.control} 
+                    onClick={handleLogout}
+                    style={{ color: 'var(--mantine-color-red-6)' }}
+                >
+                    <Title order={6} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <IconLogout size={20} /> Cerrar Sesión
+                    </Title>
+                </UnstyledButton>
+            )}
+        </Stack>
+    );
+};
 
-export default NavBar
+export default NavBar;
