@@ -142,12 +142,13 @@ export default function LandingPage() {
                             <Group mt={isMobile ? 'md' : 'md'}>
                                 <Button 
                                     size={isMobile ? 'sm' : 'xl'} 
-                                    color="blue"
+                                    color="green"
                                     radius="xl"
-                                    onClick={handleMailto}
+                                    onClick={() => window.open('https://wa.me/584120756457', '_blank')}
                                     rightSection={<IconArrowRight size={isMobile ? 16 : 20} />}
+                                    leftSection={<IconBrandWhatsapp size={isMobile ? 16 : 20} />}
                                 >
-                                    Cotizar
+                                    Contactar
                                 </Button>
                                 <Button 
                                     size={isMobile ? 'sm' : 'xl'} 
