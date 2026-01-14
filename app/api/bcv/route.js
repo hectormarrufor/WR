@@ -158,6 +158,7 @@ export async function GET(request) {
             title: 'Tasas de Cambio Actualizadas',
             body: `USD: ${precioDolarBCV}\nEUR: ${precioEuroBCV}\nUSDT: ${datosAGuardar.montoUsdt}`,
             url: '/superuser/bcv',
+            tag: 'bcv_update'
         });
 
         return NextResponse.json({

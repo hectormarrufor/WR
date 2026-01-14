@@ -246,9 +246,20 @@ export default function BcvDashboard() {
                 tickFormatter: (value) => `${value}`
             }}
             valueFormatter={(val) => `Bs. ${val.toFixed(2)}`}
+            dotProps={{ r: 3, strokeWidth: 1 }}
+            activeDotProps={{ r: 5, strokeWidth: 1 }}
+            tooltipAnimationDuration={200}
             strokeWidth={3}
-            dotProps={{ r: 2, strokeWidth: 1 }}
-            activeDotProps={{ r: 6, strokeWidth: 1 }}
+            lineProps={{
+            label: { 
+              fill: '#495057', 
+              fontSize: 12,     // <--- AQUÍ CONTROLAS EL TAMAÑO
+              fontWeight: 700,  // Negrita para resaltar
+              position: 'top',  // Ubicación sobre el punto
+              offset: 10,       // Espacio entre el punto y el texto
+              formatter: (val) => val.toFixed(0) 
+            } }}
+            withPointLabels
             legendProps={{ verticalAlign: 'bottom', height: 50 }}
             curveType="monotone"
             withLegend

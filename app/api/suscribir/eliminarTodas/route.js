@@ -1,7 +1,7 @@
 import db from '@/models';
 
 
-export async function DELETE() {
+export async function GET() {
   try {
 
       await db.PushSubscription.destroy({

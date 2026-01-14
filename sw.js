@@ -15,12 +15,14 @@ self.addEventListener('push', event => {
     body: payload.body || '',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/android-launchericon-96-96.png',
-    data: payload.data || {}
+    data: payload.data || {},
+    requireInteraction: payload.data?.requireInteraction || false,
+    tag: payload.data?.tag,
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  event.waitUntil(clients.openWindow('/'));
+  event.waitUntil(clients.openWindow(event.notification.data.url || '/'));
 });
