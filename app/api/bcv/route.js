@@ -10,12 +10,28 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const forceUpdate = searchParams.get('force') === 'true';
         
-        const today = new Date();
-        // Restamos 4 horas (VET es UTC-4). 
-        // Si son las 03:00 AM del día 14 Zulu, esto lo lleva a las 23:00 PM del día 13.
-        const venezuelaTime = new Date(today.getTime() - (0 * 60 * 60 * 1000));
-        const fechaActual = venezuelaTime.toISOString().split('T')[0]; 
-        const horaActual = venezuelaTime.toTimeString().split(' ')[0];
+        // --- SOLUCIÓN DEFINITIVA DE ZONA HORARIA ---
+        // Creamos la fecha en el huso horario de Caracas, sin importar el servidor
+        const now = new Date();
+        
+        // Formateador para la fecha (YYYY-MM-DD)
+        const fechaCaracas = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Caracas',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).format(now);
+
+        // Formateador para la hora (HH:mm:ss)
+        const horaCaracas = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'America/Caracas',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        }).format(now);
+
+        const fechaActual = fechaCaracas; // Siempre será YYYY-MM-DD en Caracas
+        const horaActual = horaCaracas;   // Siempre será HH:mm:ss en Caracas
 
         // 1. Verificar si existe registro (solo si NO estamos forzando)
         const existingPrice = await BcvPrecioHistorico.findOne({
