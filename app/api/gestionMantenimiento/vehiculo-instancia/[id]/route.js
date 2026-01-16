@@ -5,7 +5,7 @@ import {
     Vehiculo, 
     SubsistemaInstancia, 
     Subsistema, 
-    ConsumibleUsado, 
+    ConsumibleInstalado,
     ConsumibleRecomendado,
     Consumible,
     ConsumibleSerializado
@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
                     as: 'subsistemasInstancia', // Asegúrate de tener este alias en models/index.js
                     include: [
                         {
-                            model: ConsumibleUsado, // Lo que tiene puesto actualmente
+                            model: ConsumibleInstalado, // Lo que tiene puesto actualmente
                             as: 'consumiblesInstalados', // Alias definido en tus relaciones
                             required: false, // Left Join (traer subsistema aunque no tenga nada puesto)
                             include: [

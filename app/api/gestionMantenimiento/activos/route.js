@@ -5,7 +5,7 @@ import {
     VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
     Vehiculo, Remolque, Maquina,
     Subsistema, SubsistemaInstancia,
-    ConsumibleUsado // <--- IMPORTANTE
+    ConsumibleInstalado
 } from '@/models';
 
 // GET: Listar (Sin cambios)
@@ -90,10 +90,10 @@ export async function POST(request) {
                 const instalacion = instalacionesIniciales.find(i => i.subsistemaId === subTeorico.id);
                 
                 if (instalacion) {
-                    await ConsumibleUsado.create({
+                    await ConsumibleInstalado.create({
                         subsistemaInstanciaId: nuevaSubInstancia.id,
                         consumibleId: instalacion.consumibleId, // El ID del filtro real (Inventario)
-                        consumibleSerializadoId: instalacion.consumibleSerializadoId || null,
+                        serializadoId: instalacion.consumibleSerializadoId || null,
                         cantidad: instalacion.cantidad || 1,
                         fechaInstalacion: instalacion.fechaInstalacion || new Date(),
                         instaladoPorId: null // O el ID del usuario actual si lo tienes en el request

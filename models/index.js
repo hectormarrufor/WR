@@ -35,7 +35,6 @@ const db = {
     ConsumibleRecomendado: require('./inventario/ConsumibleRecomendado'),
     ConsumibleSerializado: require('./inventario/ConsumibleSerializado'),
     ConsumibleInstalado: require('./inventario/ConsumibleInstalado'),
-    ConsumibleUsado: require('./inventario/ConsumibleUsado'),
     Correa: require('./inventario/tipo-consumible/Correa'),
     CargaCombustible: require('./gestionMantenimiento/CargaCombustible'),
     Neumatico: require('./inventario/tipo-consumible/Neumatico'),
@@ -57,7 +56,6 @@ const db = {
 
     //Operaciones
     Flete: require('./operaciones/Flete'),
-    ConsumibleUsado: require('./inventario/ConsumibleUsado'),
     ODT: require('./recursosHumanos/ODT'),
     ODT_Vehiculos: require('./recursosHumanos/ODTVehiculos'),
     ODT_Empleados: require('./recursosHumanos/ODTEmpleados'),

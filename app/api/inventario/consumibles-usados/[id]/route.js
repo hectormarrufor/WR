@@ -3,11 +3,11 @@ import sequelize from '@/sequelize';
 import { 
     Consumible, 
     ConsumibleSerializado, 
-    ConsumibleUsado 
+    ConsumibleInstalado 
 } from '@/models';
 
 export async function DELETE(request, { params }) {
-    const { id } = params; // ID de la tabla pivote (ConsumibleUsado)
+    const { id } = params; // ID de la tabla pivote (ConsumibleInstalado)
     
     // Obtener parámetros de la URL para saber el destino de la pieza
     const { searchParams } = new URL(request.url);
@@ -17,7 +17,7 @@ export async function DELETE(request, { params }) {
 
     try {
         // 1. Buscar el registro de instalación
-        const uso = await ConsumibleUsado.findByPk(id, { transaction: t });
+        const uso = await ConsumibleInstalado.findByPk(id, { transaction: t });
         if (!uso) throw new Error('Registro de instalación no encontrado.');
 
         // 2. Lógica para SERIALIZADOS

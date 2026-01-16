@@ -3,7 +3,7 @@ import sequelize from '@/sequelize';
 import { 
     Consumible, 
     ConsumibleSerializado, 
-    ConsumibleUsado, 
+    ConsumibleInstalado, 
     SubsistemaInstancia, 
     ConsumibleRecomendado 
 } from '@/models';
@@ -57,7 +57,7 @@ export async function POST(request) {
             if (itemSerializado.estado !== 'Disponible') throw new Error(`El ítem ${itemSerializado.serial} no está disponible (Estado: ${itemSerializado.estado}).`);
 
             // Crear registro
-            await ConsumibleUsado.create({
+            await ConsumibleInstalado.create({
                 subsistemaInstanciaId,
                 consumibleId,
                 consumibleSerializadoId,
@@ -78,7 +78,7 @@ export async function POST(request) {
                 throw new Error(`Stock insuficiente (Req: ${cantidad}, Disp: ${consumible.stockActual}).`);
             }
 
-            await ConsumibleUsado.create({
+            await ConsumibleInstalado.create({
                 subsistemaInstanciaId,
                 consumibleId,
                 consumibleSerializadoId: null,

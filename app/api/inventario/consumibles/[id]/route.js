@@ -10,7 +10,7 @@ import {
     Sensor,
     GrupoEquivalencia,
     ConsumibleSerializado,
-    ConsumibleUsado,
+    ConsumibleInstalado,
     SubsistemaInstancia
 
 } from '@/models';
@@ -53,7 +53,7 @@ export async function GET(request, { params }) {
 
                 // --- 4. HISTORIAL ---
                 { 
-                    model: ConsumibleUsado, 
+                    model: ConsumibleInstalado, 
                     as: 'usos',
                     limit: 20,
                     order: [['createdAt', 'DESC']],

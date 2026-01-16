@@ -4,9 +4,9 @@ const sequelize = require('../../sequelize');
 
 const ConsumibleInstalado = sequelize.define('ConsumibleInstalado', {
   cantidad: { type: DataTypes.DECIMAL(10, 2), defaultValue: 1 },
-  serialActual: { type: DataTypes.STRING, allowNull: true, comment: 'Serial del componente físico instalado' },
   fechaInstalacion: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-  vidaUtilRestante: { type: DataTypes.INTEGER, comment: 'Porcentaje o KM restantes' },
+  serialActual: { type: DataTypes.STRING, allowNull: true },
+  vidaUtilRestante: { type: DataTypes.INTEGER , allowNull: true },
   estado: { type: DataTypes.ENUM('instalado', 'pendiente_retiro'), defaultValue: 'instalado' }
 }, {
   tableName: 'ConsumiblesInstalados'
