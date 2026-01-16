@@ -131,7 +131,7 @@ export default function ListarActivosPage() {
             >
                 <Table.Td>
                     <Group gap="sm">
-                        <Avatar src={imageUrl} size={40} radius="xl" color="blue" alt={activo.codigoInterno}>
+                        <Avatar src={imageUrl} size={60} radius="xl" color="blue" alt={activo.codigoInterno}>
                             {activo.codigoInterno.substring(0, 2)}
                         </Avatar>
                         <div>
@@ -142,7 +142,7 @@ export default function ListarActivosPage() {
                 </Table.Td>
                 <Table.Td>
                     <Text fz="sm">{details.marca} {details.modelo}</Text>
-                    {details.placa && <Badge variant="outline" size="xs" color="gray">{details.placa}</Badge>}
+                    {details.placa && <Badge variant="filled" size="lg" color="black">{details.placa}</Badge>}
                 </Table.Td>
                 <Table.Td>
                     <Text fz="sm">{activo.ubicacionActual || 'No definida'}</Text>
