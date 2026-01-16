@@ -69,7 +69,7 @@ export default function SuperUserHome() {
                         router.push(`/superuser/flota/activos`);
                         break;
                     case rol.includes("Gerente Operacional"):
-                        router.push('/superuser/rrhh/empleados');
+                        router.push('/superuser/rrhh/odt');
                         break;
                     default:
                         router.push("/forbidden")
