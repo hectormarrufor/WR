@@ -86,7 +86,7 @@ export async function POST(request) {
                 const subFisico = await SubsistemaInstancia.create({
                     nombre: subPlantilla.nombre+ " " + body.placa,
                     activoId: nuevoActivo.id,
-                    subsistemaPlantillaId: subPlantilla.id,
+                    subsistemaId: subPlantilla.id,
                     estado: 'ok',
                     observaciones: 'Inicializado en creación de activo'
                 }, { transaction: t });
@@ -99,7 +99,7 @@ export async function POST(request) {
         if (body.instalacionesIniciales && body.instalacionesIniciales.length > 0) {
             
             for (const item of body.instalacionesIniciales) {
-                const subsistemaInstanciaId = mapaSubsistemas[item.subsistemaPlantillaId];
+                const subsistemaInstanciaId = mapaSubsistemas[item.subsistemaId];
                 if (!subsistemaInstanciaId) continue;
 
                 let serialIdFinal = null;

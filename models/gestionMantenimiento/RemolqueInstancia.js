@@ -18,6 +18,7 @@ const RemolqueInstancia = sequelize.define('RemolqueInstancia', {
 RemolqueInstancia.associate = (models) => {
   RemolqueInstancia.belongsTo(models.Remolque, { foreignKey: 'remolqueId', as: 'plantilla' , onDelete: 'CASCADE' });
   RemolqueInstancia.hasOne(models.Activo, { foreignKey: 'remolqueInstanciaId', as: 'activo', onDelete: 'CASCADE' });
+  
 }
 
 module.exports =    RemolqueInstancia;

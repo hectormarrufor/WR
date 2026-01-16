@@ -76,7 +76,7 @@ export async function PUT(request, { params }) {
                     if (activosHijos.length > 0) {
                         const nuevasInstancias = activosHijos.map(activo => ({
                             activoId: activo.id,
-                            subsistemaPlantillaId: nuevoSub.id, // Enlace con el nuevo molde
+                            subsistemaId: nuevoSub.id, // Enlace con el nuevo molde
                             estado: 'ok',
                             observaciones: 'Agregado por actualización de plantilla'
                         }));

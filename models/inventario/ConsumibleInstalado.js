@@ -13,15 +13,15 @@ const ConsumibleInstalado = sequelize.define('ConsumibleInstalado', {
 });
 
 ConsumibleInstalado.associate = (models) => {
+  // 3. ¿Cuál serial es? (Si es serializado)
+  ConsumibleInstalado.belongsTo(models.ConsumibleSerializado, { foreignKey: 'serialId', as: 'serialFisico' });
+
   // 1. ¿Dónde está puesto? (Físico)
   ConsumibleInstalado.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId', as: 'subsistema' });
 
   // 2. ¿Qué es? (Ficha de Inventario)
   ConsumibleInstalado.belongsTo(models.Consumible, { foreignKey: 'consumibleId', as: 'fichaTecnica' });
   
-  // 3. ¿Cuál serial es? (Si es serializado)
-  ConsumibleInstalado.belongsTo(models.ConsumibleSerializado, { foreignKey: 'serialId', as: 'serialFisico' });
-
   // 4. ¿Cumple qué regla? (Vínculo con la Plantilla)
   // ESTO ES CLAVE PARA SABER EN QUÉ SLOT ESTÁ
   ConsumibleInstalado.belongsTo(models.ConsumibleRecomendado, { foreignKey: 'recomendacionId', as: 'reglaPlantilla' });

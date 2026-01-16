@@ -54,7 +54,7 @@ Consumible.associate = (models) => {
     Consumible.hasOne(models.Sensor, { foreignKey: 'consumibleId' , onDelete: 'CASCADE' });
     Consumible.hasOne(models.Correa, { foreignKey: 'consumibleId' , onDelete: 'CASCADE' });
     Consumible.hasMany(models.ConsumibleRecomendado, { foreignKey: 'consumibleId', as: 'recomendaciones', onDelete: 'CASCADE' });
-    Consumible.hasMany(models.ConsumibleUsado, { foreignKey: 'consumibleId', as: 'usos',    onDelete: 'CASCADE' });
+    Consumible.hasMany(models.ConsumibleInstalado, { foreignKey: 'consumibleId', as: 'instalaciones',    onDelete: 'CASCADE' });
 };
 
 

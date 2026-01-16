@@ -1,83 +1,62 @@
-import db from '@/models';
-import { NextResponse } from 'next/server';
-
+// api/gestionMantenimiento/inspecciones/route.js
 export async function POST(request) {
-    const transaction = await db.sequelize.transaction();
+    const t = await sequelize.transaction();
     try {
-        const body = await request.json();
-        const {
-            activoId,
-            userId,
-            kilometrajeActual,
-            horometroActual,
-            hallazgosReportados
-        } = body;
-
-        if (!activoId || !userId || !kilometrajeActual) {
-            throw new Error('Faltan datos requeridos.');
+        const body = await request.json(); // { activoId, usuarioId, km, horometro, hallazgos: [{desc, impacto, subId}] }
+        
+        // 1. Registrar Historiales (KM y Horómetro)
+        // Esto es vital para saber cuándo ocurrió el fallo
+        if (body.km) {
+            await Kilometraje.create({ 
+                activoId: body.activoId, valor: body.km, 
+                fecha: new Date(), origen: 'Inspeccion', usuarioId: body.usuarioId 
+            }, { transaction: t });
+        }
+        // ... (Igual para Horómetro)
+        if (body.horometro) {
+            await Horometro.create({ 
+                activoId: body.activoId, valor: body.horometro, 
+                fecha: new Date(), origen: 'Inspeccion', usuarioId: body.usuarioId 
+            }, { transaction: t });
         }
 
-        let nuevoKmId = null;
-        let nuevoHorometroId = null;
+        // 2. Crear Inspección Cabecera
+        const inspeccion = await Inspeccion.create({
+            activoId: body.activoId,
+            usuarioId: body.usuarioId,
+            kilometrajeRegistrado: body.km,
+            horometroRegistrado: body.horometro,
+            observacionGeneral: body.observacion
+        }, { transaction: t });
 
-        if (kilometrajeActual) {
-            const nuevoKm = await db.Kilometraje.create({ activoId, valor: kilometrajeActual }, { transaction });
-            nuevoKmId = nuevoKm.id;
-        }
-        if (horometroActual) {
-            const nuevoHorometro = await db.Horometro.create({ activoId, valor: horometroActual }, { transaction });
-            nuevoHorometroId = nuevoHorometro.id;
-        }
+        // 3. Crear Hallazgos
+        let peorEstado = 'Operativo'; // Estado base
+        
+        for (const h of body.hallazgos) {
+            await Hallazgo.create({
+                inspeccionId: inspeccion.id,
+                subsistemaInstanciaId: h.subsistemaInstanciaId,
+                descripcion: h.descripcion,
+                impacto: h.impacto, // 'Advertencia', 'No Operativo', etc.
+                estado: 'Pendiente'
+            }, { transaction: t });
 
-        if (!nuevoKmId && !nuevoHorometroId) {
-            throw new Error('Debe registrar al menos un kilometraje o horómetro.');
-        }
-        else {
-            console.log('Kilometraje o Horómetro registrado:', { nuevoKmId, nuevoHorometroId });
-        }
-
-        let nuevoEstadoActivo = 'Operativo';
-        if (hallazgosReportados && hallazgosReportados.length > 0) {
-            if (hallazgosReportados.some(h => h.severidad === 'Critico')) {
-                nuevoEstadoActivo = 'No Operativo';
-            } else if (hallazgosReportados.some(h => h.severidad === 'Advertencia')) {
-                nuevoEstadoActivo = 'Advertencia';
+            // Lógica del "Mata Estados"
+            if (h.impacto === 'No Operativo') {
+                peorEstado = 'No Operativo';
+            } else if (h.impacto === 'Advertencia' && peorEstado !== 'No Operativo') {
+                peorEstado = 'Operativo con Advertencia';
             }
         }
 
-        await db.Activo.update(
-            { estadoOperativo: nuevoEstadoActivo },
-            { where: { id: activoId }, transaction }
-        );
+        // 4. Actualizar Estado del Activo (Consecuencia inmediata)
+        await Activo.update({ estado: peorEstado }, { where: { id: body.activoId }, transaction: t });
 
-        const nuevaInspeccion = await db.Inspeccion.create({
-            activoId,
-            inspectorId: userId,
-            kilometrajeId: nuevoKmId,
-            horometroId: nuevoHorometroId,
-        }, { transaction });
-
-        if (hallazgosReportados && hallazgosReportados.length > 0) {
-            const hallazgosParaCrear = hallazgosReportados.map(h => ({
-                ...h,
-                activoId,
-                inspeccionId: nuevaInspeccion.id,
-                origen: 'Manual',
-                estado: 'Pendiente',
-            }));
-            await db.Hallazgo.bulkCreate(hallazgosParaCrear, { transaction });
-        }
-
-        await transaction.commit();
-        return NextResponse.json({
-            message: 'Inspección guardada y estado del activo actualizado.',
-            inspeccion: nuevaInspeccion,
-            hallazgosCreados: hallazgosReportados?.length || 0
-        }, { status: 201 });
-
-    } catch (error) {
-        await transaction.rollback();
-        console.error("Error al crear inspección:", error);
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        await t.commit();
+        return NextResponse.json({ success: true, nuevoEstado: peorEstado });
+    } catch (e) {
+        await t.rollback();
+        console.error('Error al registrar inspección:', e);
+        return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
 }

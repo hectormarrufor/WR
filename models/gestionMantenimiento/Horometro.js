@@ -27,6 +27,8 @@ const Horometro = sequelize.define('Horometro', {
     timestamps: true,
 });
 
-Horometro.belongsTo(Activo, { foreignKey: 'activoId' });
+Horometro.associate = (models) => {
+    Horometro.belongsTo(models.Activo, { foreignKey: 'activoId' });
+}
 
 module.exports = Horometro;

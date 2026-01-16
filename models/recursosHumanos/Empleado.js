@@ -57,7 +57,7 @@ const Empleado = sequelize.define('Empleado', {
     allowNull: false,
   },
   estado: {
-    type: DataTypes.ENUM('Activo', 'Inactivo', 'Suspendido', 'Vacaciones'),
+    type: DataTypes.ENUM('Activo', 'Inactivo', 'Suspendido', "Reposo Medico", 'Vacaciones', 'Permiso', 'Retirado'),
     defaultValue: 'Activo',
     allowNull: false,
   },
@@ -83,6 +83,7 @@ Empleado.associate = (models) => {
     as: "odtsComoChofer",
     foreignKey: "empleadoId",
 });
+Empleado.hasMany(models.OrdenMantenimiento, { foreignKey: 'asignadoAId', as: 'ordenesAsignadas' });
 
   // Un Empleado puede ser el Supervisor de muchas Operaciones de Campo
   // Empleado.hasMany(models.OperacionCampo, { foreignKey: 'supervisorId', as: 'operacionesSupervisadas' });

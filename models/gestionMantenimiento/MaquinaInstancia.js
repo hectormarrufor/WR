@@ -13,7 +13,6 @@ const MaquinaInstancia = sequelize.define('MaquinaInstancia', {
 MaquinaInstancia.associate = (models) => {
   MaquinaInstancia.belongsTo(models.Maquina, { foreignKey: 'maquinaId', as: 'plantilla', onDelete: 'CASCADE' });
   MaquinaInstancia.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo', onDelete: 'CASCADE' });
-  
 }
 
 module.exports = MaquinaInstancia;

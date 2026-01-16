@@ -31,43 +31,69 @@ function calcularEdad(fechaNacimiento) {
   return edad;
 }
 
+const ESTADO_PRIORIDAD = {
+  'Activo': 1,
+  'Reposo Medico': 2,
+  'Vacaciones': 3,
+  'Permiso': 4,
+  'Suspendido': 5,
+  'Retirado': 6,
+  'Inactivo': 7,
+};
+
 // --- MENÚ DE ACCIONES (Común) ---
 const EmployeeActionsMenu = ({ empleado, router, openDeleteModal, setSelectedEmpleado, openCrearUsuarioModal, openEditUsuarioModal }) => (
-  <Menu position="bottom-end" shadow="md" width={200}>
-    <Menu.Target>
-      <ActionIcon variant="light" size="md" aria-label="Acciones">
-        <IconEye size={18} />
-      </ActionIcon>
-    </Menu.Target>
-    <Menu.Dropdown>
-      <Menu.Label>Opciones</Menu.Label>
-      <Menu.Item leftSection={<IconEdit size={16} />} onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}>
-        Editar Datos
-      </Menu.Item>
-      <Menu.Item
-        leftSection={empleado.usuario?.user ? <IconEdit size={16} /> : <IconPlus size={16} />}
-        color="blue"
-        onClick={() => {
-          setSelectedEmpleado(empleado);
-          empleado.usuario?.user ? openEditUsuarioModal(empleado) : openCrearUsuarioModal(empleado);
-        }}
-      >
-        {empleado.usuario?.user ? "Editar Usuario" : "Crear Usuario"}
-      </Menu.Item>
-      <Menu.Divider />
-      <Menu.Item leftSection={<IconTrash size={16} />} color="red" onClick={() => { setSelectedEmpleado(empleado); openDeleteModal(); }}>
-        Eliminar
-      </Menu.Item>
-    </Menu.Dropdown>
-  </Menu>
+  <Box 
+    onClick={(e) => e.stopPropagation()} 
+    onPointerDown={(e) => e.stopPropagation()}
+  >
+    <Menu position="bottom-end" shadow="md" width={200}>
+      <Menu.Target>
+        <ActionIcon variant="light" size="md" aria-label="Acciones">
+          <IconEye size={18} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>Opciones</Menu.Label>
+        <Menu.Item 
+          leftSection={<IconEdit size={16} />} 
+          onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}
+        >
+          Editar Datos
+        </Menu.Item>
+        <Menu.Item
+          leftSection={empleado.usuario?.user ? <IconEdit size={16} /> : <IconPlus size={16} />}
+          color="blue"
+          onClick={() => {
+            setSelectedEmpleado(empleado);
+            empleado.usuario?.user ? openEditUsuarioModal(empleado) : openCrearUsuarioModal(empleado);
+          }}
+        >
+          {empleado.usuario?.user ? "Editar Usuario" : "Crear Usuario"}
+        </Menu.Item>
+        <Menu.Divider />
+        <Menu.Item 
+          leftSection={<IconTrash size={16} />} 
+          color="red" 
+          onClick={() => { setSelectedEmpleado(empleado); openDeleteModal(); }}
+        >
+          Eliminar
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  </Box>
 );
 
 // --- TARJETA MÓVIL (Actualizada) ---
 const MobileEmployeeCard = ({ empleado, actions, onClick }) => {
   const statusColor = 
     empleado.estado === 'Activo' ? 'green' : 
-    empleado.estado === 'Vacaciones' ? 'orange' : 
-    empleado.estado === 'Suspendido' ? 'red' : 'gray';
+    empleado.estado === 'Vacaciones' ? 'blue' : 
+    empleado.estado === 'Suspendido' ? 'red' :
+    empleado.estado === 'Permiso' ? 'orange' :
+    empleado.estado === 'Retirado' ? 'red' :
+    empleado.estado === 'Reposo Medico' && 'orange' ||
+    empleado.estado === 'Inactivo' && 'red';
 
   return (
     <Card 
@@ -107,7 +133,9 @@ const MobileEmployeeCard = ({ empleado, actions, onClick }) => {
 
             {/* 3. ZONA SEGURA (STOP PROPAGATION) */}
             {/* Cualquier clic aquí NO activará el onClick de la Card */}
-            <div onClick={(e) => e.stopPropagation()}>
+            <div 
+            onClick={(e) => e.stopPropagation()}
+            >
                 {actions}
             </div>
         </Group>
@@ -168,11 +196,20 @@ export default function EmpleadosTable() {
       if (!response.ok) throw new Error(`Error fetching data`);
       const result = await response.json();
       
-      setData(result.map(empleado => ({
+      const sortedResult = result
+      .map(empleado => ({
         ...empleado, 
         nombreCompleto: empleado.nombre + " " + empleado.apellido, 
         edad: calcularEdad(empleado.fechaNacimiento) 
-      })));
+      }))
+      .sort((a, b) => {
+        // Si el estado no existe en el mapa, le damos una prioridad baja (99)
+        const priorA = ESTADO_PRIORIDAD[a.estado] || 99;
+        const priorB = ESTADO_PRIORIDAD[b.estado] || 99;
+        return priorA - priorB;
+      });
+
+    setData(sortedResult);
     } catch (err) {
       setError(err);
       notifications.show({ title: 'Error', message: 'No se pudieron cargar los empleados.', color: 'red' });
@@ -235,6 +272,7 @@ export default function EmpleadosTable() {
     data,
     state: { isLoading: loading },
     enableRowActions: true,
+    initialState: {pagination: { pageSize: 20, pageIndex: 0 } },
     renderRowActions: ({ row }) => (
        <EmployeeActionsMenu 
           empleado={row.original} 

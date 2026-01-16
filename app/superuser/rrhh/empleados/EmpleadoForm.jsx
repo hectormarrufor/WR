@@ -50,7 +50,7 @@ export function EmpleadoForm({ initialData = null }) {
       sueldo: (value) => value > 0 ? null : 'Sueldo debe ser mayor a 0',
       estado: (value) => value ? null : 'Estado requerido',
       fechaRetorno: (value, values) =>
-        values.estado !== 'Activo' ? (value ? null : 'Fecha de retorno requerida si el empleado no está activo') : null,
+        values.estado == 'Vacaciones' || values.estado == 'Permiso' || values.estado == 'Suspendido' ? (value ? null : 'Fecha de retorno requerida si el empleado está en Vacaciones, Permiso o Suspendido') : null,
       genero: (value) => (value === 'Masculino' || value === 'Femenino' ? null : 'Selecciona el género'),
       tasaSueldo: (value) => (value === 'bcv' || value === 'euro' || value === 'usdt' ? null : 'Selecciona la tasa de sueldo'),
     },
@@ -265,11 +265,11 @@ export function EmpleadoForm({ initialData = null }) {
               <Select
                 label="Estado"
                 placeholder="Selecciona estado"
-                data={['Activo', 'Inactivo', 'Suspendido', 'Vacaciones']}
+                data={['Activo', 'Inactivo', 'Suspendido', 'Vacaciones', 'Permiso', 'Retirado', 'Reposo Medico']}
                 {...form.getInputProps('estado')}
               />
             </Grid.Col>
-            {form.values.estado !== 'Activo' && (
+            {form.values.estado == 'Vacaciones' || form.values.estado == 'Permiso' || form.values.estado == 'Suspendido' && (
               <Grid.Col span={6}>
                 <DateInput
                   label="Fecha de Retorno"

@@ -44,9 +44,12 @@ Activo.associate = (models) => {
     Activo.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'vehiculoInstancia' });
     Activo.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'remolqueInstancia' });
     Activo.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'maquinaInstancia' });
-    Activo.hasMany(models.Mantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
+    Activo.hasMany(models.OrdenMantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
     Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
     Activo.hasMany(models.SubsistemaInstancia, { foreignKey: 'activoId', as: 'subsistemasInstancia' });
+    Activo.hasMany(models.Kilometraje, { foreignKey: 'activoId', as: 'registrosKilometraje' });
+    Activo.hasMany(models.Horometro, { foreignKey: 'activoId', as: 'registrosHorometro' });
+    Activo.hasMany(models.CargaCombustible, { foreignKey: 'activoId', as: 'cargasCombustible' });
 }
 
 module.exports = Activo;

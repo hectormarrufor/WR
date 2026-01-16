@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
 import { del } from '@vercel/blob'; // <--- Importación vital para borrar imágenes
-import { Activo, VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
-         Vehiculo, Remolque, Maquina,
-         SubsistemaInstancia, Subsistema, Mantenimiento, Inspeccion } from '@/models';
+import {
+    Activo, VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
+    Vehiculo, Remolque, Maquina,
+    SubsistemaInstancia, Subsistema, Mantenimiento, Inspeccion,
+    ConsumibleSerializado,
+    ConsumibleRecomendado,
+    ConsumibleInstalado,
+    Consumible,
+    Kilometraje,
+    Horometro,
+    CargaCombustible
+} from '@/models';
 
 
 
@@ -19,7 +28,25 @@ export async function GET(request, { params }) {
                 {
                     model: VehiculoInstancia,
                     as: 'vehiculoInstancia',
-                    include: [{ model: Vehiculo, as: 'plantilla' }] 
+                    include: [{ model: Vehiculo, as: 'plantilla' }],
+                },
+                {
+                    model: Kilometraje,
+                    as: 'registrosKilometraje',
+                    limit: 15,
+                    order: [['fecha_registro', 'ASC']] // ASC para el orden cronológico del gráfico
+                },
+                {
+                    model: Horometro,
+                    as: 'registrosHorometro',
+                    limit: 15,
+                    order: [['fecha_registro', 'ASC']]
+                },
+                {
+                    model: CargaCombustible,
+                    as: 'cargasCombustible',
+                    limit: 10,
+                    order: [['fecha', 'ASC']]
                 },
                 {
                     model: RemolqueInstancia,
@@ -34,7 +61,18 @@ export async function GET(request, { params }) {
                 {
                     model: SubsistemaInstancia,
                     as: 'subsistemasInstancia',
-                    include: [{ model: Subsistema, as: 'subsistemaPlantilla' }]
+                    include: [{
+                        model: Subsistema, as: 'subsistemaPlantilla',
+                        include: [{ model: ConsumibleRecomendado, as: 'listaRecomendada' }]
+                    },
+                    {
+                        model: ConsumibleInstalado, as: 'instalaciones',
+                        include: [{ model: Consumible, as: 'fichaTecnica' },
+                        { model: ConsumibleSerializado, as: 'serialFisico' },
+                        ]
+
+                    },
+                    ]
                 },
                 {
                     model: Mantenimiento,
@@ -49,8 +87,8 @@ export async function GET(request, { params }) {
                     limit: 5,
                     order: [['fecha', 'DESC']],
                     required: false
-                }
-            ]
+                },
+            ],
         });
 
         if (!activo) {
@@ -77,11 +115,11 @@ export async function PUT(request, { params }) {
         if (!activo) throw new Error('Activo no encontrado');
 
         const body = await request.json();
-        
+
         // Extraemos campos. Nota: cambié 'serialCarroceria' a 'serialChasis' para coincidir con tu JSON anterior
-        const { 
+        const {
             codigoInterno, estado, ubicacionActual, imagen,
-            placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual 
+            placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual
         } = body;
 
         // 1. Actualizar Activo Padre
@@ -91,7 +129,7 @@ export async function PUT(request, { params }) {
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             // Si viene una imagen nueva (URL string), la actualizamos. 
             // Si no viene (undefined), dejamos la que estaba.
-            imagen: imagen !== undefined ? imagen : activo.imagen 
+            imagen: imagen !== undefined ? imagen : activo.imagen
         }, { transaction: t });
 
         // 2. Actualizar Instancia Hija según tipo
@@ -138,10 +176,10 @@ export async function DELETE(request, { params }) {
         if (activo.imagen) {
             try {
                 // Construimos la URL completa si lo que tienes guardado es solo el nombre del archivo
-                const blobUrl = activo.imagen.startsWith('http') 
-                    ? activo.imagen 
+                const blobUrl = activo.imagen.startsWith('http')
+                    ? activo.imagen
                     : `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}`;
-                
+
                 await del(blobUrl);
                 console.log(`[Blob] Imagen eliminada: ${blobUrl}`);
             } catch (e) {

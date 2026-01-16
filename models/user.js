@@ -68,6 +68,14 @@ User.associate = (models) => {
     foreignKey: 'empleadoId',
     as: 'empleado' // Un usuario pertenece a un empleado
   });
+  User.hasMany(models.Requisicion, {
+    foreignKey: 'solicitadoPorId',
+    as: 'requisicionesSolicitadas' // Un usuario puede hacer muchas requisiciones
+  });
+  User.hasMany(models.OrdenMantenimiento, {
+    foreignKey: 'creadoPorId',
+    as: 'ordenesCreadas' // Un usuario puede crear muchas órdenes de mantenimiento
+  });
 
 
 };

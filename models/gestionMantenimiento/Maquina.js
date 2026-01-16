@@ -17,7 +17,6 @@ const Maquina = sequelize.define('Maquina', {
 Maquina.associate = (models) => {
   Maquina.hasMany(models.MaquinaInstancia, { foreignKey: 'maquinaId', as: 'instancias' , onDelete: 'CASCADE' });
   Maquina.hasMany(models.Subsistema, { foreignKey: 'maquinaId', as: 'subsistemas' , onDelete: 'CASCADE' });
-  Maquina.belongsTo(models.Activo, { foreignKey: 'activoId' });
   
 }
 

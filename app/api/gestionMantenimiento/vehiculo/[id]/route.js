@@ -58,113 +58,133 @@ export async function GET(request, { params }) {
 // ----------------------------------------------------------------------
 
 export async function PUT(request, { params }) {
-    const { id } = await params; // ID del Vehículo
+    const { id } = await params; // ID de la Plantilla (Vehiculo)
     const t = await sequelize.transaction();
 
     try {
         const body = await request.json();
+        const { propagar = false } = body; // El check que definimos en la UI
 
-        // 1. Verificar existencia
+        // 1. Verificar existencia de la plantilla
         const vehiculo = await Vehiculo.findByPk(id);
         if (!vehiculo) {
-            return NextResponse.json({ success: false, error: 'Vehículo no encontrado' }, { status: 404 });
+            return NextResponse.json({ success: false, error: 'Plantilla no encontrada' }, { status: 404 });
         }
 
-        // 2. Actualizar Datos Base del Vehículo
+        // 2. Actualizar Datos Base de la Plantilla
         await vehiculo.update({
-            nombre: body.nombre,
             marca: body.marca,
             modelo: body.modelo,
             anio: body.anio,
-            tipo: body.tipo, // 'chuto', 'camion', etc.
+            tipoVehiculo: body.tipoVehiculo,
             peso: body.peso,
             numeroEjes: body.numeroEjes,
             tipoCombustible: body.tipoCombustible,
             imagen: body.imagen,
             capacidadArrastre: body.capacidadArrastre,
             pesoMaximoCombinado: body.pesoMaximoCombinado
-
-            // ... otros campos
         }, { transaction: t });
 
         // =========================================================
-        // 3. GESTIÓN INTELIGENTE DE SUBSISTEMAS (ABM / CRUD)
+        // 3. GESTIÓN DE SUBSISTEMAS Y PROPAGACIÓN
         // =========================================================
 
         if (body.subsistemas) {
-            
-            // A. Obtener IDs actuales en BD para este vehículo
             const subsistemasActuales = await Subsistema.findAll({
                 where: { vehiculoId: id },
                 attributes: ['id'],
                 transaction: t
             });
             const idsEnBD = subsistemasActuales.map(s => s.id);
+            const idsEnPayload = body.subsistemas.filter(s => s.id).map(s => s.id);
 
-            // B. Obtener IDs que vienen del Frontend (solo los que tienen ID son viejos)
-            const idsEnPayload = body.subsistemas
-                .filter(s => s.id) // Filtramos los nuevos (que no tienen ID)
-                .map(s => s.id);
-
-            // C. DETERMINAR QUÉ BORRAR (Están en BD pero NO en el Payload)
+            // --- A. BORRADO ---
             const idsParaBorrar = idsEnBD.filter(dbId => !idsEnPayload.includes(dbId));
-
             if (idsParaBorrar.length > 0) {
-                // AL BORRAR EL SUBSISTEMA, EL CASCADE DE SEQUELIZE BORRA SUS RECOMENDACIONES
-                await Subsistema.destroy({
-                    where: { id: idsParaBorrar },
+                if (propagar) {
+                    // Si propagamos, eliminamos las instancias físicas de esos subsistemas en los activos
+                    await SubsistemaInstancia.destroy({
+                        where: { subsistemaPlantillaId: idsParaBorrar },
+                        transaction: t
+                    });
+                }
+                await Subsistema.destroy({ where: { id: idsParaBorrar }, transaction: t });
+            }
+
+            // --- B. PROCESAR ALTAS Y CAMBIOS ---
+            // Necesitamos los Activos vinculados a esta plantilla si vamos a propagar
+            let activosVinculados = [];
+            if (propagar) {
+                activosVinculados = await Activo.findAll({
+                    include: [{
+                        model: VehiculoInstancia,
+                        as: 'vehiculoInstancia',
+                        where: { vehiculoId: id },
+                        required: true
+                    }],
                     transaction: t
                 });
             }
 
-            // D. PROCESAR LO QUE VIENE (Actualizar Viejos o Crear Nuevos)
             for (const subData of body.subsistemas) {
-                
-                let subsistemaActual;
+                let subsistemaPlantilla;
 
                 if (subData.id) {
-                    // --- CASO 1: ACTUALIZAR EXISTENTE ---
-                    subsistemaActual = await Subsistema.findByPk(subData.id, { transaction: t });
-                    if (subsistemaActual) {
-                        await subsistemaActual.update({
+                    // ACTUALIZAR SUBSISTEMA EXISTENTE
+                    subsistemaPlantilla = await Subsistema.findByPk(subData.id, { transaction: t });
+                    if (subsistemaPlantilla) {
+                        await subsistemaPlantilla.update({
                             nombre: subData.nombre,
                             categoria: subData.categoria
                         }, { transaction: t });
+                        
+                        if (propagar) {
+                            // Actualizar nombre en las instancias físicas para mantener consistencia
+                            await SubsistemaInstancia.update(
+                                { nombre: `${subData.nombre} (Sincronizado)` },
+                                { where: { subsistemaPlantillaId: subsistemaPlantilla.id }, transaction: t }
+                            );
+                        }
                     }
                 } else {
-                    // --- CASO 2: CREAR NUEVO (El usuario agregó uno nuevo en el form) ---
-                    subsistemaActual = await Subsistema.create({
+                    // CREAR NUEVO SUBSISTEMA EN PLANTILLA
+                    subsistemaPlantilla = await Subsistema.create({
                         nombre: subData.nombre,
                         categoria: subData.categoria,
-                        vehiculoId: id // Link al padre
+                        vehiculoId: id
                     }, { transaction: t });
+
+                    if (propagar && activosVinculados.length > 0) {
+                        // PROPAGAR: Crear el subsistema físico en todos los activos que no lo tengan
+                        const nuevasInstanciasFisicas = activosVinculados.map(activo => ({
+                            nombre: `${subData.nombre} ${activo.vehiculoInstancia?.placa || ''}`,
+                            activoId: activo.id,
+                            subsistemaPlantillaId: subsistemaPlantilla.id,
+                            estado: 'ok',
+                            observaciones: 'Añadido por actualización de modelo'
+                        }));
+                        await SubsistemaInstancia.bulkCreate(nuevasInstanciasFisicas, { transaction: t });
+                    }
                 }
 
-                // E. GESTIÓN DE NIETOS (RECOMENDACIONES)
-                // Estrategia "Clean Slate": Borrar viejas recomendaciones y poner las nuevas.
-                // Es más seguro para evitar duplicados o inconsistencias en reglas técnicas.
-                
-                if (subsistemaActual) {
-                    // 1. Borrar recomendaciones anteriores de este subsistema
+                // --- C. GESTIÓN DE RECOMENDACIONES (NIETOS) ---
+                if (subsistemaPlantilla) {
                     await ConsumibleRecomendado.destroy({
-                        where: { subsistemaId: subsistemaActual.id },
+                        where: { subsistemaId: subsistemaPlantilla.id },
                         transaction: t
                     });
 
-                    // 2. Crear las nuevas (si trae)
                     if (subData.recomendaciones && subData.recomendaciones.length > 0) {
                         const detallesMap = subData.recomendaciones.map(rec => ({
-                            subsistemaId: subsistemaActual.id,
-                            label: rec.label,
+                            subsistemaId: subsistemaPlantilla.id,
+                            label: rec.label || rec.labelOriginal,
                             categoria: rec.categoria,
                             cantidad: rec.cantidad || 1,
                             tipoCriterio: rec.tipoCriterio,
-                            // Mapeo de columnas según el tipo
                             grupoEquivalenciaId: rec.tipoCriterio === 'grupo' ? rec.criterioId : null,
                             valorCriterio: rec.tipoCriterio === 'tecnico' ? rec.criterioId : (rec.tipoCriterio === 'individual' ? rec.labelOriginal : null),
                             consumibleId: rec.tipoCriterio === 'individual' ? rec.criterioId : null
                         }));
-
                         await ConsumibleRecomendado.bulkCreate(detallesMap, { transaction: t });
                     }
                 }
@@ -172,11 +192,16 @@ export async function PUT(request, { params }) {
         }
 
         await t.commit();
-        return NextResponse.json({ success: true, message: 'Actualizado correctamente' });
+        return NextResponse.json({ 
+            success: true, 
+            message: propagar 
+                ? 'Modelo y activos actualizados correctamente' 
+                : 'Modelo actualizado (sin afectar activos existentes)' 
+        });
 
     } catch (error) {
-        await t.rollback();
-        console.error("Error en PUT Vehiculo:", error);
+        if (t) await t.rollback();
+        console.error("Error en PUT Vehiculo con Propagación:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

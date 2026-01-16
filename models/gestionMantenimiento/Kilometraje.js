@@ -31,8 +31,9 @@ const Kilometraje = sequelize.define('Kilometraje', {
 //Relaciones
 Kilometraje.associate = (models) => {
 
-Kilometraje.belongsTo(models.Activo, { foreignKey: 'activoId' });
 Kilometraje.hasOne(models.CargaCombustible, { foreignKey: 'kilometrajeId' });
+Kilometraje.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
+
 }
 
 module.exports = Kilometraje;

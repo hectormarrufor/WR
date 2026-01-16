@@ -5,12 +5,15 @@ import { useRouter } from 'next/navigation';
 import { 
     Container, Grid, Paper, Image, Title, Text, Badge, Group, Button, 
     Tabs, ThemeIcon, Stack, Divider, LoadingOverlay, Modal, SimpleGrid,
-    Box, Timeline, Card, Avatar, RingProgress, Center, Alert
+    Box, Card, Accordion, Progress, ActionIcon, Tooltip, Table, Alert,
+    Timeline, RingProgress
 } from '@mantine/core';
+import { AreaChart, BarChart } from '@mantine/charts';
 import { 
-    IconArrowLeft, IconPencil, IconTrash, IconTruck, IconCalendar, 
-    IconBarcode, IconEngine, IconColorSwatch, IconWeight, IconRuler,
-    IconSettings, IconTool, IconClipboardCheck, IconGasStation, IconInfoCircle
+    IconArrowLeft, IconPencil, IconTruck, IconGauge, IconSettings, 
+    IconTool, IconCheck, IconAlertTriangle, IconInfoCircle, IconPlus, 
+    IconHistory, IconGasStation, IconChartLine, IconClipboardCheck, 
+    IconWrench, IconShoppingCart, IconAlertOctagon
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,331 +25,416 @@ export default function DetalleActivoPage({ params }) {
 
     const [activo, setActivo] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [modalDeleteOpened, setModalDeleteOpened] = useState(false);
+    
+    // Modales
+    const [modalInstallOpened, setModalInstallOpened] = useState(false);
+    const [modalOrdenOpened, setModalOrdenOpened] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null); // Para instalar consumible
+    const [selectedHallazgo, setSelectedHallazgo] = useState(null); // Para crear ODT
 
-    useEffect(() => {
-        const fetchActivo = async () => {
-            try {
-                const response = await fetch(`/api/gestionMantenimiento/activos/${id}`);
-                if (!response.ok) throw new Error('Error al cargar el activo');
-                const result = await response.json();
-                setActivo(result.data);
-            } catch (error) {
-                notifications.show({ title: 'Error', message: error.message, color: 'red' });
-                router.push('/superuser/flota/activos');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchActivo();
-    }, [id, router]);
-
-    // Helper para extraer la instancia específica (Vehículo, Remolque o Máquina)
-    const getInstanceData = () => {
-        if (!activo) return null;
-        return activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinaInstancia || {};
-    };
-
-    const handleDelete = async () => {
-        setLoading(true);
+    const fetchData = async () => {
         try {
-            const response = await fetch(`/api/gestionMantenimiento/activos/${id}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Error al eliminar');
-            notifications.show({ title: 'Eliminado', message: 'Activo eliminado correctamente', color: 'green' });
-            router.push('/superuser/flota/activos');
+            const response = await fetch(`/api/gestionMantenimiento/activos/${id}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                // Parche para asegurar que tenemos el último KM aunque la tabla maestra no se haya actualizado
+                const dataMejorada = {
+                    ...result.data,
+                    kilometrajeActual: result.data.registrosKilometraje?.length 
+                        ? result.data.registrosKilometraje[result.data.registrosKilometraje.length - 1].valor 
+                        : (result.data.vehiculoInstancia?.kilometrajeActual || 0)
+                };
+                setActivo(dataMejorada);
+            }
         } catch (error) {
-            notifications.show({ title: 'Error', message: error.message, color: 'red' });
+            notifications.show({ title: 'Error', message: 'Error cargando datos del activo', color: 'red' });
+        } finally {
             setLoading(false);
-            setModalDeleteOpened(false);
         }
     };
 
+    useEffect(() => { fetchData(); }, [id]);
+
     if (loading || !activo) return <LoadingOverlay visible={true} zIndex={1000} />;
 
-    // Extracción de datos para renderizado limpio
-    const instance = getInstanceData();
+    // --- DESTRUCTURING SEGURO ---
+    const instance = activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinaInstancia || {};
     const plantilla = instance?.plantilla || {};
     const subsistemas = activo.subsistemasInstancia || [];
-    const mantenimientos = activo.mantenimientos || [];
-    const inspecciones = activo.inspecciones || [];
+    const hallazgosPendientes = activo.inspecciones?.flatMap(i => i.hallazgos || []).filter(h => h.estado !== 'Cerrado') || [];
     
-    // URLs de imagenes
-    const assetImage = activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null;
-    const modelImage = plantilla.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${plantilla.imagen}` : null;
+    // --- DATOS PARA GRÁFICOS ---
+    const dataKilometraje = (activo.registrosKilometraje || []).map(r => ({
+        fecha: new Date(r.fecha_registro).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }),
+        valor: parseFloat(r.valor)
+    }));
 
-    // Componente auxiliar para filas de datos
-    const DataRow = ({ icon: Icon, label, value, subValue }) => (
-        <Group align="flex-start" wrap="nowrap">
-            <ThemeIcon variant="light" color="blue.1" c="blue.7" size="lg" radius="md">
-                <Icon size={20} />
-            </ThemeIcon>
-            <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={700}>{label}</Text>
-                <Text size="sm" fw={600} c="dark.4">{value || 'N/A'}</Text>
-                {subValue && <Text size="xs" c="dimmed">{subValue}</Text>}
-            </div>
-        </Group>
-    );
+    const dataEficiencia = (activo.cargasCombustible || []).map(c => ({
+        fecha: new Date(c.fecha).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }),
+        rendimiento: parseFloat(c.rendimientoCalculado || 0),
+    }));
+
+    const fNum = (val) => val ? parseFloat(val) : 0;
+
+    // Helpers de UI
+    const getEstadoColor = (estado) => {
+        switch(estado) {
+            case 'Operativo': return 'teal';
+            case 'Operativo con Advertencia': return 'yellow';
+            case 'No Operativo': return 'red';
+            default: return 'gray';
+        }
+    };
 
     return (
         <Container size="xl" py="xl">
-            {/* Header de Navegación */}
-            <Group justify="space-between" mb="lg">
-                <Button variant="subtle" leftSection={<IconArrowLeft size={18} />} onClick={() => router.back()} color="gray">
-                    Volver
-                </Button>
-                {isAdmin && (
-                    <Group>
-                        <Button leftSection={<IconPencil size={18} />} variant="default" onClick={() => router.push(`/superuser/flota/activos/${id}/editar`)}>
-                            Editar
-                        </Button>
-                        <Button leftSection={<IconTrash size={18} />} color="red" onClick={() => setModalDeleteOpened(true)}>
-                            Eliminar
-                        </Button>
+            {/* --- HEADER CRÍTICO --- */}
+            {activo.estado === 'No Operativo' && (
+                <Alert variant="filled" color="red" title="EQUIPO INOPERATIVO" icon={<IconAlertOctagon />} mb="lg">
+                    Este activo se encuentra detenido por hallazgos críticos. Revise la pestaña de "Salud y Alertas".
+                </Alert>
+            )}
+
+            <Group justify="space-between" mb="xl">
+                <Stack gap={0}>
+                    <Group gap="xs">
+                        <IconTruck size={28} color="#228be6" />
+                        <Title order={2}>{activo.codigoInterno}</Title>
+                        <Badge size="lg" color={getEstadoColor(activo.estado)} variant="filled">
+                            {activo.estado}
+                        </Badge>
                     </Group>
-                )}
+                    <Text c="dimmed" size="sm" fw={500}>
+                        {plantilla.marca} {plantilla.modelo} • {instance.placa || 'N/A'} • {activo.ubicacionActual}
+                    </Text>
+                </Stack>
+                <Group>
+                    <Button variant="default" onClick={() => router.back()}>Volver</Button>
+                    <Button color="red" leftSection={<IconClipboardCheck size={18}/>} onClick={() => notifications.show({ message: 'Ir a formulario de inspección (Chofer)'})}>
+                        Reportar Falla
+                    </Button>
+                </Group>
             </Group>
 
-            <Grid gutter="xl">
-                {/* COLUMNA IZQUIERDA: Identidad, Foto y Subsistemas */}
-                <Grid.Col span={{ base: 12, md: 4 }}>
+            <Grid gutter="md">
+                {/* --- LATERAL: RESUMEN --- */}
+                <Grid.Col span={{ base: 12, md: 3 }}>
                     <Stack>
-                        {/* Tarjeta Principal */}
-                        <Paper shadow="sm" radius="md" p="md" withBorder>
-                            <Stack align="center">
-                                <Box w="100%" h={250} bg="gray.1" style={{ borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
-                                    {assetImage ? (
-                                        <Image src={assetImage} h={250} w="100%" fit="cover" alt={activo.codigoInterno} />
-                                    ) : (
-                                        <IconTruck size={80} color="#adb5bd" />
-                                    )}
-                                    <Badge 
-                                        size="lg" 
-                                        color={activo.estado === 'Operativo' ? 'teal' : 'red'} 
-                                        variant="filled"
-                                        style={{ position: 'absolute', top: 10, right: 10, boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}
-                                    >
-                                        {activo.estado}
+                        <Card withBorder radius="md" p={0}>
+                            <Image src={activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null} h={200} fallbackSrc="https://placehold.co/400x300?text=Sin+Foto" />
+                            <Stack p="md" gap="xs">
+                                <Text size="xs" fw={700} c="dimmed">ESTADÍSTICAS VITALES</Text>
+                                <Group justify="space-between">
+                                    <Text size="sm">Odómetro:</Text>
+                                    <Text fw={700}>{fNum(activo.kilometrajeActual).toLocaleString()} km</Text>
+                                </Group>
+                                <Group justify="space-between">
+                                    <Text size="sm">Hallazgos:</Text>
+                                    <Badge color={hallazgosPendientes.length > 0 ? 'red' : 'green'} variant="light">
+                                        {hallazgosPendientes.length} Pendientes
                                     </Badge>
-                                </Box>
-
-                                <div style={{ width: '100%', textAlign: 'center' }}>
-                                    <Title order={2}>{activo.codigoInterno}</Title>
-                                    <Text c="dimmed" fw={500}>{plantilla.marca} {plantilla.modelo}</Text>
-                                </div>
-
-                                <Divider w="100%" />
-
-                                <SimpleGrid cols={2} w="100%">
-                                    <div>
-                                        <Text c="dimmed" size="xs">TIPO</Text>
-                                        <Text fw={600}>{activo.tipoActivo}</Text>
-                                    </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <Text c="dimmed" size="xs">UBICACIÓN</Text>
-                                        <Text fw={600}>{activo.ubicacionActual}</Text>
-                                    </div>
-                                </SimpleGrid>
+                                </Group>
                             </Stack>
-                        </Paper>
+                        </Card>
 
-                        {/* Tarjeta de Subsistemas (Motores, Cajas, etc) */}
-                        <Paper shadow="sm" radius="md" p="md" withBorder>
-                            <Group justify="space-between" mb="md">
-                                <Title order={5}>Componentes Serializados</Title>
-                                <Badge variant="outline" color="gray">{subsistemas.length}</Badge>
-                            </Group>
-                            
-                            {subsistemas.length > 0 ? (
-                                <Stack gap="xs">
-                                    {subsistemas.map((sub) => (
-                                        <Card key={sub.id} withBorder padding="sm" radius="sm" bg="gray.0">
-                                            <Group align="flex-start" wrap="nowrap">
-                                                <ThemeIcon color="orange" variant="light">
-                                                    <IconSettings size={16} />
-                                                </ThemeIcon>
-                                                <div>
-                                                    {/* Lógica corregida: Usa sub.nombre directamente */}
-                                                    <Text size="sm" fw={600}>{sub.nombre}</Text>
-                                                    <Text size="xs" c="dimmed">
-                                                        Instalado: {new Date(sub.createdAt).toLocaleDateString()}
-                                                    </Text>
-                                                </div>
-                                            </Group>
-                                        </Card>
-                                    ))}
-                                </Stack>
-                            ) : (
-                                <Alert icon={<IconInfoCircle size={16}/>} color="gray" variant="light">
-                                    No hay componentes mayores registrados.
-                                </Alert>
-                            )}
+                        <Paper withBorder radius="md" p="md" bg="gray.0">
+                            <Text fw={700} size="xs" mb="sm" c="dimmed">FICHA TÉCNICA RÁPIDA</Text>
+                            <Stack gap={8}>
+                                <InfoLine label="S/N Motor" value={instance.serialMotor} />
+                                <InfoLine label="S/N Chasis" value={instance.serialChasis} />
+                                <InfoLine label="Combustible" value={plantilla.tipoCombustible} />
+                            </Stack>
                         </Paper>
                     </Stack>
                 </Grid.Col>
 
-
-                {/* COLUMNA DERECHA: Ficha Técnica y Trazabilidad */}
-                <Grid.Col span={{ base: 12, md: 8 }}>
-                    <Paper shadow="sm" radius="md" p="xl" withBorder h="100%">
-                        <Tabs defaultValue="specs" color="teal">
+                {/* --- PRINCIPAL: TABS --- */}
+                <Grid.Col span={{ base: 12, md: 9 }}>
+                    <Paper withBorder radius="md" p="md">
+                        <Tabs defaultValue="alertas" keepMounted={false}>
                             <Tabs.List mb="lg">
-                                <Tabs.Tab value="specs" leftSection={<IconTruck size={18} />}>
-                                    Ficha Técnica
+                                <Tabs.Tab value="alertas" leftSection={<IconAlertTriangle size={16} color={hallazgosPendientes.length ? "red" : "gray"} />}>
+                                    Salud y Alertas
                                 </Tabs.Tab>
-                                <Tabs.Tab value="capacities" leftSection={<IconWeight size={18} />}>
-                                    Pesos y Capacidades
+                                <Tabs.Tab value="mantenimiento" leftSection={<IconWrench size={16} />}>
+                                    Taller (ODT)
                                 </Tabs.Tab>
-                                <Tabs.Tab value="traceability" leftSection={<IconClipboardCheck size={18} />}>
-                                    Trazabilidad
+                                <Tabs.Tab value="componentes" leftSection={<IconSettings size={16} />}>
+                                    Inventario Instalado
+                                </Tabs.Tab>
+                                <Tabs.Tab value="uso" leftSection={<IconChartLine size={16} />}>
+                                    Uso y Eficiencia
                                 </Tabs.Tab>
                             </Tabs.List>
 
-                            {/* TAB 1: ESPECIFICACIONES (Fusión de Instancia + Plantilla) */}
-                            <Tabs.Panel value="specs">
-                                <Title order={4} mb="md" c="dimmed">Identificación de la Unidad</Title>
-                                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" verticalSpacing="xl">
-                                    <DataRow icon={IconBarcode} label="Placa / Patente" value={instance.placa} />
-                                    <DataRow icon={IconColorSwatch} label="Color" value={instance.color} />
-                                    <DataRow icon={IconEngine} label="Serial Motor" value={instance.serialMotor} />
-                                    <DataRow icon={IconBarcode} label="Serial Chasis (VIN)" value={instance.serialChasis} />
-                                    
-                                    <DataRow icon={IconCalendar} label="Año Fabricación" value={plantilla.anio} />
-                                    <DataRow icon={IconGasStation} label="Combustible" value={plantilla.tipoCombustible} />
-                                </SimpleGrid>
-
-                                <Divider my="xl" label="Detalles del Modelo Base" labelPosition="center" />
-                                
-                                <Group align="flex-start">
-                                    {modelImage && (
-                                        <Image src={modelImage} w={100} radius="md" alt="Modelo Ref" />
+                            {/* 1. TAB: ALERTAS Y HALLAZGOS (MATA ESTADOS) */}
+                            <Tabs.Panel value="alertas">
+                                <Stack>
+                                    {hallazgosPendientes.length === 0 ? (
+                                        <Alert color="green" icon={<IconCheck />} title="Todo en orden">
+                                            No hay hallazgos pendientes de revisión. El equipo está saludable.
+                                        </Alert>
+                                    ) : (
+                                        <Table striped highlightOnHover withTableBorder>
+                                            <Table.Thead bg="red.0">
+                                                <Table.Tr>
+                                                    <Table.Th>Gravedad</Table.Th>
+                                                    <Table.Th>Descripción del Hallazgo</Table.Th>
+                                                    <Table.Th>Reportado Por</Table.Th>
+                                                    <Table.Th>Fecha</Table.Th>
+                                                    <Table.Th>Acción</Table.Th>
+                                                </Table.Tr>
+                                            </Table.Thead>
+                                            <Table.Tbody>
+                                                {hallazgosPendientes.map(h => (
+                                                    <Table.Tr key={h.id}>
+                                                        <Table.Td>
+                                                            <Badge color={h.impacto === 'No Operativo' ? 'red' : 'yellow'}>{h.impacto}</Badge>
+                                                        </Table.Td>
+                                                        <Table.Td>
+                                                            <Text size="sm" fw={500}>{h.descripcion}</Text>
+                                                            <Text size="xs" c="dimmed">Subsistema: {h.subsistema?.nombre || 'General'}</Text>
+                                                        </Table.Td>
+                                                        <Table.Td>
+                                                            <Group gap="xs">
+                                                                <ThemeIcon size="xs" radius="xl"><IconClipboardCheck size={10}/></ThemeIcon>
+                                                                <Text size="sm">{h.inspeccion?.reportadoPor?.nombre || 'Chofer'}</Text>
+                                                            </Group>
+                                                        </Table.Td>
+                                                        <Table.Td>{new Date(h.createdAt).toLocaleDateString()}</Table.Td>
+                                                        <Table.Td>
+                                                            <Button 
+                                                                size="xs" 
+                                                                variant="light" 
+                                                                color="blue"
+                                                                onClick={() => { setSelectedHallazgo(h); setModalOrdenOpened(true); }}
+                                                            >
+                                                                Crear Orden
+                                                            </Button>
+                                                        </Table.Td>
+                                                    </Table.Tr>
+                                                ))}
+                                            </Table.Tbody>
+                                        </Table>
                                     )}
-                                    <SimpleGrid cols={2} style={{ flex: 1 }}>
-                                        <DataRow icon={IconTruck} label="Marca" value={plantilla.marca} />
-                                        <DataRow icon={IconTruck} label="Modelo" value={plantilla.modelo} />
-                                        <DataRow icon={IconRuler} label="Número de Ejes" value={plantilla.numeroEjes} />
-                                        <DataRow icon={IconTruck} label="Clase" value={plantilla.tipoVehiculo} />
-                                    </SimpleGrid>
-                                </Group>
+
+                                    <Divider label="Historial Reciente de Inspecciones" labelPosition="center" my="md"/>
+                                    
+                                    <Timeline active={0} bulletSize={24} lineWidth={2}>
+                                        {activo.inspecciones?.slice(0, 3).map(ins => (
+                                            <Timeline.Item 
+                                                key={ins.id} 
+                                                bullet={<IconClipboardCheck size={12} />} 
+                                                title={`Inspección ${ins.origen}`}
+                                            >
+                                                <Text c="dimmed" size="xs">Por: {ins.reportadoPor?.nombre} • {new Date(ins.fecha).toLocaleString()}</Text>
+                                                <Text size="sm" mt={4}>{ins.observacionGeneral || 'Sin observaciones generales'}</Text>
+                                            </Timeline.Item>
+                                        ))}
+                                    </Timeline>
+                                </Stack>
                             </Tabs.Panel>
 
-
-                            {/* TAB 2: CAPACIDADES (Visualización de datos numéricos) */}
-                            <Tabs.Panel value="capacities">
-                                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mt="md">
-                                    <Paper withBorder p="md" radius="md" bg="gray.0">
-                                        <Stack align="center" gap={5}>
-                                            <IconWeight size={30} color="gray" />
-                                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Peso Tara</Text>
-                                            <Text size="xl" fw={700}>{plantilla.peso || 0} <Text span size="sm" fw={400}>Ton</Text></Text>
-                                        </Stack>
-                                    </Paper>
-                                    
-                                    <Paper withBorder p="md" radius="md" bg="blue.0">
-                                        <Stack align="center" gap={5}>
-                                            <IconTruck size={30} color="#228be6" />
-                                            <Text c="blue.8" size="xs" tt="uppercase" fw={700}>Cap. Arrastre</Text>
-                                            <Text size="xl" fw={700} c="blue.9">{plantilla.capacidadArrastre || 0} <Text span size="sm" fw={400}>Ton</Text></Text>
-                                        </Stack>
-                                    </Paper>
-
-                                    <Paper withBorder p="md" radius="md" bg="teal.0">
-                                        <Stack align="center" gap={5}>
-                                            <IconWeight size={30} color="#12b886" />
-                                            <Text c="teal.8" size="xs" tt="uppercase" fw={700}>Peso Max Comb.</Text>
-                                            <Text size="xl" fw={700} c="teal.9">{plantilla.pesoMaximoCombinado || 0} <Text span size="sm" fw={400}>Ton</Text></Text>
-                                        </Stack>
-                                    </Paper>
-                                </SimpleGrid>
-
-                                <Box mt="xl">
-                                    <Text size="sm" c="dimmed" mb="xs">Relación Peso / Capacidad</Text>
-                                    {plantilla.peso && plantilla.pesoMaximoCombinado && (
-                                        <Group grow>
-                                            <Paper withBorder p="xs">
-                                                <Text size="xs" ta="center">Tara: {plantilla.peso}T</Text>
-                                                <div style={{ height: 10, background: '#e9ecef', borderRadius: 5, marginTop: 5 }}>
-                                                    <div style={{ width: '100%', height: '100%', background: '#adb5bd', borderRadius: 5 }}></div>
-                                                </div>
-                                            </Paper>
-                                            <Paper withBorder p="xs">
-                                                <Text size="xs" ta="center">Carga Útil Teórica: {(plantilla.pesoMaximoCombinado - plantilla.peso).toFixed(1)}T</Text>
-                                                <div style={{ height: 10, background: '#e9ecef', borderRadius: 5, marginTop: 5 }}>
-                                                    <div style={{ width: '100%', height: '100%', background: '#12b886', borderRadius: 5 }}></div>
-                                                </div>
-                                            </Paper>
-                                        </Group>
-                                    )}
-                                </Box>
-                            </Tabs.Panel>
-
-
-                            {/* TAB 3: TRAZABILIDAD (Mantenimientos e Inspecciones) */}
-                            <Tabs.Panel value="traceability">
+                            {/* 2. TAB: TALLER Y ODTs (FLUJO DE REQUISICIÓN) */}
+                            <Tabs.Panel value="mantenimiento">
                                 <Grid>
-                                    <Grid.Col span={{ base: 12, md: 6 }}>
-                                        <Group justify="space-between" mb="md">
-                                            <Title order={5}>Últimos Mantenimientos</Title>
-                                            <Button variant="subtle" size="xs" compact>Ver todo</Button>
-                                        </Group>
-                                        
-                                        {mantenimientos.length > 0 ? (
-                                            <Timeline active={0} bulletSize={24} lineWidth={2}>
-                                                {mantenimientos.map((mant) => (
-                                                    <Timeline.Item key={mant.id} bullet={<IconTool size={12} />} title={mant.tipoMantenimiento}>
-                                                        <Text c="dimmed" size="xs">{new Date(mant.fechaInicio).toLocaleDateString()}</Text>
-                                                        <Text size="xs" mt={4}>{mant.descripcion || 'Sin descripción'}</Text>
-                                                    </Timeline.Item>
-                                                ))}
-                                            </Timeline>
-                                        ) : (
-                                            <Alert color="gray" variant="light" title="Sin registros">
-                                                No se han registrado mantenimientos recientes.
-                                            </Alert>
-                                        )}
-                                    </Grid.Col>
-                                    
-                                    <Grid.Col span={{ base: 12, md: 6 }}>
-                                        <Title order={5} mb="md">Últimas Inspecciones</Title>
-                                        {inspecciones.length > 0 ? (
-                                            <Stack gap="xs">
-                                                {inspecciones.map((insp) => (
-                                                    <Card key={insp.id} withBorder padding="xs" radius="sm">
-                                                        <Group justify="space-between">
-                                                            <Text size="sm" fw={500}>{insp.tipo || 'Inspección'}</Text>
-                                                            <Text size="xs" c="dimmed">{new Date(insp.fecha).toLocaleDateString()}</Text>
-                                                        </Group>
-                                                        <Badge mt="xs" color={insp.resultado === 'Aprobado' ? 'green' : 'red'} variant="light">
-                                                            {insp.resultado}
-                                                        </Badge>
-                                                    </Card>
-                                                ))}
-                                            </Stack>
-                                        ) : (
-                                            <Alert color="gray" variant="light" title="Sin inspecciones">
-                                                No hay registros de inspección.
-                                            </Alert>
-                                        )}
-                                    </Grid.Col>
+                                    {activo.ordenesMantenimiento?.map(odt => (
+                                        <Grid.Col span={{ base: 12, md: 6 }} key={odt.id}>
+                                            <Card withBorder padding="md" radius="md">
+                                                <Group justify="space-between" mb="xs">
+                                                    <Text fw={700} size="lg">{odt.codigo}</Text>
+                                                    <Badge color={odt.estado === 'Esperando Stock' ? 'orange' : 'blue'}>
+                                                        {odt.estado}
+                                                    </Badge>
+                                                </Group>
+                                                <Text size="sm" c="dimmed" mb="md">
+                                                    Tipo: {odt.tipo} • Prioridad: {odt.prioridad}
+                                                </Text>
+                                                
+                                                <Stack gap="xs">
+                                                    {odt.repuestos?.map( rep => (
+                                                        <Paper key={rep.id} withBorder p="xs" bg="gray.0">
+                                                            <Group justify="space-between">
+                                                                <Text size="sm">{rep.consumible?.nombre}</Text>
+                                                                <Badge 
+                                                                    size="xs" 
+                                                                    color={rep.estado === 'Sin Stock' || rep.estado === 'En Requisicion' ? 'red' : 'green'}
+                                                                    variant="outline"
+                                                                >
+                                                                    {rep.estado}
+                                                                </Badge>
+                                                            </Group>
+                                                            {rep.estado === 'En Requisicion' && (
+                                                                <Group gap={4} mt={4}>
+                                                                    <IconShoppingCart size={12} color="orange"/>
+                                                                    <Text size="xs" c="orange" fw={700}>
+                                                                        Requisición Automática Generada
+                                                                    </Text>
+                                                                </Group>
+                                                            )}
+                                                        </Paper>
+                                                    ))}
+                                                </Stack>
+
+                                                <Button fullWidth mt="md" variant="default">Ver Detalle ODT</Button>
+                                            </Card>
+                                        </Grid.Col>
+                                    ))}
+                                    {(!activo.ordenesMantenimiento || activo.ordenesMantenimiento.length === 0) && (
+                                        <Grid.Col span={12}>
+                                            <Text c="dimmed" ta="center" py="xl">No hay órdenes de mantenimiento activas.</Text>
+                                        </Grid.Col>
+                                    )}
                                 </Grid>
+                            </Tabs.Panel>
+
+                            {/* 3. TAB: COMPONENTES (SUMATORIA FUNGIBLE + SERIALES) */}
+                            <Tabs.Panel value="componentes">
+                                <Accordion variant="separated">
+                                    {subsistemas.map((sub) => (
+                                        <Accordion.Item key={sub.id} value={sub.id.toString()}>
+                                            <Accordion.Control>
+                                                <Group justify="space-between" pr="md">
+                                                    <Group>
+                                                        <ThemeIcon variant="light" color="blue"><IconSettings size={18} /></ThemeIcon>
+                                                        <Text fw={600} size="sm">{sub.nombre}</Text>
+                                                    </Group>
+                                                    <Badge size="sm" variant="light">{sub.subsistemaPlantilla?.categoria}</Badge>
+                                                </Group>
+                                            </Accordion.Control>
+                                            <Accordion.Panel>
+                                                <Table variant="simple" verticalSpacing="sm">
+                                                    <Table.Thead bg="gray.0">
+                                                        <Table.Tr>
+                                                            <Table.Th>Componente</Table.Th>
+                                                            <Table.Th>Instalado / Requerido</Table.Th>
+                                                            <Table.Th ta="center">Estado</Table.Th>
+                                                            <Table.Th ta="right">Acción</Table.Th>
+                                                        </Table.Tr>
+                                                    </Table.Thead>
+                                                    <Table.Tbody>
+                                                        {sub.subsistemaPlantilla?.listaRecomendada?.map((rec) => {
+                                                            const insts = sub.instalaciones?.filter(i => i.recomendacionId === rec.id) || [];
+                                                            // LÓGICA DE SUMATORIA CORREGIDA
+                                                            const totalInstalado = insts.reduce((sum, i) => sum + fNum(i.cantidad), 0);
+                                                            const cantidadRequerida = fNum(rec.canti); // Usando nombres del JSON previo
+                                                            const esCompleto = totalInstalado >= cantidadRequerida;
+
+                                                            return (
+                                                                <Table.Tr key={rec.id}>
+                                                                    <Table.Td>
+                                                                        <Text size="sm" fw={600}>{rec.categ}</Text>
+                                                                        <Text size="xs" c="dimmed">{rec.tipoC === 'tecnico' ? rec.valor : 'Estándar'}</Text>
+                                                                    </Table.Td>
+                                                                    <Table.Td>
+                                                                        <Stack gap={2}>
+                                                                            <Group gap="xs">
+                                                                                <Text size="sm" fw={700} c={esCompleto ? 'black' : 'red'}>
+                                                                                    {totalInstalado} / {cantidadRequerida} {rec.categ === 'aceite' ? 'L' : 'u'}
+                                                                                </Text>
+                                                                            </Group>
+                                                                            <Progress 
+                                                                                value={(totalInstalado / cantidadRequerida) * 100} 
+                                                                                color={esCompleto ? 'green' : 'orange'} 
+                                                                                size="sm" 
+                                                                            />
+                                                                            {insts.length > 0 && (
+                                                                                <Text size="xs" c="dimmed">
+                                                                                    {insts.some(i => i.serialActual) ? 'Seriales: ' + insts.map(i => i.serialActual).join(', ') : 'Fungible a granel'}
+                                                                                </Text>
+                                                                            )}
+                                                                        </Stack>
+                                                                    </Table.Td>
+                                                                    <Table.Td ta="center">
+                                                                        <Badge color={esCompleto ? 'green' : 'orange'} variant="light">
+                                                                            {esCompleto ? 'OK' : 'Incompleto'}
+                                                                        </Badge>
+                                                                    </Table.Td>
+                                                                    <Table.Td ta="right">
+                                                                        <Tooltip label="Instalar pieza">
+                                                                            <ActionIcon variant="light" onClick={() => { setSelectedItem({ sub, rec }); setModalInstallOpened(true); }}>
+                                                                                <IconPlus size={16} />
+                                                                            </ActionIcon>
+                                                                        </Tooltip>
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                            );
+                                                        })}
+                                                    </Table.Tbody>
+                                                </Table>
+                                            </Accordion.Panel>
+                                        </Accordion.Item>
+                                    ))}
+                                </Accordion>
+                            </Tabs.Panel>
+
+                            {/* 4. TAB: USO Y EFICIENCIA (GRÁFICOS) */}
+                            <Tabs.Panel value="uso">
+                                <Stack gap="xl">
+                                    <SimpleGrid cols={{ base: 1, md: 2 }}>
+                                        <Paper withBorder p="md" radius="md">
+                                            <Title order={5} mb="md">Tendencia de Kilometraje</Title>
+                                            <AreaChart
+                                                h={200}
+                                                data={dataKilometraje}
+                                                dataKey="fecha"
+                                                series={[{ name: 'valor', color: 'blue.6', label: 'Km' }]}
+                                                curveType="monotone"
+                                            />
+                                        </Paper>
+                                        <Paper withBorder p="md" radius="md">
+                                            <Title order={5} mb="md">Rendimiento (km/l)</Title>
+                                            <BarChart
+                                                h={200}
+                                                data={dataEficiencia}
+                                                dataKey="fecha"
+                                                series={[{ name: 'rendimiento', color: 'teal.6', label: 'Km/L' }]}
+                                            />
+                                        </Paper>
+                                    </SimpleGrid>
+                                </Stack>
                             </Tabs.Panel>
                         </Tabs>
                     </Paper>
                 </Grid.Col>
             </Grid>
 
-            {/* Modal Eliminación */}
-            <Modal opened={modalDeleteOpened} onClose={() => setModalDeleteOpened(false)} title="Confirmar Eliminación" centered>
-                <Text size="sm">
-                    ¿Estás seguro de que deseas eliminar permanentemente el activo <b>{activo.codigoInterno}</b>?
-                    <br/><br/>
-                    <span style={{ color: 'red' }}>⚠️ Esto eliminará también los historiales asociados y liberará los subsistemas.</span>
-                </Text>
-                <Group justify="flex-end" mt="xl">
-                    <Button variant="default" onClick={() => setModalDeleteOpened(false)}>Cancelar</Button>
-                    <Button color="red" onClick={handleDelete} loading={loading}>Eliminar Definitivamente</Button>
-                </Group>
+            {/* MODAL 1: INSTALAR PIEZA DE INVENTARIO */}
+            <Modal opened={modalInstallOpened} onClose={() => setModalInstallOpened(false)} title="Instalación de Componente" centered>
+                {selectedItem && (
+                    <Stack>
+                        <Text>Vinculando <b>{selectedItem.rec.categ}</b> en subsistema <b>{selectedItem.sub.nombre}</b>.</Text>
+                        <Button fullWidth onClick={() => {notifications.show({message: 'Aquí abriría el selector de stock'}); setModalInstallOpened(false);}}>
+                            Seleccionar del Almacén
+                        </Button>
+                    </Stack>
+                )}
+            </Modal>
+
+            {/* MODAL 2: CREAR ODT DESDE HALLAZGO */}
+            <Modal opened={modalOrdenOpened} onClose={() => setModalOrdenOpened(false)} title="Generar Orden de Mantenimiento" centered size="lg">
+                {selectedHallazgo && (
+                    <Stack>
+                        <Alert color="blue" icon={<IconInfoCircle/>}>
+                            Se creará una orden para atender: <b>{selectedHallazgo.descripcion}</b>
+                        </Alert>
+                        <Text size="sm">Diagnóstico preliminar: El sistema verificará stock automáticamente al guardar.</Text>
+                        
+                        {/* Aquí iría el form de selección de repuestos */}
+                        <Button fullWidth mt="md" onClick={() => {
+                            notifications.show({ title: 'Orden Creada', message: 'Se ha verificado el stock y generado requisiciones necesarias.', color: 'green'});
+                            setModalOrdenOpened(false);
+                        }}>
+                            Confirmar y Verificar Stock
+                        </Button>
+                    </Stack>
+                )}
             </Modal>
         </Container>
     );
 }
+
+const InfoLine = ({ label, value }) => (
+    <Group justify="space-between"><Text size="xs" c="dimmed">{label}:</Text><Text size="xs" fw={700}>{value || '---'}</Text></Group>
+);
