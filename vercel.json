@@ -7,10 +7,6 @@
     {
       "path": "/api/bcv?force=true",
       "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/bcv?force=true",
-      "schedule": "0 17 * * *"
     }
   ]
 }
