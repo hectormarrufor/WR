@@ -125,7 +125,7 @@ export default function ModeloActivoForm({
             }
             else if (tipoPreseleccionado === 'Remolque') {
                 endpoint = initialValues ? `/api/gestionMantenimiento/remolque/${id}` : '/api/gestionMantenimiento/remolque';
-                payload = { ...payload, tipoRemolque: values.tipoRemolque, numeroEjes: values.ejes, capacidad: values.capacidadCarga };
+                payload = { ...payload, modelo: values.modelo, anio: values.anio, imagen: values.imagen, tipoRemolque: values.tipoRemolque, nroEjes: values.ejes, peso: values.peso, capacidadCarga: values.capacidadCarga };
             }
             else if (tipoPreseleccionado === 'Maquina') {
                 endpoint = initialValues ? `/api/gestionMantenimiento/maquina/${id}` : '/api/gestionMantenimiento/maquina';

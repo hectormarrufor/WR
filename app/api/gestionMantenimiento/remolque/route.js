@@ -28,7 +28,7 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-
+        console.log("Datos recibidos para nuevo remolque:", body);
         // 1. Crear Remolque (Tabla Padre)
         const nuevoRemolque = await Remolque.create({
             marca: body.marca,

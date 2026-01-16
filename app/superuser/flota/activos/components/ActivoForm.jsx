@@ -164,7 +164,11 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
 
             console.log("PAYLOAD FINAL A ENVIAR:", payload); // Para depurar
 
-            const response = await fetch('/api/gestionMantenimiento/activos/vehiculos', {
+            const url = tipoActivo === 'Vehiculo' ? '/api/gestionMantenimiento/activos/vehiculos'
+                : tipoActivo === 'Remolque' ? '/api/gestionMantenimiento/activos/remolques'
+                    : '/api/gestionMantenimiento/activos/maquinas';
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
