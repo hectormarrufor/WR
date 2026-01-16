@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { Box, Stack, Title, UnstyledButton, rem } from '@mantine/core';
-import { IconHome, IconUser, IconLogout, IconLogin, IconDashboard } from '@tabler/icons-react';
+import { IconHome, IconUser, IconLogout, IconLogin, IconDashboard, IconEyeDollar } from '@tabler/icons-react';
 import React from 'react';
 // 1. IMPORTAMOS EL CSS AQU√ç DIRECTAMENTE
 import classes from './MobileNavbar.module.css'; 
@@ -37,6 +37,11 @@ const NavBar = ({ router, close }) => { // Recibimos 'close' para cerrar el men√
                     <UnstyledButton className={classes.control} onClick={() => handleNavigate('/superuser')}>
                          <Title order={6} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <IconUser size={20} /> Hola, {nombre?.split(' ')[0]}
+                        </Title>
+                    </UnstyledButton>
+                    <UnstyledButton className={classes.control} onClick={() => handleNavigate('/superuser/bcv')}>
+                         <Title order={6} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <IconEyeDollar size={20} /> Ver Grafico BCV
                         </Title>
                     </UnstyledButton>
 

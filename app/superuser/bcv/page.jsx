@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Paper, Title, Group, Text, SimpleGrid, 
-  LoadingOverlay, SegmentedControl, Stack, ThemeIcon, Badge, Tooltip
+  LoadingOverlay, SegmentedControl, Stack, ThemeIcon, Badge, Tooltip,
+  Button
 } from '@mantine/core';
 import { LineChart } from '@mantine/charts';
 import {
@@ -170,6 +171,20 @@ export default function BcvDashboard() {
             <Title order={2}>Monitor Cambiario</Title>
             <Text c="dimmed" size="sm">Análisis de brechas (Spread) respecto al Dólar BCV</Text>
           </div>
+          <Button variant="outline" onClick={() => {
+            fetch("/api/bcv?force=true").then(() => {
+              // Refrescar datos después de actualizar
+              setLoading(true);
+              fetch('/api/bcv/obtenerTodos').then(res => res.json()).then(result => {
+                if (result.success) setData(result.data);
+                setLoading(false);
+              });
+            });
+          }}
+            >
+   
+            Actualizar Tasas
+          </Button>
           <SegmentedControl
             value={rango}
             onChange={setRango}

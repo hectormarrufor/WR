@@ -31,6 +31,10 @@ Hallazgo.associate = (models) => {
   Hallazgo.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId', as: 'subsistema' });
   // Un hallazgo se resuelve a través de una Orden de Mantenimiento
   Hallazgo.belongsTo(models.OrdenMantenimiento, { foreignKey: 'ordenMantenimientoId', as: 'ordenResolucion' });
+  Hallazgo.belongsTo(models.ConsumibleInstalado, { 
+    foreignKey: 'consumibleInstaladoId', 
+    as: 'componenteDañado' 
+  });
 };
 
 module.exports = Hallazgo;
