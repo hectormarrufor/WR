@@ -38,7 +38,7 @@ export async function notificarAdmins(payload) {
       console.error('Error enviando notificación a admin:', err);
 
       // Opcional: marcar como inactiva si falla
-      await sub.update({ activo: false });
+      // await sub.update({ activo: false });
     }
   }
 }
@@ -68,7 +68,7 @@ export async function notificarPresidente(payload) {
       console.error('Error enviando notificación a admin:', err);
 
       // Opcional: marcar como inactiva si falla
-      await sub.update({ activo: false });
+      // await sub.update({ activo: false });
     }
   }
 }
@@ -96,7 +96,7 @@ export async function notificarUsuario(usuarioId, payload) {
     catch (err) {
       console.error(`Error enviando notificación a usuario ${usuarioId}:`, err);
       // Opcional: marcar como inactiva si falla
-      await sub.update({ activo: false });
+      // await sub.update({ activo: false });
     } 
   }
 }
@@ -121,7 +121,7 @@ export async function notificarTodos(payload) {
     catch (err) {
       console.error(`Error enviando notificación a usuario ${sub.usuarioId}:`, err);
       // Opcional: marcar como inactiva si falla
-      await sub.update({ activo: false });
+      // await sub.update({ activo: false });
     }
   }
 }
