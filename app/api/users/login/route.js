@@ -57,7 +57,7 @@ export async function POST(req) {
             await notificarAdmins({
                 title: 'Inicio de sesión detectado',
                 body: `${usuario.empleado?.nombre} ha iniciado sesión`,
-                url: '/admin/usuarios',
+                url: `https://www.transportedadica.com/rrhh/empleados/${usuario.empleadoId}`,
             });
         }
 
