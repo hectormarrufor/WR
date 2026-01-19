@@ -1,88 +1,55 @@
 import { precacheAndRoute } from 'workbox-precaching';
 
-// 1. Precacheo estándar de Workbox (Mantenlo siempre arriba)
+// 1. Precacheo
 precacheAndRoute(self.__WB_MANIFEST || []);
 
-console.log('[SW] Service Worker cargado.');
-
-// 2. CICLO DE VIDA: Forzar instalación y activación inmediata
-// Esto es vital para que tus cambios de código (como este fix del click)
-// se apliquen apenas el navegador detecte el nuevo archivo.
+// 2. Control Inmediato (Obligatorio para recuperar el control)
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando y saltando espera...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activando y reclamando control de clientes...');
   event.waitUntil(self.clients.claim());
 });
 
-// 3. EVENTO PUSH: Recibir y Mostrar
+// 3. PUSH (Simplificado)
 self.addEventListener('push', event => {
-  // Parseo seguro del JSON
-  const payload = event.data?.json?.() ?? { title: 'Notificación', body: event.data?.text() ?? 'Mensaje' };
+  const payload = event.data?.json?.() ?? {};
   
   const title = payload.title || 'Transporte Dadica';
-  
+  // Aseguramos que SIEMPRE haya una URL válida
+  const url = payload.url || self.location.origin;
+
   const options = {
-    body: payload.body || '',
+    body: payload.body || 'Nueva notificación',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/android-launchericon-96-96.png',
-    
-    // --- PERSISTENCIA DE DATOS ---
-    // Guardamos la URL en 'data' para poder leerla luego en el click
-    data: {
-      url: payload.url || '/', // Prioridad a la propiedad 'url' en la raíz del payload
-      ...payload.data
-    },
-    
-    requireInteraction: payload.requireInteraction || false,
-    tag: payload.tag,
-    renotify: payload.renotify || false, // Para que vuelva a sonar si usas tags
-    vibrate: [100, 50, 100], // Patrón de vibración (útil en Android)
+    data: { url: url }, // Guardamos la URL simple
+    requireInteraction: true // Para que te de tiempo de ver qué pasa
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// 4. EVENTO CLICK: Navegación Inteligente (El FIX)
+// 4. CLICK (Modo "Solo abre la maldita ventana")
 self.addEventListener('notificationclick', event => {
-  console.log('[SW] Notificación clickeada');
   event.notification.close();
 
-  // Obtenemos la URL cruda del payload
-  const rawUrl = event.notification.data.url;
+  // Recuperamos la URL
+  let urlToOpen = event.notification.data?.url;
 
-  if (!rawUrl) return;
+  // Si por alguna razón viene vacía, mandamos al Home
+  if (!urlToOpen) {
+    urlToOpen = self.location.origin;
+  }
 
-  // Convertimos a URL absoluta para evitar errores de comparación
-  // new URL() maneja bien si ya viene absoluta o si es relativa
-  const urlToOpen = new URL(rawUrl, self.location.origin).href;
+  // Aseguramos que sea absoluta
+  const absoluteUrl = new URL(urlToOpen, self.location.origin).href;
 
-  const promiseChain = clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true
-  }).then(windowClients => {
-    
-    // CASO A: Ya hay una pestaña de la App abierta
-    // Buscamos cualquier cliente que pertenezca a nuestro origen (dominio)
-    const matchingClient = windowClients.find(client => {
-      return client.url.startsWith(self.location.origin) && 'focus' in client;
-    });
-
-    if (matchingClient) {
-      console.log('[SW] Pestaña encontrada. Navegando a:', urlToOpen);
-      // PRIMERO navegamos a la URL correcta, LUEGO enfocamos la ventana
-      return matchingClient.navigate(urlToOpen).then(client => client.focus());
-    }
-
-    // CASO B: No hay pestaña abierta
-    console.log('[SW] No hay pestaña abierta. Abriendo nueva:', urlToOpen);
-    if (clients.openWindow) {
-      return clients.openWindow(urlToOpen);
-    }
-  });
-
-  event.waitUntil(promiseChain);
+  // Lógica SUPER SIMPLE: Solo abre una ventana nueva.
+  // Quitamos la lógica de buscar pestañas existentes porque ahí es donde suele fallar
+  // si el navegador se confunde de 'client'.
+  event.waitUntil(
+    clients.openWindow(absoluteUrl)
+  );
 });
