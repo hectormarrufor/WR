@@ -6,7 +6,7 @@ import '@mantine/charts/styles.css';
 import './global.css'; // Asegúrate de que este archivo exista o quítalo
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { AppShell, Burger, createTheme, Group, Image, MantineProvider, UnstyledButton, Box, Flex } from '@mantine/core';
+import { AppShell, Burger, createTheme, Group, Image, MantineProvider, UnstyledButton, Box, Flex, Center, Loader } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks'; // useHeadroom es mejor para el header que se esconde
 import { Notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
