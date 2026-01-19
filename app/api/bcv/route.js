@@ -157,7 +157,7 @@ export async function GET(request) {
         await notificarTodos({
             title: 'Tasas de Cambio Actualizadas',
             body: `USD: ${precioDolarBCV}\nEUR: ${precioEuroBCV}\nUSDT: ${datosAGuardar.montoUsdt}`,
-            url: 'https://www.transportedadica.com/superuser/bcv',
+            url: '/superuser/bcv',
             tag: 'bcv_update'
         });
 

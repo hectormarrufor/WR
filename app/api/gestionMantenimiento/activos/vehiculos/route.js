@@ -225,7 +225,7 @@ export async function POST(request) {
         await notificarAdmins({
             title: 'Nuevo Activo Registrado',
             body: `${body.usuario} ha registrado un nuevo activo: ${nuevoActivo.codigoInterno}`,
-            url: `https://www.transportedadica.com/superuser/flota/activos/${nuevoActivo.id}`,
+            url: `/superuser/flota/activos/${nuevoActivo.id}`,
         });
 
         return NextResponse.json({
