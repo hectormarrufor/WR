@@ -10,13 +10,13 @@ const Notificacion = sequelize.define('Notificacion', {
   // AHORA SON ARREGLOS (Listas de strings)
   // Ejemplo: ["Mantenimiento", "RRHH"]
   departamentosObjetivo: { 
-    type: DataTypes.JSON, // Usa JSONB si estás en Postgres puro
+    type: DataTypes.JSONB, // Usa JSONB si estás en Postgres puro
     allowNull: true 
   },
   
   // Ejemplo: ["Chofer", "Vigilante"]
   puestosObjetivo: { 
-    type: DataTypes.JSON, 
+    type: DataTypes.JSONB, 
     allowNull: true 
   },
   

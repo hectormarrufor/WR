@@ -15,6 +15,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import LayoutMenu from './LayoutMenu';
 import NavBar from './NavBar'; // Tu componente de menú móvil existente
 import AuthGuard from '@/hooks/authGuard';
+import NotificationBell from './components/NotificationBell';
 
 // Crear el tema FUERA del componente para evitar re-renders innecesarios
 const theme = createTheme(themeConfig);
@@ -94,6 +95,7 @@ export default function RootLayout({ children }) {
             
                       {/* LADO DERECHO: Burger (Móvil) o LayoutMenu (Desktop) */}
                       <Group>
+                        <NotificationBell />
                         {/* El Burger ahora está después del logo en el DOM, 
                           y solo se muestra en pantallas pequeñas */}
                         <Burger
