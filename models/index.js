@@ -86,6 +86,9 @@ const db = {
     //Facturacion
     Cliente: require('./Cliente'),
 
+    // NOTIFICACIONES
+    Notificacion: require('./Notificacion'),
+
 };
 
 // --- Llamar al método 'associate' de cada modelo ---

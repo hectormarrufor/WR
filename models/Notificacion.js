@@ -1,5 +1,6 @@
+const sequelize = require('../sequelize');
 const { DataTypes } = require('sequelize');
-const sequelize = require('../../sequelize');
+
 
 const Notificacion = sequelize.define('Notificacion', {
   titulo: { type: DataTypes.STRING, allowNull: false },
