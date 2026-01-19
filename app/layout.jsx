@@ -32,6 +32,11 @@ export default function RootLayout({ children }) {
         .then(() => console.log('✅ SW Registrado'))
         .catch(err => console.error('❌ Error SW:', err));
     }
+    fetch("/api/suscribir").then((res) => {
+      res.json().then((data) => {
+        console.log("Subscripciones actuales:", data);
+      });
+    });
   }, []);
 
   return (
