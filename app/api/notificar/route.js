@@ -135,32 +135,40 @@ export async function crearYNotificar(data) {
     }
 }
 
+
 // =====================================================================
-// 3. LOS WRAPPERS (Tus funciones antiguas mejoradas)
-// Mantienen los nombres para no romper tu código, pero usan el motor nuevo.
+// 3. WRAPPERS CON "TRUCO" (Mapeo Manual)
 // =====================================================================
 
 export async function notificarAdmins(payload) {
-    // Reutiliza la lógica maestra filtrando por rol 'admin'
+    // EL ARTILUGIO:
+    // En lugar de decir "busca por rol admin", le decimos:
+    // "Notifica a los puestos que SABEMOS que son admins".
+    
+    // Esto guardará en BD: puestoObjetivo: ["Desarrollador Web", "Gerente de IT"]
+    // Y enviará push a todos los empleados con esos puestos.
     return crearYNotificar({
         ...payload,
-        roles: ['admin'] // <--- Esto activará el filtro C1
+        departamentos: ['IT', 'Presidencia'] // Agrega aquí los departamentos clave
     });
 }
 
 export async function notificarPresidente(payload) {
     return crearYNotificar({
         ...payload,
-        roles: ['Presidente'] // <--- Esto activará el filtro C1
+        departamentos: ['Presidencia'] // Mapeo directo 1 a 1
     });
 }
 
 export async function notificarUsuario(usuarioId, payload) {
+    // Aquí es distinto, porque es a UNA persona específica.
+    // La función maestra ya sabe manejar 'usuarioId' prioritariamente.
     return crearYNotificar({
         ...payload,
-        usuarioId: usuarioId // <--- Esto activará el filtro C2
+        usuarioId: usuarioId
     });
 }
+
 
 export async function notificarTodos(payload) {
     return crearYNotificar({
@@ -175,5 +183,25 @@ export async function notificarGrupo(payload, departamentos, puestos) {
         ...payload,
         departamentos,
         puestos
+    });
+}
+
+export async function notificarOperaciones(payload) {
+    return crearYNotificar({
+        ...payload,
+        departamentos: ['Operaciones']
+    });
+}
+export async function notificarAdministracion(payload) {
+    return crearYNotificar({
+        ...payload,
+        departamentos: ['Administracion']
+    });
+}
+
+export async function notificarCabezas(payload) {
+    return crearYNotificar({
+        ...payload,
+        puestos: ['Presidente', 'Desarrollador Web', 'Administradora', "Gerente Operacional"]
     });
 }
