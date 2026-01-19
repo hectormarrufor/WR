@@ -1,55 +1,119 @@
-import { precacheAndRoute } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { NetworkFirst, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
 
-// 1. Precacheo
+// 1. CONFIGURACIÓN BÁSICA
+self.skipWaiting();
+clientsClaim();
+cleanupOutdatedCaches();
+
+// 2. PRECACHE DE NEXT.JS (Archivos estáticos del Build)
+// Esto descarga el JS, CSS y HTML básico para que la App Shell funcione offline.
 precacheAndRoute(self.__WB_MANIFEST || []);
 
-// 2. Control Inmediato (Obligatorio para recuperar el control)
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
+// 3. ESTRATEGIA DE NAVEGACIÓN (El arreglo del Bug)
+// Para cualquier página HTML (rutas de navegación):
+const navigationStrategy = new NetworkFirst({
+  cacheName: 'pages-cache',
+  networkTimeoutSeconds: 3, // SI EN 3 SEGUNDOS NO RESPONDE, USA CACHÉ
+  plugins: [
+    new ExpirationPlugin({
+      maxEntries: 50,             // Guarda las últimas 50 páginas visitadas
+      maxAgeSeconds: 30 * 24 * 60 * 60, // Por 30 días
+    }),
+  ],
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
+// Registramos la ruta de navegación para que use la estrategia de arriba
+registerRoute(new NavigationRoute(navigationStrategy));
 
-// 3. PUSH (Simplificado)
-self.addEventListener('push', event => {
+// 4. ESTRATEGIA PARA IMÁGENES (Cache First)
+// Si ya descargó una foto (ej: la del camión), no la vuelve a pedir.
+registerRoute(
+  ({ request }) => request.destination === 'image',
+  new CacheFirst({
+    cacheName: 'images-cache',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 24 * 60 * 60, // 60 días
+      }),
+    ],
+  })
+);
+
+// 5. ESTRATEGIA PARA API/DATA (Stale While Revalidate)
+// Muestra datos viejos rápido mientras busca los nuevos en el fondo.
+// Útil para ver datos offline.
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/'),
+  new NetworkFirst({
+    cacheName: 'api-cache',
+    networkTimeoutSeconds: 5,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 24 * 60 * 60, // 24 horas
+      }),
+    ],
+  })
+);
+
+// -----------------------------------------------------------------
+// LÓGICA DE NOTIFICACIONES PUSH (La que ya arreglamos)
+// -----------------------------------------------------------------
+
+self.addEventListener('push', (event) => {
   const payload = event.data?.json?.() ?? {};
-  
   const title = payload.title || 'Transporte Dadica';
-  // Aseguramos que SIEMPRE haya una URL válida
+  // URL absoluta siempre para evitar errores
   const url = payload.url || self.location.origin;
 
   const options = {
     body: payload.body || 'Nueva notificación',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/android-launchericon-96-96.png',
-    data: { url: url }, // Guardamos la URL simple
-    requireInteraction: true // Para que te de tiempo de ver qué pasa
+    data: { url: url }, // Guardamos URL
+    requireInteraction: payload.requireInteraction || false,
+    tag: payload.tag,
+    renotify: payload.renotify || false,
+    vibrate: [100, 50, 100]
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// 4. CLICK (Modo "Solo abre la maldita ventana")
-self.addEventListener('notificationclick', event => {
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Click en notificación');
   event.notification.close();
 
-  // Recuperamos la URL
   let urlToOpen = event.notification.data?.url;
+  if (!urlToOpen) urlToOpen = self.location.origin;
 
-  // Si por alguna razón viene vacía, mandamos al Home
-  if (!urlToOpen) {
-    urlToOpen = self.location.origin;
-  }
-
-  // Aseguramos que sea absoluta
+  // Asegurar URL absoluta
   const absoluteUrl = new URL(urlToOpen, self.location.origin).href;
 
-  // Lógica SUPER SIMPLE: Solo abre una ventana nueva.
-  // Quitamos la lógica de buscar pestañas existentes porque ahí es donde suele fallar
-  // si el navegador se confunde de 'client'.
-  event.waitUntil(
-    clients.openWindow(absoluteUrl)
-  );
+  const promiseChain = clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true
+  }).then((windowClients) => {
+    // 1. Buscar si ya está abierta
+    const matchingClient = windowClients.find((client) => {
+      return client.url.startsWith(self.location.origin) && 'focus' in client;
+    });
+
+    if (matchingClient) {
+      // Navegar y enfocar
+      return matchingClient.navigate(absoluteUrl).then((client) => client.focus());
+    }
+
+    // 2. Si no, abrir nueva
+    if (clients.openWindow) {
+      return clients.openWindow(absoluteUrl);
+    }
+  });
+
+  event.waitUntil(promiseChain);
 });
