@@ -66,6 +66,7 @@ export function AuthProvider({ children }) {
 
             try {
                 await suscribirsePush(fetched);
+                console.log("suscripcion exitosa");
             } catch (e) {
                 console.error('Push subscribe failed', e);
             }
