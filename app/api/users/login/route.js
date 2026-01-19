@@ -49,7 +49,7 @@ export async function POST(req) {
         const cookie = serialize('token', token, {
             httpOnly: true, // La cookie no es accesible desde JavaScript
             // secure: process.env.NODE_ENV !== 'development',  Solo se envía a través de HTTPS en producción
-            sameSite: 'strict', // Protege contra ataques CSRF
+            sameSite: 'lax', // Protege contra ataques CSRF
             path: '/', // La cookie es válida para todas las rutas
             maxAge: 60 * 60 * 24 * 365 // 1 año
         });
