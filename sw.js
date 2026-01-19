@@ -15,6 +15,7 @@ self.addEventListener('push', event => {
     body: payload.body || '',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/android-launchericon-96-96.png',
+
     data: {
       url: payload.url || '/', // Tomamos la URL del nivel raíz del JSON
       ...payload.data          // Mantenemos cualquier otra data extra si existiera
@@ -25,7 +26,25 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-self.addEventListener('notificationclick', event => {
+self.addEventListener('notificationclick', (event) => {
+  // Close the notification immediately after clicking
   event.notification.close();
-  event.waitUntil(clients.openWindow(event.notification.data.url || '/'));
+
+  // Retrieve the URL from the data object sent in the payload
+  const targetUrl = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if a tab with the same origin is already open
+      for (const client of windowClients) {
+        if (client.url === targetUrl && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no tab is open, open a new window to the target URL
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
 });
