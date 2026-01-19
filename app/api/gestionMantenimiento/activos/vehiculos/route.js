@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
-import { 
-    sequelize, Activo, VehiculoInstancia, Vehiculo, Subsistema, 
-    SubsistemaInstancia, ConsumibleInstalado, ConsumibleSerializado, 
+import {
+    sequelize, Activo, VehiculoInstancia, Vehiculo, Subsistema,
+    SubsistemaInstancia, ConsumibleInstalado, ConsumibleSerializado,
     EntradaInventario, Kilometraje, Horometro, SalidaInventario, Consumible, Recauchado // <--- IMPORTANTE: Importar Recauchado
 } from '@/models';
+import { notificarAdmins } from '@/app/api/notificar/route';
 
 export async function POST(request) {
     const t = await sequelize.transaction();
 
     try {
         const body = await request.json();
-        
+
         console.log("Datos recibidos para crear activo:", body);
-        
+
         // --- 1. VALIDACIONES PREVIAS ---
         const existePlaca = await VehiculoInstancia.findOne({ where: { placa: body.placa }, transaction: t });
         if (existePlaca) throw new Error(`La placa ${body.placa} ya está registrada.`);
-        
+
         const existeCodigo = await Activo.findOne({ where: { codigoInterno: body.codigoInterno }, transaction: t });
         if (existeCodigo) throw new Error(`El código ${body.codigoInterno} ya existe.`);
 
@@ -54,7 +55,7 @@ export async function POST(request) {
         // =====================================================================
         // 4.1. REGISTRAR HISTORIAL CERO (PUNTO DE PARTIDA)
         // =====================================================================
-        
+
         // Registrar Kilometraje Inicial
         if (body.kilometrajeActual !== undefined && body.kilometrajeActual !== null) {
             await Kilometraje.create({
@@ -80,35 +81,35 @@ export async function POST(request) {
         }
 
         // --- 5. INSTANCIAR SUBSISTEMAS ---
-        const mapaSubsistemas = {}; 
+        const mapaSubsistemas = {};
         if (modelo.subsistemas && modelo.subsistemas.length > 0) {
             for (const subPlantilla of modelo.subsistemas) {
                 const subFisico = await SubsistemaInstancia.create({
-                    nombre: subPlantilla.nombre+ " " + body.placa,
+                    nombre: subPlantilla.nombre + " " + body.placa,
                     activoId: nuevoActivo.id,
                     subsistemaId: subPlantilla.id,
                     estado: 'ok',
                     observaciones: 'Inicializado en creación de activo'
                 }, { transaction: t });
-                
+
                 mapaSubsistemas[subPlantilla.id] = subFisico.id;
             }
         }
 
         // --- 6. PROCESAR INSTALACIONES ---
         if (body.instalacionesIniciales && body.instalacionesIniciales.length > 0) {
-            
+
             for (const item of body.instalacionesIniciales) {
                 const subsistemaInstanciaId = mapaSubsistemas[item.subsistemaId];
                 if (!subsistemaInstanciaId) continue;
 
                 let serialIdFinal = null;
 
-               // =========================================================
+                // =========================================================
                 // CASO A: SERIALIZADO (Cauchos, Baterías)
                 // =========================================================
-                if (item.serial) { 
-                    
+                if (item.serial) {
+
                     let serialExistente = await ConsumibleSerializado.findOne({
                         where: { serial: item.serial, consumibleId: item.consumibleId },
                         transaction: t
@@ -120,9 +121,9 @@ export async function POST(request) {
                         // Cambiamos estado a 'asignado' y marcamos la fecha
                         // -------------------------------------------------------------
                         serialIdFinal = serialExistente.id;
-                        await serialExistente.update({ 
+                        await serialExistente.update({
                             estado: 'asignado',     // <--- ANTES DECÍA 'instalado' (ERROR)
-                            fechaAsignacion: new Date() 
+                            fechaAsignacion: new Date()
                         }, { transaction: t });
 
                     } else {
@@ -152,7 +153,7 @@ export async function POST(request) {
                                 observacion: 'Carga Inicial Histórica'
                                 // Si tienes campo tallerNombre en BD, agrégalo aquí: tallerNombre: rec.tallerNombre
                             }));
-                            
+
                             await Recauchado.bulkCreate(recauchadosParaGuardar, { transaction: t });
                         }
 
@@ -167,8 +168,8 @@ export async function POST(request) {
                             usuarioId: 1 // TODO: Usar ID real del usuario
                         }, { transaction: t });
                     }
-                } 
-                
+                }
+
                 // =========================================================
                 // CASO B: FUNGIBLE (Aceite, Filtros)
                 // =========================================================
@@ -183,7 +184,7 @@ export async function POST(request) {
                             tipo: 'carga_inicial',
                             observacion: `Dotación inicial (externo) en Activo ${body.codigoInterno}`,
                             fecha: new Date(),
-                            usuarioId: 1 
+                            usuarioId: 1
                         }, { transaction: t });
                     } else {
                         // SALIDA DE ALMACÉN (Resta stock)
@@ -198,7 +199,7 @@ export async function POST(request) {
 
                         const consumible = await Consumible.findByPk(item.consumibleId, { transaction: t });
                         if (consumible) {
-                             await consumible.decrement('stockAlmacen', { by: item.cantidad, transaction: t });
+                            await consumible.decrement('stockAlmacen', { by: item.cantidad, transaction: t });
                         }
                     }
                 }
@@ -221,10 +222,16 @@ export async function POST(request) {
 
         await t.commit();
 
-        return NextResponse.json({ 
-            success: true, 
+        await notificarAdmins({
+            title: 'Nuevo Activo Registrado',
+            body: `${body.usuario} ha registrado un nuevo activo: ${nuevoActivo.codigoInterno}`,
+            url: `/superuser/flota/activos/${nuevoActivo.id}`,
+        });
+
+        return NextResponse.json({
+            success: true,
             message: 'Activo creado con éxito',
-            data: { id: nuevoActivo.id, codigo: nuevoActivo.codigoInterno } 
+            data: { id: nuevoActivo.id, codigo: nuevoActivo.codigoInterno }
         }, { status: 201 });
 
     } catch (error) {

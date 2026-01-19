@@ -15,14 +15,34 @@ self.addEventListener('push', event => {
     body: payload.body || '',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/android-launchericon-96-96.png',
-    data: payload.data || {},
-    requireInteraction: payload.data?.requireInteraction || false,
-    tag: payload.data?.tag,
+    data: {
+      url: payload.url || '/', // Tomamos la URL del nivel raíz del JSON
+      ...payload.data          // Mantenemos cualquier otra data extra si existiera
+    },
+    requireInteraction: payload.requireInteraction || false,
+    tag: payload.tag,
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  event.waitUntil(clients.openWindow(event.notification.data.url || '/'));
+
+  // Ahora sí, event.notification.data.url tendrá valor
+  const urlToOpen = event.notification.data.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // Intentar enfocar si ya existe una pestaña abierta (Opcional, pero recomendado)
+      for (let client of windowClients) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Si no, abrir nueva
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });

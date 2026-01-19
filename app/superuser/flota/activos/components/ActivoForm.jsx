@@ -14,8 +14,10 @@ import ImageDropzone from '../components/ImageDropzone';
 import ComponenteInstaller from './ComponenteInstaller';
 import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
+    const {nombre, apellido} = useAuth();
     const [active, setActive] = useState(0);
     const [loading, setLoading] = useState(false);
     const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]);
@@ -171,7 +173,7 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({...payload, usuario: nombre + ' ' + apellido }),  
             });
 
             const res = await response.json();

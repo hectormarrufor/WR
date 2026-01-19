@@ -107,7 +107,7 @@ export function AuthProvider({ children }) {
         imagen: user?.imagen, 
         rol: user?.rol, 
         userId: user?.id, 
-        nombre: user?.nombre, 
+        nombre: user?.nombre || "Admin", 
         apellido: user?.apellido, 
         isAuthenticated: user?.isAuthenticated ?? false, 
         departamentos: user?.departamentos || [], 
