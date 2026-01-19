@@ -154,7 +154,7 @@ export async function GET(request) {
         }
 
         // Notificar Admin
-        await notificarTodos({
+        await notificarAdmins({
             title: 'Tasas de Cambio Actualizadas',
             body: `USD: ${precioDolarBCV}\nEUR: ${precioEuroBCV}\nUSDT: ${datosAGuardar.montoUsdt}`,
             url: '/superuser/bcv',
