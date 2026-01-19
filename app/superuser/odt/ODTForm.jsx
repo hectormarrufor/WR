@@ -72,6 +72,10 @@ export default function ODTForm({ mode = "create", odtId }) {
   }, []);
 
   useEffect(() => {
+    console.log("Valores:", form.values);
+  }, [form.values]);
+
+  useEffect(() => {
     if (mode === "edit" && odtId) {
       fetch(`/api/odts/${odtId}`)
         .then((res) => res.json())
@@ -112,7 +116,7 @@ export default function ODTForm({ mode = "create", odtId }) {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({...values, vehiculosPrincipales: values.vehiculosPrincipales[0], vehiculosRemolque: values.vehiculosRemolque[0], choferes: values.choferes[0], ayudantes: values.ayudantes[0] }),
       });
 
       if (!response.ok) throw new Error("Error en la respuesta del servidor");

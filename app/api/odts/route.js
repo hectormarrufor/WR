@@ -1,4 +1,4 @@
-import db, { Activo, Cliente, Empleado, HorasTrabajadas, Modelo, ODT, ODT_Empleados, ODT_Vehiculos } from "@/models";
+import db, { Activo, Cliente, Empleado, HorasTrabajadas, ODT, ODT_Empleados, ODT_Vehiculos } from "@/models";
 import { NextResponse } from "next/server";
 
 function calcularHoras(horaEntrada, horaSalida) {
@@ -27,7 +27,7 @@ export async function GET() {
     const odts = await ODT.findAll({
       include: [
         { model: Cliente, as: "cliente" },
-        { model: Activo, as: "vehiculos", include: [{ model: Modelo, as: "modelo"  }] },
+        { model: Activo, as: "vehiculos" },
         { model: Empleado, as: "empleados" },
         { model: HorasTrabajadas },
       ],
