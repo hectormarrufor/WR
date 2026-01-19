@@ -10,10 +10,12 @@ import {
 } from '@mantine/core';
 import { AreaChart, BarChart } from '@mantine/charts';
 import { 
-    IconArrowLeft, IconPencil, IconTruck, IconGauge, IconSettings, 
-    IconTool, IconCheck, IconAlertTriangle, IconInfoCircle, IconPlus, 
-    IconHistory, IconGasStation, IconChartLine, IconClipboardCheck, 
-    IconWrench, IconShoppingCart, IconAlertOctagon
+    IconTruck, IconSettings, 
+    IconCheck, IconAlertTriangle, IconInfoCircle, IconPlus, 
+    IconChartLine, IconClipboardCheck, 
+     IconShoppingCart, IconAlertOctagon,
+     IconTool,
+    
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -157,7 +159,7 @@ export default function DetalleActivoPage({ params }) {
                                 <Tabs.Tab value="alertas" leftSection={<IconAlertTriangle size={16} color={hallazgosPendientes.length ? "red" : "gray"} />}>
                                     Salud y Alertas
                                 </Tabs.Tab>
-                                <Tabs.Tab value="mantenimiento" leftSection={<IconWrench size={16} />}>
+                                <Tabs.Tab value="mantenimiento" leftSection={<IconTool size={16} />}>
                                     Taller (ODT)
                                 </Tabs.Tab>
                                 <Tabs.Tab value="componentes" leftSection={<IconSettings size={16} />}>
