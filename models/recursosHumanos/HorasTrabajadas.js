@@ -30,8 +30,11 @@ const HorasTrabajadas = sequelize.define("HorasTrabajadas", {
 
 // Relaciones
 HorasTrabajadas.associate = (models) => {
-    Empleado.hasMany(models.HorasTrabajadas, { foreignKey: "empleadoId" });
     HorasTrabajadas.belongsTo(models.Empleado, { foreignKey: "empleadoId" });
+    HorasTrabajadas.belongsTo(models.User, {
+    foreignKey: "creadorId",
+    as: "creador"
+});
     HorasTrabajadas.belongsTo(models.ODT, { foreignKey: "odtId" });
 }
 

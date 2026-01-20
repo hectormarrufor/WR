@@ -76,6 +76,10 @@ User.associate = (models) => {
     foreignKey: 'creadoPorId',
     as: 'ordenesCreadas' // Un usuario puede crear muchas órdenes de mantenimiento
   });
+  User.hasMany(models.ODT, {
+    foreignKey: 'creadoPorId',
+    as: 'odtsCreadas' // Un usuario puede crear muchas órdenes de trabajo
+  });
 
 
 };

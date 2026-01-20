@@ -4,7 +4,8 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import {
   Container, Title, Text, Group, Loader,
   Box, Button, Paper, HoverCard, Badge, Stack, Divider, ThemeIcon,
-  Card, ScrollArea, Avatar
+  Card, ScrollArea, Avatar,
+  UnstyledButton
 } from "@mantine/core";
 import {
   IconChevronLeft, IconChevronRight, IconSteeringWheel,
@@ -336,7 +337,7 @@ export default function PizarraPage() {
 function MobileAgendaView({ events, router }) {
   const grouped = useMemo(() => {
     const groups = {};
-    const sorted = [...events].sort((a, b) => new Date(a.start) - new Date(b.start));
+    const sorted = [...events].sort((a, b) => new Date(b.start) - new Date(a.start));
 
     sorted.forEach((ev) => {
       const dateKey = ev.start.split("T")[0];
@@ -371,7 +372,6 @@ function MobileAgendaView({ events, router }) {
               const startTime = new Date(ev.start);
               const endTime = new Date(ev.end);
 
-              console.log(props)
 
               if (isGroup) {
                 return (
@@ -388,13 +388,16 @@ function MobileAgendaView({ events, router }) {
 
                     <Stack gap="xs">
                       {props.registros.map(reg => (
-                        <Group key={reg.id} justify="space-between">
-                          <Group gap="xs">
-                            <Avatar src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null} size={24} radius="xl" />
-                            <Text size="sm">{reg.Empleado?.nombre} {reg.Empleado?.apellido}</Text>
+                        <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${reg.Empleado.id}`)} key={reg.id} style={{ width: '100%' }}>
+                          <Group justify="space-between">
+                            <Group gap="xs">
+                              <Avatar src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null} size={24} radius="xl" />
+                              <Text size="sm">{reg.Empleado?.nombre} {reg.Empleado?.apellido}</Text>
+                              <Text size="xs" c="dimmed">• {reg.observaciones || 'Sin obs.'}</Text>
+                            </Group>
+                            <Text size="xs" c="dimmed">{reg.horas}h</Text>
                           </Group>
-                          <Text size="xs" c="dimmed">{reg.horas}h</Text>
-                        </Group>
+                        </UnstyledButton>
                       ))}
                     </Stack>
                   </Card>
@@ -402,7 +405,7 @@ function MobileAgendaView({ events, router }) {
               }
 
               return (
-                <Card key={ev.id} shadow="sm" radius="md" withBorder onClick={() => router.push(`/superuser/odt/${props.realId}`)} style={{ cursor: "pointer" }}>
+                <Card key={ev.id} shadow="sm" radius="md" withBorder onClick={() => router.push(`/superuser/odt/${props.id}`)} style={{ cursor: "pointer" }}>
                   <Group justify="space-between" mb="xs" align="start">
                     <Box>
                       <Badge color={props.maquinariaId ? "orange" : "blue"} variant="light" mb={4}>ODT #{props.nroODT}</Badge>

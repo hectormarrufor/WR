@@ -13,6 +13,7 @@ export default function ManualHoursButton() {
   const [opened, setOpened] = useState(false);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
+  const {userId} = useUser();
 
   // Estado del Formulario
   const [form, setForm] = useState({
@@ -55,7 +56,8 @@ export default function ManualHoursButton() {
         body: JSON.stringify({
              ...form,
              // Asegurar formato fecha YYYY-MM-DD
-             fecha: form.fecha.toISOString().split('T')[0] 
+             fecha: form.fecha.toISOString().split('T')[0],
+             creadorId: userId
         }),
       });
 

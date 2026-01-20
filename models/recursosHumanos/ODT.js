@@ -44,6 +44,7 @@ ODT.associate = (models) => {
     ODT.belongsTo(models.Empleado, { foreignKey: 'choferId', as: 'chofer' });
     ODT.belongsTo(models.Empleado, { foreignKey: 'ayudanteId', as: 'ayudante' });
     ODT.belongsTo(models.Cliente, { as: "cliente", foreignKey: "clienteId" });
+    ODT.belongsTo(models.User, { foreignKey: 'creadoPorId', as: 'creadoPor' });
     ODT.hasMany(models.HorasTrabajadas, { foreignKey: "odtId", onDelete: 'CASCADE' });
     ODT.hasMany(models.Horometro, { foreignKey: "odtId", onDelete: 'CASCADE' });
 

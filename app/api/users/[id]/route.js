@@ -1,10 +1,13 @@
 // app/api/clientes/[id]/route.js
+import { Empleado } from '@/models';
 import User from '../../../../models/user';
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const user = await User.findByPk(id);
+    const user = await User.findByPk(id, {
+      include: [{model: Empleado, as: 'empleado'}] // Agregar asociaciones si es necesario
+    });
     if (!user) {
       return Response.json({ error: 'usuario no encontrado' }, { status: 404 });
     }
