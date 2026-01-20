@@ -6,11 +6,13 @@ import calcularHoras from "@/app/helpers/calcularHoras";
 import { notifications } from "@mantine/notifications";
 import { DateInput, TimeInput } from "@mantine/dates";
 import '@mantine/dates/styles.css';
+import { useAuth } from "@/hooks/useAuth";
 
 
 
 export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId }) {
     const router = useRouter?.() ?? null;
+    const { userId } = useAuth();
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -39,6 +41,7 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId 
             ...form.values,
             horas,
             origen: "manual",
+            creadorId: userId
         };
 
 

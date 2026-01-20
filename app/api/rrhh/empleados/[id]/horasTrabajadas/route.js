@@ -39,6 +39,7 @@ export async function POST(req, { params }) {
             horas,
             origen,
             observaciones,
+            creadorId
         } = body;
 
 
@@ -48,6 +49,7 @@ export async function POST(req, { params }) {
             origen,
             observaciones,
             empleadoId: id,
+            creadorId,
         });
 
 

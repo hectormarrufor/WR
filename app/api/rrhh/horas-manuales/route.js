@@ -32,7 +32,8 @@ export async function POST(req) {
             fecha,
             horas,
             observaciones,
-            origen: 'manual' // Importante para distinguirlo de ODTs
+            origen: 'manual', // Importante para distinguirlo de ODTs
+            creadorId: body.creadorId
         });
 
         return NextResponse.json(nuevoRegistro);

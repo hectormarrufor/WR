@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { 
-  Button, Modal, NumberInput, Textarea, Stack, Group, LoadingOverlay 
+  Button, Modal, NumberInput, Textarea, Stack, Group, LoadingOverlay, 
+  Title
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates"; // Asegúrate de tener @mantine/dates instalado
 import { IconClockPlus } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import EmployeeSelector from "./EmployeeSelector"; // Importamos el componente de arriba
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ManualHoursButton() {
   const [opened, setOpened] = useState(false);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
-  const {userId} = useUser();
+  const {userId} = useAuth();
 
   // Estado del Formulario
   const [form, setForm] = useState({
@@ -135,6 +137,9 @@ export default function ManualHoursButton() {
             onChange={(e) => setForm({ ...form, observaciones: e.currentTarget.value })}
             minRows={3}
           />
+          <Title order={6} color="gray" align="center">
+            horas registradas por {employees.find(emp => emp.usuario?.id === userId)?.nombre || 'admin'}
+          </Title>
 
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setOpened(false)}>Cancelar</Button>

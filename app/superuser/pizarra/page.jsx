@@ -159,41 +159,53 @@ export default function PizarraPage() {
             <Text size="10px" tt="uppercase" fw={700} c="dimmed">Activos</Text>
             <Stack gap={2}>
               {props.vehiculoPrincipal && 
-              <Group key={props.vehiculoPrincipal.id} wrap="nowrap" align="flex-start">
-                <Avatar src={props.vehiculoPrincipal?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.vehiculoPrincipal.imagen}` : null} size="sm" radius="xl" />
-                <Box>
-                  <Text size="sm" fw={600} lh={1}>{props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.marca} {props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.modelo} {props.vehiculoPrincipal?.vehiculoInstancia?.placa}</Text>
-                </Box>
-              </Group>}
+              <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.vehiculoPrincipal.id}`)}>
+                <Group key={props.vehiculoPrincipal.id} wrap="nowrap" align="flex-start">
+                  <Avatar src={props.vehiculoPrincipal?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.vehiculoPrincipal.imagen}` : null} size="sm" radius="xl" />
+                  <Box>
+                    <Text size="sm" fw={600} lh={1}>{props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.marca} {props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.modelo} {props.vehiculoPrincipal?.vehiculoInstancia?.placa}</Text>
+                  </Box>
+                </Group>
+              </UnstyledButton>
+              }
               {props.vehiculoRemolque && 
-              <Group key={props.vehiculoRemolque.id} wrap="nowrap" align="flex-start">
-                <Avatar src={props.vehiculoRemolque?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.vehiculoRemolque.imagen}` : null} size="sm" radius="xl" />
-                <Box>
-                  <Text size="sm" fw={600} lh={1}>{props.vehiculoRemolque?.remolqueInstancia?.plantilla?.marca} {props.vehiculoRemolque?.remolqueInstancia?.plantilla?.modelo} {props.vehiculoRemolque?.remolqueInstancia?.placa}</Text>
-                </Box>
-              </Group>}
+              <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.vehiculoRemolque.id}`)}>
+                  <Group key={props.vehiculoRemolque.id} wrap="nowrap" align="flex-start">
+                    <Avatar src={props.vehiculoRemolque?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.vehiculoRemolque.imagen}` : null} size="sm" radius="xl" />
+                    <Box>
+                      <Text size="sm" fw={600} lh={1}>{props.vehiculoRemolque?.remolqueInstancia?.plantilla?.marca} {props.vehiculoRemolque?.remolqueInstancia?.plantilla?.modelo} {props.vehiculoRemolque?.remolqueInstancia?.placa}</Text>
+                    </Box>
+                  </Group>
+              </UnstyledButton>
+              }
               {props.maquinaria && 
-              <Group key={props.maquinaria.id} wrap="nowrap" align="flex-start">
-                <Avatar src={props.maquinaria?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.maquinaria.imagen}` : null} size="sm" radius="xl" />
-                <Box>
-                  <Text size="sm" fw={600} lh={1}>{props.maquinaria?.maquinaInstancia?.plantilla?.marca} {props.maquinaria?.maquinaInstancia?.plantilla?.modelo} {props.maquinaria?.maquinaInstancia?.placa}</Text>
-                </Box>
-              </Group>
+              <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.maquinaria.id}`)}>
+                <Group key={props.maquinaria.id} wrap="nowrap" align="flex-start">
+                  <Avatar src={props.maquinaria?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.maquinaria.imagen}` : null} size="sm" radius="xl" />
+                  <Box>
+                    <Text size="sm" fw={600} lh={1}>{props.maquinaria?.maquinaInstancia?.plantilla?.marca} {props.maquinaria?.maquinaInstancia?.plantilla?.modelo} {props.maquinaria?.maquinaInstancia?.placa}</Text>
+                  </Box>
+                </Group>
+              </UnstyledButton>
               }
             </Stack>
             <Text size="10px" tt="uppercase" fw={700} c="dimmed" mt={4}>Personal</Text>
-            <Group key={props.id} wrap="nowrap" align="flex-start">
-              <Avatar src={props.chofer?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.chofer.imagen}` : null} size="sm" radius="xl" />
-              <Box>
-                <Text size="sm" fw={600} lh={1}>{props.chofer?.nombre} {props.chofer?.apellido}</Text>
-              </Box>
-            </Group>
-            <Group key={props.id} wrap="nowrap" align="flex-start">
-              <Avatar src={props.ayudante?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.ayudante.imagen}` : null} size="sm" radius="xl" />
-              <Box>
-                <Text size="sm" fw={600} lh={1}>{props.ayudante?.nombre} {props.ayudante?.apellido}</Text>
-              </Box>
-            </Group>
+            <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${props.chofer.id}`)}>
+              <Group key={props.id} wrap="nowrap" align="flex-start">
+                <Avatar src={props.chofer?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.chofer.imagen}` : null} size="sm" radius="xl" />
+                <Box>
+                  <Text size="sm" fw={600} lh={1}>{props.chofer?.nombre} {props.chofer?.apellido}</Text>
+                </Box>
+              </Group>
+            </UnstyledButton>
+            <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${props.ayudante.id}`)}>
+              <Group key={props.id} wrap="nowrap" align="flex-start">
+                <Avatar src={props.ayudante?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.ayudante.imagen}` : null} size="sm" radius="xl" />
+                <Box>
+                  <Text size="sm" fw={600} lh={1}>{props.ayudante?.nombre} {props.ayudante?.apellido}</Text>
+                </Box>
+              </Group>
+            </UnstyledButton>
 
           </Stack>
         );
@@ -214,15 +226,17 @@ export default function PizarraPage() {
             <ScrollArea.Autosize maxHeight={250}>
               <Stack gap="sm">
                 {props.registros.map((reg) => (
-                  <Group key={reg.id} wrap="nowrap" align="flex-start">
-                    <Avatar src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null} size="sm" radius="xl" />
-                    <Box>
-                      <Text size="sm" fw={600} lh={1}>{reg.Empleado?.nombre} {reg.Empleado?.apellido}</Text>
-                      <Text size="xs" c="dimmed">
-                        {reg.horas}h • {reg.observaciones || 'Sin obs.'}
-                      </Text>
-                    </Box>
-                  </Group>
+                  <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${reg.Empleado.id}`)}>
+                    <Group key={reg.id} wrap="nowrap" align="flex-start">
+                      <Avatar src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null} size="sm" radius="xl" />
+                      <Box>
+                        <Text size="sm" fw={600} lh={1}>{reg.Empleado?.nombre} {reg.Empleado?.apellido}</Text>
+                        <Text size="xs" c="dimmed">
+                          {reg.horas}h • {reg.observaciones || 'Sin obs.'}
+                        </Text>
+                      </Box>
+                    </Group>
+                  </UnstyledButton>
                 ))}
               </Stack>
             </ScrollArea.Autosize>
