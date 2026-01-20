@@ -7,9 +7,11 @@ import {
 import { IconBell, IconInfoCircle, IconAlertTriangle, IconAlertOctagon } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function NotificationBell() {
   const [opened, setOpened] = useState(false);
+  const {isAuthenticated} = useAuth();
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -50,7 +52,7 @@ export default function NotificationBell() {
 
   // Solo mostramos las últimas 5 en el popup
   const ultimas5 = notificaciones.slice(0, 5);
-
+ if (isAuthenticated)
   return (
     <Popover 
       width={320} 

@@ -3,7 +3,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { Avatar, Button, Group, Menu, Text, UnstyledButton, rem } from '@mantine/core';
 import { IconKey, IconLogout, IconChevronDown, IconLayoutDashboard } from '@tabler/icons-react';
 import ChangePasswordForm from './ChangePasswordForm'; // Asumo que este componente existe y funciona
-import NotificationBell from './components/NotificationBell';
 
 const LayoutMenu = ({ router }) => {
     const { isAuthenticated, logout, nombre, imagen, changePassword, userId, loading } = useAuth();
@@ -24,7 +23,6 @@ const LayoutMenu = ({ router }) => {
         <>
             <Group gap="xs">
                 {/* Botón directo al Dashboard/Menú Principal */}
-                <NotificationBell />
                             
                 <Button 
                     variant="subtle" 

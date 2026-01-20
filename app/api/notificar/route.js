@@ -1,6 +1,8 @@
 import webpush from 'web-push';
-import { 
-    PushSubscription, Notificacion, User, Empleado, sequelize 
+import {
+    PushSubscription, Notificacion, User, Empleado, sequelize,
+    Puesto,
+    Departamento
 } from '@/models'; // Ajusta tus imports según tu estructura
 import { Op } from 'sequelize';
 
@@ -28,10 +30,10 @@ export async function crearYNotificar(data) {
 
     try {
         // A. Preparar datos
-        const fechaCaracas = new Date().toLocaleString('es-VE', { 
+        const fechaCaracas = new Date().toLocaleString('es-VE', {
             timeZone: 'America/Caracas',
-            day: '2-digit', month: '2-digit', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', hour12: true 
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true
         });
 
         // Normalizamos arrays para BD
@@ -59,7 +61,7 @@ export async function crearYNotificar(data) {
         if (data.roles && data.roles.length > 0) {
             whereSubscriptions.rol = { [Op.in]: data.roles };
         }
-        
+
         // C2. Filtro por USUARIO ESPECÍFICO
         else if (data.usuarioId) {
             whereSubscriptions.usuarioId = data.usuarioId;
@@ -73,15 +75,35 @@ export async function crearYNotificar(data) {
 
             // Buscamos usuarios que cumplan Depto O Puesto
             const usuariosTarget = await User.findAll({
+                attributes: ['id'], // Solo necesitamos el ID para el Push
                 include: [{
                     model: Empleado,
                     as: 'empleado',
-                    where: { [Op.or]: condicionesEmpleado }
-                }]
+                    required: true,
+                    include: [{
+                        model: Puesto,
+                        as: 'puestos', // Relación muchos a muchos o uno a muchos
+                        required: true,
+                        include: [{
+                            model: Departamento,
+                            as: 'departamento',
+                            required: false // Solo si vamos a filtrar por depto
+                        }]
+                    }]
+                }],
+                where: {
+                    [Op.or]: [
+                        // Filtro por nombre de Puesto
+                        targetPuestos ? { '$empleado.puestos.nombre$': { [Op.in]: targetPuestos } } : null,
+
+                        // Filtro por nombre de Departamento
+                        targetDeptos ? { '$empleado.puestos.departamento.nombre$': { [Op.in]: targetDeptos } } : null
+                    ].filter(Boolean)
+                }
             });
-            
+
             const idsUsuarios = usuariosTarget.map(u => u.id);
-            
+
             // Si no hay usuarios, detenemos para no enviar a nadie
             if (idsUsuarios.length === 0) {
                 console.log('[NOTIFICADOR] No se encontraron empleados con ese perfil.');
@@ -96,7 +118,7 @@ export async function crearYNotificar(data) {
 
         // D. BUSCAR SUSCRIPCIONES
         const subscripciones = await PushSubscription.findAll({ where: whereSubscriptions });
-        
+
         console.log(`\x1b[42m [INFO]: Enviando a ${subscripciones.length} dispositivos. \x1b[0m`);
 
         // E. ENVÍO MASIVO
@@ -144,7 +166,7 @@ export async function notificarAdmins(payload) {
     // EL ARTILUGIO:
     // En lugar de decir "busca por rol admin", le decimos:
     // "Notifica a los puestos que SABEMOS que son admins".
-    
+
     // Esto guardará en BD: puestoObjetivo: ["Desarrollador Web", "Gerente de IT"]
     // Y enviará push a todos los empleados con esos puestos.
     return crearYNotificar({
