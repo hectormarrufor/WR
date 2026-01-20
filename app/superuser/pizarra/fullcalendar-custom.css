@@ -1,0 +1,55 @@
+/* fullcalendar-custom.css */
+
+/* Título de la columna (Día) */
+.fc-col-header-cell {
+  background-color: var(--mantine-color-gray-0);
+  padding: 10px 0;
+}
+
+.fc-col-header-cell-cushion {
+  text-transform: capitalize;
+  font-weight: 700;
+  color: var(--mantine-color-dark-4);
+  text-decoration: none;
+}
+
+/* Celdas de tiempo (fondo) */
+.fc-timegrid-slot {
+  height: 3rem; /* Celdas más altas para que quepa texto si el evento es corto */
+}
+
+/* Eventos en el TimeGrid */
+.fc-timegrid-event {
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  border: none;
+}
+
+/* Quitar subrayado de enlaces */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+/* fullcalendar-custom.css */
+
+/* ... estilos anteriores ... */
+
+.fc-timegrid-event {
+  /* Sombra para que se distingan cuando están pegados */
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.2) !important; 
+  /* Un pequeño margen blanco entre eventos contiguos */
+  border-right: 1px solid white !important; 
+  border-bottom: 1px solid white !important;
+}
+
+/* Ocultar detalles si el evento es muy angosto (ej: hay 5 eventos simultáneos) */
+/* Esto asume que el contenedor padre se encoge */
+.fc-event-main {
+  container-type: inline-size;
+}
+
+@container (max-width: 60px) {
+  .fc-event-details {
+    display: none; /* Si es muy angosto, solo muestra el Título */
+  }
+}

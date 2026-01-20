@@ -1,4 +1,4 @@
-import  db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, ODT } from "@/models";
+import  db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, Maquina, MaquinaInstancia, ODT, Remolque, RemolqueInstancia, Vehiculo, VehiculoInstancia } from "@/models";
 import { NextResponse } from "next/server";
 import { notificarTodos } from "../notificar/route";
 
@@ -28,9 +28,18 @@ export async function GET() {
     const odts = await ODT.findAll({
       include: [
         { model: Cliente, as: "cliente" },
-        { model: Activo, as: "vehiculoPrincipal" },
-        { model: Activo, as: "vehiculoRemolque" },
-        { model: Activo, as: "maquinaria" },
+        { model: Activo, as: "vehiculoPrincipal", include: [{ 
+            model: VehiculoInstancia, as: 'vehiculoInstancia',
+            include: [{ model: Vehiculo, as: 'plantilla' }]
+        }] },
+        { model: Activo, as: "vehiculoRemolque", include: [{ 
+            model: RemolqueInstancia, as: 'remolqueInstancia',
+            include: [{ model: Remolque, as: 'plantilla' }]
+        }] },
+        { model: Activo, as: "maquinaria", include: [{ 
+            model: MaquinaInstancia, as: 'maquinaInstancia',
+            include: [{ model: Maquina, as: 'plantilla' }]
+        }] },
         { model: Empleado, as: "chofer" },
         { model: Empleado, as: "ayudante" },
         { model: HorasTrabajadas },

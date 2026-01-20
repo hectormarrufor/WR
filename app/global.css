@@ -5,3 +5,23 @@
   font-style: normal;
 }
 
+/* app/global.css o similar */
+
+.rbc-calendar {
+  min-height: 500px; /* Seguridad */
+}
+
+.rbc-event {
+  background-color: var(--mantine-color-blue-filled);
+  border-radius: 6px !important;
+}
+
+.rbc-today {
+  background-color: var(--mantine-color-blue-light) !important;
+}
+
+.rbc-header {
+  padding: 8px 0 !important;
+  font-weight: 700 !important;
+  color: var(--mantine-color-dimmed);
+}
