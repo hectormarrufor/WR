@@ -47,7 +47,7 @@ const LayoutMenu = ({ router }) => {
                         >
                             <Group gap="xs">
                                 <Avatar 
-                                    src={imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${imagen}` : null} 
+                                    src={imagen ? `${imagen}` : null} 
                                     alt={nombre} 
                                     radius="xl" 
                                     size="md" 
