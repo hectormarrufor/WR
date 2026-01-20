@@ -20,6 +20,7 @@ import NotificationBell from './components/NotificationBell';
 // Crear el tema FUERA del componente para evitar re-renders innecesarios
 const theme = createTheme(themeConfig);
 
+
 // Componente de carga para el Suspense (Puede ser igual al de tu AuthGuard)
 function LoadingFallback() {
   return (
