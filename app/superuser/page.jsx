@@ -40,45 +40,47 @@ export default function SuperUserHome() {
                 console.error("Error fetching BCV price:", error);
             }
         })();
+
+        setIsLoading(false);
     }, []);
 
-    useEffect(() => {
-        if (isAdmin) {
-            setIsLoading(false);
-            return
-        }
+    // useEffect(() => {
+    //     if (isAdmin) {
+    //         setIsLoading(false);
+    //         return
+    //     }
 
-        // else {
+    //     else {
 
-        //     if (rol) {
-        //         console.log(rol)
-        //         switch (true) {
-        //             case rol.includes("Administrador"):
-        //                 setIsLoading(false);
-        //                 router.push('/superuser/rrhh/empleados');
-        //                 break;
-        //             case rol.includes("Presidente"):
-        //                 setIsLoading(false);
-        //                 router.push('/superuser/rrhh/empleados');
-        //                 break;
-        //             case rol.includes("Gerente de Mantenimiento"):
-        //                 router.push('/superuser/flota');
-        //             case rol.includes("Analista de Recursos Humanos"):
-        //                 router.push('/superuser/rrhh');
-        //                 break;
-        //             case rol.includes("Chofer"):
-        //                 router.push(`/superuser/flota/activos`);
-        //                 break;
-        //             case rol.includes("Gerente Operacional"):
-        //                 router.push('/superuser/odt');
-        //                 break;
-        //             default:
-        //                 router.push("/forbidden")
-        //                 break;
-        //         }
-        //     }
-        // }
-    }, [rol])
+    //         if (rol) {
+    //             console.log(rol)
+    //             switch (true) {
+    //                 case rol.includes("Administrador"):
+    //                     setIsLoading(false);
+    //                     router.push('/superuser/rrhh/empleados');
+    //                     break;
+    //                 case rol.includes("Presidente"):
+    //                     setIsLoading(false);
+    //                     router.push('/superuser/rrhh/empleados');
+    //                     break;
+    //                 case rol.includes("Gerente de Mantenimiento"):
+    //                     router.push('/superuser/flota');
+    //                 case rol.includes("Analista de Recursos Humanos"):
+    //                     router.push('/superuser/rrhh');
+    //                     break;
+    //                 case rol.includes("Chofer"):
+    //                     router.push(`/superuser/flota/activos`);
+    //                     break;
+    //                 case rol.includes("Gerente Operacional"):
+    //                     router.push('/superuser/odt');
+    //                     break;
+    //                 default:
+    //                     router.push("/forbidden")
+    //                     break;
+    //             }
+    //         }
+    //     }
+    // }, [rol])
 
 
     const menuOptions = [
