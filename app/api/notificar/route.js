@@ -1,6 +1,6 @@
 import webpush from 'web-push';
 import { 
-    PushSubscription, Notificacion, Usuario, Empleado, sequelize 
+    PushSubscription, Notificacion, User, Empleado, sequelize 
 } from '@/models'; // Ajusta tus imports según tu estructura
 import { Op } from 'sequelize';
 
@@ -72,7 +72,7 @@ export async function crearYNotificar(data) {
             if (targetPuestos) condicionesEmpleado.push({ puesto: { [Op.in]: targetPuestos } });
 
             // Buscamos usuarios que cumplan Depto O Puesto
-            const usuariosTarget = await Usuario.findAll({
+            const usuariosTarget = await User.findAll({
                 include: [{
                     model: Empleado,
                     as: 'empleado',
