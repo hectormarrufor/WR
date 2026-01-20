@@ -38,20 +38,14 @@ const ODT = sequelize.define("ODT", {
 // 🚛 Relación muchos-a-muchos con Activo (vehículos)
 
 ODT.associate = (models) => {
-    ODT.belongsToMany(models.Activo, {
-        through: models.ODT_Vehiculos,
-        as: "vehiculos",
-        foreignKey: "odtId",
-        onDelete: 'CASCADE' 
-    });
-    ODT.belongsToMany(models.Empleado, {
-        through: models.ODT_Empleados,
-        as: "empleados",
-        foreignKey: "odtId",
-        onDelete: 'CASCADE' 
-    });
+    ODT.belongsTo(models.Activo, { foreignKey: 'vehiculoPrincipalId', as: 'vehiculoPrincipal' });
+    ODT.belongsTo(models.Activo, { foreignKey: 'vehiculoRemolqueId', as: 'vehiculoRemolque' });
+    ODT.belongsTo(models.Activo, { foreignKey: 'maquinariaId', as: 'maquinaria' });
+    ODT.belongsTo(models.Empleado, { foreignKey: 'choferId', as: 'chofer' });
+    ODT.belongsTo(models.Empleado, { foreignKey: 'ayudanteId', as: 'ayudante' });
     ODT.belongsTo(models.Cliente, { as: "cliente", foreignKey: "clienteId" });
-    ODT.hasMany(models.HorasTrabajadas, { foreignKey: "odtId" , onDelete: 'CASCADE' });
+    ODT.hasMany(models.HorasTrabajadas, { foreignKey: "odtId", onDelete: 'CASCADE' });
+    ODT.hasMany(models.Horometro, { foreignKey: "odtId", onDelete: 'CASCADE' });
 
 
 }

@@ -22,6 +22,10 @@ const Horometro = sequelize.define('Horometro', {
         type: DataTypes.FLOAT,
         allowNull: false,
     },
+    origen: {
+        type: DataTypes.ENUM('manual', 'odt'),
+        defaultValue: 'manual',
+    },
 }, {
     tableName: 'Horometros',
     timestamps: true,
@@ -29,6 +33,7 @@ const Horometro = sequelize.define('Horometro', {
 
 Horometro.associate = (models) => {
     Horometro.belongsTo(models.Activo, { foreignKey: 'activoId' });
+    Horometro.belongsTo(models.ODT, { foreignKey: 'odtId' });
 }
 
 module.exports = Horometro;

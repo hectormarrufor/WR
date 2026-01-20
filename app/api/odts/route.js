@@ -1,5 +1,6 @@
-import db, { Activo, Cliente, Empleado, HorasTrabajadas, ODT, ODT_Empleados, ODT_Vehiculos } from "@/models";
+import  db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, ODT } from "@/models";
 import { NextResponse } from "next/server";
+import { notificarTodos } from "../notificar/route";
 
 function calcularHoras(horaEntrada, horaSalida) {
   const [hIn, mIn] = horaEntrada.split(':').map(Number);
@@ -27,8 +28,11 @@ export async function GET() {
     const odts = await ODT.findAll({
       include: [
         { model: Cliente, as: "cliente" },
-        { model: Activo, as: "vehiculos" },
-        { model: Empleado, as: "empleados" },
+        { model: Activo, as: "vehiculoPrincipal" },
+        { model: Activo, as: "vehiculoRemolque" },
+        { model: Activo, as: "maquinaria" },
+        { model: Empleado, as: "chofer" },
+        { model: Empleado, as: "ayudante" },
         { model: HorasTrabajadas },
       ],
     });
@@ -49,10 +53,11 @@ export async function POST(req) {
 
     const {
 
-      vehiculosPrincipales,
-      vehiculosRemolque,
-      choferes,
-      ayudantes,
+      vehiculoPrincipalId,
+      vehiculoRemolqueId,
+      maquinariaId,
+      choferId,
+      ayudanteId,
       ...odtData
     } = body;
 
@@ -66,74 +71,75 @@ export async function POST(req) {
 
 
     console.log("creando la odt con: ", odtData);
-    const nuevaODT = await ODT.create(odtData, { transaction });
-    // Asociar vehículos principales
-    console.log("asiociando vehiculos principales")
-    // Vehículos principales
-    if (vehiculosPrincipales?.length) {
-      for (const id of vehiculosPrincipales) {
-        await ODT_Vehiculos.create({
-          odtId: nuevaODT.id,
-          activoId: id,
-          tipo: 'principal'
-        }, { transaction });
-      }
-    }
-    console.log("asiociando vehiculos remolque")
-    // Vehículos remolque
-    if (vehiculosRemolque?.length) {
-      for (const id of vehiculosRemolque) {
-        await ODT_Vehiculos.create({
-          odtId: nuevaODT.id,
-          activoId: id,
-          tipo: 'remolque'
-        }, { transaction });
-      }
-    }
-    console.log("asiociando choferes y ayudantes")
-    // Choferes
-    if (choferes?.length) {
-      for (const id of choferes) {
-        await ODT_Empleados.create({
-          odtId: nuevaODT.id,
-          empleadoId: id,
-          rol: 'chofer'
-        }, { transaction });
-        // Crear horas trabajadas
-        await HorasTrabajadas.create({
-         odtId: nuevaODT.id,
-          empleadoId: id,
-          fecha: odtData.fecha,
-          horas: calcularHoras(odtData.horaLlegada, odtData.horaSalida),
-          origen: 'odt',
-          observaciones: `Horas registradas por ODT #${nuevaODT.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
-        }, { transaction });
+    const nuevaODT = await ODT.create({
+      ...odtData,
+      choferId,
+      ayudanteId,
+      vehiculoPrincipalId,
+      vehiculoRemolqueId,
+      maquinariaId
+    }, { transaction });
 
-      }
-    }
-    console.log("asiociando ayudantes")
-    // Ayudantes
-    if (ayudantes?.length) {
-      for (const id of ayudantes) {
-        await ODT_Empleados.create({
-          odtId: nuevaODT.id,
-          empleadoId: id,
-          rol: 'ayudante'
-        }, { transaction });
-        await HorasTrabajadas.create({
-          odtId: nuevaODT.id,
-          empleadoId: id,
-          fecha: odtData.fecha,
-          horas: calcularHoras(odtData.horaLlegada, odtData.horaSalida),
-          origen: 'odt',
-          observaciones: `Horas registradas por ODT #${nuevaODT.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
-        }, { transaction });
+    const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
 
-      }
+    if (choferId) {
+      await HorasTrabajadas.create({
+        odtId: nuevaODT.id,
+        empleadoId: choferId,
+        fecha: odtData.fecha,
+        horas: horasCalculadas,
+        origen: 'odt',
+        observaciones: odtData.descripcionServicio
+      }, { transaction });
+    }
+
+    if (ayudanteId) {
+      await HorasTrabajadas.create({
+        odtId: nuevaODT.id,
+        empleadoId: ayudanteId,
+        fecha: odtData.fecha,
+        horas: horasCalculadas,
+        origen: 'odt',
+        observaciones: odtData.descripcionServicio
+      }, { transaction });
+    }
+
+    if (vehiculoPrincipalId) {
+      await Horometro.create({
+        activoId: vehiculoPrincipalId,
+        fecha_registro: odtData.fecha,
+        valor: horasCalculadas,
+        origen: 'odt',
+        odtId: nuevaODT.id,
+      }, { transaction });
+    }
+    if (vehiculoRemolqueId) {
+      await Horometro.create({
+        activoId: vehiculoRemolqueId,
+        fecha_registro: odtData.fecha,
+        valor: horasCalculadas,
+        origen: 'odt',
+        odtId: nuevaODT.id,
+      }, { transaction });
+    }
+    if (maquinariaId) {
+      await Horometro.create({
+        activoId: maquinariaId,
+        fecha_registro: odtData.fecha,
+        valor: horasCalculadas,
+        origen: 'odt',
+        odtId: nuevaODT.id,
+      }, { transaction });
     }
 
 
     await transaction.commit();
+
+    await notificarTodos({
+      title: 'Nueva ODT Creada',
+      body: `Se ha creado la ODT #${nuevaODT.nroODT} para el día ${nuevaODT.fecha}.`,
+      url: `/superuser/odt/${nuevaODT.id}`,
+    });
 
 
     return NextResponse.json(nuevaODT, { status: 201 });

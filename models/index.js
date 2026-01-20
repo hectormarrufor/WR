@@ -57,8 +57,6 @@ const db = {
     //Operaciones
     Flete: require('./operaciones/Flete'),
     ODT: require('./recursosHumanos/ODT'),
-    ODT_Vehiculos: require('./recursosHumanos/ODTVehiculos'),
-    ODT_Empleados: require('./recursosHumanos/ODTEmpleados'),
 
     //CATALOGOS
     ViscosidadAceite: require('./catalogos/ViscosidadAceite'),

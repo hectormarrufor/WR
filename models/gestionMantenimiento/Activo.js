@@ -29,7 +29,7 @@ const Activo = sequelize.define('Activo', {
   },
   // CLAVES FORÁNEAS (Solo una estará llena)
 
- 
+
 }, {
   tableName: 'Activos',
   timestamps: true,
@@ -41,15 +41,18 @@ const Activo = sequelize.define('Activo', {
 });
 
 Activo.associate = (models) => {
-    Activo.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'vehiculoInstancia' });
-    Activo.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'remolqueInstancia' });
-    Activo.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'maquinaInstancia' });
-    Activo.hasMany(models.OrdenMantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
-    Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
-    Activo.hasMany(models.SubsistemaInstancia, { foreignKey: 'activoId', as: 'subsistemasInstancia' });
-    Activo.hasMany(models.Kilometraje, { foreignKey: 'activoId', as: 'registrosKilometraje' });
-    Activo.hasMany(models.Horometro, { foreignKey: 'activoId', as: 'registrosHorometro' });
-    Activo.hasMany(models.CargaCombustible, { foreignKey: 'activoId', as: 'cargasCombustible' });
+  Activo.belongsTo(models.VehiculoInstancia, { foreignKey: 'vehiculoInstanciaId', as: 'vehiculoInstancia' });
+  Activo.belongsTo(models.RemolqueInstancia, { foreignKey: 'remolqueInstanciaId', as: 'remolqueInstancia' });
+  Activo.belongsTo(models.MaquinaInstancia, { foreignKey: 'maquinaInstanciaId', as: 'maquinaInstancia' });
+  Activo.hasMany(models.ODT, { foreignKey: 'vehiculoPrincipalId', as: 'odtsComoPrincipal' });
+  Activo.hasMany(models.ODT, { foreignKey: 'vehiculoRemolqueId', as: 'odtsComoRemolque' });
+  Activo.hasMany(models.ODT, { foreignKey: 'maquinariaId', as: 'odtsComoMaquinaria' });
+  Activo.hasMany(models.OrdenMantenimiento, { foreignKey: 'activoId', as: 'mantenimientos' });
+  Activo.hasMany(models.Inspeccion, { foreignKey: 'activoId', as: 'inspecciones' });
+  Activo.hasMany(models.SubsistemaInstancia, { foreignKey: 'activoId', as: 'subsistemasInstancia' });
+  Activo.hasMany(models.Kilometraje, { foreignKey: 'activoId', as: 'registrosKilometraje' });
+  Activo.hasMany(models.Horometro, { foreignKey: 'activoId', as: 'registrosHorometro' });
+  Activo.hasMany(models.CargaCombustible, { foreignKey: 'activoId', as: 'cargasCombustible' });
 }
 
 module.exports = Activo;

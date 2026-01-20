@@ -13,6 +13,6 @@ const withPWA = require('next-pwa')({
 
 module.exports = withPWA({
   reactStrictMode: true,
-  serverExternalPackages: ['sequelize'],
+  serverExternalPackages: ['sequelize', 'pg', 'pg-hstore', 'pg-connection-string'],
 
 });

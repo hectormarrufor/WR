@@ -1,146 +1,214 @@
-import db, { Activo, Cliente, Empleado, HorasTrabajadas, ODT, ODT_Empleados, ODT_Vehiculos } from "@/models";
+import db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, ODT } from "@/models";
 import { NextResponse } from "next/server";
+import { Op } from "sequelize"; // Importante para el operador NotIn
 
 function calcularHoras(horaEntrada, horaSalida) {
+  if (!horaEntrada || !horaSalida) return 0;
   const [hIn, mIn] = horaEntrada.split(':').map(Number);
   const [hOut, mOut] = horaSalida.split(':').map(Number);
 
   let entrada = hIn * 60 + mIn;
   let salida = hOut * 60 + mOut;
 
-  // Si la salida es menor que la entrada, significa que pasó la medianoche
-  if (salida < entrada) {
-    salida += 24 * 60;
-  }
+  if (salida < entrada) salida += 24 * 60;
 
-  const diffMin = salida - entrada;
-  return diffMin / 60; // devolver en horas decimales
+  return (salida - entrada) / 60;
 }
 
-// =======================
-// GET ODT específica
-// =======================
-export async function GET(_, { params }) {
-  try {
-    const { id } = await params;
-    const odt = await ODT.findByPk(id, {
-      include: [
-        { model: Cliente, as: "cliente" },
-        { model: Activo, as: "vehiculos" },
-        { model: Empleado, as: "empleados" },
-        { model: HorasTrabajadas },
-      ],
+// Función auxiliar para sincronizar (Borrar sobrantes, Actualizar existentes, Crear nuevos)
+async function sincronizarRegistros({ 
+  model, 
+  fkField, 
+  itemsNuevos, 
+  odtId, 
+  datosComunes, 
+  transaction 
+}) {
+  // 1. Identificar IDs actuales que se quedan
+  const idsNuevos = itemsNuevos.map(i => i.id).filter(Boolean);
+
+  // 2. BORRAR (Prune): Eliminar los que ya no están en la lista nueva
+  await model.destroy({
+    where: {
+      odtId: odtId,
+      origen: 'odt',
+      [fkField]: { [Op.notIn]: idsNuevos } // Borra todo lo que NO esté en la lista nueva
+    },
+    transaction
+  });
+
+  // 3. UPSERT (Update or Insert)
+  for (const item of itemsNuevos) {
+    if (!item.id) continue;
+
+    // Buscamos si ya existe el registro para este ID en esta ODT
+    const registroExistente = await model.findOne({
+      where: {
+        odtId: odtId,
+        origen: 'odt',
+        [fkField]: item.id
+      },
+      transaction
     });
-    if (!odt) return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
-    return NextResponse.json(odt);
-  } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (registroExistente) {
+      // ACTUALIZAR: Solo cambiamos las horas y observaciones
+      await registroExistente.update({
+        fecha: datosComunes.fecha, // Por si cambió la fecha de la ODT
+        [model === Horometro ? 'fecha_registro' : 'fecha']: datosComunes.fecha,
+        [model === Horometro ? 'valor' : 'horas']: datosComunes.horas,
+        observaciones: item.observaciones
+      }, { transaction });
+    } else {
+      // CREAR: No existía, lo creamos
+      await model.create({
+        odtId: odtId,
+        [fkField]: item.id,
+        origen: 'odt',
+        [model === Horometro ? 'fecha_registro' : 'fecha']: datosComunes.fecha,
+        [model === Horometro ? 'valor' : 'horas']: datosComunes.horas,
+        observaciones: item.observaciones
+      }, { transaction });
+    }
   }
 }
 
-// =======================
-// PUT ODT específica
-// =======================
+// GET se mantiene igual...
+export async function GET(req, { params }) {
+    try {
+        // En Next.js 15 params es una promesa, es buena práctica esperarla
+        const { id } = await params; 
+
+        const odt = await ODT.findByPk(id, {
+            include: [
+                // 1. Cliente
+                { model: Cliente, as: "cliente" },
+                
+                // 2. Personal (Usando los alias definidos en las asociaciones)
+                { 
+                    model: Empleado, 
+                    as: "chofer",
+                    attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula'] 
+                },
+                { 
+                    model: Empleado, 
+                    as: "ayudante",
+                    attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula'] 
+                },
+
+                // 3. Activos (Usando los alias definidos)
+                { 
+                    model: Activo, 
+                    as: "vehiculoPrincipal",
+                    attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
+                },
+                { 
+                    model: Activo, 
+                    as: "vehiculoRemolque",
+                    attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
+                },
+                { 
+                    model: Activo, 
+                    as: "maquinaria",
+                    attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
+                },
+
+                // 4. Historial de Horas (Opcional, pero útil para ver el detalle)
+                { model: HorasTrabajadas }
+            ],
+        });
+
+        if (!odt) {
+            return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
+        }
+
+        return NextResponse.json(odt);
+
+    } catch (error) {
+        console.error("Error obteniendo ODT:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+// ==========================================
+// PUT (Actualización Inteligente)
+// ==========================================
 export async function PUT(req, { params }) {
   const transaction = await db.sequelize.transaction();
+  const { id } = params;
+
   try {
-    const { id } = await params;
     const body = await req.json();
 
     const {
-      vehiculosPrincipales,
-      vehiculosRemolque,
-      choferes,
-      ayudantes,
-      clienteId,
+      vehiculoPrincipalId,
+      vehiculoRemolqueId,
+      maquinariaId,
+      choferId,
+      ayudanteId,
       ...odtData
     } = body;
 
-    const odt = await ODT.findByPk(id);
-    if (!odt) {
-      await transaction.rollback();
-      return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
+    // 1. Verificar existencia
+    const odtExistente = await ODT.findByPk(id);
+    if (!odtExistente) {
+        await transaction.rollback();
+        return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
     }
 
-    // Actualizar datos base de la ODT
-    await odt.update({ ...odtData, clienteId }, { transaction });
+    // 2. Actualizar la ODT Principal
+    await odtExistente.update({
+      ...odtData,
+      vehiculoPrincipalId,
+      vehiculoRemolqueId,
+      maquinariaId,
+      choferId,
+      ayudanteId
+    }, { transaction });
 
-    // Limpiar asociaciones previas
-    await ODT_Vehiculos.destroy({ where: { odtId: id }, transaction });
-    await ODT_Empleados.destroy({ where: { odtId: id }, transaction });
-    await HorasTrabajadas.destroy({ where: { odtId: id }, transaction });
+    // Calculamos las horas nuevas
+    const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
 
-    // Reasociar vehículos principales
-    if (vehiculosPrincipales?.length) {
-      for (const vId of vehiculosPrincipales) {
-        await ODT_Vehiculos.create({
-          odtId: id,
-          activoId: vId,
-          tipo: 'principal'
-        }, { transaction });
-      }
-    }
+    // 3. Preparar arrays para la sincronización
+    
+    // --- Personal ---
+    const listaPersonal = [];
+    if (choferId) listaPersonal.push({ id: choferId, observaciones: `Chofer ODT #${odtExistente.nroODT}` });
+    if (ayudanteId) listaPersonal.push({ id: ayudanteId, observaciones: `Ayudante ODT #${odtExistente.nroODT}` });
 
-    // Reasociar vehículos remolque
-    if (vehiculosRemolque?.length) {
-      for (const vId of vehiculosRemolque) {
-        await ODT_Vehiculos.create({
-          odtId: id,
-          activoId: vId,
-          tipo: 'remolque'
-        }, { transaction });
-      }
-    }
+    await sincronizarRegistros({
+      model: HorasTrabajadas,
+      fkField: 'empleadoId',
+      itemsNuevos: listaPersonal,
+      odtId: id,
+      datosComunes: { fecha: odtData.fecha, horas: horasCalculadas },
+      transaction
+    });
 
-    // Reasociar choferes
-    if (choferes?.length) {
-      for (const eId of choferes) {
-        await ODT_Empleados.create({
-          odtId: id,
-          EmpleadoId: eId,
-          rol: 'chofer'
-        }, { transaction });
+    // --- Activos (Horómetros) ---
+    const listaActivos = [];
+    if (vehiculoPrincipalId) listaActivos.push({ id: vehiculoPrincipalId, observaciones: 'Uso Principal' });
+    if (vehiculoRemolqueId) listaActivos.push({ id: vehiculoRemolqueId, observaciones: 'Uso Remolque' });
+    if (maquinariaId) listaActivos.push({ id: maquinariaId, observaciones: 'Uso Maquinaria' });
 
-        await HorasTrabajadas.create({
-          odtId: id,
-          empleadoId: eId,
-          fecha: odtData.fecha,
-          horas: calcularHoras(odtData.horaLlegada, odtData.horaSalida),
-          origen: 'odt',
-          observaciones: `Horas registradas por ODT #${odt.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
-        }, { transaction });
-      }
-    }
-
-    // Reasociar ayudantes
-    if (ayudantes?.length) {
-      for (const eId of ayudantes) {
-        await ODT_Empleados.create({
-          odtId: id,
-          EmpleadoId: eId,
-          rol: 'ayudante'
-        }, { transaction });
-
-        await HorasTrabajadas.create({
-          odtId: id,
-          empleadoId: eId,
-          fecha: odtData.fecha,
-          horas: calcularHoras(odtData.horaLlegada, odtData.horaSalida),
-          origen: 'odt',
-          observaciones: `Horas registradas por ODT #${odt.nroODT}, desde ${odtData.horaLlegada} hasta ${odtData.horaSalida}. ${odtData.descripcionServicio}`
-        }, { transaction });
-      }
-    }
+    await sincronizarRegistros({
+      model: Horometro,
+      fkField: 'activoId',
+      itemsNuevos: listaActivos,
+      odtId: id,
+      datosComunes: { fecha: odtData.fecha, horas: horasCalculadas }, // El helper maneja el nombre del campo 'valor' internamente
+      transaction
+    });
 
     await transaction.commit();
-    return NextResponse.json(odt);
+    return NextResponse.json(odtExistente);
+
   } catch (error) {
+    console.error("Error en PUT ODT:", error);
     await transaction.rollback();
-    console.error(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
 // =======================
 // DELETE ODT específica
 // =======================

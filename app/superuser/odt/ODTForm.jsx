@@ -37,10 +37,11 @@ export default function ODTForm({ mode = "create", odtId }) {
       horaLlegada: "",
       horaSalida: "",
       clienteId: "",
-      vehiculosPrincipales: [],
-      vehiculosRemolque: [],
-      choferes: [],
-      ayudantes: [],
+      vehiculoPrincipalId: null,
+      vehiculoRemolqueId: null,
+      maquinariaId: null,
+      choferId: null,
+      ayudanteId: null,
     },
     validate: {
       // Corregidas las validaciones para que usen el 'value' recibido
@@ -79,7 +80,36 @@ export default function ODTForm({ mode = "create", odtId }) {
     if (mode === "edit" && odtId) {
       fetch(`/api/odts/${odtId}`)
         .then((res) => res.json())
-        .then((data) => form.setValues({ ...data, fecha: new Date(data.fecha) }));
+        .then((data) => {
+          // Formateamos el objeto para que encaje EXACTO con initialValues
+          const valoresFormateados = {
+            nroODT: data.nroODT,
+            
+            // 1. FECHA: Convertir string "YYYY-MM-DD" a objeto Date real
+            // Agregamos 'T12:00:00' opcionalmente para evitar problemas de timezone si fuera necesario
+            fecha: data.fecha ? new Date(data.fecha) : null, 
+            
+            descripcionServicio: data.descripcionServicio || "",
+            
+            // 2. HORAS: La API devuelve "08:00:00", el TimeInput prefiere "08:00"
+            horaLlegada: data.horaLlegada ? data.horaLlegada.substring(0, 5) : "",
+            horaSalida: data.horaSalida ? data.horaSalida.substring(0, 5) : "",
+
+            // 3. CLIENTE: Los Selects de Mantine manejan value como string
+            clienteId: data.clienteId ? String(data.clienteId) : "",
+
+            // 4. ACTIVOS Y EMPLEADOS: Usamos los IDs directos (o extraemos del objeto si la FK faltara)
+            // Usamos || null para que el grid sepa que no hay selección (limpiar estado)
+            vehiculoPrincipalId: data.vehiculoPrincipalId || null,
+            vehiculoRemolqueId: data.vehiculoRemolqueId || null,
+            maquinariaId: data.maquinariaId || null,
+            choferId: data.choferId || null,
+            ayudanteId: data.ayudanteId || null,
+          };
+
+          console.log("Valores cargados al form:", valoresFormateados);
+          form.setValues(valoresFormateados);
+        });
     }
   }, [mode, odtId]);
 
@@ -96,6 +126,10 @@ export default function ODTForm({ mode = "create", odtId }) {
       } else if (v.remolqueInstancia) {
         nombreDisplay = `${v.remolqueInstancia.plantilla.marca} ${v.remolqueInstancia.plantilla.modelo}`;
         placa = v.remolqueInstancia.placa;
+      }
+       else if (v.maquinaInstancia) {
+        nombreDisplay = `${v.maquinaInstancia.plantilla.marca} ${v.maquinaInstancia.plantilla.modelo}`;
+        placa = v.maquinaInstancia.placa;
       }
 
       return {
@@ -116,7 +150,7 @@ export default function ODTForm({ mode = "create", odtId }) {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({...values, vehiculosPrincipales: values.vehiculosPrincipales[0], vehiculosRemolque: values.vehiculosRemolque[0], choferes: values.choferes[0], ayudantes: values.ayudantes[0] }),
+        body: values ? JSON.stringify(values) : null,
       });
 
       if (!response.ok) throw new Error("Error en la respuesta del servidor");
@@ -161,7 +195,7 @@ export default function ODTForm({ mode = "create", odtId }) {
           {/* Sección de Personal */}
           <Box>
             <ODTSelectableGrid
-              label="Choferes"
+              label="Chofer"
               data={empleados
                 .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer")))
                 .map(e => ({
@@ -170,15 +204,15 @@ export default function ODTForm({ mode = "create", odtId }) {
                   imagen: e.imagen,
                   puestos: e.puestos,
                 }))}
-              onChange={(values) => form.setFieldValue("choferes", values)}
-              value={form.values.choferes}
+              onChange={(values) => form.setFieldValue("choferId", values)}
+              value={form.values.choferId}
             />
             <Divider my="sm" />
           </Box>
 
           <Box>
             <ODTSelectableGrid
-              label="Ayudantes"
+              label="Ayudante"
               data={empleados
                 .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante")))
                 .map(e => ({
@@ -187,8 +221,8 @@ export default function ODTForm({ mode = "create", odtId }) {
                   imagen: e.imagen,
                   puestos: e.puestos,
                 }))}
-              onChange={(values) => form.setFieldValue("ayudantes", values)}
-              value={form.values.ayudantes}
+              onChange={(values) => form.setFieldValue("ayudanteId", values)}
+              value={form.values.ayudanteId}
             />
             <Divider my="sm" />
           </Box>
@@ -196,20 +230,29 @@ export default function ODTForm({ mode = "create", odtId }) {
           {/* Sección de Activos Refactorizada */}
           <Box>
             <ODTSelectableGrid
-              label="Vehículos Principales (Chutos/Camiones)"
+              label="Vehículo (Chuto/Camion)"
               data={activosMapeados.filter(a => a.tipo === "Vehiculo")}
-              onChange={(values) => form.setFieldValue("vehiculosPrincipales", values)}
-              value={form.values.vehiculosPrincipales}
+              onChange={(values) => form.setFieldValue("vehiculoPrincipalId", values)}
+              value={form.values.vehiculoPrincipalId}
             />
             <Divider my="sm" />
           </Box>
 
           <Box>
             <ODTSelectableGrid
-              label="Remolques / Equipos"
+              label="Remolque"
               data={activosMapeados.filter(a => a.tipo === "Remolque")}
-              onChange={(values) => form.setFieldValue("vehiculosRemolque", values)}
-              value={form.values.vehiculosRemolque}
+              onChange={(values) => form.setFieldValue("vehiculoRemolqueId", values)}
+              value={form.values.vehiculoRemolqueId}
+            />
+            <Divider my="sm" />
+          </Box>
+          <Box>
+            <ODTSelectableGrid
+              label="Maquinaria"
+              data={activosMapeados.filter(a => a.tipo === "Maquina")}
+              onChange={(values) => form.setFieldValue("maquinariaId", values)}
+              value={form.values.maquinariaId}
             />
             <Divider my="sm" />
           </Box>
