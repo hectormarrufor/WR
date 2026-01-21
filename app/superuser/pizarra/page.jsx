@@ -25,6 +25,7 @@ import { es } from "date-fns/locale";
 
 import "./fullcalendar-custom.css";
 import ManualHoursButton from "./ManualHoursButton";
+import { toLocalDate } from "@/app/helpers/fechaCaracas";
 
 // ==========================================
 // 1. HELPERS
@@ -80,6 +81,8 @@ export default function PizarraPage() {
           fetch("/api/rrhh/horas-manuales").then(r => r.json())
         ]);
 
+   
+
         // --- 1. PROCESAR ODTS (Individuales) ---
         const eventosOdt = Array.isArray(resOdts) ? resOdts.map(odt => ({
           id: `odt-${odt.id}`,
@@ -87,7 +90,7 @@ export default function PizarraPage() {
           tipo: 'odt',
           start: `${odt.fecha.split('T')[0]}T${odt.horaLlegada}`,
           end: `${odt.fecha.split('T')[0]}T${odt.horaSalida}`,
-          extendedProps: odt,
+          extendedProps: {...odt, fecha: toLocalDate(odt.fecha)},
           backgroundColor: odt.maquinariaId ? 'var(--mantine-color-orange-filled)' : 'var(--mantine-color-blue-filled)',
           borderColor: 'transparent',
           textColor: 'white'

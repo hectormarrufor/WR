@@ -26,12 +26,12 @@ import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
 import ModalCrearHora from "./ModalCrearHora";
 import ModalCuentaBancaria from "./ModalCuentaBancaria";
 import ModalPagoMovil from "./ModalPagoMovil";
-import { toLocalDate } from "@/app/helpers/fechaCaracas";
+import { formatToInputDate, getSafeDate, toLocalDate } from "@/app/helpers/fechaCaracas";
 
 // --- COMPONENTE PARA EL REGISTRO DE HORAS EN MÓVIL ---
 const MobileWorkLogCard = ({ log }) => {
     const isExtra = log.horas > 8;
-    const fechaFormatted = new Date(log.fecha).toLocaleDateString(); // O tu lógica de substring
+    const fechaFormatted = formatToInputDate((log.fecha)); // O tu lógica de substring
 
     return (
         <Paper withBorder p="md" radius="md" mb="sm" shadow="xs">
