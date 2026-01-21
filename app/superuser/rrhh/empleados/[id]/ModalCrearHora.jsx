@@ -7,6 +7,8 @@ import { notifications } from "@mantine/notifications";
 import { DateInput, TimeInput } from "@mantine/dates";
 import '@mantine/dates/styles.css';
 import { useAuth } from "@/hooks/useAuth";
+import { toLocalDate } from "@/app/helpers/fechaCaracas";
+
 
 
 
@@ -21,7 +23,7 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId,
 
     const form = useForm({
         initialValues: {
-            fecha: initialValues ? new Date(initialValues.fecha) : new Date(),
+            fecha: initialValues ? toLocalDate(initialValues.fecha) : toLocalDate(new Date()),
             horaInicio: initialValues ? initialValues.inicio : "08:00",
             horaFin: initialValues ? initialValues.fin : "16:00",
             observaciones: initialValues ? initialValues.observaciones : "",
@@ -32,7 +34,7 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId,
     useEffect(() => {
         if (initialValues) {
             form.setValues({
-                fecha: new Date(initialValues.fecha),
+                fecha: toLocalDate(initialValues.fecha),
                 horaInicio: initialValues.inicio,
                 horaFin: initialValues.fin,
                 observaciones: initialValues.observaciones,
@@ -64,6 +66,7 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId,
 
         setSubmitting(true);
         try {
+            let data
             // Ajusta la ruta según tu API
             const res = await fetch(initialValues ? `/api/rrhh/empleados/${empleadoId}/horasTrabajadas/${initialValues.id}` : `/api/rrhh/empleados/${empleadoId}/horasTrabajadas`, {
                 method: initialValues ? "PUT" : "POST",
@@ -74,13 +77,16 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId,
             if (!res.ok) {
                 const text = await res.text();
                 throw new Error(text || "Error al crear hora");
+            } else {
+                data = await res.json();
+                console.log("Respuesta de la API:", data);
             }
             notifications.show({
-                title: "Hora creada exitosamente",
+                title: initialValues ? "Hora editada exitosamente" : "Hora creada exitosamente",
                 color: "green",
             });
             onCreated();
-            onClose();
+            onClose(initialValues ? null : data);
         } catch (err) {
             console.error(err);
             notifications.show({
@@ -108,6 +114,7 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId,
                     <DateInput
                         label="Fecha"
                         valueFormat="DD/MM/YYYY"
+                        format="DD/MM/YYYY"
                         {...form.getInputProps("fecha")}
                     />
 

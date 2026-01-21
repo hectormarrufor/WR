@@ -7,6 +7,7 @@ let sequelize;
 const commonConfig = {
   
     dialect: 'postgres',
+    timezone: '-04:00', // Ajuste de zona horaria
     dialectOptions: {
       ssl: {
         require: true,

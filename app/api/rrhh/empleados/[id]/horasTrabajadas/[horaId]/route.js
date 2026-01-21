@@ -5,7 +5,7 @@ export async function PUT(req, { params }) {
     // The second parameter in the folder structure corresponds to the specific ID of the worked hour record
     // Usually, Next.js params object will capture the last dynamic segment.
     // Assuming the folder structure is app/api/rrhh/empleados/[empleadoId]/horasTrabajadas/[id]/route.js
-    const { id } = await params; 
+    const { horaId: id } = await params; 
 
     try {
         const body = await req.json();

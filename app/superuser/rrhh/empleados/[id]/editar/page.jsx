@@ -5,6 +5,7 @@ import { use, useEffect, useState } from 'react';
 import { Container, Text, Center, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { EmpleadoForm } from '../../EmpleadoForm';
+import { toLocalDate } from '@/app/helpers/fechaCaracas';
 
 export default function EditarEmpleadoPage({ params }) {
   const { id } = use(params); // El ID del empleado viene de los parámetros de la URL
@@ -22,7 +23,7 @@ export default function EditarEmpleadoPage({ params }) {
           throw new Error(`Error al cargar los datos del empleado: ${response.statusText}`);
         }
         const data = await response.json();
-        setEmpleadoData(data);
+        setEmpleadoData({...data, fechaIngreso: toLocalDate(data.fechaIngreso), fechaNacimiento: toLocalDate(data.fechaNacimiento), fechaRetorno: data.fechaRetorno ? toLocalDate(data.fechaRetorno) : null });
       } catch (err) {
         console.error('Failed to fetch employee for editing:', err);
         setError(err);

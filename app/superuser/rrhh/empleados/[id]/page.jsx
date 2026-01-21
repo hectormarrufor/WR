@@ -14,7 +14,8 @@ import {
     IconEdit, IconPhone, IconId, IconCake,
     IconCurrencyDollar, IconBuildingBank, IconDeviceMobile,
     IconClock, IconBriefcase, IconNotes, IconLink,
-    IconTrash
+    IconTrash,
+    IconCalendar
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMediaQuery } from "@mantine/hooks"; // <--- IMPORTANTE
@@ -25,6 +26,7 @@ import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
 import ModalCrearHora from "./ModalCrearHora";
 import ModalCuentaBancaria from "./ModalCuentaBancaria";
 import ModalPagoMovil from "./ModalPagoMovil";
+import { toLocalDate } from "@/app/helpers/fechaCaracas";
 
 // --- COMPONENTE PARA EL REGISTRO DE HORAS EN MÓVIL ---
 const MobileWorkLogCard = ({ log }) => {
@@ -231,8 +233,12 @@ export default function Page({ params }) {
                                 <div><Text size="xs" c="dimmed">Edad</Text><Text size="sm" fw={500}>{empleado.edad} años</Text></div>
                             </Group>
                             <Group wrap="nowrap">
+                                <IconCalendar size={20} color="gray" style={{ minWidth: 20 }} />
+                                <div><Text size="xs" c="dimmed">Nacimiento</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaNacimiento).toLocaleDateString("es-ES", {day: "2-digit", month: "long", year: "numeric"})}</Text></div>
+                            </Group>
+                            <Group wrap="nowrap">
                                 <IconBriefcase size={20} color="gray" style={{ minWidth: 20 }} />
-                                <div><Text size="xs" c="dimmed">Ingreso</Text><Text size="sm" fw={500}>{new Date(empleado.fechaIngreso).toLocaleDateString()}</Text></div>
+                                <div><Text size="xs" c="dimmed">Ingreso</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaIngreso).toLocaleDateString("es-ES", {day: "2-digit", month: "long", year: "numeric"})}</Text></div>
                             </Group>
 
                             {(rol.includes("Presidente") || rol.includes("admin")) && (
@@ -420,13 +426,13 @@ export default function Page({ params }) {
                                                             </Table.Td>
                                                             <Table.Td>
                                                                 {/* Aquí puedes agregar botones de acción si es necesario */}
-                                                                <ActionIcon size="sm" variant="light" color="red" onClick={() => {handleDeleteHora(h.id)}}>
+                                                                <ActionIcon size="sm" variant="light" color="red" onClick={() => { handleDeleteHora(h.id) }}>
                                                                     <IconTrash size={16} />
                                                                 </ActionIcon>
                                                                 <ActionIcon size="sm" variant="light" color="blue" onClick={() => {
                                                                     setSelectedHora(h);
                                                                     setModalCrearHora(true)
-                                                                    }}>
+                                                                }}>
                                                                     <IconEdit size={16} />
                                                                 </ActionIcon>
 
@@ -446,7 +452,20 @@ export default function Page({ params }) {
             </Grid>
 
             {/* Modales */}
-            <ModalCrearHora initialValues={selectedHora} opened={modalCrearHora} onClose={() => setModalCrearHora(false)} empleadoId={id} onCreated={() => router.refresh()} />
+            <ModalCrearHora
+                initialValues={selectedHora}
+                opened={modalCrearHora}
+                onClose={(e) => {
+                    setModalCrearHora(false)
+                    setSelectedHora(null);
+                    e && setEmpleado(prev => ({
+                        ...prev,
+                        HorasTrabajadas: [...prev.HorasTrabajadas, e]
+                    }))
+                }
+                }
+                empleadoId={id}
+                onCreated={() => router.refresh()} />
             <ModalCuentaBancaria opened={modalCuenta} onClose={() => setModalCuenta(false)} tipoEntidad="empleado" entidadId={id} onCreated={() => router.refresh()} />
             <ModalPagoMovil opened={modalPagoMovil} onClose={() => setModalPagoMovil(false)} tipoEntidad="empleado" entidadId={id} onCreated={() => router.refresh()} />
         </Paper>
