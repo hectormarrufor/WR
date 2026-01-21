@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 export default function ODTForm({ mode = "create", odtId }) {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
-  const { nombre } = useAuth();
+  const { nombre , apellido, userId} = useAuth();
 
   // Inicializamos como arrays vacíos para evitar errores de .map antes de cargar
   const [empleados, setEmpleados] = useState([]);
@@ -150,7 +150,7 @@ export default function ODTForm({ mode = "create", odtId }) {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: values ? JSON.stringify(values) : null,
+        body: values ? JSON.stringify({...values, nombreCreador: nombre + " " + apellido, userId}) : null,
       });
 
       if (!response.ok) throw new Error("Error en la respuesta del servidor");

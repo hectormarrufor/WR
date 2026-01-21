@@ -23,7 +23,7 @@ const Horometro = sequelize.define('Horometro', {
         allowNull: false,
     },
     origen: {
-        type: DataTypes.ENUM('manual', 'odt'),
+        type: DataTypes.ENUM('manual', 'odt', "creacion_activo"),
         defaultValue: 'manual',
     },
 }, {

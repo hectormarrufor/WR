@@ -61,7 +61,8 @@ export async function POST(req) {
     const body = await req.json();
 
     const {
-
+      userId,
+      nombreCreador,
       vehiculoPrincipalId,
       vehiculoRemolqueId,
       maquinariaId,
@@ -86,7 +87,8 @@ export async function POST(req) {
       ayudanteId,
       vehiculoPrincipalId,
       vehiculoRemolqueId,
-      maquinariaId
+      maquinariaId,
+      creadoPorId: userId,
     }, { transaction });
 
     const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
@@ -145,8 +147,8 @@ export async function POST(req) {
     await transaction.commit();
 
     await notificarTodos({
-      title: 'Nueva ODT Creada',
-      body: `Se ha creado la ODT #${nuevaODT.nroODT} para el día ${nuevaODT.fecha}.`,
+      title: 'Nueva ODT Registrada',
+      body: `${nombreCreador} ha creado la ODT #${nuevaODT.nroODT} para el día ${nuevaODT.fecha}.`,
       url: `/superuser/odt/${nuevaODT.id}`,
     });
 
