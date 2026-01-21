@@ -18,6 +18,14 @@ const HorasTrabajadas = sequelize.define("HorasTrabajadas", {
         type: DataTypes.FLOAT, // permite decimales (ej: 7.5 horas)
         allowNull: false,
     },
+    inicio: {
+        type: DataTypes.TIME,
+        allowNull: true,
+    },
+    fin: {
+        type: DataTypes.TIME,
+        allowNull: true,
+    },
     origen: {
         type: DataTypes.ENUM("manual", "odt"),
         defaultValue: "manual",

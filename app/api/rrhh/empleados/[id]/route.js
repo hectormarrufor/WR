@@ -26,11 +26,13 @@ export async function GET(request, { params }) {
         {
           model: db.HorasTrabajadas,
           // para filtrar las horas trabajadas desde el último viernes
-          // where: {
-          //   fecha: {
-          //     [db.Sequelize.Op.gte]: lastFriday
-          //   }
-          // },
+          where: {
+            fecha: {
+              [db.Sequelize.Op.gte]: lastFriday
+            }
+          },
+          order: [['fecha', 'ASC']],
+          separate: true,
           required: false // 👈 para que no falle si no hay horas
 
         },

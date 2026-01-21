@@ -1,21 +1,7 @@
-import { HorasTrabajadas } from "@/models";
+import { notificarCabezas } from "@/app/api/notificar/route";
+import { Empleado, HorasTrabajadas, User } from "@/models";
 import { NextResponse } from "next/server";
 
-function calcularHoras(horaEntrada, horaSalida) {
-    const [hIn, mIn] = horaEntrada.split(':').map(Number);
-    const [hOut, mOut] = horaSalida.split(':').map(Number);
-
-    let entrada = hIn * 60 + mIn;
-    let salida = hOut * 60 + mOut;
-
-    // Si la salida es menor que la entrada, significa que pasó la medianoche
-    if (salida < entrada) {
-        salida += 24 * 60;
-    }
-
-    const diffMin = salida - entrada;
-    return diffMin / 60; // devolver en horas decimales
-}
 
 export async function GET(req) {
     try {
@@ -29,28 +15,47 @@ export async function GET(req) {
 
 
 export async function POST(req, { params }) {
-    
-    const { id } =  await params;
+
+    const { id } = await params;
     try {
         const body = await req.json();
+
+        const {nombre, apellido} = await Empleado.findByPk(id);
 
         const {
             fecha,
             horas,
+            inicio,
+            fin,
             origen,
             observaciones,
             creadorId
         } = body;
+
+        const creador = await User.findByPk(creadorId, {include: [{model: Empleado, as: 'empleado'}]});
+        const creadorNombre = creador.empleado.nombre;
+        const creadorApellido = creador.empleado.apellido;
 
 
         const nuevasHoras = await HorasTrabajadas.create({
             horas,
             fecha,
             origen,
+            inicio,
+            fin,
             observaciones,
             empleadoId: id,
             creadorId,
         });
+
+        
+
+        notificarCabezas({
+            title: "Nueva Hora Manual Registrada",
+            body: `${creadorNombre} ${creadorApellido} ha registrado ${horas} horas para ${nombre} ${apellido} el día ${new Date(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}.`,
+            url: "/superuser/rrhh/empleados/" + id
+        })
+
 
 
         return NextResponse.json(nuevasHoras, { status: 201 });
@@ -61,7 +66,7 @@ export async function POST(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-    const {  id } = await params;
+    const { id } = await params;
     try {
         const hora = await HorasTrabajadas.findOne({
             where: {

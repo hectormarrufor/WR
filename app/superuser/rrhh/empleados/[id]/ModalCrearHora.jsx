@@ -10,21 +10,36 @@ import { useAuth } from "@/hooks/useAuth";
 
 
 
-export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId }) {
+export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId, initialValues = null }) {
     const router = useRouter?.() ?? null;
     const { userId } = useAuth();
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
+    console.log("Initial Values in ModalCrearHora:", initialValues);
+
     const form = useForm({
         initialValues: {
-            fecha: new Date(),
-            horaInicio: "",
-            horaFin: "",
-            observaciones: "",
+            fecha: initialValues ? new Date(initialValues.fecha) : new Date(),
+            horaInicio: initialValues ? initialValues.inicio : "08:00",
+            horaFin: initialValues ? initialValues.fin : "16:00",
+            observaciones: initialValues ? initialValues.observaciones : "",
+            horas: initialValues ? initialValues.horas : 8,
         },
     });
+
+    useEffect(() => {
+        if (initialValues) {
+            form.setValues({
+                fecha: new Date(initialValues.fecha),
+                horaInicio: initialValues.inicio,
+                horaFin: initialValues.fin,
+                observaciones: initialValues.observaciones,
+                horas: initialValues.horas,
+            });
+        }
+    }, [initialValues]);
 
 
 
@@ -40,6 +55,8 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId 
         const payload = {
             ...form.values,
             horas,
+            inicio: form.values.horaInicio,
+            fin: form.values.horaFin,
             origen: "manual",
             creadorId: userId
         };
@@ -48,8 +65,8 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId 
         setSubmitting(true);
         try {
             // Ajusta la ruta según tu API
-            const res = await fetch(`/api/rrhh/empleados/${empleadoId}/horasTrabajadas`, {
-                method: "POST",
+            const res = await fetch(initialValues ? `/api/rrhh/empleados/${empleadoId}/horasTrabajadas/${initialValues.id}` : `/api/rrhh/empleados/${empleadoId}/horasTrabajadas`, {
+                method: initialValues ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
@@ -82,7 +99,7 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId 
             opened={opened}
             centered
             onClose={onClose}
-            title="Crear hora para empleado"
+            title={initialValues ? "Editar hora para empleado" : "Crear hora para empleado"}
             size="lg"
         >
 
@@ -119,7 +136,7 @@ export default function ModalCrearHora({ opened, onClose, onCreated, empleadoId 
                         Cancelar
                     </Button>
                     <Button type="submit" loading={submitting}>
-                        {submitting ? "Creando..." : "Crear hora"}
+                        {submitting ? initialValues ? "Editando..." : "Creando..." : initialValues ? "Editar hora" : "Crear hora"}
                     </Button>
                 </Box>
             </Box>

@@ -5,6 +5,7 @@ import {
     Departamento
 } from '@/models'; // Ajusta tus imports según tu estructura
 import { Op } from 'sequelize';
+import { NextResponse } from 'next/server';
 
 // 1. CONFIGURACIÓN VAPID (Se mantiene igual)
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -157,6 +158,42 @@ export async function crearYNotificar(data) {
     }
 }
 
+export async function crearSinNotificar(data) {
+   const t = await sequelize.transaction();
+
+   try {
+        // A. Preparar datos
+        const fechaCaracas = new Date().toLocaleString('es-VE', {
+            timeZone: 'America/Caracas',
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true
+        });
+
+        // Normalizamos arrays para BD
+        const targetDeptos = Array.isArray(data.departamentos) && data.departamentos.length > 0 ? data.departamentos : null;
+        const targetPuestos = Array.isArray(data.puestos) && data.puestos.length > 0 ? data.puestos : null;
+
+        // B. Guardar HISTORIAL en Base de Datos
+        const nuevaNotificacion = await Notificacion.create({
+            titulo: data.title,
+            mensaje: data.body,
+            url: data.url,
+            departamentoObjetivo: targetDeptos,
+            puestoObjetivo: targetPuestos,
+            // Nota: Podrías agregar un campo 'rolesObjetivo' a tu modelo si quieres guardar que fue para Admins
+            tipo: data.tipo || 'Info',
+            fechaHoraCaracas: fechaCaracas
+        }, { transaction: t });
+
+        await t.commit();
+        return NextResponse.json(nuevaNotificacion, { status: 201 });
+    } catch (error) {
+        if (t && !t.finished) await t.rollback();
+        console.error("Error creando notificación sin enviar:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
 
 // =====================================================================
 // 3. WRAPPERS CON "TRUCO" (Mapeo Manual)
@@ -227,3 +264,17 @@ export async function notificarCabezas(payload) {
         puestos: ['Presidente', 'Desarrollador Web', 'Administradora', "Gerente Operacional"]
     });
 }
+
+export async function notificarCabezasSinPush(payload) {
+   return crearSinNotificar({
+        ...payload,
+        puestos: ['Presidente', 'Desarrollador Web', 'Administradora', "Gerente Operacional"]
+    });
+}   
+
+export async function notificarTodosSinPush(payload) {
+   return crearSinNotificar({
+        ...payload
+        // Al no pasar filtros, se va a todos (Filtro Default)
+    });
+}   

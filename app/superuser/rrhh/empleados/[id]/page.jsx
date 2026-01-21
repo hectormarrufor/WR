@@ -13,7 +13,8 @@ import Link from "next/link";
 import {
     IconEdit, IconPhone, IconId, IconCake,
     IconCurrencyDollar, IconBuildingBank, IconDeviceMobile,
-    IconClock, IconBriefcase, IconNotes, IconLink
+    IconClock, IconBriefcase, IconNotes, IconLink,
+    IconTrash
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMediaQuery } from "@mantine/hooks"; // <--- IMPORTANTE
@@ -98,6 +99,7 @@ export default function Page({ params }) {
     const [modalCrearHora, setModalCrearHora] = useState(false);
     const [modalCuenta, setModalCuenta] = useState(false);
     const [modalPagoMovil, setModalPagoMovil] = useState(false);
+    const [selectedHora, setSelectedHora] = useState(null);
 
     useEffect(() => {
         let mounted = true
@@ -126,7 +128,9 @@ export default function Page({ params }) {
                 setEmpleado({
                     ...empleadofetched,
                     edad: calcularEdad(empleadofetched.fechaNacimiento),
-                    horario: actualizarSueldos("mensual", empleadofetched.sueldo).horario
+                    horario: actualizarSueldos("mensual", empleadofetched.sueldo).horario,
+                    diario: actualizarSueldos("mensual", empleadofetched.sueldo).diario,
+                    semanal: actualizarSueldos("mensual", empleadofetched.sueldo).semanal,
                 });
 
             } catch (err) {
@@ -234,6 +238,7 @@ export default function Page({ params }) {
                             {(rol.includes("Presidente") || rol.includes("admin")) && (
                                 <>
                                     <Divider my="sm" />
+                                    <Title order={5} align="center">Sueldo</Title>
                                     <Group justify="space-between">
                                         <Text size="sm" c="dimmed">Base:</Text>
                                         <Badge size="lg" color="green" variant="light">${empleado.sueldo}</Badge>
@@ -241,6 +246,14 @@ export default function Page({ params }) {
                                     <Group justify="space-between">
                                         <Text size="sm" c="dimmed">Hora:</Text>
                                         <Text fw={700}>${empleado.horario}</Text>
+                                    </Group>
+                                    <Group justify="space-between">
+                                        <Text size="sm" c="dimmed">Día:</Text>
+                                        <Text fw={700}>${empleado.diario}</Text>
+                                    </Group>
+                                    <Group justify="space-between">
+                                        <Text size="sm" c="dimmed">Semana:</Text>
+                                        <Text fw={700}>${empleado.semanal}</Text>
                                     </Group>
                                 </>
                             )}
@@ -319,7 +332,7 @@ export default function Page({ params }) {
                                                         <Badge variant="light">{cuenta.tipoCuenta}</Badge>
                                                     </Group>
                                                     <Text size="sm" c="dimmed">Titular: <Text span c="dark">{cuenta.titularCuenta}</Text></Text>
-                                                    <Text size="sm" c="dimmed">CI: <Text span c="dark">{cuenta.cedulaTitular}</Text></Text>
+                                                    <Text size="sm" c="dimmed">CI: <Text span c="dark">{cuenta.cedulaCuenta}</Text></Text>
                                                     <Text size="sm" mt="xs" ff="monospace" bg="gray.1" p={4}>{cuenta.numeroCuenta}</Text>
                                                 </Card>
                                             ))}
@@ -379,17 +392,18 @@ export default function Page({ params }) {
                                                         <Table.Th>Horas</Table.Th>
                                                         <Table.Th>Origen</Table.Th>
                                                         <Table.Th>Observaciones</Table.Th>
+                                                        <Table.Th>Acciones</Table.Th>
                                                     </Table.Tr>
                                                 </Table.Thead>
                                                 <Table.Tbody>
                                                     {empleado.HorasTrabajadas.map((h) => (
                                                         <Table.Tr key={h.id}>
                                                             <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                                                                {new Date(h.fecha).toLocaleDateString()}
+                                                                {new Date(h.fecha).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}
                                                             </Table.Td>
                                                             <Table.Td>
                                                                 <Badge color={h.horas > 8 ? 'orange' : 'blue'} variant="light">
-                                                                    {h.horas} hrs
+                                                                    {h.horas}
                                                                 </Badge>
                                                             </Table.Td>
                                                             <Table.Td>
@@ -403,6 +417,19 @@ export default function Page({ params }) {
                                                             </Table.Td>
                                                             <Table.Td style={{ minWidth: 200 }}>
                                                                 <Text size="sm" lineClamp={2}>{h.observaciones}</Text>
+                                                            </Table.Td>
+                                                            <Table.Td>
+                                                                {/* Aquí puedes agregar botones de acción si es necesario */}
+                                                                <ActionIcon size="sm" variant="light" color="red" onClick={() => {handleDeleteHora(h.id)}}>
+                                                                    <IconTrash size={16} />
+                                                                </ActionIcon>
+                                                                <ActionIcon size="sm" variant="light" color="blue" onClick={() => {
+                                                                    setSelectedHora(h);
+                                                                    setModalCrearHora(true)
+                                                                    }}>
+                                                                    <IconEdit size={16} />
+                                                                </ActionIcon>
+
                                                             </Table.Td>
                                                         </Table.Tr>
                                                     ))}
@@ -419,7 +446,7 @@ export default function Page({ params }) {
             </Grid>
 
             {/* Modales */}
-            <ModalCrearHora opened={modalCrearHora} onClose={() => setModalCrearHora(false)} empleadoId={id} onCreated={() => router.refresh()} />
+            <ModalCrearHora initialValues={selectedHora} opened={modalCrearHora} onClose={() => setModalCrearHora(false)} empleadoId={id} onCreated={() => router.refresh()} />
             <ModalCuentaBancaria opened={modalCuenta} onClose={() => setModalCuenta(false)} tipoEntidad="empleado" entidadId={id} onCreated={() => router.refresh()} />
             <ModalPagoMovil opened={modalPagoMovil} onClose={() => setModalPagoMovil(false)} tipoEntidad="empleado" entidadId={id} onCreated={() => router.refresh()} />
         </Paper>

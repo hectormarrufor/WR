@@ -386,6 +386,9 @@ function MobileAgendaView({ events, router }) {
               const startTime = new Date(ev.start);
               const endTime = new Date(ev.end);
 
+              console.log(ev);
+              console.log(props);
+
 
               if (isGroup) {
                 return (
@@ -436,6 +439,33 @@ function MobileAgendaView({ events, router }) {
                     {props.vehiculoPrincipal && <VehiculoLineMobile activo={props.vehiculoPrincipal} icon={<IconSteeringWheel size={14} />} />}
                     {props.vehiculoRemolque && <VehiculoLineMobile activo={props.vehiculoRemolque} />}
                     {props.maquinaria && <VehiculoLineMobile activo={props.maquinaria} icon={<IconTool size={14} />} color="orange" />}
+                    <UnstyledButton onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/superuser/rrhh/empleados/${props.chofer.id}`)}  
+                      }  style={{ width: '100%' }}>
+                          <Group justify="space-between">
+                            <Group gap="xs">
+                              <Avatar src={props.chofer?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.chofer.imagen}` : null} size={24} radius="xl" />
+                              <Text size="sm">{props.chofer?.nombre} {props.chofer?.apellido}</Text>
+                              <Text size="xs" c="dimmed">• {props.observaciones || 'Sin obs.'}</Text>
+                            </Group>
+                            <Text size="xs" c="dimmed">{props.horas}h</Text>
+                          </Group>
+                        </UnstyledButton>
+                        <UnstyledButton onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/superuser/rrhh/empleados/${props.ayudante.id}`)}
+                          }  
+                          style={{ width: '100%' }}>
+                          <Group justify="space-between">
+                            <Group gap="xs">
+                              <Avatar src={props.ayudante?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.ayudante.imagen}` : null} size={24} radius="xl" />
+                              <Text size="sm">{props.ayudante?.nombre} {props.ayudante?.apellido}</Text>
+                              <Text size="xs" c="dimmed">• {props.observaciones || 'Sin obs.'}</Text>
+                            </Group>
+                            <Text size="xs" c="dimmed">{props.horas}h</Text>
+                          </Group>
+                        </UnstyledButton>
                   </Stack>
                 </Card>
               );

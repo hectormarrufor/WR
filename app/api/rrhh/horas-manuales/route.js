@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { HorasTrabajadas, Empleado } from "@/models";
+import { HorasTrabajadas, Empleado, User } from "@/models";
 import { Op } from "sequelize";
+import { notificarCabezas } from "../../notificar/route";
 
 export async function GET() {
     try {
@@ -25,16 +26,28 @@ export async function GET() {
 export async function POST(req) {
     try {
         const body = await req.json();
-        const { empleadoId, fecha, horas, observaciones } = body;
+        const { empleadoId, fecha, horas, inicio, fin, observaciones, nombre, apellido, creadorId } = body;
+
+        const creador = await User.findByPk(creadorId, {include: [{model: Empleado, as: 'empleado'}]});
 
         const nuevoRegistro = await HorasTrabajadas.create({
             empleadoId,
             fecha,
             horas,
+            inicio,
+            fin,
             observaciones,
             origen: 'manual', // Importante para distinguirlo de ODTs
-            creadorId: body.creadorId
+            creadorId: creadorId
         });
+
+        
+
+        notificarCabezas({
+            title: "Nueva Hora Manual Registrada",
+            body: `${creador.empleado.nombre} ${creador.empleado.apellido} ha registrado ${horas} horas para ${nombre} ${apellido} el día ${new Date(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}.`,
+            url: "/superuser/rrhh/empleados/" + empleadoId
+        })
 
         return NextResponse.json(nuevoRegistro);
     } catch (error) {

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Button, Modal, NumberInput, Textarea, Stack, Group, LoadingOverlay, 
+import {
+  Button, Modal, NumberInput, Textarea, Stack, Group, LoadingOverlay,
   Title
 } from "@mantine/core";
-import { DateInput } from "@mantine/dates"; // Asegúrate de tener @mantine/dates instalado
+import { DateInput, TimeInput } from "@mantine/dates"; // Asegúrate de tener @mantine/dates instalado
 import { IconClockPlus } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import EmployeeSelector from "./EmployeeSelector"; // Importamos el componente de arriba
@@ -15,13 +15,15 @@ export default function ManualHoursButton() {
   const [opened, setOpened] = useState(false);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
-  const {userId} = useAuth();
+  const { userId } = useAuth();
 
   // Estado del Formulario
   const [form, setForm] = useState({
     empleadoId: null,
     fecha: new Date(),
     horas: 8,
+    inicio: "08:00",
+    fin: "16:00",
     observaciones: ""
   });
 
@@ -37,17 +39,32 @@ export default function ManualHoursButton() {
     }
   }, [opened]);
 
+  useEffect(() => {
+    // Calcular horas automáticamente al cambiar inicio o fin
+    const calcularHoras = (inicio, fin) => {
+      const [hIn, mIn] = inicio.split(':').map(Number);
+      const [hOut, mOut] = fin.split(':').map(Number);
+      let entrada = hIn * 60 + mIn;
+      let salida = hOut * 60 + mOut;
+      if (salida < entrada) salida += 24 * 60;
+      return (salida - entrada) / 60;
+    };
+
+    const horasCalculadas = calcularHoras(form.inicio, form.fin);
+    setForm((prev) => ({ ...prev, horas: horasCalculadas }));
+  }, [form.inicio, form.fin]);
+
   // Manejo de envío
   const handleSubmit = async () => {
     // Validaciones
     if (!form.empleadoId) {
-        return notifications.show({ title: 'Error', message: 'Debes seleccionar un empleado', color: 'red' });
+      return notifications.show({ title: 'Error', message: 'Debes seleccionar un empleado', color: 'red' });
     }
     if (!form.fecha) {
-        return notifications.show({ title: 'Error', message: 'La fecha es obligatoria', color: 'red' });
+      return notifications.show({ title: 'Error', message: 'La fecha es obligatoria', color: 'red' });
     }
     if (form.horas <= 0) {
-        return notifications.show({ title: 'Error', message: 'Las horas deben ser mayor a 0', color: 'red' });
+      return notifications.show({ title: 'Error', message: 'Las horas deben ser mayor a 0', color: 'red' });
     }
 
     setLoading(true);
@@ -56,21 +73,21 @@ export default function ManualHoursButton() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-             ...form,
-             // Asegurar formato fecha YYYY-MM-DD
-             fecha: form.fecha.toISOString().split('T')[0],
-             creadorId: userId
+          ...form,
+          // Asegurar formato fecha YYYY-MM-DD
+          fecha: form.fecha.toISOString().split('T')[0],
+          creadorId: userId
         }),
       });
 
       if (!res.ok) throw new Error("Error al guardar");
 
       notifications.show({ title: 'Éxito', message: 'Horas registradas correctamente', color: 'green' });
-      
+
       // Reset y Cerrar
       setForm({ empleadoId: null, fecha: new Date(), horas: 8, observaciones: "" });
       setOpened(false);
-      
+
       // Opcional: Recargar la página para ver cambios en la pizarra
       window.location.reload();
 
@@ -83,30 +100,31 @@ export default function ManualHoursButton() {
 
   return (
     <>
-      <Button 
-        leftSection={<IconClockPlus size={18} />} 
+      <Button
+        leftSection={<IconClockPlus size={18} />}
         onClick={() => setOpened(true)}
         color="teal"
       >
         Registrar Horas
       </Button>
 
-      <Modal 
-        opened={opened} 
-        onClose={() => setOpened(false)} 
+      <Modal
+        opened={opened}
+        onClose={() => setOpened(false)}
         title="Registrar Horas Manuales (Taller/Base)"
         centered
       >
         <Stack pos="relative">
           <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
-          
+
           {/* 1. SELECTOR DE EMPLEADO (Abre su propio modal interno) */}
-          <EmployeeSelector 
-             label="Empleado"
-             data={employees}
-             value={form.empleadoId}
-             onChange={(id) => setForm({ ...form, empleadoId: id })}
+          <EmployeeSelector
+            label="Empleado"
+            data={employees}
+            value={form.empleadoId}
+            onChange={(id) => setForm({ ...form, empleadoId: id, nombre: employees.find(emp => emp.id === id)?.nombre || '', apellido: employees.find(emp => emp.id === id)?.apellido || '' })}
           />
+
 
           {/* 2. FECHA */}
           <DateInput
@@ -116,9 +134,23 @@ export default function ManualHoursButton() {
             onChange={(date) => setForm({ ...form, fecha: date })}
             withAsterisk
           />
+          <TimeInput
+            label="Hora inicio"
+            placeholder="Hora de entrada"
+            value={form.inicio}
+            onChange={(time) => setForm({ ...form, inicio: time })}
+          />
+
+          <TimeInput
+            label="Hora fin"
+            placeholder="Hora de salida"
+            value={form.fin}
+            onChange={(time) => setForm({ ...form, fin: time })}
+          />
 
           {/* 3. CANTIDAD DE HORAS */}
           <NumberInput
+            disabled
             label="Horas Trabajadas"
             description="Max 24h"
             value={form.horas}
