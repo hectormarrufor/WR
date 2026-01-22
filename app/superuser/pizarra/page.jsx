@@ -134,14 +134,13 @@ export default function PizarraPage() {
   }, []);
 
   // --- RENDERIZADO VISUAL DEL EVENTO ---
-  const renderEventContent = (info) => {
+ const renderEventContent = (info) => {
     const props = info.event.extendedProps;
     const isODT = info.event.id.startsWith('odt');
     const isManualGroup = info.event.id.startsWith('group-manual');
 
     // --- CONTENIDO DEL POPOVER (DETALLES) ---
     const HoverContent = () => {
-      // 1. Definimos el contenido interno
       let content = null;
 
       if (isODT) {
@@ -238,8 +237,6 @@ export default function PizarraPage() {
         );
       }
 
-      // 2. RETORNAMOS CON SCROLLAREA PARA EVITAR DESBORDE (SOLUCIÓN)
-      // <--- CAMBIO AQUI: Envolvemos todo en ScrollArea.Autosize con maxHeight
       return (
         <ScrollArea.Autosize mah={300} type="auto" scrollbars="y">
             {content}
@@ -247,9 +244,17 @@ export default function PizarraPage() {
       )
     };
 
-    // --- CONTENIDO VISIBLE EN CELDA ---
     return (
-      <HoverCard width={300} shadow="md" withinPortal withArrow openDelay={100} zIndex={1001}>
+      <HoverCard 
+        width={300} 
+        shadow="md" 
+        withinPortal 
+        withArrow 
+        openDelay={100} 
+        zIndex={1001}
+        position="right" // <--- AQUÍ ESTÁ EL CAMBIO (Sale a la derecha)
+        offset={10}      // Un poco de separación para que no tape
+      >
         <HoverCard.Target>
           <Box style={{ width: '100%', height: '100%', overflow: 'hidden', padding: '2px 4px' }}>
             <Text size="10px" fw={700} c="white" truncate style={{ lineHeight: 1.2 }}>
@@ -282,9 +287,7 @@ export default function PizarraPage() {
             )}
           </Box>
         </HoverCard.Target>
-        {/* Aseguramos que el dropdown tenga overflow hidden para que el ScrollArea funcione */}
         <HoverCard.Dropdown style={{ overflow: 'hidden', padding: 0 }}>
-             {/* Añadimos padding interno al ScrollArea, no al dropdown, para que el scroll llegue al borde */}
              <Box p="xs">
                  <HoverContent />
              </Box>

@@ -24,7 +24,7 @@ export async function POST(req) {
       1. Identifica el TIPO: "Cedula", "RIF", "Licencia" o "CertificadoMedico".
       2. Si es Licencia o Certificado Médico, identifica el GRADO numérico (1, 2, 3, 4, 5). 
          - Ejemplo: "Quinto Grado" -> 5. "3ra" -> 3.
-      3. Extrae la FECHA DE VENCIMIENTO (Formato YYYY-MM-DD) siendo el primer dia del mes siguiente a su vencimiento.
+      3. Extrae la FECHA DE VENCIMIENTO (Formato YYYY-MM-DD) siendo el primer dia del mes siguiente a su vencimiento para el caso de la cedula, y si la fecha de vencimiento viene completa con su dia, ahi si que tome la fecha indicada.
       4. Extrae el NÚMERO DE DOCUMENTO (Cédula o RIF).
          - Si es numero de cedula: responde numeroDocumento sin puntos ni guiones ni la V.
          - Si es RIF: responde numeroDocumento con el formato completo (Ej: J-12345678-9).
