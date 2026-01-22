@@ -12,6 +12,7 @@
     "@fullcalendar/interaction": "6.1.18",
     "@fullcalendar/react": "6.1.18",
     "@fullcalendar/timegrid": "6.1.18",
+    "@google/generative-ai": "^0.24.1",
     "@mantine/carousel": "7.15.3",
     "@mantine/charts": "7.15.3",
     "@mantine/code-highlight": "7.15.3",
