@@ -81,6 +81,7 @@ const MobileWorkLogCard = ({ log }) => {
 export default function Page({ params }) {
     const { id } = useParams(params);
     const router = useRouter();
+    const [error, setError] = useState(null);
 
     // Detectar Móvil
     const isMobile = useMediaQuery('(max-width: 768px)');
@@ -137,7 +138,7 @@ export default function Page({ params }) {
                 });
 
             } catch (err) {
-                console.error(err);
+                setError(err);
                 if (mounted) setEmpleado(null);
             } finally {
                 if (mounted) setCargando(false)
@@ -161,6 +162,8 @@ export default function Page({ params }) {
             </Center>
         )
     }
+
+    if (error) return <Text align="center" mt="xl" color="red">Error: {error.message}</Text>;
 
     if (!empleado) return <Text align="center" mt="xl">Empleado no encontrado</Text>;
 
@@ -421,7 +424,7 @@ export default function Page({ params }) {
                                     {/* VISTA MÓVIL: CARDS */}
                                     {isMobile ? (
                                         <Box>
-                                            {empleado.HorasTrabajadas.map((h) => (
+                                            {empleado.HorasTrabajadas?.map((h) => (
                                                 <MobileWorkLogCard key={h.id} log={h} />
                                             ))}
                                         </Box>
@@ -439,7 +442,7 @@ export default function Page({ params }) {
                                                     </Table.Tr>
                                                 </Table.Thead>
                                                 <Table.Tbody>
-                                                    {empleado.HorasTrabajadas.map((h) => (
+                                                    {empleado.HorasTrabajadas?.map((h) => (
                                                         <Table.Tr key={h.id}>
                                                             <Table.Td style={{ whiteSpace: 'nowrap' }}>
                                                                 {new Date(h.fecha).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}

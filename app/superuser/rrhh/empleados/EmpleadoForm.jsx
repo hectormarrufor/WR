@@ -44,10 +44,10 @@ export function EmpleadoForm({ initialData = null }) {
       imagen: initialData?.imagen || null,
 
       // --- NUEVOS CAMPOS DE DOTACIÓN ---
-      tallaCamisa: initialData?.tallaCamisa || '',
-      tallaPantalon: initialData?.tallaPantalon || '',
-      tallaCalzado: initialData?.tallaCalzado || '',
-      tallaBraga: initialData?.tallaBraga || '',
+      tallaCamisa: initialData?.tallaCamisa || null,
+      tallaPantalon: initialData?.tallaPantalon || null,
+      tallaCalzado: initialData?.tallaCalzado || null,
+      tallaBraga: initialData?.tallaBraga || null,
     },
     validate: {
       cedula: (value) => value ? null : 'La cédula es requerida',
