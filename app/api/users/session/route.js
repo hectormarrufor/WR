@@ -12,7 +12,7 @@ export async function GET(request) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log(`\x1b[44m [DEBUG] from: ./api/users/session: [DECODED INFO FROM COOKIE]: ${JSON.stringify(decoded)} \x1b[0m`);
     return Response.json({
-      rol: decoded.puestos.length > 0 ? decoded.puestos?.map(puesto => puesto.nombre).join(" - ") : decoded.isAdmin ? "admin" : "user", 
+      rol: decoded.isAdmin ? "admin" : decoded.puestos.length > 0 ? decoded.puestos?.map(puesto => puesto.nombre).join(" - ") : "user", 
       id: decoded.id, 
       imagen: decoded.imagen,
       nombre: decoded.nombre, 

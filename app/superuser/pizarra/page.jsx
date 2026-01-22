@@ -28,7 +28,7 @@ import ManualHoursButton from "./ManualHoursButton";
 import { toLocalDate } from "@/app/helpers/fechaCaracas";
 
 // ==========================================
-// 1. HELPERS
+// 1. HELPERS (Sin cambios)
 // ==========================================
 function VehiculoLine({ activo }) {
   if (!activo) return null;
@@ -81,26 +81,22 @@ export default function PizarraPage() {
           fetch("/api/rrhh/horas-manuales").then(r => r.json())
         ]);
 
-   
-
-        // --- 1. PROCESAR ODTS (Individuales) ---
+        // --- 1. PROCESAR ODTS ---
         const eventosOdt = Array.isArray(resOdts) ? resOdts.map(odt => ({
           id: `odt-${odt.id}`,
           realId: odt.id,
           tipo: 'odt',
           start: `${odt.fecha.split('T')[0]}T${odt.horaLlegada}`,
           end: `${odt.fecha.split('T')[0]}T${odt.horaSalida}`,
-          extendedProps: {...odt, fecha: toLocalDate(odt.fecha)},
+          extendedProps: { ...odt, fecha: toLocalDate(odt.fecha) },
           backgroundColor: odt.maquinariaId ? 'var(--mantine-color-orange-filled)' : 'var(--mantine-color-blue-filled)',
           borderColor: 'transparent',
           textColor: 'white'
         })) : [];
 
-        // --- 2. PROCESAR HORAS MANUALES (Agrupadas por Día) ---
+        // --- 2. PROCESAR HORAS MANUALES ---
         const eventosHorasGroup = [];
-
         if (Array.isArray(resHoras)) {
-          // Agrupamos por fecha 'YYYY-MM-DD'
           const groupedByDate = resHoras.reduce((acc, curr) => {
             const date = curr.fecha.split('T')[0];
             if (!acc[date]) acc[date] = [];
@@ -108,18 +104,16 @@ export default function PizarraPage() {
             return acc;
           }, {});
 
-          // Creamos un solo evento por cada fecha que tenga registros
           Object.keys(groupedByDate).forEach(date => {
             const registros = groupedByDate[date];
             eventosHorasGroup.push({
               id: `group-manual-${date}`,
-              tipo: 'manual-group', // Nuevo tipo
+              tipo: 'manual-group',
               title: 'Trabajo en Base',
-              // Horario fijo de oficina 8am - 4pm
               start: `${date}T08:00:00`,
               end: `${date}T16:00:00`,
               extendedProps: {
-                registros: registros, // Aquí van TODOS los Empleados
+                registros: registros,
                 total: registros.length
               },
               backgroundColor: 'var(--mantine-color-teal-filled)',
@@ -147,8 +141,11 @@ export default function PizarraPage() {
 
     // --- CONTENIDO DEL POPOVER (DETALLES) ---
     const HoverContent = () => {
+      // 1. Definimos el contenido interno
+      let content = null;
+
       if (isODT) {
-        return (
+        content = (
           <Stack gap="xs" p={4}>
             <Group justify="space-between">
               <Text fw={700} size="sm">ODT #{props.nroODT}</Text>
@@ -161,35 +158,35 @@ export default function PizarraPage() {
             <Divider my={2} />
             <Text size="10px" tt="uppercase" fw={700} c="dimmed">Activos</Text>
             <Stack gap={2}>
-              {props.vehiculoPrincipal && 
-              <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.vehiculoPrincipal.id}`)}>
-                <Group key={props.vehiculoPrincipal.id} wrap="nowrap" align="flex-start">
-                  <Avatar src={props.vehiculoPrincipal?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.vehiculoPrincipal.imagen}` : null} size="sm" radius="xl" />
-                  <Box>
-                    <Text size="sm" fw={600} lh={1}>{props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.marca} {props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.modelo} {props.vehiculoPrincipal?.vehiculoInstancia?.placa}</Text>
-                  </Box>
-                </Group>
-              </UnstyledButton>
+              {props.vehiculoPrincipal &&
+                <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.vehiculoPrincipal.id}`)}>
+                  <Group key={props.vehiculoPrincipal.id} wrap="nowrap" align="flex-start">
+                    <Avatar src={props.vehiculoPrincipal?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.vehiculoPrincipal.imagen}` : null} size="sm" radius="xl" />
+                    <Box>
+                      <Text size="sm" fw={600} lh={1}>{props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.marca} {props.vehiculoPrincipal?.vehiculoInstancia?.plantilla?.modelo} {props.vehiculoPrincipal?.vehiculoInstancia?.placa}</Text>
+                    </Box>
+                  </Group>
+                </UnstyledButton>
               }
-              {props.vehiculoRemolque && 
-              <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.vehiculoRemolque.id}`)}>
+              {props.vehiculoRemolque &&
+                <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.vehiculoRemolque.id}`)}>
                   <Group key={props.vehiculoRemolque.id} wrap="nowrap" align="flex-start">
                     <Avatar src={props.vehiculoRemolque?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.vehiculoRemolque.imagen}` : null} size="sm" radius="xl" />
                     <Box>
                       <Text size="sm" fw={600} lh={1}>{props.vehiculoRemolque?.remolqueInstancia?.plantilla?.marca} {props.vehiculoRemolque?.remolqueInstancia?.plantilla?.modelo} {props.vehiculoRemolque?.remolqueInstancia?.placa}</Text>
                     </Box>
                   </Group>
-              </UnstyledButton>
+                </UnstyledButton>
               }
-              {props.maquinaria && 
-              <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.maquinaria.id}`)}>
-                <Group key={props.maquinaria.id} wrap="nowrap" align="flex-start">
-                  <Avatar src={props.maquinaria?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.maquinaria.imagen}` : null} size="sm" radius="xl" />
-                  <Box>
-                    <Text size="sm" fw={600} lh={1}>{props.maquinaria?.maquinaInstancia?.plantilla?.marca} {props.maquinaria?.maquinaInstancia?.plantilla?.modelo} {props.maquinaria?.maquinaInstancia?.placa}</Text>
-                  </Box>
-                </Group>
-              </UnstyledButton>
+              {props.maquinaria &&
+                <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${props.maquinaria.id}`)}>
+                  <Group key={props.maquinaria.id} wrap="nowrap" align="flex-start">
+                    <Avatar src={props.maquinaria?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.maquinaria.imagen}` : null} size="sm" radius="xl" />
+                    <Box>
+                      <Text size="sm" fw={600} lh={1}>{props.maquinaria?.maquinaInstancia?.plantilla?.marca} {props.maquinaria?.maquinaInstancia?.plantilla?.modelo} {props.maquinaria?.maquinaInstancia?.placa}</Text>
+                    </Box>
+                  </Group>
+                </UnstyledButton>
               }
             </Stack>
             <Text size="10px" tt="uppercase" fw={700} c="dimmed" mt={4}>Personal</Text>
@@ -209,14 +206,10 @@ export default function PizarraPage() {
                 </Box>
               </Group>
             </UnstyledButton>
-
           </Stack>
         );
-      }
-
-      // --- DETALLE DEL GRUPO MANUAL ---
-      if (isManualGroup) {
-        return (
+      } else if (isManualGroup) {
+        content = (
           <Stack gap="xs" p={4} w={280}>
             <Group justify="space-between">
               <Group gap={5}>
@@ -226,26 +219,32 @@ export default function PizarraPage() {
               <Badge color="teal">{props.total} Personas</Badge>
             </Group>
             <Divider />
-            <ScrollArea.Autosize maxHeight={250}>
-              <Stack gap="sm">
-                {props.registros.map((reg) => (
-                  <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${reg.Empleado.id}`)}>
-                    <Group key={reg.id} wrap="nowrap" align="flex-start">
-                      <Avatar src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null} size="sm" radius="xl" />
-                      <Box>
-                        <Text size="sm" fw={600} lh={1}>{reg.Empleado?.nombre} {reg.Empleado?.apellido}</Text>
-                        <Text size="xs" c="dimmed">
-                          {reg.horas}h • {reg.observaciones || 'Sin obs.'}
-                        </Text>
-                      </Box>
-                    </Group>
-                  </UnstyledButton>
-                ))}
-              </Stack>
-            </ScrollArea.Autosize>
+            <Stack gap="sm">
+              {props.registros.map((reg) => (
+                <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${reg.Empleado.id}`)}>
+                  <Group key={reg.id} wrap="nowrap" align="flex-start">
+                    <Avatar src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null} size="sm" radius="xl" />
+                    <Box>
+                      <Text size="sm" fw={600} lh={1}>{reg.Empleado?.nombre} {reg.Empleado?.apellido}</Text>
+                      <Text size="xs" c="dimmed">
+                        {reg.horas}h • {reg.observaciones || 'Sin obs.'}
+                      </Text>
+                    </Box>
+                  </Group>
+                </UnstyledButton>
+              ))}
+            </Stack>
           </Stack>
         );
       }
+
+      // 2. RETORNAMOS CON SCROLLAREA PARA EVITAR DESBORDE (SOLUCIÓN)
+      // <--- CAMBIO AQUI: Envolvemos todo en ScrollArea.Autosize con maxHeight
+      return (
+        <ScrollArea.Autosize mah={300} type="auto" scrollbars="y">
+            {content}
+        </ScrollArea.Autosize>
+      )
     };
 
     // --- CONTENIDO VISIBLE EN CELDA ---
@@ -253,13 +252,10 @@ export default function PizarraPage() {
       <HoverCard width={300} shadow="md" withinPortal withArrow openDelay={100} zIndex={1001}>
         <HoverCard.Target>
           <Box style={{ width: '100%', height: '100%', overflow: 'hidden', padding: '2px 4px' }}>
-
-            {/* TÍTULO */}
             <Text size="10px" fw={700} c="white" truncate style={{ lineHeight: 1.2 }}>
               {isODT ? `#${props.nroODT} ${props.cliente?.nombre}` : `Trabajo en Base (${props.total})`}
             </Text>
 
-            {/* VISUALIZACIÓN ODT */}
             {isODT && (
               <Box mt={2}>
                 <Text size="9px" c="white" lineClamp={1} style={{ opacity: 0.85, lineHeight: 1.1, marginBottom: 2 }}>
@@ -273,7 +269,6 @@ export default function PizarraPage() {
               </Box>
             )}
 
-            {/* VISUALIZACIÓN GRUPO MANUAL */}
             {isManualGroup && (
               <Box mt={2}>
                 <Group gap={4} mb={2}>
@@ -287,8 +282,12 @@ export default function PizarraPage() {
             )}
           </Box>
         </HoverCard.Target>
-        <HoverCard.Dropdown>
-          <HoverContent />
+        {/* Aseguramos que el dropdown tenga overflow hidden para que el ScrollArea funcione */}
+        <HoverCard.Dropdown style={{ overflow: 'hidden', padding: 0 }}>
+             {/* Añadimos padding interno al ScrollArea, no al dropdown, para que el scroll llegue al borde */}
+             <Box p="xs">
+                 <HoverContent />
+             </Box>
         </HoverCard.Dropdown>
       </HoverCard>
     );
@@ -299,7 +298,6 @@ export default function PizarraPage() {
   return (
     <Container size="xl" p="md" style={{ height: 'calc(100vh - 60px)', display: 'flex', flexDirection: 'column' }}>
 
-      {/* CABECERA */}
       <Group mb="sm" justify="space-between">
         <Title order={3}>Pizarra Semanal</Title>
         <Group gap="xs">
@@ -320,6 +318,7 @@ export default function PizarraPage() {
             initialView="timeGridWeek"
             headerToolbar={false}
             locale={esLocale}
+            firstDay={6} // <--- CAMBIO AQUI: 6 = Sábado
             events={events}
             eventContent={renderEventContent}
             eventClick={(info) => {
@@ -340,7 +339,7 @@ export default function PizarraPage() {
         </Paper>
       </Box>
 
-      {/* MÓVIL */}
+      {/* MÓVIL (Sin cambios) */}
       <Box hiddenFrom="sm">
         <MobileAgendaView events={events} router={router} />
       </Box>
@@ -349,9 +348,10 @@ export default function PizarraPage() {
 }
 
 // ==========================================
-// 3. VISTA MÓVIL AGRUPADA
+// 3. VISTA MÓVIL (Se mantiene igual que tu código original)
 // ==========================================
 function MobileAgendaView({ events, router }) {
+  // ... (Tu código de mobile se mantiene igual, ya está optimizado para scroll nativo del body)
   const grouped = useMemo(() => {
     const groups = {};
     const sorted = [...events].sort((a, b) => new Date(b.start) - new Date(a.start));
@@ -389,10 +389,6 @@ function MobileAgendaView({ events, router }) {
               const startTime = new Date(ev.start);
               const endTime = new Date(ev.end);
 
-              console.log(ev);
-              console.log(props);
-
-
               if (isGroup) {
                 return (
                   <Card key={ev.id} shadow="sm" radius="md" withBorder style={{ borderLeft: '4px solid var(--mantine-color-teal-filled)' }}>
@@ -403,9 +399,7 @@ function MobileAgendaView({ events, router }) {
                       </Group>
                       <Badge color="teal" variant="light">8:00 - 16:00</Badge>
                     </Group>
-
                     <Text size="sm" mb="sm" fw={600}>{props.total} Empleados en planta:</Text>
-
                     <Stack gap="xs">
                       {props.registros.map(reg => (
                         <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${reg.Empleado.id}`)} key={reg.id} style={{ width: '100%' }}>
@@ -444,31 +438,33 @@ function MobileAgendaView({ events, router }) {
                     {props.maquinaria && <VehiculoLineMobile activo={props.maquinaria} icon={<IconTool size={14} />} color="orange" />}
                     <UnstyledButton onClick={(e) => {
                       e.stopPropagation();
-                      router.push(`/superuser/rrhh/empleados/${props.chofer.id}`)}  
-                      }  style={{ width: '100%' }}>
-                          <Group justify="space-between">
-                            <Group gap="xs">
-                              <Avatar src={props.chofer?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.chofer.imagen}` : null} size={24} radius="xl" />
-                              <Text size="sm">{props.chofer?.nombre} {props.chofer?.apellido}</Text>
-                              <Text size="xs" c="dimmed">• {props.observaciones || 'Sin obs.'}</Text>
-                            </Group>
-                            <Text size="xs" c="dimmed">{props.horas}h</Text>
-                          </Group>
-                        </UnstyledButton>
-                        <UnstyledButton onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/superuser/rrhh/empleados/${props.ayudante.id}`)}
-                          }  
-                          style={{ width: '100%' }}>
-                          <Group justify="space-between">
-                            <Group gap="xs">
-                              <Avatar src={props.ayudante?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.ayudante.imagen}` : null} size={24} radius="xl" />
-                              <Text size="sm">{props.ayudante?.nombre} {props.ayudante?.apellido}</Text>
-                              <Text size="xs" c="dimmed">• {props.observaciones || 'Sin obs.'}</Text>
-                            </Group>
-                            <Text size="xs" c="dimmed">{props.horas}h</Text>
-                          </Group>
-                        </UnstyledButton>
+                      router.push(`/superuser/rrhh/empleados/${props.chofer.id}`)
+                    }
+                    } style={{ width: '100%' }}>
+                      <Group justify="space-between">
+                        <Group gap="xs">
+                          <Avatar src={props.chofer?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.chofer.imagen}` : null} size={24} radius="xl" />
+                          <Text size="sm">{props.chofer?.nombre} {props.chofer?.apellido}</Text>
+                          <Text size="xs" c="dimmed">• {props.observaciones || 'Sin obs.'}</Text>
+                        </Group>
+                        <Text size="xs" c="dimmed">{props.horas}h</Text>
+                      </Group>
+                    </UnstyledButton>
+                    <UnstyledButton onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/superuser/rrhh/empleados/${props.ayudante.id}`)
+                    }
+                    }
+                      style={{ width: '100%' }}>
+                      <Group justify="space-between">
+                        <Group gap="xs">
+                          <Avatar src={props.ayudante?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.ayudante.imagen}` : null} size={24} radius="xl" />
+                          <Text size="sm">{props.ayudante?.nombre} {props.ayudante?.apellido}</Text>
+                          <Text size="xs" c="dimmed">• {props.observaciones || 'Sin obs.'}</Text>
+                        </Group>
+                        <Text size="xs" c="dimmed">{props.horas}h</Text>
+                      </Group>
+                    </UnstyledButton>
                   </Stack>
                 </Card>
               );
