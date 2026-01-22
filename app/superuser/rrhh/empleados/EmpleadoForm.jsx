@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  TextInput, Button, Group, Box, Paper, Title, Grid, Select, Textarea, NumberInput,
-  MultiSelect,
+  TextInput, Button, Group, Box, Paper, Title, Grid, Select, NumberInput,
+  MultiSelect, Fieldset
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
@@ -11,8 +11,7 @@ import { notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
 import '@mantine/dates/styles.css';
 import ImageDropzone from '../../flota/activos/components/ImageDropzone';
-import { actualizarSueldos, sueldoDiarioDesdeMes, sueldoSemanalDesdeMes, sueldoXHora } from '@/app/helpers/calcularSueldo';
-
+import { actualizarSueldos } from '@/app/helpers/calcularSueldo';
 
 export function EmpleadoForm({ initialData = null }) {
   const [puestos, setPuestos] = useState(null)
@@ -31,15 +30,24 @@ export function EmpleadoForm({ initialData = null }) {
       fechaRetorno: initialData?.fechaRetorno ? new Date(initialData.fechaRetorno) : null,
       estado: initialData?.estado || 'Activo',
       puestos: initialData?.puestos.map(puesto => String(puesto.id)) || [],
+      
+      // Sueldos
       sueldo: initialData?.sueldo || 0,
-      sueldoDiario: "",
+      sueldoDiario: "", // Se calculan visualmente, aunque podrías inicializarlos si los guardas
       sueldoHorario: "",
       sueldoSemanal: "",
       sueldoMensual: "",
       tasaSueldo: initialData?.tasaSueldo || 'bcv',
+      
       genero: initialData?.genero || '',
       notas: initialData?.notas || "",
-      imagen: initialData?.imagen || null
+      imagen: initialData?.imagen || null,
+
+      // --- NUEVOS CAMPOS DE DOTACIÓN ---
+      tallaCamisa: initialData?.tallaCamisa || '',
+      tallaPantalon: initialData?.tallaPantalon || '',
+      tallaCalzado: initialData?.tallaCalzado || '',
+      tallaBraga: initialData?.tallaBraga || '',
     },
     validate: {
       cedula: (value) => value ? null : 'La cédula es requerida',
@@ -56,39 +64,25 @@ export function EmpleadoForm({ initialData = null }) {
     },
   });
 
-
   useEffect(() => {
     (async () => {
       try {
         const puestos = await fetch('/api/rrhh/puestos/');
         const res = await puestos.json();
-        console.log(res)
         setPuestos(res.map(puesto => { return ({ label: puesto.nombre, value: String(puesto.id) }) }));
       } catch (error) {
         notifications.show({ title: `no se pudo obtener los puestos: ${error.message}` })
       }
     })();
-
-
-    // if (initialData) {
-
-    //   console.log(initialData)
-    //   form.setValues({
-    //     ...initialData,
-    //     fechaIngreso: initialData.fechaIngreso ? new Date(initialData.fechaIngreso) : null,
-    //     fechaNacimiento: initialData.fechaNacimiento ? new Date(initialData.fechaNacimiento) : null,
-    //     fechaRetorno: initialData.fechaRetorno ? new Date(initialData.fechaRetorno) : null,
-    //     puestos: initialData.puestos.map(p => String(p.id))
-    //   });
-    // }
+    
+    // Si hay initialData y quieres recalcular los sueldos visuales al cargar:
+    if (initialData?.sueldo) {
+        handleSueldo('mensual', initialData.sueldo);
+    }
   }, []);
 
-
-
-
-  useEffect(() => {
-    console.log(form.values);
-  }, [form])
+  // Debugger opcional
+  // useEffect(() => { console.log(form.values); }, [form])
 
   const handleSubmit = async (values) => {
     setIsLoading(true);
@@ -110,11 +104,9 @@ export function EmpleadoForm({ initialData = null }) {
           method: 'POST',
           body: imagenFile,
         });
-                console.log(response)
-
 
         if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
-        const newBlob = await response.json();
+        // const newBlob = await response.json(); // Si usas Vercel Blob o similar
         payload.imagen = uniqueFilename;
         notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
       }
@@ -123,7 +115,6 @@ export function EmpleadoForm({ initialData = null }) {
       const url = isEditing
         ? `/api/rrhh/empleados/${initialData.id}`
         : '/api/rrhh/empleados';
-
 
       const response = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',
@@ -139,7 +130,7 @@ export function EmpleadoForm({ initialData = null }) {
         color: 'green',
       });
 
-      router.push('/superuser/rrhh/empleados');
+      router.push(isEditing ? `/superuser/rrhh/empleados/${initialData.id}` : '/superuser/rrhh/empleados');
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -162,7 +153,6 @@ export function EmpleadoForm({ initialData = null }) {
     })
   }
 
-
   return (
     <Box maw={800} mx="auto">
       <Paper shadow="md" p={30} mt={30} radius="md">
@@ -171,8 +161,8 @@ export function EmpleadoForm({ initialData = null }) {
         </Title>
         <form onSubmit={form.onSubmit(handleSubmit)}>
 
-
           <Grid gutter="md">
+            {/* --- DATOS PERSONALES --- */}
             <Grid.Col span={12}>
               <TextInput label="Nombre" placeholder="Nombre" {...form.getInputProps('nombre')} />
             </Grid.Col>
@@ -194,23 +184,23 @@ export function EmpleadoForm({ initialData = null }) {
               />
             </Grid.Col>
 
+            {/* --- PUESTOS --- */}
             <Grid.Col span={12}>
               {puestos && <MultiSelect
                 label="Puestos"
                 data={puestos}
                 {...form.getInputProps('puestos')}
               />}
-
             </Grid.Col>
+
+            {/* --- SUELDOS --- */}
             <Grid.Col span={12}>
               <NumberInput 
-              label="Sueldo Mensual" 
-              min={0} 
-              step={1} 
-              {...form.getInputProps('sueldo')} 
-              onChange={(value) => {
-                console.log(value)
-                handleSueldo("mensual", value)}}
+                label="Sueldo Mensual" 
+                min={0} 
+                step={1} 
+                {...form.getInputProps('sueldo')} 
+                onChange={(value) => handleSueldo("mensual", value)}
               />
             </Grid.Col>
             <Grid.Col span={12}>
@@ -227,31 +217,33 @@ export function EmpleadoForm({ initialData = null }) {
             </Grid.Col>
             <Grid.Col span={12}>
               <NumberInput
-              label="Sueldo por hora" 
-              min={0} 
-              step={1} 
-              {...form.getInputProps('sueldoHorario')} 
-              onChange={(value) => handleSueldo("horario", value)}
+                label="Sueldo por hora" 
+                min={0} 
+                step={1} 
+                {...form.getInputProps('sueldoHorario')} 
+                onChange={(value) => handleSueldo("horario", value)}
               />
             </Grid.Col>
             <Grid.Col span={12}>
               <NumberInput 
-              label="Sueldo por dia" 
-              min={0} 
-              step={1} 
-              {...form.getInputProps('sueldoDiario')}
-              onChange={(value) => handleSueldo("diario", value)}
+                label="Sueldo por dia" 
+                min={0} 
+                step={1} 
+                {...form.getInputProps('sueldoDiario')}
+                onChange={(value) => handleSueldo("diario", value)}
               />
             </Grid.Col>
             <Grid.Col span={12}>
               <NumberInput 
-              label="Sueldo por semana" 
-              min={0} 
-              step={1} 
-              {...form.getInputProps('sueldoSemanal')} 
-              onChange={(value) => handleSueldo("semanal", value)}
+                label="Sueldo por semana" 
+                min={0} 
+                step={1} 
+                {...form.getInputProps('sueldoSemanal')} 
+                onChange={(value) => handleSueldo("semanal", value)}
               />
             </Grid.Col>
+
+            {/* --- OTROS --- */}
             <Grid.Col span={12}>
               <TextInput label="Dirección" placeholder="Calle, ciudad, país" {...form.getInputProps('direccion')} />
             </Grid.Col>
@@ -269,7 +261,7 @@ export function EmpleadoForm({ initialData = null }) {
                 {...form.getInputProps('estado')}
               />
             </Grid.Col>
-            {form.values.estado == 'Vacaciones' || form.values.estado == 'Permiso' || form.values.estado == 'Suspendido' && (
+            {(form.values.estado == 'Vacaciones' || form.values.estado == 'Permiso' || form.values.estado == 'Suspendido') && (
               <Grid.Col span={6}>
                 <DateInput
                   label="Fecha de Retorno"
@@ -286,6 +278,48 @@ export function EmpleadoForm({ initialData = null }) {
                 {...form.getInputProps('genero')}
               />
             </Grid.Col>
+
+            {/* --- NUEVA SECCIÓN: TALLAS Y DOTACIÓN --- */}
+            <Grid.Col span={12}>
+              <Fieldset legend="Dotación y Tallas" mt="md">
+                <Grid gutter="md">
+                  <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                    <Select
+                      label="Talla Camisa"
+                      placeholder="Ej: L"
+                      data={['S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']}
+                      {...form.getInputProps('tallaCamisa')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                    <TextInput
+                      label="Talla Pantalón"
+                      placeholder="Ej: 34"
+                      {...form.getInputProps('tallaPantalon')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                    <NumberInput
+                      label="Talla Calzado"
+                      placeholder="Ej: 42"
+                      min={30}
+                      max={50}
+                      {...form.getInputProps('tallaCalzado')}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                    <NumberInput
+                      label="Talla Braga"
+                      placeholder="Ej: 42"
+                      min={35}
+                      max={55}
+                      {...form.getInputProps('tallaBraga')}
+                    />
+                  </Grid.Col>
+                </Grid>
+              </Fieldset>
+            </Grid.Col>
+
           </Grid>
 
           <Group justify="flex-end" mt="xl">

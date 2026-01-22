@@ -61,6 +61,22 @@ const Empleado = sequelize.define('Empleado', {
     defaultValue: 'Activo',
     allowNull: false,
   },
+  tallaCamisa: {
+    type: DataTypes.ENUM('XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'),
+    allowNull: true,
+  },
+  tallaPantalon: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  tallaCalzado: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  tallaBraga: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 
 }, {
   tableName: 'Empleados',

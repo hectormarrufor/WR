@@ -73,6 +73,10 @@ export async function PUT(request, { params }) {
         estado: body.estado,
         imagen: body.imagen,
         tasaSueldo: body.tasaSueldo,
+        tallaCamisa: body.tallaCamisa,
+        tallaPantalon: body.tallaPantalon,
+        tallaCalzado: body.tallaCalzado,
+        tallaBraga: body.tallaBraga,
       },
       { where: { id }, transaction: t }
     );

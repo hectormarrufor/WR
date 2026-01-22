@@ -2,7 +2,7 @@
 'use client';
 import { Container, Paper, Title, Text, SimpleGrid, ThemeIcon, Group, UnstyledButton } from '@mantine/core';
 import Link from 'next/link';
-import { FaUsers, FaBriefcase, FaIdBadge, FaBuilding } from 'react-icons/fa';
+import { FaUsers, FaBriefcase, FaTshirt, FaBuilding } from 'react-icons/fa';
 import classes from '../superuser.module.css'; // Usamos el CSS module para estilos
 
 const mockdata = [
@@ -28,11 +28,11 @@ const mockdata = [
       description: 'Organizar la empresa en áreas como Operaciones, Mantenimiento, etc.'
     },
     { 
-      title: 'Asignación de Puestos', 
-      icon: FaIdBadge, 
+      title: 'Dotación de Indumentaria', 
+      icon: FaTshirt, 
       color: 'grape', 
-      href: '/superuser/rrhh/asignacion-puestos',
-      description: 'Asignar uno o más puestos específicos a cada empleado.'
+      href: '/superuser/rrhh/dotacion',
+      description: 'Contabilizar tallas y necesidades de uniformes y equipos de seguridad.'
     },
 ];
 

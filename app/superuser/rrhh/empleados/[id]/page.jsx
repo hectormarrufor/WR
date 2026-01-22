@@ -15,7 +15,8 @@ import {
     IconCurrencyDollar, IconBuildingBank, IconDeviceMobile,
     IconClock, IconBriefcase, IconNotes, IconLink,
     IconTrash,
-    IconCalendar
+    IconCalendar,
+    IconShirt, IconShoe, IconHanger, IconRuler2
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMediaQuery } from "@mantine/hooks"; // <--- IMPORTANTE
@@ -146,6 +147,10 @@ export default function Page({ params }) {
         return () => (mounted = false)
     }, [id]);
 
+    useEffect(() => {
+        console.log(empleado);
+    }, [empleado]);
+
     if (cargando) {
         return (
             <Center h="80vh">
@@ -240,6 +245,38 @@ export default function Page({ params }) {
                                 <IconBriefcase size={20} color="gray" style={{ minWidth: 20 }} />
                                 <div><Text size="xs" c="dimmed">Ingreso</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaIngreso).toLocaleDateString("es-ES", {day: "2-digit", month: "long", year: "numeric"})}</Text></div>
                             </Group>
+
+                            {(empleado.tallaCamisa || empleado.tallaPantalon || empleado.tallaCalzado || empleado.tallaBraga) && (
+                                <>
+                                    <Divider my="sm" label="Dotación" labelPosition="center" />
+                                    <SimpleGrid cols={2} spacing="xs">
+                                        <Paper withBorder p="xs" radius="md">
+                                            <Group gap="xs">
+                                                <ThemeIcon variant="light" color="blue" size="sm"><IconShirt size={14} /></ThemeIcon>
+                                                <div><Text size="xs" c="dimmed" lh={1}>Camisa</Text><Text fw={700} size="sm">{empleado.tallaCamisa || '-'}</Text></div>
+                                            </Group>
+                                        </Paper>
+                                        <Paper withBorder p="xs" radius="md">
+                                            <Group gap="xs">
+                                                <ThemeIcon variant="light" color="teal" size="sm"><IconHanger size={14} /></ThemeIcon>
+                                                <div><Text size="xs" c="dimmed" lh={1}>Pantalón</Text><Text fw={700} size="sm">{empleado.tallaPantalon || '-'}</Text></div>
+                                            </Group>
+                                        </Paper>
+                                        <Paper withBorder p="xs" radius="md">
+                                            <Group gap="xs">
+                                                <ThemeIcon variant="light" color="orange" size="sm"><IconShoe size={14} /></ThemeIcon>
+                                                <div><Text size="xs" c="dimmed" lh={1}>Calzado</Text><Text fw={700} size="sm">{empleado.tallaCalzado || '-'}</Text></div>
+                                            </Group>
+                                        </Paper>
+                                        <Paper withBorder p="xs" radius="md">
+                                            <Group gap="xs">
+                                                <ThemeIcon variant="light" color="grape" size="sm"><IconRuler2 size={14} /></ThemeIcon>
+                                                <div><Text size="xs" c="dimmed" lh={1}>Braga</Text><Text fw={700} size="sm">{empleado.tallaBraga || '-'}</Text></div>
+                                            </Group>
+                                        </Paper>
+                                    </SimpleGrid>
+                                </>
+                            )}
 
                             {(rol.includes("Presidente") || rol.includes("admin")) && (
                                 <>
