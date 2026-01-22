@@ -7,6 +7,7 @@ const db = {
     User: require('./user'),
     Empleado: require('./recursosHumanos/Empleado'),
     HorasTrabajadas: require('./recursosHumanos/HorasTrabajadas'),
+    DocumentoEmpleado: require('./recursosHumanos/DocumentoEmpleado'),
     Puesto: require('./recursosHumanos/Puesto'),
     EmpleadoPuesto: require('./recursosHumanos/EmpleadoPuesto'),
     Departamento: require('./recursosHumanos/Departamento'),

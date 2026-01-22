@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import { 
     Container, Title, SimpleGrid, Paper, Text, Table, Badge, Stack, Group, Center, 
-    Button, Modal, Avatar, ActionIcon, ScrollArea, Tooltip
+    Button, Modal, Avatar, ActionIcon, ScrollArea, Tooltip, Loader
 } from "@mantine/core";
-import { IconShirt, IconShoe, IconAffiliate, IconExternalLink, IconAlertCircle } from "@tabler/icons-react";
+import { 
+    IconShirt, IconShoe, IconAffiliate, IconExternalLink, 
+    IconAlertCircle, IconEye, IconUsers 
+} from "@tabler/icons-react";
 import Link from "next/link";
 
 export default function DotacionReportPage() {
@@ -15,30 +18,42 @@ export default function DotacionReportPage() {
     // Estados para el Modal
     const [modalOpen, setModalOpen] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
-    const [empleadosSinTalla, setEmpleadosSinTalla] = useState([]);
-    const [campoSeleccionado, setCampoSeleccionado] = useState("");
-    const [tituloModal, setTituloModal] = useState("");
+    const [empleadosLista, setEmpleadosLista] = useState([]);
+    
+    // Contexto del modal (para el título)
+    const [modalContext, setModalContext] = useState({ talla: "", categoria: "" });
 
     useEffect(() => {
+        cargarReporte();
+    }, []);
+
+    const cargarReporte = () => {
         fetch("/api/rrhh/reporte-tallas")
             .then(res => res.json())
             .then(data => {
                 setData(data);
                 setLoading(false);
             });
-    }, []);
+    }
 
-    // Función para abrir el modal y cargar datos
-    const handleVerSinTalla = async (campo, tituloLegible) => {
-        setCampoSeleccionado(campo);
-        setTituloModal(tituloLegible);
+    // Función UNIFICADA para ver empleados (con talla X o sin talla)
+    const handleVerDetalle = async (campo, valor, tituloCategoria) => {
+        const esNulo = !valor || valor === "null";
+        setModalContext({
+            talla: esNulo ? "Sin Especificar" : valor,
+            categoria: tituloCategoria,
+            esNulo: esNulo
+        });
+        
         setModalOpen(true);
         setModalLoading(true);
 
         try {
-            const res = await fetch(`/api/rrhh/empleados-sin-talla?campo=${campo}`);
+            // Usamos encodeURIComponent para manejar tallas con caracteres raros si los hubiera
+            const valorQuery = esNulo ? 'null' : encodeURIComponent(valor);
+            const res = await fetch(`/api/rrhh/empleados-por-talla?campo=${campo}&valor=${valorQuery}`);
             const data = await res.json();
-            setEmpleadosSinTalla(data);
+            setEmpleadosLista(data);
         } catch (error) {
             console.error("Error cargando empleados", error);
         } finally {
@@ -46,7 +61,7 @@ export default function DotacionReportPage() {
         }
     };
 
-    if (loading) return <Center h="50vh"><Text>Cargando reporte...</Text></Center>;
+    if (loading) return <Center h="50vh"><Loader /></Center>;
     if (!data) return <Center h="50vh"><Text>No hay datos disponibles</Text></Center>;
 
     return (
@@ -58,9 +73,9 @@ export default function DotacionReportPage() {
                     titulo="Calzado de Seguridad"
                     icon={<IconShoe size={24} />}
                     color="blue"
-                    items={data.calzado} // Asegúrate que tu API devuelve 'zapatos' o 'calzado'
-                    keyName="tallaCalzado" // Debe coincidir con el modelo DB
-                    onVerSinTalla={() => handleVerSinTalla("tallaCalzado", "Calzado")}
+                    items={data.calzado}
+                    keyName="tallaCalzado"
+                    onVerDetalle={(talla) => handleVerDetalle("tallaCalzado", talla, "Calzado")}
                 />
 
                 <TallaCard
@@ -69,7 +84,7 @@ export default function DotacionReportPage() {
                     color="orange"
                     items={data.camisas}
                     keyName="tallaCamisa"
-                    onVerSinTalla={() => handleVerSinTalla("tallaCamisa", "Camisas")}
+                    onVerDetalle={(talla) => handleVerDetalle("tallaCamisa", talla, "Camisas")}
                 />
 
                 <TallaCard
@@ -78,30 +93,40 @@ export default function DotacionReportPage() {
                     color="teal"
                     items={data.pantalones}
                     keyName="tallaPantalon"
-                    onVerSinTalla={() => handleVerSinTalla("tallaPantalon", "Pantalones")}
+                    onVerDetalle={(talla) => handleVerDetalle("tallaPantalon", talla, "Pantalones")}
                 />
 
-                <TallaCard
+                 <TallaCard
                     titulo="Bragas / Overoles"
                     icon={<IconAffiliate size={24} />}
                     color="grape"
-                    items={data.bragas} // Asegúrate que tu API devuelve esto si lo agregaste
+                    items={data.bragas}
                     keyName="tallaBraga"
-                    onVerSinTalla={() => handleVerSinTalla("tallaBraga", "Bragas")}
+                    onVerDetalle={(talla) => handleVerDetalle("tallaBraga", talla, "Bragas")}
                 />
             </SimpleGrid>
 
-            {/* MODAL DE EMPLEADOS SIN TALLA */}
+            {/* MODAL REUTILIZABLE */}
             <Modal 
                 opened={modalOpen} 
                 onClose={() => setModalOpen(false)} 
-                title={<Group><IconAlertCircle color="orange"/><Text fw={700}>Empleados sin talla de {tituloModal}</Text></Group>}
+                title={
+                    <Group gap="xs">
+                        {modalContext.esNulo ? <IconAlertCircle color="orange" /> : <IconUsers color="#228be6" />}
+                        <Text fw={700}>
+                            {modalContext.esNulo 
+                                ? `Empleados sin talla de ${modalContext.categoria}` 
+                                : `Empleados con ${modalContext.categoria} Talla ${modalContext.talla}`
+                            }
+                        </Text>
+                    </Group>
+                }
                 size="lg"
             >
                 {modalLoading ? (
-                    <Center p="xl"><Text c="dimmed">Cargando lista...</Text></Center>
-                ) : empleadosSinTalla.length === 0 ? (
-                    <Text c="dimmed" ta="center" p="xl">¡Todo el personal tiene su talla asignada!</Text>
+                    <Center p="xl"><Loader size="sm" /></Center>
+                ) : empleadosLista.length === 0 ? (
+                    <Text c="dimmed" ta="center" p="xl">No se encontraron empleados en este grupo.</Text>
                 ) : (
                     <ScrollArea h={400}>
                         <Table striped highlightOnHover>
@@ -109,11 +134,11 @@ export default function DotacionReportPage() {
                                 <Table.Tr>
                                     <Table.Th>Empleado</Table.Th>
                                     <Table.Th>Cédula</Table.Th>
-                                    <Table.Th style={{textAlign: 'right'}}>Acción</Table.Th>
+                                    <Table.Th style={{textAlign: 'right'}}>Perfil</Table.Th>
                                 </Table.Tr>
                             </Table.Thead>
                             <Table.Tbody>
-                                {empleadosSinTalla.map(emp => (
+                                {empleadosLista.map(emp => (
                                     <Table.Tr key={emp.id}>
                                         <Table.Td>
                                             <Group gap="sm">
@@ -122,21 +147,24 @@ export default function DotacionReportPage() {
                                             </Group>
                                         </Table.Td>
                                         <Table.Td><Text size="sm">{emp.cedula}</Text></Table.Td>
+                                        
                                         <Table.Td style={{textAlign: 'right'}}>
                                             <Button 
                                                 component={Link} 
-                                                href={`/superuser/rrhh/empleados/${emp.id}/editar`}
+                                                href={modalContext.esNulo ? `/superuser/rrhh/empleados/${emp.id}/editar` : `/superuser/rrhh/empleados/${emp.id}`}
                                                 variant="light" 
                                                 size="xs"
+                                                color={modalContext.esNulo ? "red" : "blue"}
                                                 rightSection={<IconExternalLink size={14}/>}
                                             >
-                                                Asignar
+                                                {modalContext.esNulo ? "Asignar" : "Ver Perfil"}
                                             </Button>
                                         </Table.Td>
                                     </Table.Tr>
                                 ))}
                             </Table.Tbody>
                         </Table>
+                        <Text size="xs" c="dimmed" ta="right" mt="sm">Total: {empleadosLista.length} empleados</Text>
                     </ScrollArea>
                 )}
             </Modal>
@@ -144,8 +172,8 @@ export default function DotacionReportPage() {
     );
 }
 
-function TallaCard({ titulo, icon, color, items, keyName, onVerSinTalla }) {
-    // Calcular totales para mostrar si falta data o no
+// --- TARJETA INTELIGENTE ACTUALIZADA ---
+function TallaCard({ titulo, icon, color, items, keyName, onVerDetalle }) {
     const totalItems = items?.reduce((acc, curr) => acc + parseInt(curr.total), 0) || 0;
 
     return (
@@ -155,49 +183,55 @@ function TallaCard({ titulo, icon, color, items, keyName, onVerSinTalla }) {
                     <Badge size="xl" circle color={color} variant="light">{icon}</Badge>
                     <Text fw={700} size="lg">{titulo}</Text>
                 </Group>
-                <Badge variant="outline" color={color}>{totalItems} Total</Badge>
+                <Badge variant="outline" color={color}>{totalItems}</Badge>
             </Group>
 
             <ScrollArea h={250} type="auto">
-                <Table verticalSpacing="xs">
+                <Table verticalSpacing="xs" striped>
                     <Table.Thead>
                         <Table.Tr>
                             <Table.Th>Talla</Table.Th>
                             <Table.Th ta="right">Cant.</Table.Th>
+                            <Table.Th style={{width: 40}}></Table.Th>
                         </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
                         {items?.map((item, index) => {
-                            const isNull = !item[keyName] || item[keyName] === "null"; // Chequeo de nulidad
-                            
+                            const isNull = !item[keyName] || item[keyName] === "null";
+                            const valorTalla = isNull ? null : item[keyName];
+
                             return (
                                 <Table.Tr key={index} bg={isNull ? 'red.0' : undefined}>
                                     <Table.Td>
                                         {isNull ? (
-                                            <Button 
-                                                variant="subtle" 
-                                                color="red" 
-                                                size="compact-xs" 
-                                                onClick={onVerSinTalla}
-                                                leftSection={<IconAlertCircle size={14}/>}
-                                            >
-                                                Sin Especificar (Ver)
-                                            </Button>
+                                            <Text c="red" fw={700} size="sm">Sin Especificar</Text>
                                         ) : (
-                                            <Text fw={500}>{item[keyName]}</Text>
+                                            <Text fw={600}>{valorTalla}</Text>
                                         )}
                                     </Table.Td>
                                     <Table.Td ta="right">
-                                        <Badge variant={isNull ? "filled" : "outline"} color={isNull ? "red" : color}>
+                                        <Badge variant={isNull ? "light" : "filled"} color={isNull ? "red" : "green"}>
                                             {item.total}
                                         </Badge>
+                                    </Table.Td>
+                                    <Table.Td>
+                                        <Tooltip size="lg" label="Ver lista de empleados">
+                                            <ActionIcon 
+                                                size="lg" 
+                                                variant="subtle" 
+                                                color={isNull ? "red" : "blue"}
+                                                onClick={() => onVerDetalle(valorTalla)}
+                                            >
+                                               <IconEye size={20}  width={20}/>
+                                            </ActionIcon>
+                                        </Tooltip>
                                     </Table.Td>
                                 </Table.Tr>
                             )
                         })}
                         {(!items || items.length === 0) && (
                             <Table.Tr>
-                                <Table.Td colSpan={2} align="center"><Text c="dimmed" size="sm">No hay datos</Text></Table.Td>
+                                <Table.Td colSpan={3} align="center"><Text c="dimmed" size="sm">No hay datos</Text></Table.Td>
                             </Table.Tr>
                         )}
                     </Table.Tbody>

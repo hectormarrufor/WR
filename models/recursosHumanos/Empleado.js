@@ -97,6 +97,7 @@ Empleado.associate = (models) => {
   Empleado.hasMany(models.ODT, { foreignKey: 'choferId', as: 'odtsComoChofer' });
   Empleado.hasMany(models.ODT, { foreignKey: 'ayudanteId', as: 'odtsComoAyudante' });
   Empleado.hasMany(models.OrdenMantenimiento, { foreignKey: 'asignadoAId', as: 'ordenesAsignadas' });
+  Empleado.hasMany(models.DocumentoEmpleado, { foreignKey: "empleadoId", as: "documentos" });
   Empleado.hasMany(models.HorasTrabajadas, {
     foreignKey: "creadorId",
     as: "horasCreadas"

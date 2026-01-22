@@ -36,6 +36,7 @@ export async function GET(request, { params }) {
           required: false // 👈 para que no falle si no hay horas
 
         },
+        { model: db.DocumentoEmpleado, as: 'documentos' },
         // Puedes añadir más inclusiones aquí si el empleado está asociado a Mantenimientos, Operaciones, etc.
         // { model: db.Mantenimiento, as: 'mantenimientosCreados' },
         // { model: db.OperacionCampo, as: 'operacionesSupervisadas' },

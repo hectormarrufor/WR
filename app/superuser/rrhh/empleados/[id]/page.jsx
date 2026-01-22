@@ -28,6 +28,7 @@ import ModalCrearHora from "./ModalCrearHora";
 import ModalCuentaBancaria from "./ModalCuentaBancaria";
 import ModalPagoMovil from "./ModalPagoMovil";
 import { formatToInputDate, getSafeDate, toLocalDate } from "@/app/helpers/fechaCaracas";
+import DocumentosManager from "../../components/DocumentosManager";
 
 // --- COMPONENTE PARA EL REGISTRO DE HORAS EN MÓVIL ---
 const MobileWorkLogCard = ({ log }) => {
@@ -242,11 +243,11 @@ export default function Page({ params }) {
                             </Group>
                             <Group wrap="nowrap">
                                 <IconCalendar size={20} color="gray" style={{ minWidth: 20 }} />
-                                <div><Text size="xs" c="dimmed">Nacimiento</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaNacimiento).toLocaleDateString("es-ES", {day: "2-digit", month: "long", year: "numeric"})}</Text></div>
+                                <div><Text size="xs" c="dimmed">Nacimiento</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaNacimiento).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })}</Text></div>
                             </Group>
                             <Group wrap="nowrap">
                                 <IconBriefcase size={20} color="gray" style={{ minWidth: 20 }} />
-                                <div><Text size="xs" c="dimmed">Ingreso</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaIngreso).toLocaleDateString("es-ES", {day: "2-digit", month: "long", year: "numeric"})}</Text></div>
+                                <div><Text size="xs" c="dimmed">Ingreso</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaIngreso).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })}</Text></div>
                             </Group>
 
                             {(empleado.tallaCamisa || empleado.tallaPantalon || empleado.tallaCalzado || empleado.tallaBraga) && (
@@ -407,6 +408,12 @@ export default function Page({ params }) {
                                 </Tabs.Panel>
                             </Tabs>
                         </Paper>
+
+                        <DocumentosManager
+                            empleadoId={empleado.id}
+                            documentos={empleado.documentos || []}
+                            puestos={empleado.puestos || []}
+                        />
 
                         {/* 3. HISTORIAL DE HORAS (RESPONSIVE) */}
                         <Paper withBorder radius="md" p="md">
