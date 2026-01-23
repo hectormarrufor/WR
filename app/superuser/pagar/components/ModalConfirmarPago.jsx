@@ -76,7 +76,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
     };
 
     const hayCuentasOrigen = cuentasEmpresa.length > 0;
-    const symbol = moneda === 'bcv' ? 'Bs.' : '$';
+    const symbol = moneda === 'bcv' || moneda === 'euro' ? 'Bs.' : '$';
     // Formatear monto para visualización
     const montoFormatted = Number(monto).toFixed(2);
 
