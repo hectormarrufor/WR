@@ -13,7 +13,7 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useMediaQuery } from "@mantine/hooks"; // Importante para responsive
+import { useMediaQuery } from "@mantine/hooks"; 
 import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
 import { getRangoPago } from "@/app/helpers/getRangoPago";
 import ModalConfirmarPago from "./components/ModalConfirmarPago";
@@ -30,44 +30,44 @@ export default function PagosPage() {
     const [modalPagoOpen, setModalPagoOpen] = useState(false);
     const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
 
-    // Estado para controlar a quién ya se le dio click en "Pagar" visualmente
-    const [pagados, setPagados] = useState({});
-
     // Fechas del corte
     const rango = useMemo(() => getRangoPago(), []);
 
     // --- CARGAR DATOS ---
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                // Usamos tu endpoint corregido
-                const [resEmpleados, resBcv] = await Promise.all([
-                    fetch("/api/rrhh/empleados?include=horasTrabajadas,cuentasBancarias,pagosmoviles,&where=estado:Activo").then(r => r.json()),
-                    fetch("/api/bcv").then(r => r.json())
-                ]);
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // AJUSTE AQUÍ: Incluimos 'pagos' para saber si ya se pagó
+            // Nota: Ajusté 'pagosmoviles' a 'pagosMoviles' (camelCase es estándar en Sequelize, revisa tu alias)
+            const [resEmpleados, resBcv] = await Promise.all([
+                fetch("/api/rrhh/empleados?include=horasTrabajadas,cuentasBancarias,pagosMoviles,pagos&where=estado:Activo").then(r => r.json()),
+                fetch("/api/bcv").then(r => r.json())
+            ]);
 
-                setTasas({
-                    bcv: resBcv.precio,
-                    eur: resBcv.eur,
-                    usdt: resBcv.usdt
-                });
+            setTasas({
+                bcv: resBcv.precio,
+                eur: resBcv.eur,
+                usdt: resBcv.usdt
+            });
 
-                // Si tu API ya filtra por activo en el backend, usamos la respuesta directa
-                const listaEmpleados = Array.isArray(resEmpleados) ? resEmpleados : resEmpleados.data || [];
-                setEmpleados(listaEmpleados);
+            const listaEmpleados = Array.isArray(resEmpleados) ? resEmpleados : resEmpleados.data || [];
+            console.log("Empleados cargados para nómina:", listaEmpleados);
+            setEmpleados(listaEmpleados.sort((a, b) => b.HorasTrabajadas.length - a.HorasTrabajadas.length));
 
-            } catch (error) {
-                console.error(error);
-                notifications.show({ title: "Error", message: "No se pudo cargar la nómina", color: "red" });
-            } finally {
-                setLoading(false);
-            }
+        } catch (error) {
+            console.error(error);
+            notifications.show({ title: "Error", message: "No se pudo cargar la nómina", color: "red" });
+        } finally {
+            setLoading(false);
         }
+    };
+
+    useEffect(() => {
         fetchData();
     }, []);
 
 
-    // --- LÓGICA DE CÁLCULO DE NÓMINA (DESGLOSADA) ---
+    // --- LÓGICA DE CÁLCULO DE NÓMINA ---
     const nominaCalculada = useMemo(() => {
         if (!empleados.length) return [];
 
@@ -78,36 +78,46 @@ export default function PagosPage() {
 
             const valoresSueldo = actualizarSueldos("mensual", emp.sueldo);
 
-            // Filtrar horas del rango
+            // 1. Filtrar horas del rango
             const horasRango = emp.HorasTrabajadas?.filter(h => {
                 const fechaHora = new Date(h.fecha);
                 return fechaHora >= rango.inicio && fechaHora <= rango.fin;
             }) || [];
 
+            // 2. VERIFICAR SI YA ESTÁ PAGADO
+            // Buscamos en los pagos del empleado si hay alguno de tipo 'Nomina' 
+            // cuya fecha coincida dentro del rango de pago actual (o el día de pago usual)
+            // Esto asume que el gasto se registra con la fecha del momento del pago.
+            const pagoSemana = emp.pagos?.find(g => {
+                if (g.tipoOrigen !== 'Nomina') return false;
+                const fechaGasto = new Date(g.fechaGasto);
+                // Si el gasto se hizo después del inicio del corte y antes de hoy+futuro
+                // O simplificado: si existe un gasto de nómina creado en los últimos 7 días
+                // Para mayor precisión, podrías guardar el rango en el gasto, pero por fecha funciona bien:
+                return fechaGasto >= rango.inicio; 
+            });
+
+            const yaPagado = !!pagoSemana; // Convertir a booleano
+
             // Calcular Horas
             const totalHoras = horasRango.reduce((acc, curr) => acc + curr.horas, 0);
-
-            // Lógica de extras (excedente de 8h diarias)
             const horasExtra = horasRango.reduce((acc, curr) => {
                 return curr.horas > 8 ? acc + (curr.horas - 8) : acc;
             }, 0);
-
             const horasNormales = totalHoras - horasExtra;
 
-            // Calcular Montos USD
-            // Nota: Aquí asumo que la hora extra se paga al mismo precio base. 
-            // Si pagan 1.5x, cambia a: (horasExtra * valoresSueldo.horario * 1.5)
+            // Calcular Montos
             const pagoNormalUsd = horasNormales * valoresSueldo.horario;
             const pagoExtraUsd = horasExtra * valoresSueldo.horario;
             const totalPagarUsd = pagoNormalUsd + pagoExtraUsd;
 
-            // Calcular Montos BS
             const pagoNormalBs = pagoNormalUsd * tasaCambio;
             const pagoExtraBs = pagoExtraUsd * tasaCambio;
             const totalPagarBs = totalPagarUsd * tasaCambio;
 
             return {
                 ...emp,
+                yaPagado, // <--- Nueva propiedad clave
                 calculos: {
                     horasNormales,
                     horasExtra,
@@ -136,24 +146,24 @@ export default function PagosPage() {
 
     // Callback cuando el modal termina con éxito
     const onPagoSuccess = (empleadoId) => {
-        // Marcamos visualmente como pagado
-        setPagados(prev => ({ ...prev, [empleadoId]: true }));
-        // Opcional: Recargar data para actualizar el backend
-        // fetchData(); 
+        // En lugar de manipular el estado local 'pagados',
+        // Recargamos los datos para que venga el GastoVariable actualizado del backend
+        fetchData(); 
     };
 
-    if (loading) return (
+    if (loading && empleados.length === 0) return (
         <Center h="80vh"><Stack align="center"><Loader /><Text>Calculando nómina...</Text></Stack></Center>
     );
 
     // --- COMPONENTE: CARD MÓVIL ---
     const MobilePaymentCard = ({ emp }) => {
-        const yaPagado = pagados[emp.id];
+        // Usamos la propiedad calculada
+        const yaPagado = emp.yaPagado; 
         const tieneHoras = emp.calculos.totalHoras > 0;
         const c = emp.calculos;
 
         return (
-            <Card withBorder radius="md" mb="md" style={{ opacity: yaPagado ? 0.6 : 1 }}>
+            <Card withBorder radius="md" mb="md" style={{ opacity: yaPagado ? 0.7 : 1, backgroundColor: yaPagado ? '#f8f9fa' : 'white' }}>
                 <Group justify="space-between" mb="xs">
                     <Group gap="sm">
                         <Avatar src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} radius="xl" />
@@ -165,7 +175,7 @@ export default function PagosPage() {
                         </div>
                     </Group>
                     {yaPagado ? (
-                        <Badge color="green" variant="filled">Pagado</Badge>
+                        <Badge color="green" variant="filled" size="lg" leftSection={<IconCheck size={12}/>}>Pagado</Badge>
                     ) : (
                         <Button size="xs" color="blue" disabled={!tieneHoras} onClick={() => handlePagar(emp)}>
                             Pagar
@@ -177,21 +187,16 @@ export default function PagosPage() {
 
                 {tieneHoras ? (
                     <Stack gap="xs">
-                        {/* Fila de Encabezados */}
-                        <SimpleGrid cols={3} spacing="xs">
+                         <SimpleGrid cols={3} spacing="xs">
                             <Text size="xs" c="dimmed" ta="center">Concepto</Text>
                             <Text size="xs" c="dimmed" ta="center">Horas</Text>
                             <Text size="xs" c="dimmed" ta="right">USD</Text>
                         </SimpleGrid>
-
-                        {/* Normales */}
                         <SimpleGrid cols={3} spacing="xs">
                             <Text size="sm">Normal</Text>
                             <Badge variant="outline" color="gray" fullWidth>{c.horasNormales}h</Badge>
                             <Text size="sm" ta="right">${c.pagoNormalUsd.toFixed(2)}</Text>
                         </SimpleGrid>
-
-                        {/* Extras */}
                         {c.horasExtra > 0 && (
                             <SimpleGrid cols={3} spacing="xs">
                                 <Text size="sm" c="orange">Extra</Text>
@@ -199,10 +204,7 @@ export default function PagosPage() {
                                 <Text size="sm" ta="right" c="orange">${c.pagoExtraUsd.toFixed(2)}</Text>
                             </SimpleGrid>
                         )}
-
                         <Divider variant="dashed" />
-
-                        {/* Total */}
                         <Group justify="space-between" bg="gray.0" p="xs" style={{ borderRadius: 8 }}>
                             <Group gap={5}>
                                 <Text size="sm" fw={700}>Total a Pagar</Text>
@@ -220,15 +222,14 @@ export default function PagosPage() {
 
     return (
         <Container size="xl" p="md">
-            {/* CABECERA (IGUAL QUE ANTES) */}
             <Stack mb="xl">
                 <Group justify="space-between">
                     <div>
                         <Title order={2}>Gestión de Pagos</Title>
                         <Text c="dimmed" size="sm">{rango.inicioStr} - {rango.finStr}</Text>
                     </div>
+                     <Button variant="light" onClick={fetchData} loading={loading}>Actualizar</Button>
                 </Group>
-
                 <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
                     <Paper withBorder p="md" radius="md">
                         <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total Nómina (Bs)</Text>
@@ -240,15 +241,14 @@ export default function PagosPage() {
                     </Paper>
                     <Paper withBorder p="md" radius="md">
                         <Text size="xs" c="dimmed" fw={700} tt="uppercase">Tasa Referencia</Text>
-                        <Text size="xl" fw={900}>Bs. {tasas.bcv} / USD</Text>
-                        <Text size="xl" fw={900}>Bs. {tasas.eur} / EUR</Text>
+                        <Text size="sm" fw={900}>Bs. {tasas.bcv} / USD</Text>
+                        <Text size="sm" fw={900}>Bs. {tasas.eur} / EUR</Text>
+                        <Text size="sm" fw={900}>Bs. {tasas.usdt} / USDT</Text>
                     </Paper>
                 </SimpleGrid>
             </Stack>
 
-            {/* CONTENIDO PRINCIPAL */}
             {isMobile ? (
-                // --- VISTA MÓVIL (TARJETAS) ---
                 <Box>
                     {nominaCalculada.map(emp => (
                         <MobilePaymentCard key={emp.id} emp={emp} />
@@ -256,7 +256,6 @@ export default function PagosPage() {
                     {nominaCalculada.length === 0 && <Text ta="center" c="dimmed">No hay empleados</Text>}
                 </Box>
             ) : (
-                // --- VISTA DESKTOP (TABLA DESGLOSADA) ---
                 <Paper withBorder shadow="sm" radius="md" overflow="hidden">
                     <ScrollArea>
                         <Table striped highlightOnHover verticalSpacing="sm" withTableBorder>
@@ -269,12 +268,9 @@ export default function PagosPage() {
                                     <Table.Th rowSpan={2} style={{ textAlign: 'center' }}>Acción</Table.Th>
                                 </Table.Tr>
                                 <Table.Tr>
-                                    {/* Subcolumnas Horas */}
                                     <Table.Th style={{ textAlign: 'center', fontSize: 11, color: 'gray' }}>Normal</Table.Th>
                                     <Table.Th style={{ textAlign: 'center', fontSize: 11, color: 'orange' }}>Extra</Table.Th>
                                     <Table.Th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700 }}>Total</Table.Th>
-
-                                    {/* Subcolumnas USD */}
                                     <Table.Th style={{ textAlign: 'right', fontSize: 11, color: 'gray' }}>Normal</Table.Th>
                                     <Table.Th style={{ textAlign: 'right', fontSize: 11, color: 'orange' }}>Extra</Table.Th>
                                     <Table.Th style={{ textAlign: 'right', fontSize: 11, fontWeight: 700 }}>Total $</Table.Th>
@@ -282,12 +278,13 @@ export default function PagosPage() {
                             </Table.Thead>
                             <Table.Tbody>
                                 {nominaCalculada.map((emp) => {
-                                    const yaPagado = pagados[emp.id];
+                                    // USAMOS LA PROPIEDAD CALCULADA
+                                    const yaPagado = emp.yaPagado;
                                     const tieneHoras = emp.calculos.totalHoras > 0;
                                     const c = emp.calculos;
 
                                     return (
-                                        <Table.Tr key={emp.id} style={{ opacity: yaPagado ? 0.5 : 1 }}>
+                                        <Table.Tr key={emp.id} style={{ opacity: yaPagado ? 0.6 : 1, backgroundColor: yaPagado ? '#f8f9fa' : undefined }}>
                                             <Table.Td>
                                                 <Group gap="sm">
                                                     <Avatar src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} radius="xl" size="sm" />
@@ -300,26 +297,21 @@ export default function PagosPage() {
                                                 </Group>
                                             </Table.Td>
 
-                                            {/* Desglose Horas */}
                                             <Table.Td align="center"><Text size="sm">{c.horasNormales}</Text></Table.Td>
                                             <Table.Td align="center"><Text size="sm" c="orange">{c.horasExtra > 0 ? c.horasExtra : '-'}</Text></Table.Td>
                                             <Table.Td align="center"><Badge variant="light" color="gray" size="sm">{c.totalHoras}</Badge></Table.Td>
 
-                                            {/* Desglose USD */}
                                             <Table.Td align="right"><Text size="sm">${c.pagoNormalUsd.toFixed(2)}</Text></Table.Td>
                                             <Table.Td align="right"><Text size="sm" c="orange">{c.horasExtra > 0 ? `$${c.pagoExtraUsd.toFixed(2)}` : '-'}</Text></Table.Td>
                                             <Table.Td align="right"><Text size="sm" fw={700} c="green">${c.totalPagarUsd.toFixed(2)}</Text></Table.Td>
 
-                                            {/* Total BS */}
                                             <Table.Td align="right">
                                                 <Text fw={700} size="sm">Bs. {c.totalPagarBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</Text>
                                             </Table.Td>
 
                                             <Table.Td align="center">
                                                 {yaPagado ? (
-                                                    <Button leftSection={<IconCheck size={14} />} color="green" variant="light" size="compact-xs" disabled>
-                                                        Pagado
-                                                    </Button>
+                                                     <Badge color="green" variant="filled" size="lg" leftSection={<IconCheck size={12}/>}>Pagado</Badge>
                                                 ) : (
                                                     <Button size="compact-xs" color="blue" disabled={!tieneHoras} onClick={() => handlePagar(emp)}>
                                                         Pagar
@@ -334,9 +326,8 @@ export default function PagosPage() {
                     </ScrollArea>
                 </Paper>
             )}
-            {/* AGREGAR EL MODAL AL FINAL DEL RETURN */}
+
             {empleadoSeleccionado && (
-                console.log('Renderizando ModalConfirmarPago para empleado:', empleadoSeleccionado),
                 <ModalConfirmarPago
                     opened={modalPagoOpen}
                     onClose={() => {
@@ -344,7 +335,6 @@ export default function PagosPage() {
                         setEmpleadoSeleccionado(null);
                     }}
                     empleado={empleadoSeleccionado}
-                    // Pasamos los montos calculados
                     totalPagar={empleadoSeleccionado.tasaSueldo === 'bcv' || empleadoSeleccionado.tasaSueldo === "euro"
                         ? empleadoSeleccionado.calculos.totalPagarBs
                         : empleadoSeleccionado.calculos.totalPagarUsd

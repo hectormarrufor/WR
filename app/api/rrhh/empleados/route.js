@@ -66,10 +66,17 @@ export async function GET(request) {
       });
     }
 
-    if (includeParam.includes('pagosmoviles')) {
+    if (includeParam.includes('pagosMoviles')) {
       includeOptions.push({
         model: db.PagoMovil,
         as: 'pagosMoviles'
+      });
+    }
+
+    if (includeParam.includes('pagos')) {
+      includeOptions.push({
+        model: db.GastoVariable,
+        as: 'pagos'
       });
     }
     // Puedes agregar más condiciones aquí en el futuro
