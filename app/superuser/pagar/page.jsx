@@ -240,7 +240,8 @@ export default function PagosPage() {
                     </Paper>
                     <Paper withBorder p="md" radius="md">
                         <Text size="xs" c="dimmed" fw={700} tt="uppercase">Tasa Referencia</Text>
-                        <Text size="xl" fw={900}>Bs. {tasas.bcv}</Text>
+                        <Text size="xl" fw={900}>Bs. {tasas.bcv} / USD</Text>
+                        <Text size="xl" fw={900}>Bs. {tasas.eur} / EUR</Text>
                     </Paper>
                 </SimpleGrid>
             </Stack>

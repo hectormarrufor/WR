@@ -116,6 +116,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                     <Stack align="center">
                         <Avatar justify="center" size={120} src={process.env.NEXT_PUBLIC_BLOB_BASE_URL + "/" + empleado?.imagen} alt={`${empleado?.nombre} ${empleado?.apellido}`} />
                         <Text size="lg" fw={900}>Pago a {empleado?.nombre} {empleado?.apellido}</Text>
+                        <Badge size="lg" color={empleado.calculos.moneda === "bcv" ? "green" : empleado.calculos.moneda === "euro" ? "violet" : "yellow"} >Tasa {empleado?.calculos.moneda}</Badge>
                     </Stack>
                     <Card withBorder padding="sm" radius="md" bg="green.0" style={{ borderColor: 'var(--mantine-color-green-3)' }}>
                         <Group justify="space-between">
@@ -124,7 +125,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                                 <Box>
                                     <Text size="xs" fw={700} c="green.9" tt="uppercase">Total a Transferir</Text>
                                     <Text fw={800} size="xl" c="green.9" lh={1}>
-                                        {symbol} {Number(monto).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                                        {symbol} {Number(monto).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </Text>
                                 </Box>
                             </Group>
