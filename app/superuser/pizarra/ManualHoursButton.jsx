@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import {
   Button, Modal, NumberInput, Textarea, Stack, Group, LoadingOverlay,
-  Title
+  Title, Text, Alert
 } from "@mantine/core";
-import { DateInput, TimeInput } from "@mantine/dates"; // Asegúrate de tener @mantine/dates instalado
-import { IconClockPlus } from "@tabler/icons-react";
+import { DateInput, TimeInput } from "@mantine/dates";
+import { IconClockPlus, IconInfoCircle } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import EmployeeSelector from "./EmployeeSelector"; // Importamos el componente de arriba
+import EmployeeSelector from "./EmployeeSelector"; 
 import { useAuth } from "@/hooks/useAuth";
 
 export default function ManualHoursButton() {
@@ -19,7 +19,7 @@ export default function ManualHoursButton() {
 
   // Estado del Formulario
   const [form, setForm] = useState({
-    empleadoId: null,
+    empleadoIds: [], // <--- AHORA ES UN ARRAY
     fecha: new Date(),
     horas: 8,
     inicio: "08:00",
@@ -27,11 +27,11 @@ export default function ManualHoursButton() {
     observaciones: ""
   });
 
-  // Cargar empleados al abrir el modal (o al montar el componente)
+  // Cargar empleados
   useEffect(() => {
     if (opened && employees.length === 0) {
       setLoading(true);
-      fetch("/api/rrhh/empleados") // Asumo que tienes este endpoint
+      fetch("/api/rrhh/empleados")
         .then((res) => res.json())
         .then((data) => setEmployees(Array.isArray(data) ? data : []))
         .catch((err) => console.error("Error cargando empleados", err))
@@ -39,9 +39,10 @@ export default function ManualHoursButton() {
     }
   }, [opened]);
 
+  // Calcular horas
   useEffect(() => {
-    // Calcular horas automáticamente al cambiar inicio o fin
     const calcularHoras = (inicio, fin) => {
+      if(!inicio || !fin) return 0;
       const [hIn, mIn] = inicio.split(':').map(Number);
       const [hOut, mOut] = fin.split(':').map(Number);
       let entrada = hIn * 60 + mIn;
@@ -54,11 +55,11 @@ export default function ManualHoursButton() {
     setForm((prev) => ({ ...prev, horas: horasCalculadas }));
   }, [form.inicio, form.fin]);
 
-  // Manejo de envío
+  // Manejo de envío MÚLTIPLE
   const handleSubmit = async () => {
     // Validaciones
-    if (!form.empleadoId) {
-      return notifications.show({ title: 'Error', message: 'Debes seleccionar un empleado', color: 'red' });
+    if (form.empleadoIds.length === 0) {
+      return notifications.show({ title: 'Error', message: 'Debes seleccionar al menos un empleado', color: 'red' });
     }
     if (!form.fecha) {
       return notifications.show({ title: 'Error', message: 'La fecha es obligatoria', color: 'red' });
@@ -69,30 +70,51 @@ export default function ManualHoursButton() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/rrhh/horas-manuales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          // Asegurar formato fecha YYYY-MM-DD
-          fecha: form.fecha.toISOString().split('T')[0],
-          creadorId: userId
-        }),
+      // Preparamos los datos base
+      const basePayload = {
+        fecha: form.fecha.toISOString().split('T')[0],
+        horas: form.horas,
+        inicio: form.inicio, // Si tu backend lo soporta
+        fin: form.fin,       // Si tu backend lo soporta
+        observaciones: form.observaciones,
+        creadorId: userId
+      };
+
+      // Creamos un array de promesas (una petición por cada empleado seleccionado)
+      const promesas = form.empleadoIds.map(empId => {
+        return fetch("/api/rrhh/horas-manuales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ...basePayload,
+                empleadoId: empId // Asignamos el ID individual
+            }),
+        }).then(async (res) => {
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || `Fallo al guardar empleado ID ${empId}`);
+            }
+            return res.json();
+        });
       });
 
-      if (!res.ok) throw new Error("Error al guardar");
+      // Ejecutamos todas las peticiones en paralelo
+      await Promise.all(promesas);
 
-      notifications.show({ title: 'Éxito', message: 'Horas registradas correctamente', color: 'green' });
+      notifications.show({ 
+          title: 'Éxito', 
+          message: `Se registraron horas para ${form.empleadoIds.length} empleados correctamente.`, 
+          color: 'green' 
+      });
 
       // Reset y Cerrar
-      setForm({ empleadoId: null, fecha: new Date(), horas: 8, observaciones: "" });
+      setForm({ empleadoIds: [], fecha: new Date(), horas: 8, inicio: "08:00", fin: "16:00", observaciones: "" });
       setOpened(false);
-
-      // Opcional: Recargar la página para ver cambios en la pizarra
       window.location.reload();
 
     } catch (error) {
-      notifications.show({ title: 'Error', message: error.message, color: 'red' });
+      console.error(error);
+      notifications.show({ title: 'Error Parcial o Total', message: error.message, color: 'red' });
     } finally {
       setLoading(false);
     }
@@ -111,71 +133,80 @@ export default function ManualHoursButton() {
       <Modal
         opened={opened}
         onClose={() => setOpened(false)}
-        title="Registrar Horas Manuales (Taller/Base)"
+        title="Registro de Horas (Individual o Grupal)"
         centered
+        size="lg"
       >
         <Stack pos="relative">
           <LoadingOverlay visible={loading} overlayProps={{ radius: "sm", blur: 2 }} />
 
-          {/* 1. SELECTOR DE EMPLEADO (Abre su propio modal interno) */}
+          {/* 1. SELECTOR DE EMPLEADOS MÚLTIPLE */}
           <EmployeeSelector
-            label="Empleado"
+            label="Personal Asignado"
             data={employees}
-            value={form.empleadoId}
-            onChange={(id) => setForm({ ...form, empleadoId: id, nombre: employees.find(emp => emp.id === id)?.nombre || '', apellido: employees.find(emp => emp.id === id)?.apellido || '' })}
+            value={form.empleadoIds}
+            onChange={(ids) => setForm({ ...form, empleadoIds: ids })}
           />
+          
+          {form.empleadoIds.length > 1 && (
+            <Alert variant="light" color="blue" title="Modo Grupal" icon={<IconInfoCircle />}>
+                Se creará un registro individual de <b>{form.horas} horas</b> para cada uno de los <b>{form.empleadoIds.length} empleados</b> seleccionados con la misma observación.
+            </Alert>
+          )}
 
+          <Group grow>
+            {/* 2. FECHA */}
+            <DateInput
+                label="Fecha"
+                placeholder="Selecciona fecha"
+                value={form.fecha}
+                onChange={(date) => setForm({ ...form, fecha: date })}
+                withAsterisk
+            />
+            {/* 3. CANTIDAD DE HORAS */}
+            <NumberInput
+                disabled
+                label="Total Horas"
+                value={form.horas}
+                onChange={(val) => setForm({ ...form, horas: val })}
+                min={0.5}
+                max={24}
+                step={0.5}
+                withAsterisk
+            />
+          </Group>
 
-          {/* 2. FECHA */}
-          <DateInput
-            label="Fecha"
-            placeholder="Selecciona fecha"
-            value={form.fecha}
-            onChange={(date) => setForm({ ...form, fecha: date })}
-            withAsterisk
-          />
-          <TimeInput
-            label="Hora inicio"
-            placeholder="Hora de entrada"
-            value={form.inicio}
-            onChange={(time) => setForm({ ...form, inicio: time })}
-          />
-
-          <TimeInput
-            label="Hora fin"
-            placeholder="Hora de salida"
-            value={form.fin}
-            onChange={(time) => setForm({ ...form, fin: time })}
-          />
-
-          {/* 3. CANTIDAD DE HORAS */}
-          <NumberInput
-            disabled
-            label="Horas Trabajadas"
-            description="Max 24h"
-            value={form.horas}
-            onChange={(val) => setForm({ ...form, horas: val })}
-            min={0.5}
-            max={24}
-            step={0.5}
-            withAsterisk
-          />
+          <Group grow>
+            <TimeInput
+                label="Hora inicio"
+                value={form.inicio}
+                onChange={(e) => setForm({ ...form, inicio: e.currentTarget.value })}
+            />
+            <TimeInput
+                label="Hora fin"
+                value={form.fin}
+                onChange={(e) => setForm({ ...form, fin: e.currentTarget.value })}
+            />
+          </Group>
 
           {/* 4. OBSERVACIONES */}
           <Textarea
-            label="Observaciones / Motivo"
-            placeholder="Ej: Trabajo de soldadura en taller..."
+            label="Tarea / Observaciones"
+            placeholder="Ej: Mantenimiento preventivo de unidad..."
             value={form.observaciones}
             onChange={(e) => setForm({ ...form, observaciones: e.currentTarget.value })}
             minRows={3}
           />
-          <Title order={6} color="gray" align="center">
-            horas registradas por {employees.find(emp => emp.usuario?.id === userId)?.nombre || 'admin'}
+          
+          <Title order={6} c="dimmed" ta="center" mt="sm">
+            Registrando como: {employees.find(emp => emp.usuario?.id === userId)?.nombre || 'Administrador'}
           </Title>
 
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setOpened(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} color="teal" loading={loading}>Guardar Registro</Button>
+            <Button onClick={handleSubmit} color="teal" loading={loading}>
+                {form.empleadoIds.length > 1 ? `Registrar a ${form.empleadoIds.length} Empleados` : "Guardar Registro"}
+            </Button>
           </Group>
         </Stack>
       </Modal>

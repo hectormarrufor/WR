@@ -1,45 +1,116 @@
 import { NextResponse } from 'next/server';
 import db from '../../../../models';
 
+import { Op } from 'sequelize'; // Útil si quieres búsquedas avanzadas en el futuro
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
-    const offset = (page - 1) * limit;
-    const includePuestos = true; // Opcional para incluir puestos
 
-    const includeOptions = [];
-    if (includePuestos) {
-      includeOptions.push({
+    // -----------------------------------------------------------------------
+    // 1. LÓGICA DE FILTRADO (WHERE)
+    // -----------------------------------------------------------------------
+    // Formato esperado: ?where=estado:Activo,genero:Femenino
+    const whereParam = searchParams.get('where');
+    const whereClause = {};
+
+    if (whereParam) {
+      // Separamos por comas si hay múltiples filtros
+      const filters = whereParam.split(','); 
+      
+      filters.forEach(filter => {
+        // Separamos clave y valor por los dos puntos
+        const [key, value] = filter.split(':');
+        if (key && value) {
+            // Asignamos al objeto whereClause
+            whereClause[key] = value;
+        }
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 2. LÓGICA DE INCLUDES
+    // -----------------------------------------------------------------------
+    // Formato esperado: ?include=horasTrabajadas
+    const includeParam = searchParams.get('include') || '';
+    
+    // Definimos includes BASE (Información que casi siempre quieres ver)
+    // Si prefieres que sea ESTRICTAMENTE nada si no pasas params, vacía este array.
+    // Pero recomiendo dejar 'puestos' y 'usuario' para que la UI no se rompa.
+    const includeOptions = [
+      {
         model: db.Puesto,
-        as: 'puestos', // Asegúrate que este alias coincida con tu asociación en Empleado.js
-        through: { attributes: [] } // No incluir la tabla intermedia EmpleadoPuesto
+        as: 'puestos',
+        through: { attributes: [] }
       },
       {
         model: db.User,
         as: 'usuario',
         attributes: ['id', 'user'],
       }
-    );
+    ];
+
+    // Agregamos includes dinámicos según el parámetro
+    if (includeParam.includes('horasTrabajadas')) {
+      includeOptions.push({
+        model: db.HorasTrabajadas,
+        // Nota: En tu modelo no definiste alias 'as' para esta relación, 
+        // así que no lo ponemos aquí para evitar error de Sequelize.
+      });
     }
 
-    const empleados = await db.Empleado.findAll({
+    // Puedes agregar más condiciones aquí en el futuro
+    // if (includeParam.includes('documentos')) { ... }
+
+
+    // -----------------------------------------------------------------------
+    // 3. PAGINACIÓN Y CONSULTA
+    // -----------------------------------------------------------------------
+    const page = searchParams.get('page');
+    const limit = searchParams.get('limit');
+    
+    // Opciones base de la consulta
+    const queryOptions = {
+      where: whereClause,
       include: includeOptions,
       order: [['nombre', 'ASC']],
-    })
-    return NextResponse.json(empleados);
-    // const { rows: empleados, count } = await db.Empleado.findAndCountAll({
-    //   limit,
-    //   offset,
-    //   include: includeOptions,
-    //   order: [['nombre', 'ASC']],
-    // });
+      distinct: true, // Importante para contar correctamente con includes hasMany
+    };
 
-    // return NextResponse.json({ total: count, page, limit, data: empleados });
+    // Si existen page y limit, agregamos paginación
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
+
+      queryOptions.limit = limitNum;
+      queryOptions.offset = offset;
+      
+      // Usamos findAndCountAll para paginación real
+      const { rows, count } = await db.Empleado.findAndCountAll(queryOptions);
+      
+      return NextResponse.json({
+        data: rows,
+        meta: {
+          total: count,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(count / limitNum)
+        }
+      });
+    }
+
+    // Si no hay paginación, traemos todo (Fetchee a todos)
+    const empleados = await db.Empleado.findAll(queryOptions);
+
+    return NextResponse.json(empleados);
+
   } catch (error) {
     console.error('Error fetching employees:', error);
-    return NextResponse.json({ message: 'Error al obtener empleados', error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { message: 'Error al obtener empleados', error: error.message }, 
+      { status: 500 }
+    );
   }
 }
 

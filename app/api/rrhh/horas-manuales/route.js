@@ -26,9 +26,10 @@ export async function GET() {
 export async function POST(req) {
     try {
         const body = await req.json();
-        const { empleadoId, fecha, horas, inicio, fin, observaciones, nombre, apellido, creadorId } = body;
+        const { empleadoId, fecha, horas, inicio, fin, observaciones, creadorId } = body;
 
         const creador = await User.findByPk(creadorId, {include: [{model: Empleado, as: 'empleado'}]});
+        const empleado = await Empleado.findByPk(empleadoId);
 
         const nuevoRegistro = await HorasTrabajadas.create({
             empleadoId,
@@ -45,7 +46,7 @@ export async function POST(req) {
 
         notificarCabezas({
             title: "Nueva Hora Manual Registrada",
-            body: `${creador.empleado.nombre} ${creador.empleado.apellido} ha registrado ${horas} horas para ${nombre} ${apellido} el día ${new Date(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}.`,
+            body: `${creador.empleado.nombre} ${creador.empleado.apellido} ha registrado ${horas} horas para ${empleado.nombre} ${empleado.apellido} el día ${new Date(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}.`,
             url: "/superuser/rrhh/empleados/" + empleadoId
         })
 
