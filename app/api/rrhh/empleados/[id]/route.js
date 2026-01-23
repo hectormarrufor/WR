@@ -4,42 +4,60 @@ import sequelize from '@/sequelize';
 
 function getLastFriday() {
   const today = new Date();
-  const day = today.getDay(); // 0=domingo, 5=viernes
-  const diff = (day >= 5) ? day - 5 : day + 2; // días desde el último viernes
+  const day = today.getDay(); // 0=Domingo, 5=Viernes
+
+  let diff;
+  
+  if (day === 5) {
+    // CASO ESPECIAL (TU REQUERIMIENTO):
+    // Si hoy es Viernes, no queremos "hoy", queremos el de la semana pasada.
+    diff = 7;
+  } else {
+    // Fórmula estándar para buscar el viernes anterior desde cualquier otro día
+    // Ejemplo Sábado (6): (6 + 7 - 5) % 7 = 8 % 7 = 1 día atrás.
+    // Ejemplo Jueves (4): (4 + 7 - 5) % 7 = 6 días atrás.
+    diff = (day + 7 - 5) % 7;
+  }
+
   const lastFriday = new Date(today);
   lastFriday.setDate(today.getDate() - diff);
   lastFriday.setHours(0, 0, 0, 0);
+  
   return lastFriday;
 }
 
-
 export async function GET(request, { params }) {
   const { id } = await params;
-  const lastFriday = getLastFriday();
+  
+  // 1. Calculamos el inicio (Viernes pasado)
+  const fechaInicio = getLastFriday();
+
+  // 2. Calculamos el fin (El corte es hasta ayer Jueves a medianoche)
+  // Básicamente: fechaInicio + 7 días exactos = Hoy Viernes a las 00:00:00
+  // Usaremos operador "Menor que" (<) esta fecha para excluir lo de hoy.
+  const fechaCorte = new Date(fechaInicio);
+  fechaCorte.setDate(fechaCorte.getDate() + 7); 
 
   try {
     const empleado = await db.Empleado.findByPk(id, {
       include: [
         { model: db.Puesto, as: 'puestos', through: { attributes: [] } },
-        {model: db.CuentaTerceros, as: 'cuentasBancarias' },
-        {model: db.PagoMovil, as: 'pagosMoviles' },
+        { model: db.CuentaTerceros, as: 'cuentasBancarias' },
+        { model: db.PagoMovil, as: 'pagosMoviles' },
         {
           model: db.HorasTrabajadas,
-          // para filtrar las horas trabajadas desde el último viernes
+          // FILTRO AJUSTADO:
           where: {
             fecha: {
-              [db.Sequelize.Op.gte]: lastFriday
+              [db.Sequelize.Op.gte]: fechaInicio, // >= Viernes pasado (00:00:00)
+              [db.Sequelize.Op.lt]: fechaCorte    // <  Este Viernes (00:00:00) -> O sea, hasta Jueves 23:59:59
             }
           },
           order: [['fecha', 'ASC']],
           separate: true,
-          required: false // 👈 para que no falle si no hay horas
-
+          required: false 
         },
         { model: db.DocumentoEmpleado, as: 'documentos' },
-        // Puedes añadir más inclusiones aquí si el empleado está asociado a Mantenimientos, Operaciones, etc.
-        // { model: db.Mantenimiento, as: 'mantenimientosCreados' },
-        // { model: db.OperacionCampo, as: 'operacionesSupervisadas' },
       ],
     });
 
