@@ -70,6 +70,8 @@ const db = {
 
     // TESORERIA
     CuentaBancaria: require('./tesoreria/CuentaBancaria'),
+    GastoFijo: require('./tesoreria/GastoFijo'),
+    GastoVariable: require('./tesoreria/GastoVariable'),
     MovimientoTesoreria: require('./tesoreria/MovimientoTesoreria'),
     CuentaTerceros: require('./tesoreria/CuentaTercero'),
     PagoMovil: require('./tesoreria/PagoMovil'),

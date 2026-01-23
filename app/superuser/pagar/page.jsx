@@ -5,24 +5,30 @@ import {
     Paper, Title, Text, Group, Button, Loader, Table,
     Badge, ScrollArea, Card, Avatar, Stack, Grid, ActionIcon,
     Tooltip, Center, Divider, Container, ThemeIcon,
-    UnstyledButton
+    UnstyledButton, Box, SimpleGrid
 } from "@mantine/core";
 import {
     IconCurrencyDollar, IconCheck, IconCalendarTime,
-    IconCalculator, IconAlertCircle
+    IconAlertCircle, IconClock
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useMediaQuery } from "@mantine/hooks"; // Importante para responsive
 import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
-import { getRangoPago } from "@/app/helpers/getRangoPago"; // <--- Tu helper nuevo
+import { getRangoPago } from "@/app/helpers/getRangoPago";
+import ModalConfirmarPago from "./components/ModalConfirmarPago";
 
 export default function PagosPage() {
     const router = useRouter();
+    const isMobile = useMediaQuery('(max-width: 768px)');
 
     // Estados de datos
     const [empleados, setEmpleados] = useState([]);
     const [tasas, setTasas] = useState({ bcv: 0, eur: 0, usdt: 0 });
     const [loading, setLoading] = useState(true);
+
+    const [modalPagoOpen, setModalPagoOpen] = useState(false);
+    const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
 
     // Estado para controlar a quién ya se le dio click en "Pagar" visualmente
     const [pagados, setPagados] = useState({});
@@ -34,25 +40,21 @@ export default function PagosPage() {
     useEffect(() => {
         async function fetchData() {
             try {
+                // Usamos tu endpoint corregido
                 const [resEmpleados, resBcv] = await Promise.all([
-                    fetch("/api/rrhh/empleados?include=horasTrabajadas&where=estado:Activo").then(r => r.json()), // Asegúrate que esto traiga HorasTrabajadas
+                    fetch("/api/rrhh/empleados?include=horasTrabajadas&where=estado:Activo").then(r => r.json()),
                     fetch("/api/bcv").then(r => r.json())
                 ]);
 
-                // Guardar tasas
                 setTasas({
                     bcv: resBcv.precio,
                     eur: resBcv.eur,
                     usdt: resBcv.usdt
                 });
 
-                // Guardar empleados activos
-                // Filtramos solo los activos si tu API devuelve todos
-                const activos = Array.isArray(resEmpleados)
-                    ? resEmpleados.filter(e => e.status === 'activo' || !e.status) // Ajusta según tu DB
-                    : [];
-
-                setEmpleados(activos);
+                // Si tu API ya filtra por activo en el backend, usamos la respuesta directa
+                const listaEmpleados = Array.isArray(resEmpleados) ? resEmpleados : resEmpleados.data || [];
+                setEmpleados(listaEmpleados);
 
             } catch (error) {
                 console.error(error);
@@ -65,43 +67,43 @@ export default function PagosPage() {
     }, []);
 
 
-    // --- LÓGICA DE CÁLCULO DE NÓMINA (MEMOIZADA) ---
+    // --- LÓGICA DE CÁLCULO DE NÓMINA (DESGLOSADA) ---
     const nominaCalculada = useMemo(() => {
         if (!empleados.length) return [];
 
         return empleados.map(emp => {
-            // 1. Obtener tasa de cambio según preferencia del empleado
             const tasaCambio = emp.tasaSueldo === "euro" ? tasas.eur
                 : emp.tasaSueldo === "usdt" ? tasas.usdt
-                    : tasas.bcv; // Default BCV
+                    : tasas.bcv;
 
-            // 2. Calcular valores monetarios del sueldo (usando tu helper existente)
             const valoresSueldo = actualizarSueldos("mensual", emp.sueldo);
-            // valoresSueldo devuelve { diario, semanal, horario, etc. } en DÓLARES
 
-            // 3. Filtrar Horas trabajadas en el rango (Viernes a Jueves)
+            // Filtrar horas del rango
             const horasRango = emp.HorasTrabajadas?.filter(h => {
                 const fechaHora = new Date(h.fecha);
-                // Ajustamos horas para evitar problemas de zona horaria al comparar
                 return fechaHora >= rango.inicio && fechaHora <= rango.fin;
             }) || [];
 
-            // 4. Sumar horas
+            // Calcular Horas
             const totalHoras = horasRango.reduce((acc, curr) => acc + curr.horas, 0);
 
-            // 5. Calcular Extras (> 8h diarias)
-            // Nota: Tu lógica anterior sumaba horas totales y restaba 8. 
-            // Lo ideal es iterar día por día, pero usaremos tu lógica simplificada de la página detalle:
-            // Si un registro tiene > 8 horas, el excedente es extra.
+            // Lógica de extras (excedente de 8h diarias)
             const horasExtra = horasRango.reduce((acc, curr) => {
                 return curr.horas > 8 ? acc + (curr.horas - 8) : acc;
             }, 0);
 
             const horasNormales = totalHoras - horasExtra;
 
-            // 6. Calcular Totales a Pagar
-            // Formula: (Horas * PrecioHoraUSD * TasaCambio)
-            const totalPagarUsd = (totalHoras * valoresSueldo.horario);
+            // Calcular Montos USD
+            // Nota: Aquí asumo que la hora extra se paga al mismo precio base. 
+            // Si pagan 1.5x, cambia a: (horasExtra * valoresSueldo.horario * 1.5)
+            const pagoNormalUsd = horasNormales * valoresSueldo.horario;
+            const pagoExtraUsd = horasExtra * valoresSueldo.horario;
+            const totalPagarUsd = pagoNormalUsd + pagoExtraUsd;
+
+            // Calcular Montos BS
+            const pagoNormalBs = pagoNormalUsd * tasaCambio;
+            const pagoExtraBs = pagoExtraUsd * tasaCambio;
             const totalPagarBs = totalPagarUsd * tasaCambio;
 
             return {
@@ -110,7 +112,11 @@ export default function PagosPage() {
                     horasNormales,
                     horasExtra,
                     totalHoras,
+                    pagoNormalUsd,
+                    pagoExtraUsd,
                     totalPagarUsd,
+                    pagoNormalBs,
+                    pagoExtraBs,
                     totalPagarBs,
                     tasaUtilizada: tasaCambio,
                     moneda: emp.tasaSueldo || 'bcv'
@@ -119,161 +125,233 @@ export default function PagosPage() {
         });
     }, [empleados, tasas, rango]);
 
-    // --- TOTALES GLOBALES (Para el Dashboard arriba) ---
+    // --- TOTALES GLOBALES ---
     const totalNominaBs = nominaCalculada.reduce((acc, curr) => acc + curr.calculos.totalPagarBs, 0);
     const totalNominaUsd = nominaCalculada.reduce((acc, curr) => acc + curr.calculos.totalPagarUsd, 0);
 
-
-    // --- MANEJO DE PAGO ---
-    const handlePagar = async (empleadoId) => {
-        // AQUÍ IRÍA LA LLAMADA A TU API PARA REGISTRAR EL PAGO EN DB
-        // await fetch('/api/rrhh/pagos', { method: 'POST', body: ... })
-
-        // Por ahora, solo simulación visual
-        setPagados(prev => ({ ...prev, [empleadoId]: true }));
-        notifications.show({ title: "Procesado", message: "Pago marcado como realizado", color: "green" });
+    const handlePagar = async (emp) => {
+        setEmpleadoSeleccionado(emp);
+        setModalPagoOpen(true);
     };
 
+    // Callback cuando el modal termina con éxito
+    const onPagoSuccess = (empleadoId) => {
+        // Marcamos visualmente como pagado
+        setPagados(prev => ({ ...prev, [empleadoId]: true }));
+        // Opcional: Recargar data para actualizar el backend
+        // fetchData(); 
+    };
 
     if (loading) return (
         <Center h="80vh"><Stack align="center"><Loader /><Text>Calculando nómina...</Text></Stack></Center>
     );
 
+    // --- COMPONENTE: CARD MÓVIL ---
+    const MobilePaymentCard = ({ emp }) => {
+        const yaPagado = pagados[emp.id];
+        const tieneHoras = emp.calculos.totalHoras > 0;
+        const c = emp.calculos;
+
+        return (
+            <Card withBorder radius="md" mb="md" style={{ opacity: yaPagado ? 0.6 : 1 }}>
+                <Group justify="space-between" mb="xs">
+                    <Group gap="sm">
+                        <Avatar src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} radius="xl" />
+                        <div>
+                            <Text fw={700} size="sm" lineClamp={1}>{emp.nombre} {emp.apellido}</Text>
+                            <Badge variant="dot" size="xs" color={c.moneda === 'bcv' ? 'blue' : 'yellow'}>
+                                Tasa: {c.moneda.toUpperCase()}
+                            </Badge>
+                        </div>
+                    </Group>
+                    {yaPagado ? (
+                        <Badge color="green" variant="filled">Pagado</Badge>
+                    ) : (
+                        <Button size="xs" color="blue" disabled={!tieneHoras} onClick={() => handlePagar(emp)}>
+                            Pagar
+                        </Button>
+                    )}
+                </Group>
+
+                <Divider my="sm" />
+
+                {tieneHoras ? (
+                    <Stack gap="xs">
+                        {/* Fila de Encabezados */}
+                        <SimpleGrid cols={3} spacing="xs">
+                            <Text size="xs" c="dimmed" ta="center">Concepto</Text>
+                            <Text size="xs" c="dimmed" ta="center">Horas</Text>
+                            <Text size="xs" c="dimmed" ta="right">USD</Text>
+                        </SimpleGrid>
+
+                        {/* Normales */}
+                        <SimpleGrid cols={3} spacing="xs">
+                            <Text size="sm">Normal</Text>
+                            <Badge variant="outline" color="gray" fullWidth>{c.horasNormales}h</Badge>
+                            <Text size="sm" ta="right">${c.pagoNormalUsd.toFixed(2)}</Text>
+                        </SimpleGrid>
+
+                        {/* Extras */}
+                        {c.horasExtra > 0 && (
+                            <SimpleGrid cols={3} spacing="xs">
+                                <Text size="sm" c="orange">Extra</Text>
+                                <Badge variant="filled" color="orange" fullWidth>+{c.horasExtra}h</Badge>
+                                <Text size="sm" ta="right" c="orange">${c.pagoExtraUsd.toFixed(2)}</Text>
+                            </SimpleGrid>
+                        )}
+
+                        <Divider variant="dashed" />
+
+                        {/* Total */}
+                        <Group justify="space-between" bg="gray.0" p="xs" style={{ borderRadius: 8 }}>
+                            <Group gap={5}>
+                                <Text size="sm" fw={700}>Total a Pagar</Text>
+                                <Badge color="green" size="sm">USD {c.totalPagarUsd.toFixed(2)}</Badge>
+                            </Group>
+                            <Text size="lg" fw={900} c="blue">Bs. {c.totalPagarBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</Text>
+                        </Group>
+                    </Stack>
+                ) : (
+                    <Text c="dimmed" fs="italic" ta="center" size="sm">Sin horas registradas esta semana</Text>
+                )}
+            </Card>
+        );
+    };
+
     return (
         <Container size="xl" p="md">
-
-            {/* CABECERA Y RANGO DE FECHAS */}
+            {/* CABECERA (IGUAL QUE ANTES) */}
             <Stack mb="xl">
                 <Group justify="space-between">
                     <div>
-                        <Title order={2}>Gestión de Pagos Semanales</Title>
-                        <Text c="dimmed">Corte automático de viernes a jueves</Text>
+                        <Title order={2}>Gestión de Pagos</Title>
+                        <Text c="dimmed" size="sm">{rango.inicioStr} - {rango.finStr}</Text>
                     </div>
-                    <Card withBorder padding="sm" radius="md" bg="gray.0">
-                        <Group>
-                            <ThemeIcon variant="light" size="lg"><IconCalendarTime /></ThemeIcon>
-                            <div>
-                                <Text size="xs" tt="uppercase" fw={700} c="dimmed">Periodo de Pago</Text>
-                                <Text fw={700}>{rango.inicioStr} - {rango.finStr}</Text>
-                            </div>
-                        </Group>
-                    </Card>
                 </Group>
 
-                {/* TARJETAS DE RESUMEN */}
-                <Grid>
-                    <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-                        <Paper withBorder p="md" radius="md">
-                            <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total a Pagar (Bolívares)</Text>
-                            <Text size="xl" fw={900} c="blue">Bs. {totalNominaBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</Text>
-                        </Paper>
-                    </Grid.Col>
-                    <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-                        <Paper withBorder p="md" radius="md">
-                            <Text size="xs" c="dimmed" fw={700} tt="uppercase">Equivalente (USD)</Text>
-                            <Text size="xl" fw={900} c="green">${totalNominaUsd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
-                        </Paper>
-                    </Grid.Col>
-                    <Grid.Col span={{ base: 12, sm: 12, md: 4 }}>
-                        <Paper withBorder p="md" radius="md">
-                            <Text size="xs" c="dimmed" fw={700} tt="uppercase">Tasa BCV Referencia</Text>
-                            <Text size="xl" fw={900}>Bs. {tasas.bcv}</Text>
-                        </Paper>
-                    </Grid.Col>
-                </Grid>
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                    <Paper withBorder p="md" radius="md">
+                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total Nómina (Bs)</Text>
+                        <Text size="xl" fw={900} c="blue">Bs. {totalNominaBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</Text>
+                    </Paper>
+                    <Paper withBorder p="md" radius="md">
+                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Total Nómina (USD)</Text>
+                        <Text size="xl" fw={900} c="green">${totalNominaUsd.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
+                    </Paper>
+                    <Paper withBorder p="md" radius="md">
+                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Tasa Referencia</Text>
+                        <Text size="xl" fw={900}>Bs. {tasas.bcv}</Text>
+                    </Paper>
+                </SimpleGrid>
             </Stack>
 
-            {/* TABLA DE EMPLEADOS */}
-            <Paper withBorder shadow="sm" radius="md" overflow="hidden">
-                <ScrollArea>
-                    <Table striped highlightOnHover verticalSpacing="sm">
-                        <Table.Thead bg="gray.1">
-                            <Table.Tr>
-                                <Table.Th>Empleado</Table.Th>
-                                <Table.Th style={{ textAlign: 'center' }}>Horas (N/Ext)</Table.Th>
-                                <Table.Th style={{ textAlign: 'right' }}>Total (USD)</Table.Th>
-                                <Table.Th style={{ textAlign: 'right' }}>Total ({tasas.bcv} Bs)</Table.Th>
-                                <Table.Th style={{ textAlign: 'center' }}>Acción</Table.Th>
-                            </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                            {nominaCalculada.map((emp) => {
-                                const yaPagado = pagados[emp.id];
-                                const tieneHoras = emp.calculos.totalHoras > 0;
+            {/* CONTENIDO PRINCIPAL */}
+            {isMobile ? (
+                // --- VISTA MÓVIL (TARJETAS) ---
+                <Box>
+                    {nominaCalculada.map(emp => (
+                        <MobilePaymentCard key={emp.id} emp={emp} />
+                    ))}
+                    {nominaCalculada.length === 0 && <Text ta="center" c="dimmed">No hay empleados</Text>}
+                </Box>
+            ) : (
+                // --- VISTA DESKTOP (TABLA DESGLOSADA) ---
+                <Paper withBorder shadow="sm" radius="md" overflow="hidden">
+                    <ScrollArea>
+                        <Table striped highlightOnHover verticalSpacing="sm" withTableBorder>
+                            <Table.Thead bg="gray.1">
+                                <Table.Tr>
+                                    <Table.Th rowSpan={2}>Empleado</Table.Th>
+                                    <Table.Th colSpan={3} style={{ textAlign: 'center', borderBottom: '1px solid #dee2e6' }}>Desglose de Horas</Table.Th>
+                                    <Table.Th colSpan={3} style={{ textAlign: 'center', borderBottom: '1px solid #dee2e6' }}>Desglose Pago (USD)</Table.Th>
+                                    <Table.Th rowSpan={2} style={{ textAlign: 'right' }}>Total Bs</Table.Th>
+                                    <Table.Th rowSpan={2} style={{ textAlign: 'center' }}>Acción</Table.Th>
+                                </Table.Tr>
+                                <Table.Tr>
+                                    {/* Subcolumnas Horas */}
+                                    <Table.Th style={{ textAlign: 'center', fontSize: 11, color: 'gray' }}>Normal</Table.Th>
+                                    <Table.Th style={{ textAlign: 'center', fontSize: 11, color: 'orange' }}>Extra</Table.Th>
+                                    <Table.Th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700 }}>Total</Table.Th>
 
-                                return (
-                                    <Table.Tr key={emp.id} style={{ opacity: yaPagado ? 0.5 : 1 }}>
-                                        <Table.Td>
-                                            <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${emp.id}`)}>
+                                    {/* Subcolumnas USD */}
+                                    <Table.Th style={{ textAlign: 'right', fontSize: 11, color: 'gray' }}>Normal</Table.Th>
+                                    <Table.Th style={{ textAlign: 'right', fontSize: 11, color: 'orange' }}>Extra</Table.Th>
+                                    <Table.Th style={{ textAlign: 'right', fontSize: 11, fontWeight: 700 }}>Total $</Table.Th>
+                                </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                                {nominaCalculada.map((emp) => {
+                                    const yaPagado = pagados[emp.id];
+                                    const tieneHoras = emp.calculos.totalHoras > 0;
+                                    const c = emp.calculos;
+
+                                    return (
+                                        <Table.Tr key={emp.id} style={{ opacity: yaPagado ? 0.5 : 1 }}>
+                                            <Table.Td>
                                                 <Group gap="sm">
-                                                    <Avatar src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} radius="xl" />
+                                                    <Avatar src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} radius="xl" size="sm" />
                                                     <div>
                                                         <Text size="sm" fw={500}>{emp.nombre} {emp.apellido}</Text>
-                                                        <Text size="xs" c="dimmed">{emp.cedula}</Text>
+                                                        <Badge size="xs" variant="dot" color={c.moneda === 'bcv' ? 'blue' : 'yellow'}>
+                                                            {c.moneda.toUpperCase()}
+                                                        </Badge>
                                                     </div>
                                                 </Group>
-                                            </UnstyledButton>
-                                        </Table.Td>
+                                            </Table.Td>
 
-                                        <Table.Td align="center">
-                                            {tieneHoras ? (
-                                                <Group gap={4} justify="center">
-                                                    <Badge variant="outline" color="gray">{emp.calculos.horasNormales}h</Badge>
-                                                    {emp.calculos.horasExtra > 0 && (
-                                                        <Badge variant="filled" color="orange">+{emp.calculos.horasExtra}h</Badge>
-                                                    )}
-                                                </Group>
-                                            ) : (
-                                                <Text size="xs" c="dimmed" fs="italic">Sin registros</Text>
-                                            )}
-                                        </Table.Td>
+                                            {/* Desglose Horas */}
+                                            <Table.Td align="center"><Text size="sm">{c.horasNormales}</Text></Table.Td>
+                                            <Table.Td align="center"><Text size="sm" c="orange">{c.horasExtra > 0 ? c.horasExtra : '-'}</Text></Table.Td>
+                                            <Table.Td align="center"><Badge variant="light" color="gray" size="sm">{c.totalHoras}</Badge></Table.Td>
 
-                                        <Table.Td align="right">
-                                            <Text fw={700} c="green">${emp.calculos.totalPagarUsd.toFixed(2)}</Text>
-                                            <Text size="xs" c="dimmed">Base: ${emp.horario}/h</Text>
-                                        </Table.Td>
+                                            {/* Desglose USD */}
+                                            <Table.Td align="right"><Text size="sm">${c.pagoNormalUsd.toFixed(2)}</Text></Table.Td>
+                                            <Table.Td align="right"><Text size="sm" c="orange">{c.horasExtra > 0 ? `$${c.pagoExtraUsd.toFixed(2)}` : '-'}</Text></Table.Td>
+                                            <Table.Td align="right"><Text size="sm" fw={700} c="green">${c.totalPagarUsd.toFixed(2)}</Text></Table.Td>
 
-                                        <Table.Td align="right">
-                                            <Text fw={700} size="md">Bs. {emp.calculos.totalPagarBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</Text>
-                                            <Badge size="xs" variant="dot" color={emp.calculos.moneda === 'bcv' ? 'blue' : 'yellow'}>
-                                                Tasa: {emp.calculos.moneda.toUpperCase()}
-                                            </Badge>
-                                        </Table.Td>
+                                            {/* Total BS */}
+                                            <Table.Td align="right">
+                                                <Text fw={700} size="sm">Bs. {c.totalPagarBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</Text>
+                                            </Table.Td>
 
-                                        <Table.Td align="center">
-                                            {yaPagado ? (
-                                                <Button
-                                                    leftSection={<IconCheck size={16} />}
-                                                    color="green" variant="light" size="xs" disabled
-                                                >
-                                                    Pagado
-                                                </Button>
-                                            ) : (
-                                                <Button
-                                                    size="xs"
-                                                    color="blue"
-                                                    disabled={!tieneHoras}
-                                                    onClick={() => handlePagar(emp.id)}
-                                                >
-                                                    Pagar
-                                                </Button>
-                                            )}
-                                        </Table.Td>
-                                    </Table.Tr>
-                                );
-                            })}
-                        </Table.Tbody>
-                    </Table>
-                </ScrollArea>
-                {nominaCalculada.length === 0 && (
-                    <Center p="xl">
-                        <Stack align="center" gap="xs">
-                            <IconAlertCircle size={30} color="gray" />
-                            <Text c="dimmed">No hay empleados activos para mostrar.</Text>
-                        </Stack>
-                    </Center>
-                )}
-            </Paper>
+                                            <Table.Td align="center">
+                                                {yaPagado ? (
+                                                    <Button leftSection={<IconCheck size={14} />} color="green" variant="light" size="compact-xs" disabled>
+                                                        Pagado
+                                                    </Button>
+                                                ) : (
+                                                    <Button size="compact-xs" color="blue" disabled={!tieneHoras} onClick={() => handlePagar(emp)}>
+                                                        Pagar
+                                                    </Button>
+                                                )}
+                                            </Table.Td>
+                                        </Table.Tr>
+                                    );
+                                })}
+                            </Table.Tbody>
+                        </Table>
+                    </ScrollArea>
+                </Paper>
+            )}
+            {/* AGREGAR EL MODAL AL FINAL DEL RETURN */}
+            {empleadoSeleccionado && (
+                console.log('Renderizando ModalConfirmarPago para empleado:', empleadoSeleccionado),
+                <ModalConfirmarPago
+                    opened={modalPagoOpen}
+                    onClose={() => {
+                        setModalPagoOpen(false);
+                        setEmpleadoSeleccionado(null);
+                    }}
+                    empleado={empleadoSeleccionado}
+                    // Pasamos los montos calculados
+                    totalPagar={empleadoSeleccionado.tasaSueldo === 'bcv' || empleadoSeleccionado.tasaSueldo === "euro"
+                        ? empleadoSeleccionado.calculos.totalPagarBs
+                        : empleadoSeleccionado.calculos.totalPagarUsd
+                    }
+                    moneda={empleadoSeleccionado.calculos.moneda}
+                    onPagoSuccess={onPagoSuccess}
+                />
+            )}
         </Container>
     );
 }

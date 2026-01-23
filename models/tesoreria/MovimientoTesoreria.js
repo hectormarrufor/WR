@@ -42,8 +42,12 @@ const MovimientoTesoreria = sequelize.define('MovimientoTesoreria', {
 MovimientoTesoreria.associate = (models) => {
   MovimientoTesoreria.belongsTo(models.CuentaBancaria, { foreignKey: 'cuentaOrigenId', as: 'cuentaOrigen' });
   MovimientoTesoreria.belongsTo(models.CuentaBancaria, { foreignKey: 'cuentaDestinoId', as: 'cuentaDestino' });
-  MovimientoTesoreria.belongsTo(models.OrdenCompra, { foreignKey: 'ordenCompraId', as: 'ordenCompra' });
-  MovimientoTesoreria.belongsTo(models.Empleado, { foreignKey: 'empleadoId', as: 'empleado' });
+  MovimientoTesoreria.belongsTo(models.GastoVariable, { 
+    foreignKey: 'movimientoTesoreriaId', 
+    as: 'gastoVariablePagado' 
+  });
+  MovimientoTesoreria.belongsTo(models.GastoFijo, { foreignKey: 'gastoFijoId', as: 'gastoFijoPagado' });
+
 };
 
 module.exports = MovimientoTesoreria;
