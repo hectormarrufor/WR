@@ -1,14 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
-import { 
-    Modal, Button, Select, Text, Group, Stack, 
+import {
+    Modal, Button, Select, Text, Group, Stack,
     Textarea, Alert, LoadingOverlay, Card, Divider,
     CopyButton, ActionIcon, Tooltip, Box, ScrollArea,
     SimpleGrid, ThemeIcon,
-    Badge
+    Badge,
+    Avatar
 } from "@mantine/core";
-import { 
-    IconAlertCircle, IconWallet, IconCopy, IconCheck, 
+import {
+    IconAlertCircle, IconWallet, IconCopy, IconCheck,
     IconBuildingBank, IconDeviceMobile, IconCurrencyDollar
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
@@ -32,7 +33,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
     useEffect(() => {
         if (opened) {
             setLoadingCuentas(true);
-            fetch('/api/tesoreria/cuentas-bancarias') 
+            fetch('/api/tesoreria/cuentas-bancarias')
                 .then(res => res.json())
                 .then(data => setCuentasEmpresa(data))
                 .catch(err => console.error(err))
@@ -50,7 +51,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                     empleadoId: empleado.id,
                     monto: monto,
                     moneda: moneda,
-                    cuentaBancariaId: cuentaOrigenId, 
+                    cuentaBancariaId: cuentaOrigenId,
                     detalles: notas,
                     fecha: new Date()
                 })
@@ -58,14 +59,14 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
 
             if (!res.ok) throw new Error("Error al registrar pago");
 
-            notifications.show({ 
-                title: 'Éxito', 
-                message: cuentaOrigenId ? 'Pago registrado y descontado.' : 'Gasto registrado como Pendiente.', 
-                color: 'green' 
+            notifications.show({
+                title: 'Éxito',
+                message: cuentaOrigenId ? 'Pago registrado y descontado.' : 'Gasto registrado como Pendiente.',
+                color: 'green'
             });
-            
-            onPagoSuccess(empleado.id); 
-            onClose(); 
+
+            onPagoSuccess(empleado.id);
+            onClose();
 
         } catch (error) {
             notifications.show({ title: 'Error', message: error.message, color: 'red' });
@@ -77,7 +78,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
     const hayCuentasOrigen = cuentasEmpresa.length > 0;
     const symbol = moneda === 'bcv' ? 'Bs.' : '$';
     // Formatear monto para visualización
-    const montoFormatted = Number(monto).toFixed(2); 
+    const montoFormatted = Number(monto).toFixed(2);
 
     // --- HELPER PARA BOTÓN DE COPIAR ---
     const CopyField = ({ value, label, color = "gray", icon }) => (
@@ -100,163 +101,168 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
     );
 
     return (
-        <Modal 
-            opened={opened} 
-            onClose={onClose} 
-            title={`Procesar Pago: ${empleado?.nombre} ${empleado?.apellido}`}
+        <Modal
+            opened={opened}
+            onClose={onClose}
+            // title={`Procesar Pago: ${empleado?.nombre} ${empleado?.apellido}`}
             centered
             size="lg"
         >
             <LoadingOverlay visible={submitting} />
-            
+
             <Stack gap="md">
                 {/* 1. RESUMEN DE MONTO GLOBAL */}
-                <Card withBorder padding="sm" radius="md" bg="green.0" style={{ borderColor: 'var(--mantine-color-green-3)' }}>
-                    <Group justify="space-between">
-                        <Group gap="xs">
-                            <IconCurrencyDollar size={24} color="green" />
-                            <Box>
-                                <Text size="xs" fw={700} c="green.9" tt="uppercase">Total a Transferir</Text>
-                                <Text fw={800} size="xl" c="green.9" lh={1}>
-                                    {symbol} {Number(monto).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                                </Text>
-                            </Box>
+                
+                    <Stack align="center">
+                        <Avatar justify="center" size={100} src={process.env.NEXT_PUBLIC_BLOB_BASE_URL + "/" + empleado?.imagen} alt={`${empleado?.nombre} ${empleado?.apellido}`} />
+                        <Text size="sm" fw={700}>Pago {empleado?.nombre} {empleado?.apellido}</Text>
+                    </Stack>
+                    <Card withBorder padding="sm" radius="md" bg="green.0" style={{ borderColor: 'var(--mantine-color-green-3)' }}>
+                        <Group justify="space-between">
+                            <Group gap="xs">
+                                <IconCurrencyDollar size={24} color="green" />
+                                <Box>
+                                    <Text size="xs" fw={700} c="green.9" tt="uppercase">Total a Transferir</Text>
+                                    <Text fw={800} size="xl" c="green.9" lh={1}>
+                                        {symbol} {Number(monto).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                                    </Text>
+                                </Box>
+                            </Group>
+                            {/* Botón rápido para copiar solo el número del monto */}
+                            <CopyButton value={montoFormatted}>
+                                {({ copied, copy }) => (
+                                    <Button
+                                        size="xs"
+                                        color={copied ? "teal" : "green"}
+                                        variant="white"
+                                        onClick={copy}
+                                        leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                                    >
+                                        Copiar Monto
+                                    </Button>
+                                )}
+                            </CopyButton>
                         </Group>
-                        {/* Botón rápido para copiar solo el número del monto */}
-                        <CopyButton value={montoFormatted}>
-                            {({ copied, copy }) => (
-                                <Button 
-                                    size="xs" 
-                                    color={copied ? "teal" : "green"} 
-                                    variant="white" 
-                                    onClick={copy}
-                                    leftSection={copied ? <IconCheck size={14}/> : <IconCopy size={14}/>}
-                                >
-                                    Copiar Monto
-                                </Button>
-                            )}
-                        </CopyButton>
-                    </Group>
-                </Card>
+                    </Card>
 
-                {/* 2. DATOS DE DESTINO (EMPLEADO) */}
-                <Box>
-                    <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb={5}>Datos del Empleado (Destinatario)</Text>
-                    <ScrollArea.Autosize mah={250} type="always" offsetScrollbars>
-                        <Stack gap="sm">
-                            
-                            {/* --- SECCIÓN PAGO MÓVIL --- */}
-                            {empleado?.pagosMoviles?.map(pm => (
-                                <Card key={pm.id} withBorder padding="xs" radius="md" bg="blue.0" style={{ borderColor: 'var(--mantine-color-blue-2)' }}>
-                                    <Group justify="space-between" mb="xs">
-                                        <Group gap={6}>
-                                            <ThemeIcon color="blue" variant="filled" size="md" radius="md">
-                                                <IconDeviceMobile size={18} />
-                                            </ThemeIcon>
-                                            <Box>
-                                                <Text size="xs" fw={700} c="blue" lh={1}>PAGO MÓVIL</Text>
-                                                <Text size="sm" fw={700}>{pm.nombreBanco}</Text>
-                                            </Box>
+                    {/* 2. DATOS DE DESTINO (EMPLEADO) */}
+                    <Box>
+                        <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb={5}>Datos del Empleado (Destinatario)</Text>
+                        <ScrollArea.Autosize mah={250} type="always" offsetScrollbars>
+                            <Stack gap="sm">
+
+                                {/* --- SECCIÓN PAGO MÓVIL --- */}
+                                {empleado?.pagosMoviles?.map(pm => (
+                                    <Card key={pm.id} withBorder padding="xs" radius="md" bg="blue.0" style={{ borderColor: 'var(--mantine-color-blue-2)' }}>
+                                        <Group justify="space-between" mb="xs">
+                                            <Group gap={6}>
+                                                <ThemeIcon color="blue" variant="filled" size="md" radius="md">
+                                                    <IconDeviceMobile size={18} />
+                                                </ThemeIcon>
+                                                <Box>
+                                                    <Text size="xs" fw={700} c="blue" lh={1}>PAGO MÓVIL</Text>
+                                                    <Text size="sm" fw={700}>{pm.nombreBanco}</Text>
+                                                </Box>
+                                            </Group>
                                         </Group>
-                                    </Group>
-                                    
-                                    {/* Grid de Datos Copiables */}
-                                    <SimpleGrid cols={2} spacing="xs">
-                                        <CopyField label="Cédula / RIF" value={pm.cedulaCuenta} />
-                                        <CopyField label="Teléfono" value={pm.numeroPagoMovil} />
-                                    </SimpleGrid>
-                                    
-                                    {/* Monto específico en esta tarjeta por comodidad */}
-                                    <Box mt="xs">
-                                        <CopyField label="Monto a Pagar" value={montoFormatted} color="green" icon={<IconCurrencyDollar size={14}/>} />
-                                    </Box>
-                                </Card>
-                            ))}
 
-                            {/* --- SECCIÓN TRANSFERENCIA BANCARIA --- */}
-                            {empleado?.cuentasBancarias?.map(cta => (
-                                <Card key={cta.id} withBorder padding="xs" radius="md" bg="gray.0">
-                                    <Group justify="space-between" mb="xs">
-                                        <Group gap={6}>
-                                            <ThemeIcon color="gray" variant="filled" size="md" radius="md">
-                                                <IconBuildingBank size={18} />
-                                            </ThemeIcon>
-                                            <Box>
-                                                <Text size="xs" fw={700} c="dimmed" lh={1}>CUENTA BANCARIA</Text>
-                                                <Text size="sm" fw={700}>{cta.nombreBanco}</Text>
-                                            </Box>
-                                        </Group>
-                                        <Badge size="xs" variant="outline" color="gray">{cta.tipoCuenta}</Badge>
-                                    </Group>
-
-                                    <Stack gap="xs">
-                                        <CopyField label="Número de Cuenta" value={cta.numeroCuenta} />
+                                        {/* Grid de Datos Copiables */}
                                         <SimpleGrid cols={2} spacing="xs">
-                                            <CopyField label="Titular" value={cta.titularCuenta} />
-                                            <CopyField label="Cédula / RIF" value={cta.cedulaCuenta} />
+                                            <CopyField label="Cédula / RIF" value={pm.cedulaCuenta} />
+                                            <CopyField label="Teléfono" value={pm.numeroPagoMovil} />
                                         </SimpleGrid>
-                                        <CopyField label="Monto a Pagar" value={montoFormatted} color="green" icon={<IconCurrencyDollar size={14}/>} />
-                                    </Stack>
-                                </Card>
-                            ))}
 
-                            {(!empleado?.cuentasBancarias?.length && !empleado?.pagosMoviles?.length) && (
-                                <Alert color="gray" variant="light" py="xs" icon={<IconAlertCircle size={16}/>}>
-                                    <Text size="sm">El empleado no tiene datos bancarios registrados.</Text>
-                                </Alert>
-                            )}
-                        </Stack>
-                    </ScrollArea.Autosize>
-                </Box>
+                                        {/* Monto específico en esta tarjeta por comodidad */}
+                                        <Box mt="xs">
+                                            <CopyField label="Monto a Pagar" value={montoFormatted} color="green" icon={<IconCurrencyDollar size={14} />} />
+                                        </Box>
+                                    </Card>
+                                ))}
 
-                <Divider />
+                                {/* --- SECCIÓN TRANSFERENCIA BANCARIA --- */}
+                                {empleado?.cuentasBancarias?.map(cta => (
+                                    <Card key={cta.id} withBorder padding="xs" radius="md" bg="gray.0">
+                                        <Group justify="space-between" mb="xs">
+                                            <Group gap={6}>
+                                                <ThemeIcon color="gray" variant="filled" size="md" radius="md">
+                                                    <IconBuildingBank size={18} />
+                                                </ThemeIcon>
+                                                <Box>
+                                                    <Text size="xs" fw={700} c="dimmed" lh={1}>CUENTA BANCARIA</Text>
+                                                    <Text size="sm" fw={700}>{cta.nombreBanco}</Text>
+                                                </Box>
+                                            </Group>
+                                            <Badge size="xs" variant="outline" color="gray">{cta.tipoCuenta}</Badge>
+                                        </Group>
 
-                {/* 3. SELECCIÓN DE ORIGEN (EMPRESA) */}
-                <Box>
-                    <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb={5}>Origen de Fondos (Empresa)</Text>
-                    {loadingCuentas ? (
-                        <Text size="sm" c="dimmed">Cargando cuentas...</Text>
-                    ) : hayCuentasOrigen ? (
-                        <Select
-                            placeholder="Selecciona cuenta para debitar"
-                            data={cuentasEmpresa.map(c => ({ 
-                                value: String(c.id), 
-                                label: `${c.nombreBanco} - ${c.moneda} (Saldo: ${c.saldoActual})` 
-                            }))}
-                            value={cuentaOrigenId}
-                            onChange={setCuentaOrigenId}
-                            clearable
-                            searchable
-                            leftSection={<IconWallet size={16}/>}
-                            description="Si dejas esto vacío, se generará una Cuenta por Pagar (Deuda)."
-                        />
-                    ) : (
-                        <Alert variant="light" color="orange" title="Sin cuentas bancarias" icon={<IconAlertCircle />}>
-                            No hay cuentas de la empresa registradas. Se registrará el gasto como "Pendiente".
-                        </Alert>
-                    )}
-                </Box>
+                                        <Stack gap="xs">
+                                            <CopyField label="Número de Cuenta" value={cta.numeroCuenta} />
+                                            <SimpleGrid cols={2} spacing="xs">
+                                                <CopyField label="Titular" value={cta.titularCuenta} />
+                                                <CopyField label="Cédula / RIF" value={cta.cedulaCuenta} />
+                                            </SimpleGrid>
+                                            <CopyField label="Monto a Pagar" value={montoFormatted} color="green" icon={<IconCurrencyDollar size={14} />} />
+                                        </Stack>
+                                    </Card>
+                                ))}
 
-                <Textarea 
-                    label="Notas / Referencia"
-                    placeholder="Ej: Pago nómina sem 42. Ref: 123456"
-                    value={notas}
-                    onChange={(e) => setNotas(e.currentTarget.value)}
-                    rows={2}
-                />
+                                {(!empleado?.cuentasBancarias?.length && !empleado?.pagosMoviles?.length) && (
+                                    <Alert color="gray" variant="light" py="xs" icon={<IconAlertCircle size={16} />}>
+                                        <Text size="sm">El empleado no tiene datos bancarios registrados.</Text>
+                                    </Alert>
+                                )}
+                            </Stack>
+                        </ScrollArea.Autosize>
+                    </Box>
 
-                <Group justify="flex-end" mt="md">
-                    <Button variant="default" onClick={onClose}>Cancelar</Button>
-                    <Button 
-                        color={!cuentaOrigenId ? "orange" : "blue"} 
-                        leftSection={!cuentaOrigenId ? <IconAlertCircle size={16}/> : <IconWallet size={16}/>}
-                        onClick={handleConfirmar}
-                        loading={submitting}
-                    >
-                        {!cuentaOrigenId ? "Registrar Deuda" : "Confirmar Pago"}
-                    </Button>
-                </Group>
-            </Stack>
+                    <Divider />
+
+                    {/* 3. SELECCIÓN DE ORIGEN (EMPRESA) */}
+                    <Box>
+                        <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb={5}>Origen de Fondos (Empresa)</Text>
+                        {loadingCuentas ? (
+                            <Text size="sm" c="dimmed">Cargando cuentas...</Text>
+                        ) : hayCuentasOrigen ? (
+                            <Select
+                                placeholder="Selecciona cuenta para debitar"
+                                data={cuentasEmpresa.map(c => ({
+                                    value: String(c.id),
+                                    label: `${c.nombreBanco} - ${c.moneda} (Saldo: ${c.saldoActual})`
+                                }))}
+                                value={cuentaOrigenId}
+                                onChange={setCuentaOrigenId}
+                                clearable
+                                searchable
+                                leftSection={<IconWallet size={16} />}
+                                description="Si dejas esto vacío, se generará una Cuenta por Pagar (Deuda)."
+                            />
+                        ) : (
+                            <Alert variant="light" color="orange" title="Sin cuentas bancarias" icon={<IconAlertCircle />}>
+                                No hay cuentas de la empresa registradas. Se registrará el gasto como "Pendiente".
+                            </Alert>
+                        )}
+                    </Box>
+
+                    <Textarea
+                        label="Notas / Referencia"
+                        placeholder="Ej: Pago nómina sem 42. Ref: 123456"
+                        value={notas}
+                        onChange={(e) => setNotas(e.currentTarget.value)}
+                        rows={2}
+                    />
+
+                    <Group justify="flex-end" mt="md">
+                        <Button variant="default" onClick={onClose}>Cancelar</Button>
+                        <Button
+                            color={!cuentaOrigenId ? "orange" : "blue"}
+                            leftSection={!cuentaOrigenId ? <IconAlertCircle size={16} /> : <IconWallet size={16} />}
+                            onClick={handleConfirmar}
+                            loading={submitting}
+                        >
+                            {!cuentaOrigenId ? "Registrar Deuda" : "Confirmar Pago"}
+                        </Button>
+                    </Group>
+                </Stack>
         </Modal>
     );
 }
