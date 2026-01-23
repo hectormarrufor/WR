@@ -114,8 +114,8 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                 {/* 1. RESUMEN DE MONTO GLOBAL */}
                 
                     <Stack align="center">
-                        <Avatar justify="center" size={100} src={process.env.NEXT_PUBLIC_BLOB_BASE_URL + "/" + empleado?.imagen} alt={`${empleado?.nombre} ${empleado?.apellido}`} />
-                        <Text size="sm" fw={700}>Pago {empleado?.nombre} {empleado?.apellido}</Text>
+                        <Avatar justify="center" size={120} src={process.env.NEXT_PUBLIC_BLOB_BASE_URL + "/" + empleado?.imagen} alt={`${empleado?.nombre} ${empleado?.apellido}`} />
+                        <Text size="lg" fw={900}>Pago a {empleado?.nombre} {empleado?.apellido}</Text>
                     </Stack>
                     <Card withBorder padding="sm" radius="md" bg="green.0" style={{ borderColor: 'var(--mantine-color-green-3)' }}>
                         <Group justify="space-between">
@@ -148,7 +148,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                     {/* 2. DATOS DE DESTINO (EMPLEADO) */}
                     <Box>
                         <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb={5}>Datos del Empleado (Destinatario)</Text>
-                        <ScrollArea.Autosize mah={250} type="always" offsetScrollbars>
+                        
                             <Stack gap="sm">
 
                                 {/* --- SECCIÓN PAGO MÓVIL --- */}
@@ -161,7 +161,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                                                 </ThemeIcon>
                                                 <Box>
                                                     <Text size="xs" fw={700} c="blue" lh={1}>PAGO MÓVIL</Text>
-                                                    <Text size="sm" fw={700}>{pm.nombreBanco}</Text>
+                                                    <CopyField value={pm.nombreBanco}/>
                                                 </Box>
                                             </Group>
                                         </Group>
@@ -171,11 +171,6 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                                             <CopyField label="Cédula / RIF" value={pm.cedulaCuenta} />
                                             <CopyField label="Teléfono" value={pm.numeroPagoMovil} />
                                         </SimpleGrid>
-
-                                        {/* Monto específico en esta tarjeta por comodidad */}
-                                        <Box mt="xs">
-                                            <CopyField label="Monto a Pagar" value={montoFormatted} color="green" icon={<IconCurrencyDollar size={14} />} />
-                                        </Box>
                                     </Card>
                                 ))}
 
@@ -189,7 +184,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                                                 </ThemeIcon>
                                                 <Box>
                                                     <Text size="xs" fw={700} c="dimmed" lh={1}>CUENTA BANCARIA</Text>
-                                                    <Text size="sm" fw={700}>{cta.nombreBanco}</Text>
+                                                        <CopyField value={cta.nombreBanco}/>
                                                 </Box>
                                             </Group>
                                             <Badge size="xs" variant="outline" color="gray">{cta.tipoCuenta}</Badge>
@@ -201,7 +196,6 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                                                 <CopyField label="Titular" value={cta.titularCuenta} />
                                                 <CopyField label="Cédula / RIF" value={cta.cedulaCuenta} />
                                             </SimpleGrid>
-                                            <CopyField label="Monto a Pagar" value={montoFormatted} color="green" icon={<IconCurrencyDollar size={14} />} />
                                         </Stack>
                                     </Card>
                                 ))}
@@ -212,7 +206,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                                     </Alert>
                                 )}
                             </Stack>
-                        </ScrollArea.Autosize>
+                      
                     </Box>
 
                     <Divider />
