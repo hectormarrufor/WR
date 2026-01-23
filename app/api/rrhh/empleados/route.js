@@ -59,6 +59,19 @@ export async function GET(request) {
       });
     }
 
+    if (includeParam.includes('cuentasBancarias')) {
+      includeOptions.push({
+        model: db.CuentaTerceros,
+        as: 'cuentasBancarias'
+      });
+    }
+
+    if (includeParam.includes('pagosmoviles')) {
+      includeOptions.push({
+        model: db.PagoMovil,
+        as: 'pagosMoviles'
+      });
+    }
     // Puedes agregar más condiciones aquí en el futuro
     // if (includeParam.includes('documentos')) { ... }
 

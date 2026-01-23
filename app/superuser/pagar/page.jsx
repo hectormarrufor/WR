@@ -42,7 +42,7 @@ export default function PagosPage() {
             try {
                 // Usamos tu endpoint corregido
                 const [resEmpleados, resBcv] = await Promise.all([
-                    fetch("/api/rrhh/empleados?include=horasTrabajadas&where=estado:Activo").then(r => r.json()),
+                    fetch("/api/rrhh/empleados?include=horasTrabajadas,cuentasBancarias,pagosmoviles,&where=estado:Activo").then(r => r.json()),
                     fetch("/api/bcv").then(r => r.json())
                 ]);
 
