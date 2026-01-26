@@ -50,7 +50,7 @@ ConsumibleSerializado.associate = (models) => {
     ConsumibleSerializado.belongsTo(models.Consumible, { foreignKey: 'consumibleId', as: 'consumible' });
     ConsumibleSerializado.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
     ConsumibleSerializado.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId', as: 'subsistemaInstancia' });
-    ConsumibleSerializado.hasOne(models.ConsumibleInstalado, { foreignKey: 'consumibleSerializadoId' });
-    ConsumibleSerializado.hasMany(models.Recauchado, { foreignKey: 'consumibleSerializadoId', as: 'historialRecauchado' });
+    ConsumibleSerializado.hasOne(models.ConsumibleInstalado, { foreignKey: 'consumibleSerializadoId', onDelete: 'CASCADE', as: 'instalacionActual' });
+    ConsumibleSerializado.hasMany(models.Recauchado, { foreignKey: 'consumibleSerializadoId', as: 'historialRecauchado' , onDelete: 'CASCADE' });
 }
 module.exports = ConsumibleSerializado;

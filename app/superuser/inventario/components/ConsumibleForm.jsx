@@ -39,7 +39,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             precioPromedio: 0.0,
 
             // Lógica Serializados
-            clasificacion: 'Fungible', // 'Fungible' | 'Serializado'
+            clasificacion: 'Serializado', // 'Fungible' | 'Serializado'
             unidadMedida: 'unidades', // Valor por defecto
             itemsSerializados: [],     // Array de objetos { serial: '...' }
 
@@ -88,7 +88,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             }
 
             // 3. Restaurar estado Serializado
-            const esSerial = initialValues.tipo === 'serializado';
+            const esSerial = initialValues.tipo === 'Serializado';
             setEsSerializado(esSerial);
 
             // 4. Restaurar Equivalencia (si existe en los datos técnicos del filtro)

@@ -5,12 +5,12 @@ import { useEffect, useState } from 'react';
 import {
     TextInput, NumberInput, Select, Button, Group,
     Stack, LoadingOverlay, Divider, Text, ActionIcon, Paper, SimpleGrid,
-    Accordion,
-    Badge
+    Accordion, Checkbox, 
+    Alert, Badge
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconDeviceFloppy, IconPlus, IconTrash, IconSitemap, IconTool } from '@tabler/icons-react';
+import { IconDeviceFloppy, IconPlus, IconTrash, IconSitemap, IconTool, IconInfoCircle } from '@tabler/icons-react';
 import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
 import ImageDropzone from '../../activos/components/ImageDropzone';
 import ConsumibleRecomendadoCreator from './ConsumibleRecomendadoCreator';
@@ -25,6 +25,7 @@ export default function ModeloActivoForm({
     onCancel
 }) {
     const [loading, setLoading] = useState(false);
+    const [propagarCambios, setPropagarCambios] = useState(false);
 
     // Estado para la lista dinámica de subsistemas
     const [subsistemas, setSubsistemas] = useState([]);
@@ -133,6 +134,10 @@ export default function ModeloActivoForm({
             }
 
             payload.subsistemas = subsistemas
+
+            if (initialValues) {
+                payload.propagar = propagarCambios;
+            }
 
             // AHORA ENVIAMOS TODO JUNTO EN EL PAYLOAD DEL MODELO
             // Para simplificar transacciones, es mejor que el endpoint de crear modelo
@@ -353,6 +358,28 @@ export default function ModeloActivoForm({
                             </Accordion>
                         )}
                     </Paper>
+                    {initialValues && ( // Solo mostrar en modo EDICIÓN
+                        <Paper withBorder p="md" bg="blue.0" mt="md">
+                            <Group align="flex-start">
+                                <IconInfoCircle color="blue" size={24} />
+                                <Stack gap="xs" style={{ flex: 1 }}>
+                                    <Text size="sm" fw={700} c="blue">¿Propagar cambios a la flota activa?</Text>
+                                    <Text size="xs" c="blue.8">
+                                        Si marcas esta casilla, los nuevos subsistemas que hayas agregado se crearán 
+                                        automáticamente en todos los vehículos que usen este modelo ({form.values.marca} {form.values.modelo}).
+                                        Si eliminaste alguno, también se borrará de los vehículos.
+                                    </Text>
+                                    <Checkbox 
+                                        label="Sí, aplicar cambios a todos los activos vinculados a este modelo"
+                                        checked={propagarCambios}
+                                        onChange={(event) => setPropagarCambios(event.currentTarget.checked)}
+                                        mt="xs"
+                                        fw={500}
+                                    />
+                                </Stack>
+                            </Group>
+                        </Paper>
+                    )}
 
                     <Divider my="sm" />
 

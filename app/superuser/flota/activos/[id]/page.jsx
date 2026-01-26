@@ -2,49 +2,60 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-    Container, Grid, Paper, Image, Title, Text, Badge, Group, Button, 
+import {
+    Container, Grid, Paper, Image, Title, Text, Badge, Group, Button,
     Tabs, ThemeIcon, Stack, Divider, LoadingOverlay, Modal, SimpleGrid,
     Box, Card, Accordion, Progress, ActionIcon, Tooltip, Table, Alert,
     Timeline, RingProgress
 } from '@mantine/core';
 import { AreaChart, BarChart } from '@mantine/charts';
-import { 
-    IconTruck, IconSettings, 
-    IconCheck, IconAlertTriangle, IconInfoCircle, IconPlus, 
-    IconChartLine, IconClipboardCheck, 
-     IconShoppingCart, IconAlertOctagon,
-     IconTool,
-    
+import {
+    IconTruck, IconSettings,
+    IconCheck, IconAlertTriangle, IconInfoCircle, IconPlus,
+    IconChartLine, IconClipboardCheck,
+    IconShoppingCart, IconAlertOctagon,
+    IconTool,
+    IconGauge, IconX
+
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
+import ModalReportarFalla from './inspecciones/ModalReportarFalla';
+import ModalActualizarLectura from './inspecciones/ModalActualizarLecturas';
+import ModalInstallComponente from '../components/ModalInstallComponente';
+import ModalDesinstalarComponente from '../components/ModalDesinstalarComponente';
 
 export default function DetalleActivoPage({ params }) {
+
+    const { userId } = useAuth(); // Necesitas el ID del usuario
+    const [modalFallaOpened, setModalFallaOpened] = useState(false);
     const { id } = use(params);
     const router = useRouter();
     const { isAdmin } = useAuth();
 
     const [activo, setActivo] = useState(null);
     const [loading, setLoading] = useState(true);
-    
+
     // Modales
     const [modalInstallOpened, setModalInstallOpened] = useState(false);
     const [modalOrdenOpened, setModalOrdenOpened] = useState(false);
+    const [modalLecturaOpened, setModalLecturaOpened] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null); // Para instalar consumible
     const [selectedHallazgo, setSelectedHallazgo] = useState(null); // Para crear ODT
+    const [modalUninstallOpened, setModalUninstallOpened] = useState(false);
+    const [itemToUninstall, setItemToUninstall] = useState(null);
 
     const fetchData = async () => {
         try {
             const response = await fetch(`/api/gestionMantenimiento/activos/${id}`);
             const result = await response.json();
-            
+            console.log('Activo fetch result:', result);
             if (result.success) {
                 // Parche para asegurar que tenemos el último KM aunque la tabla maestra no se haya actualizado
                 const dataMejorada = {
                     ...result.data,
-                    kilometrajeActual: result.data.registrosKilometraje?.length 
-                        ? result.data.registrosKilometraje[result.data.registrosKilometraje.length - 1].valor 
+                    kilometrajeActual: result.data.registrosKilometraje?.length
+                        ? result.data.registrosKilometraje[result.data.registrosKilometraje.length - 1].valor
                         : (result.data.vehiculoInstancia?.kilometrajeActual || 0)
                 };
                 setActivo(dataMejorada);
@@ -65,7 +76,7 @@ export default function DetalleActivoPage({ params }) {
     const plantilla = instance?.plantilla || {};
     const subsistemas = activo.subsistemasInstancia || [];
     const hallazgosPendientes = activo.inspecciones?.flatMap(i => i.hallazgos || []).filter(h => h.estado !== 'Cerrado') || [];
-    
+
     // --- DATOS PARA GRÁFICOS ---
     const dataKilometraje = (activo.registrosKilometraje || []).map(r => ({
         fecha: new Date(r.fecha_registro).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }),
@@ -81,13 +92,14 @@ export default function DetalleActivoPage({ params }) {
 
     // Helpers de UI
     const getEstadoColor = (estado) => {
-        switch(estado) {
+        switch (estado) {
             case 'Operativo': return 'teal';
             case 'Operativo con Advertencia': return 'yellow';
             case 'No Operativo': return 'red';
             default: return 'gray';
         }
     };
+
 
     return (
         <Container size="xl" py="xl">
@@ -113,9 +125,26 @@ export default function DetalleActivoPage({ params }) {
                 </Stack>
                 <Group>
                     <Button variant="default" onClick={() => router.back()}>Volver</Button>
-                    <Button color="red" leftSection={<IconClipboardCheck size={18}/>} onClick={() => notifications.show({ message: 'Ir a formulario de inspección (Chofer)'})}>
-                        Reportar Falla
-                    </Button>
+                    {/* ... dentro del Group de botones del header ... */}
+                    <Group>
+
+                        {/* NUEVO BOTÓN */}
+                        <Button
+                            variant="light"
+                            leftSection={<IconGauge size={18} />}
+                            onClick={() => setModalLecturaOpened(true)}
+                        >
+                            Actualizar Lectura
+                        </Button>
+
+                        <Button
+                            color="red"
+                            leftSection={<IconClipboardCheck size={18} />}
+                            onClick={() => setModalFallaOpened(true)} // Usando tu estado existente
+                        >
+                            Reportar Falla
+                        </Button>
+                    </Group>
                 </Group>
             </Group>
 
@@ -200,15 +229,15 @@ export default function DetalleActivoPage({ params }) {
                                                         </Table.Td>
                                                         <Table.Td>
                                                             <Group gap="xs">
-                                                                <ThemeIcon size="xs" radius="xl"><IconClipboardCheck size={10}/></ThemeIcon>
+                                                                <ThemeIcon size="xs" radius="xl"><IconClipboardCheck size={10} /></ThemeIcon>
                                                                 <Text size="sm">{h.inspeccion?.reportadoPor?.nombre || 'Chofer'}</Text>
                                                             </Group>
                                                         </Table.Td>
                                                         <Table.Td>{new Date(h.createdAt).toLocaleDateString()}</Table.Td>
                                                         <Table.Td>
-                                                            <Button 
-                                                                size="xs" 
-                                                                variant="light" 
+                                                            <Button
+                                                                size="xs"
+                                                                variant="light"
                                                                 color="blue"
                                                                 onClick={() => { setSelectedHallazgo(h); setModalOrdenOpened(true); }}
                                                             >
@@ -221,13 +250,13 @@ export default function DetalleActivoPage({ params }) {
                                         </Table>
                                     )}
 
-                                    <Divider label="Historial Reciente de Inspecciones" labelPosition="center" my="md"/>
-                                    
+                                    <Divider label="Historial Reciente de Inspecciones" labelPosition="center" my="md" />
+
                                     <Timeline active={0} bulletSize={24} lineWidth={2}>
                                         {activo.inspecciones?.slice(0, 3).map(ins => (
-                                            <Timeline.Item 
-                                                key={ins.id} 
-                                                bullet={<IconClipboardCheck size={12} />} 
+                                            <Timeline.Item
+                                                key={ins.id}
+                                                bullet={<IconClipboardCheck size={12} />}
                                                 title={`Inspección ${ins.origen}`}
                                             >
                                                 <Text c="dimmed" size="xs">Por: {ins.reportadoPor?.nombre} • {new Date(ins.fecha).toLocaleString()}</Text>
@@ -253,14 +282,14 @@ export default function DetalleActivoPage({ params }) {
                                                 <Text size="sm" c="dimmed" mb="md">
                                                     Tipo: {odt.tipo} • Prioridad: {odt.prioridad}
                                                 </Text>
-                                                
+
                                                 <Stack gap="xs">
-                                                    {odt.repuestos?.map( rep => (
+                                                    {odt.repuestos?.map(rep => (
                                                         <Paper key={rep.id} withBorder p="xs" bg="gray.0">
                                                             <Group justify="space-between">
                                                                 <Text size="sm">{rep.consumible?.nombre}</Text>
-                                                                <Badge 
-                                                                    size="xs" 
+                                                                <Badge
+                                                                    size="xs"
                                                                     color={rep.estado === 'Sin Stock' || rep.estado === 'En Requisicion' ? 'red' : 'green'}
                                                                     variant="outline"
                                                                 >
@@ -269,7 +298,7 @@ export default function DetalleActivoPage({ params }) {
                                                             </Group>
                                                             {rep.estado === 'En Requisicion' && (
                                                                 <Group gap={4} mt={4}>
-                                                                    <IconShoppingCart size={12} color="orange"/>
+                                                                    <IconShoppingCart size={12} color="orange" />
                                                                     <Text size="xs" c="orange" fw={700}>
                                                                         Requisición Automática Generada
                                                                     </Text>
@@ -291,84 +320,187 @@ export default function DetalleActivoPage({ params }) {
                                 </Grid>
                             </Tabs.Panel>
 
-                            {/* 3. TAB: COMPONENTES (SUMATORIA FUNGIBLE + SERIALES) */}
+                            {/* 3. TAB: INVENTARIO INSTALADO (COMPONENTES) */}
+                            {/* 3. TAB: INVENTARIO INSTALADO (COMPONENTES) */}
                             <Tabs.Panel value="componentes">
-                                <Accordion variant="separated">
-                                    {subsistemas.map((sub) => (
-                                        <Accordion.Item key={sub.id} value={sub.id.toString()}>
-                                            <Accordion.Control>
-                                                <Group justify="space-between" pr="md">
-                                                    <Group>
-                                                        <ThemeIcon variant="light" color="blue"><IconSettings size={18} /></ThemeIcon>
-                                                        <Text fw={600} size="sm">{sub.nombre}</Text>
-                                                    </Group>
-                                                    <Badge size="sm" variant="light">{sub.subsistemaPlantilla?.categoria}</Badge>
-                                                </Group>
-                                            </Accordion.Control>
-                                            <Accordion.Panel>
-                                                <Table variant="simple" verticalSpacing="sm">
-                                                    <Table.Thead bg="gray.0">
-                                                        <Table.Tr>
-                                                            <Table.Th>Componente</Table.Th>
-                                                            <Table.Th>Instalado / Requerido</Table.Th>
-                                                            <Table.Th ta="center">Estado</Table.Th>
-                                                            <Table.Th ta="right">Acción</Table.Th>
-                                                        </Table.Tr>
-                                                    </Table.Thead>
-                                                    <Table.Tbody>
-                                                        {sub.subsistemaPlantilla?.listaRecomendada?.map((rec) => {
-                                                            const insts = sub.instalaciones?.filter(i => i.recomendacionId === rec.id) || [];
-                                                            // LÓGICA DE SUMATORIA CORREGIDA
-                                                            const totalInstalado = insts.reduce((sum, i) => sum + fNum(i.cantidad), 0);
-                                                            const cantidadRequerida = fNum(rec.canti); // Usando nombres del JSON previo
-                                                            const esCompleto = totalInstalado >= cantidadRequerida;
+                                <Stack gap="md">
+                                    {subsistemas.map((sub) => {
+                                        // 1. Obtenemos lo que la plantilla EXIGE
+                                        const recomendaciones = sub.subsistemaPlantilla?.listaRecomendada || [];
 
-                                                            return (
-                                                                <Table.Tr key={rec.id}>
-                                                                    <Table.Td>
-                                                                        <Text size="sm" fw={600}>{rec.categ}</Text>
-                                                                        <Text size="xs" c="dimmed">{rec.tipoC === 'tecnico' ? rec.valor : 'Estándar'}</Text>
-                                                                    </Table.Td>
-                                                                    <Table.Td>
-                                                                        <Stack gap={2}>
-                                                                            <Group gap="xs">
-                                                                                <Text size="sm" fw={700} c={esCompleto ? 'black' : 'red'}>
-                                                                                    {totalInstalado} / {cantidadRequerida} {rec.categ === 'aceite' ? 'L' : 'u'}
-                                                                                </Text>
-                                                                            </Group>
-                                                                            <Progress 
-                                                                                value={(totalInstalado / cantidadRequerida) * 100} 
-                                                                                color={esCompleto ? 'green' : 'orange'} 
-                                                                                size="sm" 
-                                                                            />
-                                                                            {insts.length > 0 && (
-                                                                                <Text size="xs" c="dimmed">
-                                                                                    {insts.some(i => i.serialActual) ? 'Seriales: ' + insts.map(i => i.serialActual).join(', ') : 'Fungible a granel'}
-                                                                                </Text>
-                                                                            )}
-                                                                        </Stack>
-                                                                    </Table.Td>
-                                                                    <Table.Td ta="center">
-                                                                        <Badge color={esCompleto ? 'green' : 'orange'} variant="light">
-                                                                            {esCompleto ? 'OK' : 'Incompleto'}
-                                                                        </Badge>
-                                                                    </Table.Td>
-                                                                    <Table.Td ta="right">
-                                                                        <Tooltip label="Instalar pieza">
-                                                                            <ActionIcon variant="light" onClick={() => { setSelectedItem({ sub, rec }); setModalInstallOpened(true); }}>
-                                                                                <IconPlus size={16} />
-                                                                            </ActionIcon>
-                                                                        </Tooltip>
-                                                                    </Table.Td>
-                                                                </Table.Tr>
-                                                            );
-                                                        })}
-                                                    </Table.Tbody>
-                                                </Table>
-                                            </Accordion.Panel>
-                                        </Accordion.Item>
-                                    ))}
-                                </Accordion>
+                                        // 2. Obtenemos lo que el activo TIENE
+                                        const instalaciones = sub.instalaciones || [];
+
+                                        return (
+                                            <Accordion variant="separated" key={sub.id} defaultValue="open">
+                                                <Accordion.Item value="open">
+                                                    <Accordion.Control>
+                                                        <Group justify="space-between" pr="md">
+                                                            <Group>
+                                                                <ThemeIcon variant="light" color="blue"><IconSettings size={18} /></ThemeIcon>
+                                                                <Text fw={600} size="sm">{sub.nombre}</Text>
+                                                                {sub.subsistemaPlantilla && (
+                                                                    <Badge size="xs" variant="dot" color="gray">
+                                                                        Base: {sub.subsistemaPlantilla.nombre}
+                                                                    </Badge>
+                                                                )}
+                                                            </Group>
+                                                            <Badge size="sm" variant="light" color="blue">
+                                                                {recomendaciones.length} Requisitos
+                                                            </Badge>
+                                                        </Group>
+                                                    </Accordion.Control>
+
+                                                    <Accordion.Panel>
+                                                        {recomendaciones.length === 0 ? (
+                                                            <Alert color="gray" variant="light" title="Sin requisitos definidos">
+                                                                La plantilla no especifica consumibles obligatorios.
+                                                            </Alert>
+                                                        ) : (
+                                                            <Table verticalSpacing="sm" withTableBorder>
+                                                                <Table.Thead bg="gray.1">
+                                                                    <Table.Tr>
+                                                                        <Table.Th>Componente Requerido</Table.Th>
+                                                                        <Table.Th>Progreso</Table.Th>
+                                                                        <Table.Th ta="center">Estado</Table.Th>
+                                                                        <Table.Th ta="right">Acción</Table.Th>
+                                                                    </Table.Tr>
+                                                                </Table.Thead>
+                                                                <Table.Tbody>
+                                                                    {recomendaciones.map((rec) => {
+                                                                        // --- CORRECCIÓN DE NOMBRES (NORMALIZACIÓN) ---
+                                                                        // Mapeamos lo que viene del JSON (corto) a lo que usamos (largo)
+                                                                        const recCantidad = parseFloat(rec.canti || rec.cantidad || 1);
+                                                                        const recCategoria = rec.categ || rec.categoria;
+                                                                        const recTipo = rec.tipoC || rec.tipoCriterio;
+                                                                        // El label suele ser el valor técnico (ej: 315/80R22.5) o el nombre asignado
+                                                                        const recLabel = rec.label || rec.valor || recCategoria;
+                                                                        const recValorTecnico = rec.valor || rec.valorCriterio;
+
+                                                                        // 3. CRUCE DE DATOS
+                                                                        const matches = instalaciones.filter(inst => inst.recomendacionId === rec.id);
+
+                                                                        // Sumamos cantidades instaladas
+                                                                        const cantidadInstalada = matches.reduce((sum, inst) => sum + parseFloat(inst.cantidad || 0), 0);
+
+                                                                        // Calculamos porcentaje
+                                                                        const porcentaje = Math.min((cantidadInstalada / recCantidad) * 100, 100);
+                                                                        const estaCompleto = cantidadInstalada >= recCantidad;
+
+                                                                        return (
+                                                                            <Table.Tr key={rec.id}>
+                                                                                <Table.Th>
+                                                                                    <Text size="sm" fw={600}>
+                                                                                        {recLabel}
+                                                                                    </Text>
+                                                                                    {recTipo === 'tecnico' && (
+                                                                                        <Badge size="xs" variant="outline" color="gray" mt={2}>
+                                                                                            Espec: {recValorTecnico}
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </Table.Th>
+
+                                                                                <Table.Td>
+                                                                                    {/* Barra de progreso visual */}
+                                                                                    <Group gap="xs" mb={4}>
+                                                                                        <Text size="sm" fw={700}>{cantidadInstalada} / {recCantidad}</Text>
+                                                                                        <Text size="xs" c="dimmed">unidades</Text>
+                                                                                    </Group>
+                                                                                    <Progress
+                                                                                        value={porcentaje}
+                                                                                        color={estaCompleto ? 'green' : 'orange'}
+                                                                                        size="sm" radius="xl" mb="xs"
+                                                                                    />
+
+                                                                                    {/* --- AQUI ESTA EL CAMBIO: LISTA DE ITEMS INSTALADOS CON BOTÓN BORRAR --- */}
+                                                                                    {matches.length > 0 && (
+                                                                                        <Stack gap={4}>
+                                                                                            {matches.map(inst => (
+                                                                                                <Badge
+                                                                                                    key={inst.id}
+                                                                                                    variant="dot"
+                                                                                                    color="gray"
+                                                                                                    size="sm"
+                                                                                                    padding="xs"
+                                                                                                    rightSection={
+                                                                                                        // Botón "X" para eliminar este item específico
+                                                                                                        <ActionIcon
+                                                                                                            size="xs"
+                                                                                                            color="red"
+                                                                                                            radius="xl"
+                                                                                                            variant="transparent"
+                                                                                                            onClick={() => {
+                                                                                                                setItemToUninstall(inst); // Guardamos TODO el objeto instalación
+                                                                                                                setModalUninstallOpened(true); // Abrimos el modal nuevo
+                                                                                                            }}
+                                                                                                        >
+                                                                                                            <IconX size={10} />
+                                                                                                        </ActionIcon>
+                                                                                                    }
+                                                                                                >
+                                                                                                    {/* Mostramos el Serial si existe, o "Instalado" si es fungible */}
+                                                                                                    {inst.ubicacion ? (
+                                                                                                        <Text span fw={700} mr={5}>{inst.ubicacion}:</Text>
+                                                                                                    ) : null}
+                                                                                                    {inst.serialActual || `Cant: ${inst.cantidad}`}
+                                                                                                </Badge>
+                                                                                            ))}
+                                                                                        </Stack>
+                                                                                    )}
+                                                                                </Table.Td>
+
+                                                                                <Table.Td ta="center">
+                                                                                    {estaCompleto ? (
+                                                                                        <Badge color="green" variant="light" leftSection={<IconCheck size={10} />}>
+                                                                                            Completo
+                                                                                        </Badge>
+                                                                                    ) : (
+                                                                                        <Badge color="orange" variant="light">
+                                                                                            Pendiente
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </Table.Td>
+
+                                                                                <Table.Td ta="right">
+                                                                                    <Tooltip label={estaCompleto ? "Instalar extra" : "Instalar componente"}>
+                                                                                        <ActionIcon
+                                                                                            variant={estaCompleto ? "subtle" : "filled"}
+                                                                                            color="blue"
+                                                                                            onClick={() => {
+                                                                                                // IMPORTANTE: Al modal le pasamos los datos normalizados para que se vea bonito
+                                                                                                const recNormalizada = {
+                                                                                                    ...rec,
+                                                                                                    cantidad: recCantidad,
+                                                                                                    categoria: recCategoria,
+                                                                                                    valor: recValorTecnico,
+                                                                                                    label: recLabel
+                                                                                                };
+                                                                                                setSelectedItem({ sub: sub, rec: recNormalizada });
+                                                                                                setModalInstallOpened(true);
+                                                                                            }}
+                                                                                        >
+                                                                                            <IconPlus size={16} />
+                                                                                        </ActionIcon>
+                                                                                    </Tooltip>
+                                                                                </Table.Td>
+                                                                            </Table.Tr>
+                                                                        );
+                                                                    })}
+                                                                </Table.Tbody>
+                                                            </Table>
+                                                        )}
+                                                    </Accordion.Panel>
+                                                </Accordion.Item>
+                                            </Accordion>
+                                        );
+                                    })}
+
+                                    {subsistemas.length === 0 && (
+                                        <Paper p="xl" withBorder bg="gray.0" ta="center">
+                                            <Text c="dimmed">No se han definido subsistemas para este activo.</Text>
+                                        </Paper>
+                                    )}
+                                </Stack>
                             </Tabs.Panel>
 
                             {/* 4. TAB: USO Y EFICIENCIA (GRÁFICOS) */}
@@ -402,30 +534,18 @@ export default function DetalleActivoPage({ params }) {
                 </Grid.Col>
             </Grid>
 
-            {/* MODAL 1: INSTALAR PIEZA DE INVENTARIO */}
-            <Modal opened={modalInstallOpened} onClose={() => setModalInstallOpened(false)} title="Instalación de Componente" centered>
-                {selectedItem && (
-                    <Stack>
-                        <Text>Vinculando <b>{selectedItem.rec.categ}</b> en subsistema <b>{selectedItem.sub.nombre}</b>.</Text>
-                        <Button fullWidth onClick={() => {notifications.show({message: 'Aquí abriría el selector de stock'}); setModalInstallOpened(false);}}>
-                            Seleccionar del Almacén
-                        </Button>
-                    </Stack>
-                )}
-            </Modal>
-
             {/* MODAL 2: CREAR ODT DESDE HALLAZGO */}
             <Modal opened={modalOrdenOpened} onClose={() => setModalOrdenOpened(false)} title="Generar Orden de Mantenimiento" centered size="lg">
                 {selectedHallazgo && (
                     <Stack>
-                        <Alert color="blue" icon={<IconInfoCircle/>}>
+                        <Alert color="blue" icon={<IconInfoCircle />}>
                             Se creará una orden para atender: <b>{selectedHallazgo.descripcion}</b>
                         </Alert>
                         <Text size="sm">Diagnóstico preliminar: El sistema verificará stock automáticamente al guardar.</Text>
-                        
+
                         {/* Aquí iría el form de selección de repuestos */}
                         <Button fullWidth mt="md" onClick={() => {
-                            notifications.show({ title: 'Orden Creada', message: 'Se ha verificado el stock y generado requisiciones necesarias.', color: 'green'});
+                            notifications.show({ title: 'Orden Creada', message: 'Se ha verificado el stock y generado requisiciones necesarias.', color: 'green' });
                             setModalOrdenOpened(false);
                         }}>
                             Confirmar y Verificar Stock
@@ -433,6 +553,40 @@ export default function DetalleActivoPage({ params }) {
                     </Stack>
                 )}
             </Modal>
+
+            <ModalReportarFalla
+                opened={modalFallaOpened}
+                onClose={() => setModalFallaOpened(false)}
+                activo={activo} // Pasamos el activo COMPLETO (incluyendo subsistemas)
+                userId={userId} // Pasamos el ID del usuario
+                onSuccess={fetchData} // Para que recargue la página y salgan los hallazgos nuevos
+            />
+            <ModalActualizarLectura
+                opened={modalLecturaOpened}
+                onClose={() => setModalLecturaOpened(false)}
+                activo={activo}
+                userId={userId}
+                onSuccess={fetchData} // Para refrescar los KMs en la UI al instante
+            />
+            <ModalInstallComponente
+                opened={modalInstallOpened}
+                onClose={() => { setModalInstallOpened(false); setSelectedItem(null); }}
+                target={selectedItem} // Pasamos el objeto { sub, rec }
+                activoId={activo.id}  // Necesitamos el ID del activo padre
+                onSuccess={fetchData} // Recargamos la página al terminar
+            />
+            {/* ... otros modales (ModalInstallComponente, etc) ... */}
+
+            <ModalDesinstalarComponente
+                opened={modalUninstallOpened}
+                onClose={() => {
+                    setModalUninstallOpened(false);
+                    setItemToUninstall(null);
+                }}
+                item={itemToUninstall}
+                onSuccess={fetchData} // Refrescar la página al borrar
+            />
+
         </Container>
     );
 }

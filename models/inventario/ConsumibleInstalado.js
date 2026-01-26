@@ -7,7 +7,8 @@ const ConsumibleInstalado = sequelize.define('ConsumibleInstalado', {
   fechaInstalacion: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   serialActual: { type: DataTypes.STRING, allowNull: true },
   vidaUtilRestante: { type: DataTypes.INTEGER , allowNull: true },
-  estado: { type: DataTypes.ENUM('instalado', 'pendiente_retiro'), defaultValue: 'instalado' }
+  estado: { type: DataTypes.ENUM('instalado', 'pendiente_retiro'), defaultValue: 'instalado' },
+  ubicacion: { type: DataTypes.STRING, allowNull: true }
 }, {
   tableName: 'ConsumiblesInstalados'
 });

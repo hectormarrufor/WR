@@ -12,7 +12,8 @@ import {
     IconExchange,
     IconTrash,
     IconClock2,
-    IconClipboardText
+    IconClipboardText,
+    IconBuildingBank
 } from '@tabler/icons-react';
 import './superuser.css';
 import { useAuth } from '@/hooks/useAuth';
@@ -87,6 +88,7 @@ export default function SuperUserHome() {
         // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Estimación de costos', href: '/superuser/estimacion-costos', description: 'Calcula el costo operativo por servicio de transporte.', icon: IconChartBar, size: 32, color: theme.colors.orange[6] },
         // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Gastos Fijos mensuales', href: '/superuser/gastos', description: 'Configura los gastos fijos de la empresa', icon: IconExchange, size: 32, color: theme.colors.cyan[6] },
         { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Pagar Empleados', href: '/superuser/pagar', description: 'Pagar a los empleados la semana.', icon: IconCash, size: 32, color: theme.colors.green[6] },
+        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Cuentas Bancarias', href: '/superuser/mis-cuentas', description: 'Gestiona las cuentas bancarias de la empresa.', icon: IconBuildingBank, size: 32, color: theme.colors.yellow[6] },
         // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Contratos', href: '/superuser/contratos', description: 'Gestiona contratos de servicio con clientes.', icon: IconFileText, size: 32, color: theme.colors.blue[5] },
         { disabled: false, visible: isAdmin || departamentos.includes("Mantenimiento"), title: 'Mantenimiento', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.', icon: IconTruck, size: 32, color: theme.colors.teal[6] },
         // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Tesorería', href: '#', description: 'Gestiona cuentas bancarias y flujos de caja.', icon: IconCash, size: 32, color: theme.colors.cyan[6] },

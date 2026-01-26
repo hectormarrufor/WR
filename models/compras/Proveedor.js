@@ -46,7 +46,7 @@ const Proveedor = sequelize.define('Proveedor', {
 Proveedor.associate = (models) => {
   Proveedor.hasMany(models.RecepcionCompra, { foreignKey: 'proveedorId' });
   Proveedor.hasMany(models.CuentaTerceros, { foreignKey: 'proveedorId' });
-  Proveedor.hasMany(models.PagoMovil, { foreignKey: 'proveedorId' });
+  Proveedor.hasMany(models.PagoMovil, { foreignKey: 'proveedorId', onDelete: "CASCADE" });
 };
 
 

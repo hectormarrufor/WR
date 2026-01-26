@@ -3,7 +3,7 @@ import {
     Consumible, Filtro, Neumatico, Aceite, Bateria, Correa, Sensor, 
     ConsumibleRecomendado, ConsumibleSerializado // <--- Importamos el modelo
 } from '@/models';
-import { Op } from 'sequelize';
+import { Op } from 'sequelize'; // <--- IMPORTANTE: Necesitamos Op
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
@@ -18,13 +18,15 @@ export async function GET(request) {
         let includeModels = [];
         let whereGeneral = {};
 
-        // --- ESTRATEGIA DE BÚSQUEDA (Igual que antes) ---
+        // --- LÓGICA DE GRUPO ---
         if (regla.tipoCriterio === 'grupo' && regla.grupoEquivalenciaId) {
             includeModels.push({
                 model: Filtro,
                 where: { grupoEquivalenciaId: regla.grupoEquivalenciaId },
                 required: true 
             });
+
+        // --- LÓGICA TÉCNICA (MODIFICADA PARA MULTI-VALOR) ---
         } else if (regla.tipoCriterio === 'tecnico') {
             const estrategia = {
                 'neumatico':   { model: Neumatico, col: 'medida' },
@@ -36,59 +38,62 @@ export async function GET(request) {
 
             if (estrategia) {
                 let whereTecnico = {};
-                whereTecnico[estrategia.col] = regla.valorCriterio; 
+
+                // 1. Convertimos "315/80R22.5,295/80R22.5" en un array ["315/80R22.5", "295/80R22.5"]
+                // El .split sirve incluso si solo hay un valor (devuelve array de 1)
+                const valoresPosibles = regla.valorCriterio
+                    ? regla.valorCriterio.split(',').map(v => v.trim()) 
+                    : [];
+
+                // 2. Usamos el operador IN de SQL para buscar cualquiera de ellos
+                whereTecnico[estrategia.col] = { [Op.in]: valoresPosibles };
+
                 includeModels.push({
                     model: estrategia.model,
                     where: whereTecnico,
                     required: true
                 });
             }
+        
+        // --- LÓGICA INDIVIDUAL ---
         } else if (regla.tipoCriterio === 'individual' && regla.consumibleId) {
             whereGeneral.id = regla.consumibleId;
         }
 
+        // Resto de tu código (FindAll, mapeo, etc.) sigue igual...
         if (includeModels.length === 0 && !whereGeneral.id) {
              whereGeneral.categoria = regla.categoria;
         }
 
-        // --- CONSULTA OPTIMIZADA ---
         const compatibles = await Consumible.findAll({
             where: whereGeneral,
             include: [
                 ...includeModels,
-                // Tablas de detalles técnicos
-                { model: Aceite },
-                { model: Neumatico },
-                { model: Filtro },
-                
-                // AQUÍ ESTÁ LA OPTIMIZACIÓN: TRAEMOS LOS SERIALES DE UNA VEZ
+                { model: Aceite }, { model: Neumatico }, { model: Filtro },
                 { 
                     model: ConsumibleSerializado,
-                    as: 'serializados', // Asegúrate que en tu modelo Consumible.js definiste este alias
-                    where: { estado: 'almacen' }, // Solo traemos los que podemos instalar
-                    required: false, // LEFT JOIN: Si no tiene seriales (es fungible o stock 0), trae el producto igual
-                    attributes: ['id', 'serial'] // Solo lo necesario
+                    as: 'serializados',
+                    where: { estado: 'almacen' },
+                    required: false,
+                    attributes: ['id', 'serial']
                 }
             ]
         });
 
-        // Formateamos para el Frontend
+        // Mapeo para frontend (Igual que antes)
         const itemsFormateados = compatibles.map(c => ({
             value: c.id.toString(),
-            label: `${c.nombre} (Stock: ${c.stockAlmacen || 0})`,
+            // Mostramos la medida específica en el label para que el usuario sepa cuál es
+            label: `${c.nombre} (${c.Neumatico?.medida || c.Aceite?.viscosidad || ''}) - Stock: ${c.stockAlmacen || 0}`,
             stockActual: parseFloat(c.stockAlmacen || 0),
             categoria: c.categoria,
             disabled: parseFloat(c.stockAlmacen || 0) <= 0,
-            
-            // Enviamos la lista de seriales PRE-CARGADA
             serialesDisponibles: c.serializados ? c.serializados.map(s => ({
-                value: s.serial,
+                value: s.id,
                 label: s.serial,
                 id: s.id
             })) : []
         }));
-
-        console.log('Compatibles encontrados:', itemsFormateados);
 
         return NextResponse.json({ success: true, data: itemsFormateados });
 

@@ -4,7 +4,7 @@ import { del } from '@vercel/blob'; // <--- Importación vital para borrar imág
 import {
     Activo, VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
     Vehiculo, Remolque, Maquina,
-    SubsistemaInstancia, Subsistema, Mantenimiento, Inspeccion,
+    SubsistemaInstancia, Subsistema, OrdenMantenimiento, Inspeccion,
     ConsumibleSerializado,
     ConsumibleRecomendado,
     ConsumibleInstalado,
@@ -75,7 +75,7 @@ export async function GET(request, { params }) {
                     ]
                 },
                 {
-                    model: Mantenimiento,
+                    model: OrdenMantenimiento,
                     as: 'mantenimientos',
                     limit: 5,
                     order: [['createdAt', 'DESC']],
