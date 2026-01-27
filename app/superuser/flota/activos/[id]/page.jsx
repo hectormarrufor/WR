@@ -414,6 +414,7 @@ export default function DetalleActivoPage({ params }) {
 
                                                                                     {/* --- AQUI ESTA EL CAMBIO: LISTA DE ITEMS INSTALADOS CON BOTÓN BORRAR --- */}
                                                                                     {matches.length > 0 && (
+                                                                                        console.log('matches for recomendacion', recLabel, matches),
                                                                                         <Stack gap={4}>
                                                                                             {matches.map(inst => (
                                                                                                 <Badge
@@ -440,8 +441,9 @@ export default function DetalleActivoPage({ params }) {
                                                                                                 >
                                                                                                     {/* Mostramos el Serial si existe, o "Instalado" si es fungible */}
                                                                                                     {inst.ubicacion ? (
-                                                                                                        <Text span fw={700} mr={5}>{inst.ubicacion}:</Text>
+                                                                                                        `${inst.ubicacion}:`
                                                                                                     ) : null}
+                                                                                                    {inst.fichaTecnica.nombre}
                                                                                                     {inst.serialActual || `Cant: ${inst.cantidad}`}
                                                                                                 </Badge>
                                                                                             ))}

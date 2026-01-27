@@ -7,7 +7,8 @@ import {
     Image, Tabs, Table, LoadingOverlay, Button,
     ThemeIcon, Stack, RingProgress, Center, Card, Divider,
     Alert, Timeline,
-    Avatar
+    Avatar,
+    UnstyledButton
 } from '@mantine/core';
 import {
     IconArrowLeft, IconEdit, IconCheck, IconX,
@@ -43,7 +44,7 @@ export default function DetalleConsumiblePage() {
     if (!data) return null;
 
     // Helper para obtener imagen (prioridad hijo -> fallback)
-    const imagenUrl = (data.Filtro?.imagen || data.imagen) 
+    const imagenUrl = (data.Filtro?.imagen || data.imagen)
         ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${data.Filtro?.imagen || data.imagen}`
         : null;
 
@@ -160,7 +161,7 @@ export default function DetalleConsumiblePage() {
                                 <Table striped withTableBorder>
                                     <Table.Tbody>
                                         <Table.Tr><Table.Td fw={700}>Marca</Table.Td><Table.Td>{detallesHijo.marca || 'Genérica'}</Table.Td></Table.Tr>
-                                        
+
                                         {/* Renderizado condicional según tipo */}
                                         {data.Filtro && (
                                             <>
@@ -220,7 +221,21 @@ export default function DetalleConsumiblePage() {
                                                         </Badge>
                                                     </Table.Td>
                                                     <Table.Td>{new Date(item.createdAt).toLocaleDateString()}</Table.Td>
-                                                    <Table.Td>{item.ubicacion || 'Almacén Central'}</Table.Td>
+                                                    <Table.Td>
+                                                        <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${item.activo.id}`)}>
+
+                                                            {
+                                                                item.activo.vehiculoInstancia ?
+                                                                    item.activo.vehiculoInstancia.plantilla.tipoVehiculo + " " + item.activo.vehiculoInstancia.plantilla.marca + " " + item.activo.vehiculoInstancia.plantilla.modelo + " " + item.activo.vehiculoInstancia.placa :
+                                                                    item.activo.maquinaInstancia ?
+                                                                        item.activo.maquinaInstancia.plantilla.tipo + " " + item.activo.maquinaInstancia.plantilla.marca + " " + item.activo.maquinaInstancia.plantilla.modelo + " " + item.activo.maquinaInstancia.placa :
+                                                                        item.activo.remolqueInstancia ?
+                                                                            item.activo.remolqueInstancia.plantilla.tipoRemolque + " " + item.activo.remolqueInstancia.plantilla.marca + " " + item.activo.remolqueInstancia.plantilla.modelo + " " + item.activo.remolqueInstancia.placa :
+                                                                            'En Almacén'
+                                                            }
+                                                        </UnstyledButton>
+
+                                                    </Table.Td>
                                                 </Table.Tr>
                                             ))}
                                         </Table.Tbody>
@@ -232,12 +247,12 @@ export default function DetalleConsumiblePage() {
 
                             {/* TAB 3: USO EN FLOTA */}
                             <Tabs.Panel value="uso" pt="xl">
-                                {data.usos && data.usos.length > 0 ? (
-                                    <Timeline active={data.usos.length} bulletSize={24} lineWidth={2}>
-                                        {data.usos.map((uso, index) => (
-                                            <Timeline.Item 
-                                                key={uso.id} 
-                                                bullet={<IconTruck size={12} />} 
+                                {data.instalaciones && data.instalaciones.length > 0 ? (
+                                    <Timeline active={data.instalaciones.length} bulletSize={24} lineWidth={2}>
+                                        {data.instalaciones.map((uso, index) => (
+                                            <Timeline.Item
+                                                key={uso.id}
+                                                bullet={<IconTruck size={12} />}
                                                 title={`Instalado en ${uso.Vehiculo ? uso.Vehiculo.placa : 'Vehículo Desconocido'}`}
                                             >
                                                 <Text c="dimmed" size="sm">
@@ -250,7 +265,7 @@ export default function DetalleConsumiblePage() {
                                         ))}
                                     </Timeline>
                                 ) : (
-                                    <Alert title="Sin Uso Registrado" color="gray" icon={<IconInfoCircle/>}>
+                                    <Alert title="Sin Uso Registrado" color="gray" icon={<IconInfoCircle />}>
                                         Este consumible aún no ha sido asignado a ningún vehículo.
                                     </Alert>
                                 )}
@@ -263,7 +278,7 @@ export default function DetalleConsumiblePage() {
                                         <Alert variant="light" color="green" title={data.Filtro.grupoEquivalencia.nombre}>
                                             {data.Filtro.grupoEquivalencia.nombre}
                                         </Alert>
-                                        
+
                                         <Table withTableBorder>
                                             <Table.Thead>
                                                 <Table.Tr>
@@ -279,29 +294,29 @@ export default function DetalleConsumiblePage() {
                                                 {data?.Filtro.grupoEquivalencia.filtros
                                                     .filter(f => f.id !== data.Filtro.id) // Excluir el actual
                                                     .map(hermano => (
-                                                    <Table.Tr key={hermano.id}>
-                                                        <Table.Td>
-                                                            <Avatar 
-                                                                src={hermano.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${hermano.imagen}` : null} 
-                                                                alt={hermano.codigo}
-                                                                radius="xl"
-                                                            />
-                                                        </Table.Td>
-                                                        <Table.Td>{hermano.marca}</Table.Td>
-                                                        <Table.Td fw={700}>{hermano.codigo}</Table.Td>
-                                                        <Table.Td fw={700}>{hermano.Consumible.precioPromedio}</Table.Td>
-                                                        <Table.Td fw={700}>{hermano.Consumible.stockAlmacen}</Table.Td>
-                                                        <Table.Td>
-                                                            <Button 
-                                                                size="xs" 
-                                                                variant="subtle" 
-                                                                onClick={() => router.push(`/superuser/inventario/consumibles/${hermano.consumibleId}`)}
-                                                            >
-                                                                Ver
-                                                            </Button>
-                                                        </Table.Td>
-                                                    </Table.Tr>
-                                                ))}
+                                                        <Table.Tr key={hermano.id}>
+                                                            <Table.Td>
+                                                                <Avatar
+                                                                    src={hermano.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${hermano.imagen}` : null}
+                                                                    alt={hermano.codigo}
+                                                                    radius="xl"
+                                                                />
+                                                            </Table.Td>
+                                                            <Table.Td>{hermano.marca}</Table.Td>
+                                                            <Table.Td fw={700}>{hermano.codigo}</Table.Td>
+                                                            <Table.Td fw={700}>{hermano.Consumible.precioPromedio}</Table.Td>
+                                                            <Table.Td fw={700}>{hermano.Consumible.stockAlmacen}</Table.Td>
+                                                            <Table.Td>
+                                                                <Button
+                                                                    size="xs"
+                                                                    variant="subtle"
+                                                                    onClick={() => router.push(`/superuser/inventario/consumibles/${hermano.consumibleId}`)}
+                                                                >
+                                                                    Ver
+                                                                </Button>
+                                                            </Table.Td>
+                                                        </Table.Tr>
+                                                    ))}
                                             </Table.Tbody>
                                         </Table>
                                     </Stack>

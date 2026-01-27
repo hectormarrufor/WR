@@ -11,19 +11,16 @@ export async function POST(request) {
       subsistemaInstanciaId, 
       recomendacionId, 
       inventarioId, 
-      ubicacion,
-      cantidad, // Cantidad total (ej: 10)
-      ubicacionFisica,
-      serialesSeleccionados // Array: [{ value: '55', type: 'existing' }, ...]
+      cantidad, 
+      ubicacionFisica, // Variable global
+      serialesSeleccionados // Array: [{ value: '...', type: '...', ubicacion: '...' }]
     } = body;
 
-    // 1. Buscamos el artículo padre para saber costos y datos
     const articulo = await db.Consumible.findByPk(inventarioId, { transaction: t });
     if (!articulo) throw new Error("Artículo no encontrado");
 
-    // Función auxiliar para registrar la salida contable
+    // Helper para Salidas
     const registrarSalida = async (cant, costoUnitario) => {
-        // A. Crear registro histórico de salida
         await db.SalidaInventario.create({
             consumibleId: inventarioId,
             activoId: activoId,
@@ -33,8 +30,6 @@ export async function POST(request) {
             costoAlMomento: costoUnitario || 0
         }, { transaction: t });
 
-        // B. Ajustar contadores del Padre (Consumible)
-        // Restamos de almacén y sumamos a asignado
         await articulo.decrement('stockAlmacen', { by: cant, transaction: t });
         await articulo.increment('stockAsignado', { by: cant, transaction: t });
     };
@@ -42,7 +37,7 @@ export async function POST(request) {
     // ==========================================
     // CASO A: ARTÍCULO SERIALIZADO
     // ==========================================
-    if (articulo.tipo === 'serializado') { // Usamos tu campo 'tipo' del modelo
+    if (articulo.tipo === 'serializado') { 
         
         if (!serialesSeleccionados || serialesSeleccionados.length === 0) {
             throw new Error("Debe seleccionar los seriales para este componente");
@@ -52,59 +47,64 @@ export async function POST(request) {
             let serialObj;
 
             if (item.type === 'existing') {
-                // --- SERIAL EXISTENTE EN ALMACÉN ---
+                // --- SERIAL EXISTENTE ---
                 serialObj = await db.ConsumibleSerializado.findByPk(item.value, { transaction: t });
-                
                 if (!serialObj) throw new Error(`Serial ID ${item.value} no encontrado`);
-                if (serialObj.estado !== 'almacen') throw new Error(`El serial ${serialObj.serial} no está en almacén (Estado: ${serialObj.estado})`);
+                
+                // Validación estricta: solo si está en almacén
+                if (serialObj.estado !== 'almacen') {
+                     throw new Error(`El serial ${serialObj.serial} no está disponible (Estado: ${serialObj.estado})`);
+                }
 
-                // 1. Actualizar estado del serial
                 await serialObj.update({ 
-                    estado: 'asignado', // O 'en_uso' según tu enum
-                    activoId: activoId, // Vinculamos al activo físicamente
+                    estado: 'asignado', 
+                    activoId: activoId, 
                     subsistemaInstanciaId: subsistemaInstanciaId,
                     fechaAsignacion: new Date()
                 }, { transaction: t });
 
-                // 2. Mover Contadores y Crear Salida (1 unidad)
                 await registrarSalida(1, articulo.precioPromedio);
 
             } else {
-                // --- SERIAL NUEVO (CREADO AL VUELO) ---
-                // Si el usuario metió un serial nuevo, asumimos que "apareció" y se instaló.
-                // Esto es una entrada implícita y una salida inmediata.
-                // Para no complicar la contabilidad, solo aumentamos el 'stockAsignado' global, 
-                // pero NO restamos de 'stockAlmacen' (porque nunca estuvo allí registrado).
-                
+                // --- SERIAL NUEVO (INGRESO AL VUELO) ---
                 serialObj = await db.ConsumibleSerializado.create({
                     consumibleId: inventarioId,
                     serial: item.value,
-                    estado: 'asignado',
+                    estado: 'asignado', // Entra directo al camión
                     activoId: activoId,
                     subsistemaInstanciaId: subsistemaInstanciaId,
                     fechaAsignacion: new Date(),
-                    fechaCompra: new Date() // Asumimos compra hoy
+                    fechaCompra: new Date() 
                 }, { transaction: t });
 
-                // Solo incrementamos lo asignado (Inventario Total crece)
+                // IMPORTANTE: Crear la trazabilidad de entrada (Auditoría ERP)
+                await db.EntradaInventario.create({
+                    consumibleId: inventarioId,
+                    cantidad: 1,
+                    costoUnitario: articulo.precioPromedio || 0,
+                    tipo: 'Otro', 
+                    observacion: `Ingreso Rápido (Instalación) - Serial: ${item.value}`,
+                    fecha: new Date()
+                }, { transaction: t });
+
+                // Solo aumentamos el patrimonio total (Asignado)
                 await articulo.increment('stockAsignado', { by: 1, transaction: t });
-                
-                // Opcional: Crear una EntradaInventario y luego una SalidaInventario si quieres trazabilidad perfecta
-                // Por ahora, lo dejamos simple.
             }
 
-            // 3. Crear el registro de Instalación (Historial del Activo)
+            // Registro de Instalación
             await db.ConsumibleInstalado.create({
                 subsistemaInstanciaId,
                 consumibleId: inventarioId,
                 recomendacionId,
                 serialActual: serialObj.serial,
-                // Si tu modelo tiene FK a serial, úsala:
-                serialId: serialObj.id, 
+                serialId: serialObj.id, // Usamos serialId como acordamos
                 cantidad: 1, 
-                ubicacion,
+                
+                // Prioridad: Ubicación específica > Ubicación global
+                ubicacion: item.ubicacion || ubicacionFisica, 
+                
                 fechaInstalacion: new Date(),
-                vidaUtilRestante: articulo.vidaUtilEstimada || 100, // Default por si acaso
+                vidaUtilRestante: articulo.vidaUtilEstimada || 100,
                 estado: 'instalado',
             }, { transaction: t });
         }
@@ -117,19 +117,20 @@ export async function POST(request) {
              throw new Error(`Stock insuficiente. Disponible: ${articulo.stockAlmacen}`);
         }
 
-        // 1. Crear registro de instalación
         await db.ConsumibleInstalado.create({
             subsistemaInstanciaId,
             consumibleId: inventarioId,
             recomendacionId,
             cantidad: cantidad,
             fechaInstalacion: new Date(),
-            vidaUtilRestante: 100, // % o Horas
+            vidaUtilRestante: 100, 
             estado: 'instalado',
-            ubicacion,
+            
+            // CORREGIDO AQUÍ:
+            ubicacion: ubicacionFisica, 
+            
         }, { transaction: t });
 
-        // 2. Mover Contadores y Crear Salida
         await registrarSalida(cantidad, articulo.precioPromedio);
     }
 

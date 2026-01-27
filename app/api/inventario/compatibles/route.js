@@ -87,7 +87,7 @@ export async function GET(request) {
             label: `${c.nombre} (${c.Neumatico?.medida || c.Aceite?.viscosidad || ''}) - Stock: ${c.stockAlmacen || 0}`,
             stockActual: parseFloat(c.stockAlmacen || 0),
             categoria: c.categoria,
-            disabled: parseFloat(c.stockAlmacen || 0) <= 0,
+            // disabled: parseFloat(c.stockAlmacen || 0) <= 0,
             serialesDisponibles: c.serializados ? c.serializados.map(s => ({
                 value: s.id,
                 label: s.serial,

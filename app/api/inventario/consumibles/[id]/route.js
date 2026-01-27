@@ -11,7 +11,14 @@ import {
     GrupoEquivalencia,
     ConsumibleSerializado,
     ConsumibleInstalado,
-    SubsistemaInstancia
+    SubsistemaInstancia,
+    Activo,
+    VehiculoInstancia,
+    Remolque,
+    MaquinaInstancia,
+    Vehiculo,
+    Maquina,
+    RemolqueInstancia
 
 } from '@/models';
 
@@ -48,16 +55,22 @@ export async function GET(request, { params }) {
                 // --- 3. SERIALES ---
                 { 
                     model: ConsumibleSerializado, 
-                    as: 'serializados' 
+                    as: 'serializados' ,
+                    include: [{ model: Activo, as: 'activo', include: [
+                        { model: VehiculoInstancia, as: 'vehiculoInstancia', include: [{model: Vehiculo, as: 'plantilla'}] },
+                        {model: RemolqueInstancia, as: 'remolqueInstancia', include: [{model: Remolque, as: 'plantilla'}]},
+                        {model: MaquinaInstancia, as: 'maquinaInstancia', include: [{model: Maquina, as: 'plantilla'}]}
+                    
+                    ] }]
                 },
 
                 // --- 4. HISTORIAL ---
                 { 
                     model: ConsumibleInstalado, 
-                    as: 'usos',
+                    as: 'instalaciones',
                     limit: 20,
                     order: [['createdAt', 'DESC']],
-                    include: [{ model: SubsistemaInstancia }] 
+                    include: [{ model: SubsistemaInstancia, as: 'subsistema' }] 
                 }
             ]
         });
