@@ -8,7 +8,7 @@ const Activo = sequelize.define('Activo', {
     allowNull: false
   },
   tipoActivo: {
-    type: DataTypes.ENUM('Vehiculo', 'Remolque', 'Maquina', 'Equipo estacionario', 'Inmueble','Otro'),
+    type: DataTypes.ENUM('Vehiculo', 'Remolque', 'Maquina', 'Equipo estacionario', 'Inmueble', 'Otro'),
     allowNull: false
   },
   imagen: {
@@ -23,17 +23,15 @@ const Activo = sequelize.define('Activo', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  ubicacionActual: {
-    type: DataTypes.STRING,
-    defaultValue: 'Base Principal'
-  },
+  latitudActual: { type: DataTypes.DECIMAL(10, 8), allowNull: true },
+  longitudActual: { type: DataTypes.DECIMAL(11, 8), allowNull: true },
   tarifaPorKm: {  // Costo por kilómetro para vehículos y remolques
-      type: DataTypes.DECIMAL(10, 2), 
-      defaultValue: 0.00,
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
   },
   tarifaPorHora: {  // Costo por hora para maquinaria y equipos
-      type: DataTypes.DECIMAL(10, 2), 
-      defaultValue: 0.00,
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00,
   },
 
 
