@@ -190,8 +190,7 @@ export default function FleteCreator() {
     if (loading) return <Center h="80vh"><Loader size="xl" /></Center>;
 
     return (
-        <Paper p="md" shadow="sm" radius="md">
-            <Title order={3} mb="md" ta="center">Programación de Flete</Title>
+      
 
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Grid gutter="lg">
@@ -348,6 +347,6 @@ export default function FleteCreator() {
                     </Grid.Col>
                 </Grid>
             </form>
-        </Paper>
+     
     );
 }
