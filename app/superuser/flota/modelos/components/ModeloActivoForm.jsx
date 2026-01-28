@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import {
     TextInput, NumberInput, Select, Button, Group,
     Stack, LoadingOverlay, Divider, Text, ActionIcon, Paper, SimpleGrid,
-    Accordion, Checkbox, 
+    Accordion, Checkbox,
     Alert, Badge
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -65,10 +65,10 @@ export default function ModeloActivoForm({
     }, [form.values]);
 
     useEffect(() => {
-      console.log("Subsistemas", subsistemas)
+        console.log("Subsistemas", subsistemas)
 
     }, [subsistemas])
-    
+
 
 
     // Helpers para la lista de subsistemas
@@ -122,7 +122,7 @@ export default function ModeloActivoForm({
                     notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
                 }
                 endpoint = initialValues ? `/api/gestionMantenimiento/vehiculo/${id}` : '/api/gestionMantenimiento/vehiculo';
-                payload = { ...payload, modelo: values.modelo, tipoVehiculo: values.tipoVehiculo, numeroEjes: values.ejes, peso: values.peso, tipoCombustible: values.tipoCombustible, capacidadArrastre: values.capacidadArrastre, pesoMaximoCombinado: values.pesoMaximoCombinado};
+                payload = { ...payload, modelo: values.modelo, tipoVehiculo: values.tipoVehiculo, numeroEjes: values.ejes, peso: values.peso, tipoCombustible: values.tipoCombustible, capacidadArrastre: values.capacidadArrastre, pesoMaximoCombinado: values.pesoMaximoCombinado };
             }
             else if (tipoPreseleccionado === 'Remolque') {
                 endpoint = initialValues ? `/api/gestionMantenimiento/remolque/${id}` : '/api/gestionMantenimiento/remolque';
@@ -171,35 +171,30 @@ export default function ModeloActivoForm({
 
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="md">
-                    {/* --- DATOS GENERALES --- */}
-                    <AsyncCatalogComboBox
-                        label="Marca"
-                        placeholder="Buscar o crear marca..."
-                        form={form}
-                        fieldKey="marca"
-                        catalogo="marcas"
-                        tipo='vehiculo'
-                    />
-
-                    <AsyncCatalogComboBox
-                        label="Modelo"
-                        placeholder="Buscar o crear modelo..."
-                        form={form}
-                        fieldKey="modelo"
-                        catalogo="modelos"
-                        tipo='vehiculo'
-                    />
-
-                    <Group grow>
-                        <NumberInput label="Año" min={1980} max={2030} {...form.getInputProps('anio')} />
-
-                        {(tipoPreseleccionado === 'Vehiculo' || tipoPreseleccionado === 'Remolque') && (
-                            <NumberInput label="Nro. Ejes" min={1} max={12} {...form.getInputProps('ejes')} />
-                        )}
-                    </Group>
 
                     {tipoPreseleccionado === 'Vehiculo' && (
                         <>
+                            <AsyncCatalogComboBox
+                                label="Marca"
+                                placeholder="Buscar o crear marca..."
+                                form={form}
+                                fieldKey="marca"
+                                catalogo="marcas"
+                                tipo='vehiculo'
+                            />
+
+                            <AsyncCatalogComboBox
+                                label="Modelo"
+                                placeholder="Buscar o crear modelo..."
+                                form={form}
+                                fieldKey="modelo"
+                                catalogo="modelos"
+                                tipo='vehiculo'
+                            />
+                            <Group grow>
+                                <NumberInput label="Año" min={1980} max={new Date().getFullYear()} {...form.getInputProps('anio')} />
+                                <NumberInput label="Nro. Ejes" min={1} max={12} {...form.getInputProps('ejes')} />
+                            </Group>
                             <Select
                                 label="Tipo de Vehículo"
                                 placeholder="Seleccione..."
@@ -219,17 +214,72 @@ export default function ModeloActivoForm({
                     )}
 
                     {tipoPreseleccionado === 'Remolque' && (
-                        <Select
-                            label="Tipo de Remolque"
-                            placeholder="Seleccione..."
-                            required
-                            data={['Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Vaccum', 'Tolva']}
-                            {...form.getInputProps('tipoRemolque')}
-                        />
+                        <>
+                            <AsyncCatalogComboBox
+                                label="Marca"
+                                placeholder="Buscar o crear marca..."
+                                form={form}
+                                fieldKey="marca"
+                                catalogo="marcas"
+                                tipo='vehiculo'
+                            />
+
+                            <AsyncCatalogComboBox
+                                label="Modelo"
+                                placeholder="Buscar o crear modelo..."
+                                form={form}
+                                fieldKey="modelo"
+                                catalogo="modelos"
+                                tipo='vehiculo'
+                            />
+                            <Group grow>
+                                <NumberInput label="Año" min={1980} max={new Date().getFullYear()} {...form.getInputProps('anio')} />
+                                <NumberInput label="Nro. Ejes" min={1} max={12} {...form.getInputProps('ejes')} />
+                            </Group>
+                            <Select
+                                label="Tipo de Remolque"
+                                placeholder="Seleccione..."
+                                required
+                                data={['Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Vaccum', 'Tolva']}
+                                {...form.getInputProps('tipoRemolque')}
+                            />
+                        </>
+                    )}
+
+                    {/* CASO 2: INMUEBLES (Nuevo) */}
+                    {tipoPreseleccionado === 'Inmueble' && (
+                        <>
+                            <TextInput
+                                label="Tipo de Edificación"
+                                placeholder="Galpón, Oficina, Terreno..."
+                                {...form.getInputProps('tipoInmueble')}
+                            />
+                            <NumberInput
+                                label="Metros Cuadrados (m²)"
+                                {...form.getInputProps('area')}
+                            />
+                        </>
+                    )}
+
+                    {/* CASO 3: EQUIPOS (Aires, Bombas - Nuevo) */}
+                    {tipoPreseleccionado === 'Equipo' && (
+                        <>
+                            <AsyncCatalogComboBox
+                                label="Marca"
+                                catalogo="marcas"
+                                form={form} fieldKey="marca"
+                            />
+                            <TextInput
+                                label="Especificación Técnica"
+                                placeholder="Ej: 18000 BTU, 1HP, 220V"
+                                {...form.getInputProps('especificacion')}
+                            />
+                        </>
                     )}
 
                     {tipoPreseleccionado === 'Maquina' && (
                         <>
+                            <NumberInput label="Año" min={1980} max={new Date().getFullYear()} {...form.getInputProps('anio')} />
                             <Select
                                 label="Tipo de Máquina"
                                 placeholder="Seleccione..."
@@ -263,17 +313,23 @@ export default function ModeloActivoForm({
                                 min={0}
                                 step={0.5}
                             />
+                            <Select
+                                label="Tipo de Combustible"
+                                placeholder="Seleccione..."
+                                data={['Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"]}
+                                {...form.getInputProps('tipoCombustible')}
+                            />
                         </>
                     )}
 
                     {(tipoPreseleccionado === 'Remolque' || tipoPreseleccionado === 'Vehiculo') && (
                         <>
-                            <TextInput
+                            <NumberInput
                                 label="Peso (tons) (opcional)"
                                 placeholder="ej. 15.5"
                                 {...form.getInputProps('peso')}
-                                />
-                                <TextInput
+                            />
+                            <NumberInput
                                 label="Capacidad de Arrastre (tons) (opcional)"
                                 placeholder="ej. 15.5"
                                 {...form.getInputProps('capacidadArrastre')}
@@ -318,7 +374,7 @@ export default function ModeloActivoForm({
                                         </Accordion.Control>
                                         <Accordion.Panel>
                                             <Stack gap="sm">
-                                                <Group bg='lightgray' p={10}  grow>
+                                                <Group bg='lightgray' p={10} grow>
                                                     <TextInput
                                                         label="Nombre"
                                                         placeholder="ej. Motor"
@@ -329,7 +385,7 @@ export default function ModeloActivoForm({
                                                         label="Categoría"
                                                         placeholder="Seleccione..."
                                                         data={[
-                                                            'motor', 'transmision', 'frenos', 'tren de rodaje', 'suspension', 'electrico', 'iluminacion', 'sistema de escape', 'sistema hidraulico', 'sistema de direccion','sistema de combustible', 'otros'
+                                                            'motor', 'transmision', 'frenos', 'tren de rodaje', 'suspension', 'electrico', 'iluminacion', 'sistema de escape', 'sistema hidraulico', 'sistema de direccion', 'sistema de combustible', 'otros'
                                                         ]}
                                                         value={sub.categoria}
                                                         onChange={(val) => updateSubsistema(index, 'categoria', val)}
@@ -365,11 +421,11 @@ export default function ModeloActivoForm({
                                 <Stack gap="xs" style={{ flex: 1 }}>
                                     <Text size="sm" fw={700} c="blue">¿Propagar cambios a la flota activa?</Text>
                                     <Text size="xs" c="blue.8">
-                                        Si marcas esta casilla, los nuevos subsistemas que hayas agregado se crearán 
+                                        Si marcas esta casilla, los nuevos subsistemas que hayas agregado se crearán
                                         automáticamente en todos los vehículos que usen este modelo ({form.values.marca} {form.values.modelo}).
                                         Si eliminaste alguno, también se borrará de los vehículos.
                                     </Text>
-                                    <Checkbox 
+                                    <Checkbox
                                         label="Sí, aplicar cambios a todos los activos vinculados a este modelo"
                                         checked={propagarCambios}
                                         onChange={(event) => setPropagarCambios(event.currentTarget.checked)}

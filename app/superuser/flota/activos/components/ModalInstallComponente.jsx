@@ -2,12 +2,15 @@
 import { useState, useEffect } from 'react';
 import {
     Modal, Button, Select, NumberInput, Stack, Text, Group,
-    Loader, Alert, TextInput, Divider, MultiSelect, ScrollArea, Paper
+    Loader, Alert, TextInput, Divider, MultiSelect, ScrollArea, Paper,
+    SimpleGrid
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconPackage, IconBarcode, IconCheck, IconPlus, IconMapPin } from '@tabler/icons-react';
+import { IconPackage, IconBarcode, IconCheck, IconPlus, IconMapPin, IconCalendar, IconCalendarTime } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import ConsumibleForm from '@/app/superuser/inventario/components/ConsumibleForm';
+import { DatePickerInput } from '@mantine/dates'; // Asegúrate de tener @mantine/dates instalado
+import 'dayjs/locale/es'; // Opcional si quieres español
 
 export default function ModalInstallComponente({ opened, onClose, target, onSuccess, activoId }) {
     const [loading, setLoading] = useState(false);
@@ -17,10 +20,14 @@ export default function ModalInstallComponente({ opened, onClose, target, onSucc
     const [stockOptions, setStockOptions] = useState([]);
     const [selectedItemInfo, setSelectedItemInfo] = useState(null);
 
-    // --- LÓGICA DE SERIALES ---
-    const [serialesValues, setSerialesValues] = useState([]); // Lo que está seleccionado
-    const [serialesData, setSerialesData] = useState([]);     // La lista de opciones disponibles (BD + Nuevos)
-    const [searchValue, setSearchValue] = useState('');       // Texto del buscador
+    // Seriales
+    const [serialesValues, setSerialesValues] = useState([]);
+    const [serialesData, setSerialesData] = useState([]);
+    const [searchValue, setSearchValue] = useState('');
+
+    // --- NUEVO ESTADO UNIFICADO ---
+    // Estructura: { "SERIAL_VAL": { ubicacion: "", fechaCompra: Date, fechaGarantia: Date } }
+    const [serialDetails, setSerialDetails] = useState({});
 
     // --- UBICACIONES DINÁMICAS ---
     const [ubicacionesMap, setUbicacionesMap] = useState({});
@@ -47,6 +54,7 @@ export default function ModalInstallComponente({ opened, onClose, target, onSucc
             setSelectedItemInfo(null);
             setSerialesValues([]);
             setSerialesData([]);
+            setSerialDetails({});
             setUbicacionesMap({});
             setSearchValue('');
             form.setFieldValue('cantidad', target.rec.cantidad || 1);
@@ -93,38 +101,55 @@ export default function ModalInstallComponente({ opened, onClose, target, onSucc
         }
     };
 
-    // --- CLAVE: Lógica para permitir múltiples nuevos seriales ---
-    const handleSerialesChange = (val) => {
-        // 1. Detectar si hay valores nuevos que no estaban en la data
-        const newItems = val.filter(v => !serialesData.some(item => item.value === v));
+    // --- HELPER PARA ACTUALIZAR DETALLES ---
+    const updateDetail = (serialVal, field, value) => {
+        setSerialDetails(prev => ({
+            ...prev,
+            [serialVal]: {
+                ...prev[serialVal],
+                [field]: value
+            }
+        }));
+    };
 
-        // 2. Si hay nuevos, agregarlos a la data persistente para que el MultiSelect no los borre
+    const handleSerialesChange = (val) => {
+        // 1. Detectar nuevos
+        const newItems = val.filter(v => !serialesData.some(item => item.value === v));
         if (newItems.length > 0) {
             const nuevosObjetos = newItems.map(nv => ({ value: nv, label: nv }));
             setSerialesData(current => [...current, ...nuevosObjetos]);
         }
 
-        // 3. Actualizar selección
+        // 2. Inicializar fechas por defecto para los nuevos seleccionados
+        setSerialDetails(prev => {
+            const newState = { ...prev };
+            val.forEach(v => {
+                if (!newState[v]) {
+                    newState[v] = {
+                        ubicacion: '',
+                        fechaCompra: new Date(), // Por defecto HOY
+                        fechaGarantia: null
+                    };
+                }
+            });
+            return newState;
+        });
+
         setSerialesValues(val);
         form.setFieldValue('cantidad', val.length);
-
-        // 4. IMPORTANTE: Limpiar el buscador para permitir escribir el siguiente inmediatamente
         setSearchValue('');
     };
 
-    const handleUbicacionChange = (serialValue, textoUbicacion) => {
-        setUbicacionesMap(prev => ({
-            ...prev,
-            [serialValue]: textoUbicacion
-        }));
-    };
-
     const handleSubmit = async (values) => {
-        // Validación de ubicaciones para serializados
         if (esSerializado) {
-            const faltantes = serialesValues.some(val => !ubicacionesMap[val] || ubicacionesMap[val].trim() === '');
-            if (faltantes) {
-                return notifications.show({ message: 'Indica la posición de cada serial (ej: Delantero Izq)', color: 'red' });
+            // Validar que todos tengan ubicación y fecha de compra
+            const invalidos = serialesValues.some(val => {
+                const det = serialDetails[val];
+                return !det?.ubicacion || !det.ubicacion.trim() || !det.fechaCompra;
+            });
+
+            if (invalidos) {
+                return notifications.show({ message: 'Todos los seriales requieren Ubicación y Fecha de Compra', color: 'red' });
             }
         }
 
@@ -132,12 +157,18 @@ export default function ModalInstallComponente({ opened, onClose, target, onSucc
             inventarioId: values.inventarioId,
             cantidad: values.cantidad,
             ubicacionFisica: values.ubicacionFisicaGlobal,
+
+            // Mapeamos enviando TODO el objeto de detalles
             serialesSeleccionados: serialesValues.map(val => {
                 const esExistente = selectedItemInfo.serialesDisponibles?.some(s => s.id.toString() === val);
+                const details = serialDetails[val] || {};
+
                 return {
                     value: val,
                     type: esExistente ? 'existing' : 'new',
-                    ubicacion: ubicacionesMap[val]
+                    ubicacion: details.ubicacion,
+                    fechaCompra: details.fechaCompra,
+                    fechaGarantia: details.fechaGarantia
                 };
             })
         });
@@ -165,6 +196,14 @@ export default function ModalInstallComponente({ opened, onClose, target, onSucc
         } catch (error) { notifications.show({ title: 'Error', message: error.message, color: 'red' }); }
         finally { setLoading(false); }
     };
+
+    const handleUbicacionChange = (serialValue, textoUbicacion) => {
+        setUbicacionesMap(prev => ({
+            ...prev,
+            [serialValue]: textoUbicacion
+        }));
+    };
+
 
     const handleSuccessCreate = (newConsumible) => {
         setCreateModalOpened(false);
@@ -254,33 +293,56 @@ export default function ModalInstallComponente({ opened, onClose, target, onSucc
                                             }}
                                         />
 
-                                        {/* ZONA DE UBICACIONES - Aparece automáticamente al seleccionar */}
+                                        {/* --- ZONA DE DETALLES (UBICACIÓN Y FECHAS) --- */}
                                         {serialesValues.length > 0 && (
                                             <Paper withBorder p="sm" bg="gray.0">
-                                                <Text size="sm" fw={700} mb="xs" c="dimmed">UBICACIONES FÍSICAS:</Text>
-                                                <ScrollArea.Autosize mah={250}>
-                                                    <Stack gap="xs">
+                                                <Text size="sm" fw={700} mb="xs" c="dimmed">DETALLES POR SERIAL:</Text>
+                                                <ScrollArea.Autosize mah={300}>
+                                                    <Stack gap="md">
                                                         {serialesValues.map((val) => {
-                                                            // Intentamos mostrar el nombre amigable si existe
                                                             const itemData = serialesData.find(d => d.value === val);
                                                             const label = itemData ? itemData.label : val;
+                                                            const details = serialDetails[val] || {};
 
                                                             return (
-                                                                <Group key={val} grow wrap="nowrap" align="center">
-                                                                    <Group gap={6} w={130}>
+                                                                <Paper key={val} withBorder p="xs" shadow="xs">
+                                                                    <Group gap="xs" mb={4}>
                                                                         <IconBarcode size={16} color="blue" />
-                                                                        <Text size="sm" fw={500} truncate>{label}</Text>
+                                                                        <Text size="sm" fw={700}>{label}</Text>
                                                                     </Group>
-                                                                    <TextInput
-                                                                        placeholder="Ej: Eje 1 - Izquierdo"
-                                                                        size="sm"
-                                                                        variant="filled"
-                                                                        leftSection={<IconMapPin size={14} />}
-                                                                        value={ubicacionesMap[val] || ''}
-                                                                        onChange={(e) => handleUbicacionChange(val, e.currentTarget.value)}
-                                                                        required
-                                                                    />
-                                                                </Group>
+
+                                                                    <SimpleGrid cols={3} spacing="xs">
+                                                                        <TextInput
+                                                                            label="Ubicación"
+                                                                            placeholder="Ej: Eje 1 Der"
+                                                                            size="xs"
+                                                                            leftSection={<IconMapPin size={12} />}
+                                                                            value={details.ubicacion || ''}
+                                                                            onChange={(e) => updateDetail(val, 'ubicacion', e.currentTarget.value)}
+                                                                            required
+                                                                        />
+                                                                        <DatePickerInput
+                                                                            label="Fecha Compra"
+                                                                            placeholder="Seleccionar"
+                                                                            size="xs"
+                                                                            leftSection={<IconCalendar size={12} />}
+                                                                            value={details.fechaCompra}
+                                                                            onChange={(d) => updateDetail(val, 'fechaCompra', d)}
+                                                                            required
+                                                                            maxDate={new Date()}
+                                                                        />
+                                                                        <DatePickerInput
+                                                                            label="Vence Garantía"
+                                                                            placeholder="Opcional"
+                                                                            size="xs"
+                                                                            leftSection={<IconCalendarTime size={12} />}
+                                                                            value={details.fechaGarantia}
+                                                                            onChange={(d) => updateDetail(val, 'fechaGarantia', d)}
+                                                                            minDate={details.fechaCompra || new Date()}
+                                                                            clearable
+                                                                        />
+                                                                    </SimpleGrid>
+                                                                </Paper>
                                                             );
                                                         })}
                                                     </Stack>

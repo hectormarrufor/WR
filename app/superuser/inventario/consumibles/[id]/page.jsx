@@ -220,7 +220,7 @@ export default function DetalleConsumiblePage() {
                                                             {item.estado}
                                                         </Badge>
                                                     </Table.Td>
-                                                    <Table.Td>{new Date(item.createdAt).toLocaleDateString()}</Table.Td>
+                                                    <Table.Td>{new Date(item.fechaCompra).toLocaleDateString()}</Table.Td>
                                                     <Table.Td>
                                                         <UnstyledButton onClick={() => router.push(`/superuser/flota/activos/${item.activo.id}`)}>
 

@@ -48,6 +48,7 @@ const Cliente = sequelize.define('Cliente', {
 // Este `associate` se llamará desde `models/index.js`
 Cliente.associate = (models) => {
   Cliente.hasMany(models.ODT, { as: "odts", foreignKey: "clienteId" });
+  Cliente.hasMany(models.Flete, { as: "fletes", foreignKey: "clienteId" });
 };
 
 module.exports = Cliente;

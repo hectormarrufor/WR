@@ -33,7 +33,8 @@ const GastoVariable = sequelize.define('GastoVariable', {
       'Viaticos',         // Dinero para el chofer en ruta
       'Impuestos', 
       'Gastos Adm',       // Papelería, oficina
-      'Otros'
+      'Otros',
+      'Peajes'           // Peajes en rutas
     ),
     allowNull: false,
   },
@@ -68,6 +69,7 @@ GastoVariable.associate = (models) => {
     foreignKey: 'movimientoTesoreriaId', 
     as: 'pagoAsociado' 
   });
+  GastoVariable.belongsTo(models.Flete, { foreignKey: 'fleteId', as: 'flete', constraints: false });
 };
 
 module.exports = GastoVariable;

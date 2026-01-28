@@ -3,6 +3,9 @@ const sequelize = require('../sequelize');
 
 const db = {
 
+    //Configuracion General
+    HistorialPrecio: require('./tesoreria/HistorialPrecio'),
+
     // RECURSOS HUMANOS
     User: require('./user'),
     Empleado: require('./recursosHumanos/Empleado'),
@@ -15,6 +18,7 @@ const db = {
 
     // FLOTA Y GESTION DE MANTENIMIENTO
     VehiculoInstancia: require('./gestionMantenimiento/VehiculoInstancia'),
+    DocumentoActivo: require('./gestionMantenimiento/DocumentoActivo'),
     Activo: require('./gestionMantenimiento/Activo'),
     Hallazgo: require('./gestionMantenimiento/Hallazgo'),
     OrdenMantenimiento: require('./gestionMantenimiento/OrdenMantenimiento'),
@@ -56,9 +60,8 @@ const db = {
     FixedExpense: require('./gastos/FixedExpense'),
 
     //Operaciones
-    Flete: require('./operaciones/Flete'),
     ODT: require('./recursosHumanos/ODT'),
-
+    
     //CATALOGOS
     ViscosidadAceite: require('./catalogos/ViscosidadAceite'),
     Codigo: require('./catalogos/Codigo'),
@@ -67,7 +70,7 @@ const db = {
     Modelo: require('./catalogos/Modelo'),
     MedidaNeumatico: require('./catalogos/MedidaNeumatico'),
     Banco: require('./catalogos/Banco'),
-
+    
     // TESORERIA
     CuentaBancaria: require('./tesoreria/CuentaBancaria'),
     GastoFijo: require('./tesoreria/GastoFijo'),
@@ -75,7 +78,7 @@ const db = {
     MovimientoTesoreria: require('./tesoreria/MovimientoTesoreria'),
     CuentaTerceros: require('./tesoreria/CuentaTercero'),
     PagoMovil: require('./tesoreria/PagoMovil'),
-
+    
     //Compras
     Proveedor: require('./compras/Proveedor'),
     RecepcionCompra: require('./compras/recepcion-compra/RecepcionCompra'),
@@ -83,12 +86,16 @@ const db = {
     OrdenCompra: require('./compras/ordenCompra/OrdenCompra'),
     OrdenCompraItem: require('./compras/ordenCompra/OrdenCompraItem'),
     Taller: require('./compras/Taller'),
-
+    
     //Facturacion
     Cliente: require('./Cliente'),
-
+    
     // NOTIFICACIONES
     Notificacion: require('./Notificacion'),
+    
+    //Fletes
+    Flete: require('./operaciones/Flete'),
+
 
 };
 

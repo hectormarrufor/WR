@@ -17,7 +17,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
-    const {nombre, apellido} = useAuth();
+
+
+
+    // Estado para la recursividad
+    const [padresDisponibles, setPadresDisponibles] = useState([]);
+    const [subsistemasDelPadre, setSubsistemasDelPadre] = useState([]);
+
+    const { nombre, apellido } = useAuth();
     const [active, setActive] = useState(0);
     const [loading, setLoading] = useState(false);
     const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]);
@@ -26,6 +33,11 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
 
     const form = useForm({
         initialValues: {
+
+            // ... Campos de Recursividad ...
+            activoPadreId: null,         // Ej: ID de Base DADICA
+            subsistemaPadreId: null,     // Ej: ID de Oficina Presidencia
+
             codigoInterno: '',
             estado: 'Operativo',
             ubicacionActual: 'Base Principal',
@@ -41,7 +53,7 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
         },
         validate: {
             codigoInterno: (val) => (val.length < 2 ? 'Código requerido' : null),
-            placa: (val) => (val.length < 3 ? 'Placa requerida' : null),
+            placa: (val) => (isVehiculo || isRemolque || isMaquina && val.length < 3 ? 'Placa requerida' : null),
         }
     });
 
@@ -71,15 +83,20 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
         fetchInventario();
     }, []);
 
+    // EFECTO: Si selecciono un Padre (Base), busco sus subsistemas (Oficinas)
     useEffect(() => {
-        console.log("form: ", form.values);
-    }, [form.values]);
+        if (form.values.activoPadreId) {
+            fetch(`/api/gestionMantenimiento/activos/${form.values.activoPadreId}/subsistemas`)
+                .then(r => r.json())
+                .then(res => setSubsistemasDelPadre(res.data || []));
+        }
+    }, [form.values.activoPadreId]);
 
     // 2. Lógica de Envío (Mega POST)
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
-            
+
 
             // ---------------------------------------------------------
             // AQUÍ ESTÁ LA MAGIA DE LIMPIEZA Y MAPEO
@@ -173,7 +190,7 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({...payload, usuario: nombre + ' ' + apellido }),  
+                body: JSON.stringify({ ...payload, usuario: nombre + ' ' + apellido }),
             });
 
             const res = await response.json();
@@ -201,7 +218,11 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
     };
     const prevStep = () => setActive((c) => (c > 0 ? c - 1 : c));
 
+    // Identificadores rápidos
+    const isInmueble = tipoActivo === 'Inmueble';
+    const isEquipo = tipoActivo === 'Equipo'; // El aire acondicionado
     const isVehiculo = tipoActivo === 'Vehiculo';
+    const isRemolque = tipoActivo === 'Remolque';
     const isMaquina = tipoActivo === 'Maquina';
 
     return (
@@ -212,8 +233,8 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
                 <Stepper.Step label="Datos Físicos" description="Identificación">
                     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" mt="md">
                         <Stack>
-                            <Text fw={700} size="lg" c="blue">Base: {plantilla.marca} {plantilla.modelo}</Text>
-                            <Divider />
+                            {/* <Text fw={700} size="lg" c="blue">Base: {plantilla.marca} {plantilla.modelo}</Text> */}
+                            {/* <Divider /> */}
                             <TextInput label="Código Interno / Alias" placeholder="ej. V-045" required {...form.getInputProps('codigoInterno')} />
                             <Select label="Estado Inicial" data={['Operativo', 'En Mantenimiento', 'Inactivo']} {...form.getInputProps('estado')} />
                             <TextInput label="Ubicación Actual" placeholder="Base Principal" {...form.getInputProps('ubicacionActual')} />
