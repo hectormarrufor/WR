@@ -190,163 +190,167 @@ export default function FleteCreator() {
     if (loading) return <Center h="80vh"><Loader size="xl" /></Center>;
 
     return (
-      
 
-            <form onSubmit={form.onSubmit(handleSubmit)}>
-                <Grid gutter="lg">
-                    {/* COLUMNA IZQUIERDA: DATOS Y RECURSOS */}
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <SimpleGrid cols={1} spacing="md">
-                            <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" />
 
-                            <Group grow>
-                                <DateInput
-                                    label="Fecha de Salida"
-                                    valueFormat="DD/MM/YYYY"
-                                    {...form.getInputProps('fechaSalida')}
-                                />
-                                <TextInput
-                                    label="Nro Control (Opcional)"
-                                    placeholder="FL-XXXX"
-                                    {...form.getInputProps("nroFlete")}
-                                />
-                            </Group>
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+            <Grid gutter="lg">
+                {/* COLUMNA IZQUIERDA: DATOS Y RECURSOS */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <SimpleGrid cols={1} spacing="md">
+                        <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" />
 
-                            <Divider label="Recursos Humanos" labelPosition="center" />
+                        <Group grow>
+                            <DateInput
+                                label="Fecha de Salida"
+                                valueFormat="DD/MM/YYYY"
+                                {...form.getInputProps('fechaSalida')}
+                            />
+                            <TextInput
+                                label="Nro Control (Opcional)"
+                                placeholder="FL-XXXX"
+                                {...form.getInputProps("nroFlete")}
+                            />
+                        </Group>
 
-                            <Box>
-                                <ODTSelectableGrid
-                                    label="Chofer Principal"
-                                    data={empleados
-                                        .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer")))
-                                        .map(e => ({
-                                            id: e.id,
-                                            nombre: `${e.nombre} ${e.apellido}`,
-                                            imagen: e.imagen,
-                                        }))}
-                                    onChange={(val) => form.setFieldValue("choferId", val)}
-                                    value={form.values.choferId}
-                                />
-                            </Box>
+                        <Divider label="Recursos Humanos" labelPosition="center" />
 
-                            <Box>
-                                <ODTSelectableGrid
-                                    label="Ayudante (Opcional)"
-                                    data={empleados
-                                        .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante")))
-                                        .map(e => ({
-                                            id: e.id,
-                                            nombre: `${e.nombre} ${e.apellido}`,
-                                            imagen: e.imagen,
-                                        }))}
-                                    onChange={(val) => form.setFieldValue("ayudanteId", val)}
-                                    value={form.values.ayudanteId}
-                                />
-                            </Box>
+                        <Box>
+                            <ODTSelectableGrid
+                                label="Chofer Principal"
+                                data={empleados
+                                    .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer")))
+                                    .map(e => ({
+                                        id: e.id,
+                                        nombre: `${e.nombre} ${e.apellido}`,
+                                        imagen: e.imagen,
+                                    }))}
+                                onChange={(val) => form.setFieldValue("choferId", val)}
+                                value={form.values.choferId}
+                            />
+                        </Box>
 
-                            <Divider label="Equipos" labelPosition="center" />
+                        <Box>
+                            <ODTSelectableGrid
+                                label="Ayudante (Opcional)"
+                                data={empleados
+                                    .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante")))
+                                    .map(e => ({
+                                        id: e.id,
+                                        nombre: `${e.nombre} ${e.apellido}`,
+                                        imagen: e.imagen,
+                                    }))}
+                                onChange={(val) => form.setFieldValue("ayudanteId", val)}
+                                value={form.values.ayudanteId}
+                            />
+                        </Box>
 
-                            <Box>
-                                <ODTSelectableGrid
-                                    label="Vehículo Principal (Chuto)"
-                                    data={activosMapeados.filter(a => a.tipo === "Vehiculo")}
-                                    onChange={(val) => form.setFieldValue("activoPrincipalId", val)}
-                                    value={form.values.activoPrincipalId}
-                                />
-                            </Box>
+                        <Divider label="Equipos" labelPosition="center" />
 
-                            <Box>
-                                <ODTSelectableGrid
-                                    label="Remolque / Batea"
-                                    data={activosMapeados.filter(a => a.tipo === "Remolque")}
-                                    onChange={(val) => form.setFieldValue("remolqueId", val)}
-                                    value={form.values.remolqueId}
-                                />
-                            </Box>
-                        </SimpleGrid>
-                    </Grid.Col>
+                        <Box>
+                            <ODTSelectableGrid
+                                label="Vehículo Principal (Chuto)"
+                                data={activosMapeados.filter(a => a.tipo === "Vehiculo")}
+                                onChange={(val) => form.setFieldValue("activoPrincipalId", val)}
+                                value={form.values.activoPrincipalId}
+                            />
+                        </Box>
 
-                    {/* COLUMNA DERECHA: MAPA Y COTIZACIÓN */}
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <Paper withBorder p="sm" radius="md" mb="md" bg="gray.0">
-                            <Group mb="xs">
-                                <IconMapPin size={20} />
-                                <Text fw={700}>Seleccione el Destino</Text>
-                            </Group>
+                        <Box>
+                            <ODTSelectableGrid
+                                label="Remolque / Batea"
+                                data={activosMapeados.filter(a => a.tipo === "Remolque")}
+                                onChange={(val) => form.setFieldValue("remolqueId", val)}
+                                value={form.values.remolqueId}
+                            />
+                        </Box>
+                    </SimpleGrid>
+                </Grid.Col>
 
+                {/* COLUMNA DERECHA: MAPA Y COTIZACIÓN */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <Paper withBorder p="sm" radius="md" mb="md" bg="gray.0">
+                        <Group mb="xs">
+                            <IconMapPin size={20} />
+                            <Text fw={700}>Seleccione el Destino</Text>
+                        </Group>
+
+                        {/* Contenedor con altura definida para asegurar visibilidad del mapa en móviles */}
+                        <Box h={{ base: 300, sm: 400 }} style={{ position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
                             <GoogleRouteMap onRouteCalculated={handleRouteCalculated} />
+                        </Box>
 
-                            {rutaData && (
-                                <Box mt="sm">
-                                    <Text size="sm" fw={700}>Destino: <Text span c="dimmed">{rutaData.direccionDestino}</Text></Text>
-                                    <Group grow mt="xs">
-                                        <Badge size="lg" variant="dot" color="blue">
-                                            Distancia Total: {rutaData.distanciaTotal} km
-                                        </Badge>
-                                        <Badge size="lg" variant="dot" color="orange">
-                                            Tiempo Aprox: {rutaData.tiempoEstimado}
-                                        </Badge>
-                                    </Group>
-                                </Box>
-                            )}
-                        </Paper>
+                        {rutaData && (
+                            <Box mt="sm">
+                                <Text size="sm" fw={700}>Destino: <Text span c="dimmed">{rutaData.direccionDestino}</Text></Text>
+                                <Text size="sm" fw={700} pt={10}>Ida y Vuelta:</Text>
+                                <Group grow mt="xs">
+                                    <Badge size="lg" variant="dot" color="blue">
+                                        {rutaData.distanciaTotal} km
+                                    </Badge>
+                                    <Badge size="lg" variant="dot" color="orange">
+                                        {rutaData.tiempoEstimado}
+                                    </Badge>
+                                </Group>
+                            </Box>
+                        )}
+                    </Paper>
 
-                        {/* SECCIÓN DE PEAJES MANUAL */}
-                        <Paper withBorder p="md" mb="md">
-                            <Group mb="xs">
-                                <IconCoin size={20} color="orange" />
-                                <Text fw={700}>Gastos de Ruta</Text>
-                            </Group>
-                            <SimpleGrid cols={2}>
-                                <NumberInput
-                                    label="Cantidad de Peajes"
-                                    description="Ingrese total (Ida y Vuelta)"
-                                    min={0}
-                                    {...form.getInputProps('cantidadPeajes')}
-                                />
-                                <TextInput
-                                    label="Precio Unitario"
-                                    value={`$${configPrecios.peaje}`}
-                                    readOnly
-                                    description="Según configuración global"
-                                />
-                            </SimpleGrid>
-                        </Paper>
+                    {/* SECCIÓN DE PEAJES MANUAL */}
+                    <Paper withBorder p="md" mb="md">
+                        <Group mb="xs">
+                            <IconCoin size={20} color="orange" />
+                            <Text fw={700}>Gastos de Ruta</Text>
+                        </Group>
+                        <SimpleGrid cols={2}>
+                            <NumberInput
+                                label="Cantidad de Peajes"
+                                description="Ingrese total (Ida y Vuelta)"
+                                min={0}
+                                {...form.getInputProps('cantidadPeajes')}
+                            />
+                            <TextInput
+                                label="Precio Unitario"
+                                value={`$${configPrecios.peaje}`}
+                                readOnly
+                                description="Según configuración global"
+                            />
+                        </SimpleGrid>
+                    </Paper>
 
-                        {/* RESUMEN DE COTIZACIÓN */}
-                        <Paper withBorder p="md" bg="blue.0" radius="md">
-                            <Group mb="md">
-                                <IconCalculator size={24} color="#1c7ed6" />
-                                <Title order={4}>Resumen de Costos</Title>
-                            </Group>
+                    {/* RESUMEN DE COTIZACIÓN */}
+                    <Paper withBorder p="md" bg="blue.0" radius="md">
+                        <Group mb="md">
+                            <IconCalculator size={24} color="#1c7ed6" />
+                            <Title order={4}>Resumen de Costos</Title>
+                        </Group>
 
-                            <Grid>
-                                <Grid.Col span={8}><Text>Flete Base (Activos x Km):</Text></Grid.Col>
-                                <Grid.Col span={4}><Text fw={700} ta="right">${totales.fleteBase.toFixed(2)}</Text></Grid.Col>
+                        <Grid>
+                            <Grid.Col span={8}><Text>Flete Base (Activos x Km):</Text></Grid.Col>
+                            <Grid.Col span={4}><Text fw={700} ta="right">${totales.fleteBase.toFixed(2)}</Text></Grid.Col>
 
-                                <Grid.Col span={8}><Text>Peajes Estimados:</Text></Grid.Col>
-                                <Grid.Col span={4}><Text fw={700} ta="right">${totales.peajes.toFixed(2)}</Text></Grid.Col>
+                            <Grid.Col span={8}><Text>Peajes Estimados:</Text></Grid.Col>
+                            <Grid.Col span={4}><Text fw={700} ta="right">${totales.peajes.toFixed(2)}</Text></Grid.Col>
 
-                                <Grid.Col span={12}><Divider my="xs" color="blue.3" /></Grid.Col>
+                            <Grid.Col span={12}><Divider my="xs" color="blue.3" /></Grid.Col>
 
-                                <Grid.Col span={6}><Text size="lg" fw={900} c="blue.9">TOTAL:</Text></Grid.Col>
-                                <Grid.Col span={6}><Text size="lg" fw={900} ta="right" c="blue.9">${totales.granTotal.toFixed(2)}</Text></Grid.Col>
-                            </Grid>
-                        </Paper>
+                            <Grid.Col span={6}><Text size="lg" fw={900} c="blue.9">TOTAL:</Text></Grid.Col>
+                            <Grid.Col span={6}><Text size="lg" fw={900} ta="right" c="blue.9">${totales.granTotal.toFixed(2)}</Text></Grid.Col>
+                        </Grid>
+                    </Paper>
 
-                        <Button
-                            fullWidth
-                            size="xl"
-                            mt="xl"
-                            type="submit"
-                            loading={submitting}
-                            leftSection={<IconTruck size={24} />}
-                        >
-                            Confirmar Flete
-                        </Button>
-                    </Grid.Col>
-                </Grid>
-            </form>
-     
+                    <Button
+                        fullWidth
+                        size="xl"
+                        mt="xl"
+                        type="submit"
+                        loading={submitting}
+                        leftSection={<IconTruck size={24} />}
+                    >
+                        Confirmar Flete
+                    </Button>
+                </Grid.Col>
+            </Grid>
+        </form>
+
     );
 }
