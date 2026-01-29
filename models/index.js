@@ -34,6 +34,10 @@ const db = {
     RemolqueInstancia: require('./gestionMantenimiento/RemolqueInstancia'),
     Maquina: require('./gestionMantenimiento/Maquina'),
     MaquinaInstancia: require('./gestionMantenimiento/MaquinaInstancia'),
+    Inmueble: require('./gestionMantenimiento/Inmueble'),
+    InmuebleInstancia: require('./gestionMantenimiento/InmuebleInstancia'),
+    Equipo: require('./gestionMantenimiento/Equipo'),
+    EquipoInstancia: require('./gestionMantenimiento/EquipoInstancia'),
 
     // INVENTARIO
     Consumible: require('./inventario/Consumible'),
