@@ -1,4 +1,4 @@
-import { notificarCabezas, notificarUsuario } from "@/app/api/notificar/route";
+import { notificarUsuario } from "@/app/api/notificar/route";
 import { Empleado, HorasTrabajadas, User } from "@/models";
 import { NextResponse } from "next/server";
 
