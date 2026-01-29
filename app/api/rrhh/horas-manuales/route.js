@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { HorasTrabajadas, Empleado, User } from "@/models";
 import { Op } from "sequelize";
-import { notificarCabezas, notificarUsuario } from "../../notificar/route";
+import { notificarUsuario } from "../../notificar/route";
 
 export async function GET() {
     try {
@@ -44,11 +44,10 @@ export async function POST(req) {
 
         
 
-        notificarUsuario({
+        notificarUsuario(1 , {
             title: "Nueva Hora Manual Registrada",
             body: `${creador.empleado.nombre} ${creador.empleado.apellido} ha registrado ${horas} horas para ${empleado.nombre} ${empleado.apellido} el día ${new Date(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}.`,
             url: "/superuser/rrhh/empleados/" + empleadoId,
-            usuarioId: 1 // Notificar al admin (ID 1)
         })
 
         return NextResponse.json(nuevoRegistro);
