@@ -1,9 +1,10 @@
 'use client';
 
-import { Container, Title, Text, SimpleGrid, Paper, Group, ThemeIcon, rem, Menu, Button, Flex, Stack } from '@mantine/core';
+import { Container, Title, Text, SimpleGrid, Paper, Group, ThemeIcon, rem, Menu, Button, Flex, Stack, Loader, Center } from '@mantine/core';
 import { IconBuildingWarehouse, IconAssembly, IconTruck, IconTool, IconPlus, IconShip, IconRectangleRoundedTop, IconLayersUnion, IconCar4wd, IconCar4wdFilled, IconCar, IconCategory, IconBoxModel } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useState } from 'react';
 
 // Datos para las nuevas tarjetas de navegación
 const mockdata = [
@@ -25,11 +26,21 @@ const mockdata = [
 
 export default function FlotaDashboardPage() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = (href) => {
+    setLoading(true);
+    router.push(href);
+  }
 
   const items = mockdata.map((item) => (
     <Paper
       key={item.title}
-      onClick={() => router.push(item.href)}
+      onClick={() => handleClick(item.href)}
+      shadow="md"
+      style={{ cursor: "pointer" }}
+      p="md"
+      radius="md"
     >
       <Flex>
         <ThemeIcon variant="light" color={item.color} size={48} radius="md" m={10}>
@@ -42,6 +53,14 @@ export default function FlotaDashboardPage() {
       </Flex>
     </Paper>
   ));
+
+  if (loading) {
+    return (
+      <Center style={{ height: '60vh' }}>
+        <Loader size="lg" variant="dots" />
+      </Center>
+    );
+  } else
 
   return (
     <Paper size="lg"  p={40}>

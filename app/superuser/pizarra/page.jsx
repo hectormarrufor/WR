@@ -220,7 +220,7 @@ export default function PizarraPage() {
             <Divider />
             <Stack gap="sm">
               {props.registros.map((reg) => (
-                <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${reg.Empleado.id}`)}>
+                reg.observaciones !== "Dia de descanso" && <UnstyledButton key={reg.id} onClick={() => router.push(`/superuser/rrhh/empleados/${reg.Empleado.id}`)}>
                   <Group key={reg.id} wrap="nowrap" align="flex-start">
                     <Avatar src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null} size="sm" radius="xl" />
                     <Box>

@@ -1,4 +1,4 @@
-import { notificarCabezas } from "@/app/api/notificar/route";
+import { notificarCabezas, notificarUsuario } from "@/app/api/notificar/route";
 import { Empleado, HorasTrabajadas, User } from "@/models";
 import { NextResponse } from "next/server";
 
@@ -50,10 +50,11 @@ export async function POST(req, { params }) {
 
         
 
-        notificarCabezas({
+        notificarUsuario({
             title: "Nueva Hora Manual Registrada",
             body: `${creadorNombre} ${creadorApellido} ha registrado ${horas} horas para ${nombre} ${apellido} el día ${new Date(fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}.`,
-            url: "/superuser/rrhh/empleados/" + id
+            url: "/superuser/rrhh/empleados/" + id,
+            usuarioId: 1 // Notificar al admin (ID 1)
         })
 
 

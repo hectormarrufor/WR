@@ -71,6 +71,8 @@ export default function PagosPage() {
     const nominaCalculada = useMemo(() => {
         if (!empleados.length) return [];
 
+        console.log("Calculando nómina para empleados:", empleados);
+
         return empleados.map(emp => {
             const tasaCambio = emp.tasaSueldo === "euro" ? tasas.eur
                 : emp.tasaSueldo === "usdt" ? tasas.usdt
@@ -104,7 +106,8 @@ export default function PagosPage() {
             const horasExtra = horasRango.reduce((acc, curr) => {
                 return curr.horas > 8 ? acc + (curr.horas - 8) : acc;
             }, 0);
-            const horasNormales = totalHoras - horasExtra;
+            const horasNormales = emp.id === 6 || emp.id === 3 ? totalHoras - horasExtra + 16 : totalHoras - horasExtra; // Ajuste especial para IDs 6 y 3
+            
 
             // Calcular Montos
             const pagoNormalUsd = horasNormales * valoresSueldo.horario;
