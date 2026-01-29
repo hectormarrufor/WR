@@ -296,7 +296,7 @@ export const theme = {
       "defaultProps": {
         "radius": 'sm',
         "shadow": 'md',
-        "bg": '#ffffffa8',
+        "bg": '#ffffff8e',
         "p": 'sm',
 
       },

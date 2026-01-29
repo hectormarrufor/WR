@@ -116,7 +116,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                     <Stack align="center">
                         <Avatar justify="center" size={120} src={process.env.NEXT_PUBLIC_BLOB_BASE_URL + "/" + empleado?.imagen} alt={`${empleado?.nombre} ${empleado?.apellido}`} />
                         <Text size="lg" fw={900}>Pago a {empleado?.nombre} {empleado?.apellido}</Text>
-                        <Badge size="lg" color={empleado.calculos.moneda === "bcv" ? "green" : empleado.calculos.moneda === "euro" ? "violet" : "yellow"} >Tasa {empleado?.calculos.moneda}</Badge>
+                        <Badge size="lg" color={empleado.calculos.moneda === "bcv" ? "green" : empleado.calculos.moneda === "euro" ? "violet" : "yellow"} >{empleado?.calculos.moneda}</Badge>
                     </Stack>
                     <Card withBorder padding="sm" radius="md" bg="green.0" style={{ borderColor: 'var(--mantine-color-green-3)' }}>
                         <Group justify="space-between">

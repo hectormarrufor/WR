@@ -134,7 +134,7 @@ export default function RootLayout({ children }) {
                           backgroundImage: 'url(/fondo.jpg)',
                           backgroundSize: 'cover',
                           backgroundPosition: 'center',
-                          opacity: 0.15 // Ajusta la opacidad aquí en lugar de en la imagen
+                          opacity: 0.3 // Ajusta la opacidad aquí en lugar de en la imagen
                         }}
                       />
               

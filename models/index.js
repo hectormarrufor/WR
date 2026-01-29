@@ -17,9 +17,9 @@ const db = {
     PushSubscription: require('./pushSubscription'),
 
     // FLOTA Y GESTION DE MANTENIMIENTO
-    VehiculoInstancia: require('./gestionMantenimiento/VehiculoInstancia'),
+    InmuebleInstancia: require('./gestionMantenimiento/InmuebleInstancia'),
+    Inmueble: require('./gestionMantenimiento/Inmueble'),
     DocumentoActivo: require('./gestionMantenimiento/DocumentoActivo'),
-    Activo: require('./gestionMantenimiento/Activo'),
     Hallazgo: require('./gestionMantenimiento/Hallazgo'),
     OrdenMantenimiento: require('./gestionMantenimiento/OrdenMantenimiento'),
     TareaMantenimiento: require('./gestionMantenimiento/tareaMantenimiento'),
@@ -27,18 +27,18 @@ const db = {
     Kilometraje: require('./gestionMantenimiento/Kilometraje'),
     MantenimientoRepuesto: require('./gestionMantenimiento/MantenimientoRepuesto'),
     Horometro: require('./gestionMantenimiento/Horometro'),
-    SubsistemaInstancia: require('./gestionMantenimiento/SubsistemaInstancia'),
-    Subsistema: require('./gestionMantenimiento/Subsistema'),
     Vehiculo: require('./gestionMantenimiento/Vehiculo'),
+    VehiculoInstancia: require('./gestionMantenimiento/VehiculoInstancia'),
     Remolque: require('./gestionMantenimiento/Remolque'),
     RemolqueInstancia: require('./gestionMantenimiento/RemolqueInstancia'),
     Maquina: require('./gestionMantenimiento/Maquina'),
     MaquinaInstancia: require('./gestionMantenimiento/MaquinaInstancia'),
-    Inmueble: require('./gestionMantenimiento/Inmueble'),
-    InmuebleInstancia: require('./gestionMantenimiento/InmuebleInstancia'),
     Equipo: require('./gestionMantenimiento/Equipo'),
     EquipoInstancia: require('./gestionMantenimiento/EquipoInstancia'),
-
+    SubsistemaInstancia: require('./gestionMantenimiento/SubsistemaInstancia'),
+    Activo: require('./gestionMantenimiento/Activo'),
+    Subsistema: require('./gestionMantenimiento/Subsistema'),
+    
     // INVENTARIO
     Consumible: require('./inventario/Consumible'),
     ConsumibleRecomendado: require('./inventario/ConsumibleRecomendado'),

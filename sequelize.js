@@ -23,7 +23,7 @@ const commonConfig = {
       acquire: 30000
     },
     dialectModule: pg,
-    logging: false, // Desactiva el logging para producción
+    logging:  true
   }
 ;
 
@@ -32,7 +32,7 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   // Patrón Singleton para evitar fugas de conexiones en desarrollo
   if (!global.sequelize) {
-    global.sequelize = new Sequelize(process.env.DB_URI, {...commonConfig, logging: false});
+    global.sequelize = new Sequelize(process.env.DB_URI, {...commonConfig, logging: true});
   }
   sequelize = global.sequelize;
 }
