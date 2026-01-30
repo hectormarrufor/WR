@@ -42,7 +42,9 @@ const Activo = sequelize.define('Activo', {
   indexes: [
     { unique: true, fields: ['vehiculoInstanciaId'], where: { vehiculoInstanciaId: { [Op.ne]: null } } },
     { unique: true, fields: ['remolqueInstanciaId'], where: { remolqueInstanciaId: { [Op.ne]: null } } },
-    { unique: true, fields: ['maquinaInstanciaId'], where: { maquinaInstanciaId: { [Op.ne]: null } } }
+    { unique: true, fields: ['maquinaInstanciaId'], where: { maquinaInstanciaId: { [Op.ne]: null } } },
+    { unique: true, fields: ['inmuebleInstanciaId'], where: { inmuebleInstanciaId: { [Op.ne]: null } } },
+    { unique: true, fields: ['equipoInstanciaId'], where: { equipoInstanciaId: { [Op.ne]: null } } },
   ]
 });
 

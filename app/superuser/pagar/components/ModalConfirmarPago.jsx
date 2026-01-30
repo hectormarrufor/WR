@@ -147,6 +147,7 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                     </Card>
 
                     {/* 2. DATOS DE DESTINO (EMPLEADO) */}
+                    {empleado.calculos.moneda !==  "usdt" ? 
                     <Box>
                         <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb={5}>Datos del Empleado (Destinatario)</Text>
                         
@@ -209,6 +210,12 @@ export default function ModalConfirmarPago({ opened, onClose, empleado, totalPag
                             </Stack>
                       
                     </Box>
+                    :
+                    <Alert variant="light" color="blue" title="Pago en USDT" icon={<IconCurrencyDollar />}>
+                        El empleado recibirá el pago en USDT a través de la plataforma acordada, al correo: <strong>hectormmarrufor@gmail.com</strong>.<br /> 
+                        Por favor, asegúrate de coordinar los detalles directamente con el empleado.
+                    </Alert>
+                }
 
                     <Divider />
 

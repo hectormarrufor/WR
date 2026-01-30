@@ -5,7 +5,6 @@ const InmuebleInstancia = sequelize.define('InmuebleInstancia', {
   // Datos específicos que no están en la tabla Activo general
   direccionEspecifica: { type: DataTypes.STRING, comment: "Ej: Ala Norte, Piso 2" },
   catastro: { type: DataTypes.STRING, allowNull: true },
-  areaReal: { type: DataTypes.FLOAT },
 }, {
   tableName: 'InmueblesInstancias'
 });

@@ -5,7 +5,7 @@
       "schedule": "0 22 * * *" 
     },
     {
-      "path": "/api/bcv?force=true",
+      "path": "/api/cron-jobs/6am",
       "schedule": "0 10 * * *"
     }
   ]

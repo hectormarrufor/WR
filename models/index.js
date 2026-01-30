@@ -2,9 +2,14 @@
 const sequelize = require('../sequelize');
 
 const db = {
-
+    
+    InmuebleInstancia: require('./gestionMantenimiento/InmuebleInstancia'),
+    Inmueble: require('./gestionMantenimiento/Inmueble'),
+    Equipo: require('./gestionMantenimiento/Equipo'),
+    EquipoInstancia: require('./gestionMantenimiento/EquipoInstancia'),
     //Configuracion General
     HistorialPrecio: require('./tesoreria/HistorialPrecio'),
+    BcvPrecioHistorico: require('./BcvPrecioHistorico'),
 
     // RECURSOS HUMANOS
     User: require('./user'),
@@ -17,8 +22,6 @@ const db = {
     PushSubscription: require('./pushSubscription'),
 
     // FLOTA Y GESTION DE MANTENIMIENTO
-    InmuebleInstancia: require('./gestionMantenimiento/InmuebleInstancia'),
-    Inmueble: require('./gestionMantenimiento/Inmueble'),
     DocumentoActivo: require('./gestionMantenimiento/DocumentoActivo'),
     Hallazgo: require('./gestionMantenimiento/Hallazgo'),
     OrdenMantenimiento: require('./gestionMantenimiento/OrdenMantenimiento'),
@@ -33,8 +36,6 @@ const db = {
     RemolqueInstancia: require('./gestionMantenimiento/RemolqueInstancia'),
     Maquina: require('./gestionMantenimiento/Maquina'),
     MaquinaInstancia: require('./gestionMantenimiento/MaquinaInstancia'),
-    Equipo: require('./gestionMantenimiento/Equipo'),
-    EquipoInstancia: require('./gestionMantenimiento/EquipoInstancia'),
     SubsistemaInstancia: require('./gestionMantenimiento/SubsistemaInstancia'),
     Activo: require('./gestionMantenimiento/Activo'),
     Subsistema: require('./gestionMantenimiento/Subsistema'),
