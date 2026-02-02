@@ -5,9 +5,11 @@ import {
   Button, Group, Loader, Paper, Title, TextInput, 
   Container, Center 
 } from "@mantine/core";
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconPlus, IconSearch, IconArrowLeft } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import ODTList from "./ODTList"; // Importamos el componente de arriba
+import { format } from "date-fns";
+import { es } from "date-fns/locale"; // Importar local español
+import ODTList from "./ODTList";
 
 export default function ODTPage() {
   const router = useRouter();
@@ -20,7 +22,8 @@ export default function ODTPage() {
       try {
         const res = await fetch("/api/odts", { cache: "no-store" });
         const data = await res.json();
-        setOdts(Array.isArray(data) ? data : []);
+
+        setOdts(data);
       } catch (error) {
         console.error("Error cargando ODTs:", error);
       } finally {
@@ -38,7 +41,8 @@ export default function ODTPage() {
             odt.nroODT.toLowerCase().includes(term) ||
             odt.cliente?.nombre?.toLowerCase().includes(term) ||
             odt.chofer?.nombre?.toLowerCase().includes(term) ||
-            odt.vehiculoPrincipal?.codigoInterno?.toLowerCase().includes(term)
+            odt.vehiculoPrincipal?.codigoInterno?.toLowerCase().includes(term) ||
+            odt.fecha?.toLowerCase().includes(term) // Permitir buscar por fecha formateada
         );
     });
   }, [odts, search]);
@@ -52,10 +56,17 @@ export default function ODTPage() {
       <Paper p="md" radius="md" withBorder>
         {/* Cabecera y Acciones */}
         <Group justify="space-between" mb="lg">
-          <Title order={3}>Ordenes de trabajo (ODT)</Title>
+          <Group gap="xs">
+            <Button variant="default" size="xs" onClick={() => router.back()}>
+                <IconArrowLeft size={16} />
+            </Button>
+            <Title order={3}>Ordenes de trabajo (ODT)</Title>
+          </Group>
+          
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => router.push("/superuser/odt/nuevo")}
+            size="sm"
           >
             Nueva ODT
           </Button>
@@ -63,7 +74,7 @@ export default function ODTPage() {
 
         {/* Barra de Búsqueda */}
         <TextInput
-          placeholder="Buscar por Nro, Cliente, Chofer..."
+          placeholder="Buscar por Nro, Cliente, Chofer, Fecha..."
           mb="md"
           leftSection={<IconSearch size={16} />}
           value={search}

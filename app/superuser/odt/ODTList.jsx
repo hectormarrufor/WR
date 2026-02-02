@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
 import { MRT_Localization_ES } from 'mantine-react-table/locales/es';
 import { notifications } from "@mantine/notifications";
+import { formatDateLong, formatDateShort, parseDateToLocal } from "@/app/helpers/dateUtils";
 
 export default function ODTList({ odts }) {
   const router = useRouter();
@@ -80,11 +81,10 @@ export default function ODTList({ odts }) {
         Cell: ({ cell }) => <Text fw={700}>#{cell.getValue()}</Text>
       },
       {
-        accessorFn: (row) => new Date(row.fecha),
+        accessorFn: (row) => formatDateShort(row.fecha),
         id: 'fecha',
         header: 'Fecha',
         size: 120,
-        Cell: ({ cell }) => cell.getValue()?.toLocaleDateString(),
         filterVariant: 'date-range',
       },
       {
@@ -226,7 +226,7 @@ export default function ODTList({ odts }) {
           <Group justify="space-between" mb="xs">
             <Text fw={700} size="lg">ODT #{odt.nroODT}</Text>
             <Badge color="blue" variant="light">
-              {new Date(odt.fecha).toLocaleDateString()}
+              {formatDateLong(odt.fecha)}
             </Badge>
           </Group>
 

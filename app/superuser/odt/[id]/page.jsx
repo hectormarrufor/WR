@@ -57,7 +57,7 @@ export default function ODTDetailPage() {
         {isAdmin && (
           <Button
             leftSection={<IconPencil size={18} />}
-            onClick={() => router.push(`/superuser/odt/${id}?mode=edit`)} // Asumiendo que tu form maneja query params o ruta de edición
+            onClick={() => router.push(`/superuser/odt/${id}/editar`)} // Asumiendo que tu form maneja query params o ruta de edición
           >
             Editar ODT
           </Button>

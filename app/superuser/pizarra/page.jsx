@@ -27,6 +27,7 @@ import { es } from "date-fns/locale";
 import "./fullcalendar-custom.css";
 import ManualHoursButton from "./ManualHoursButton";
 import { toLocalDate } from "@/app/helpers/fechaCaracas";
+import { formatDateLong } from "@/app/helpers/dateUtils";
 
 // ==========================================
 // 1. HELPERS (Sin cambios)
@@ -406,7 +407,7 @@ function MobileAgendaView({ events, router }) {
             <Group>
               <IconCalendarEvent size={20} className="text-gray-600" />
               <Text fw={700} tt="capitalize" size="lg">
-                {format(parse(dateKey, "yyyy-MM-dd", new Date()), "EEEE, d 'de' MMMM", { locale: es })}
+                {formatDateLong(dateKey)}
               </Text>
             </Group>
           </Box>

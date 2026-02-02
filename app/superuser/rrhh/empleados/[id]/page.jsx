@@ -137,7 +137,7 @@ export default function Page({ params }) {
 
                 // Cálculos de horas
                 const horasTotal = empleadofetched.HorasTrabajadas?.reduce((total, hora) => total + hora.horas, 0) || 0;
-                setHorasEstaSemana(horasTotal);
+                setHorasEstaSemana(empleadofetched.id === 6 || empleadofetched.id === 3 ? horasTotal + 16 :horasTotal);
 
                 const horasExtra = empleadofetched.HorasTrabajadas?.reduce((total, hora) => {
                     return hora.horas > 8 ? total + (hora.horas - 8) : total;
