@@ -9,11 +9,12 @@ import {
 } from "@mantine/core";
 import {
   IconChevronLeft, IconChevronRight, IconSteeringWheel,
-  IconClipboardText, IconUser,
+  IconClipboardText,
   IconCalendarEvent,
   IconTruck,
   IconTool,
-  IconUsers
+  IconUsers,
+  IconArrowLeft
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
@@ -134,7 +135,7 @@ export default function PizarraPage() {
   }, []);
 
   // --- RENDERIZADO VISUAL DEL EVENTO ---
- const renderEventContent = (info) => {
+  const renderEventContent = (info) => {
     const props = info.event.extendedProps;
     const isODT = info.event.id.startsWith('odt');
     const isManualGroup = info.event.id.startsWith('group-manual');
@@ -239,21 +240,21 @@ export default function PizarraPage() {
 
       return (
         <ScrollArea.Autosize mah={300} type="auto" scrollbars="y">
-            {content}
+          {content}
         </ScrollArea.Autosize>
       )
     };
 
     return (
-      <HoverCard 
-        width={300} 
-        shadow="md" 
-        withinPortal 
-        withArrow 
-        openDelay={100} 
+      <HoverCard
+        width={300}
+        shadow="md"
+        withinPortal
+        withArrow
+        openDelay={100}
         zIndex={1001}
-        position="right" // <--- AQUÍ ESTÁ EL CAMBIO (Sale a la derecha)
-        offset={10}      // Un poco de separación para que no tape
+        position="right"
+        offset={10}
       >
         <HoverCard.Target>
           <Box style={{ width: '100%', height: '100%', overflow: 'hidden', padding: '2px 4px' }}>
@@ -288,9 +289,9 @@ export default function PizarraPage() {
           </Box>
         </HoverCard.Target>
         <HoverCard.Dropdown style={{ overflow: 'hidden', padding: 0 }}>
-             <Box p="xs">
-                 <HoverContent />
-             </Box>
+          <Box p="xs">
+            <HoverContent />
+          </Box>
         </HoverCard.Dropdown>
       </HoverCard>
     );
@@ -301,16 +302,43 @@ export default function PizarraPage() {
   return (
     <Container size="xl" p="md" style={{ height: 'calc(100vh - 60px)', display: 'flex', flexDirection: 'column' }}>
 
-      <Group mb="sm" justify="space-between">
-        <Title order={3}>Pizarra Semanal</Title>
-        <Group gap="xs">
-          <Button variant="default" size="xs" onClick={() => calendarRef.current?.getApi().prev()}><IconChevronLeft size={16} /></Button>
-          <Button variant="default" size="xs" onClick={() => calendarRef.current?.getApi().today()}>Hoy</Button>
-          <Button variant="default" size="xs" onClick={() => calendarRef.current?.getApi().next()}><IconChevronRight size={16} /></Button>
-          <Button onClick={() => router.push('/superuser/odt/nuevo')} size="xs">Nueva ODT</Button>
-          <ManualHoursButton />
+      {/* HEADER RESPONSIVE */}
+      <Box mb="sm">
+        {/* VISTA DESKTOP (> sm) */}
+        <Group justify="space-between" visibleFrom="sm">
+          <Button variant="default" size="xs" onClick={() => router.back()} leftSection={<IconArrowLeft size={16} />}>Volver</Button>
+          <Title order={3}>Pizarra Semanal</Title>
+          <Group gap="xs">
+            <Button variant="default" size="xs" onClick={() => calendarRef.current?.getApi().prev()}><IconChevronLeft size={16} /></Button>
+            <Button variant="default" size="xs" onClick={() => calendarRef.current?.getApi().today()}>Esta Semana</Button>
+            <Button variant="default" size="xs" onClick={() => calendarRef.current?.getApi().next()}><IconChevronRight size={16} /></Button>
+            <Button onClick={() => router.push('/superuser/odt/nuevo')} size="xs">Nueva ODT</Button>
+            <ManualHoursButton />
+          </Group>
         </Group>
-      </Group>
+
+        {/* VISTA MOVIL (< sm) */}
+        <Stack gap="xs" hiddenFrom="sm">
+          <Group justify="space-between" align="center">
+            {/* Botón volver solo icono */}
+            <Button variant="default" size="xs" p={0} w={32} h={32} onClick={() => router.back()}>
+              <IconArrowLeft size={18} />
+            </Button>
+
+            {/* Título centrado */}
+            <Title order={4} style={{ textAlign: 'center' }}>Pizarra</Title>
+
+            {/* Espacio vacío para equilibrar el header y que el título quede realmente en el medio */}
+            <Box w={32} />
+          </Group>
+
+          {/* Botones de acción en una segunda fila */}
+          <Group grow>
+            <Button onClick={() => router.push('/superuser/odt/nuevo')} size="xs">Nueva ODT</Button>
+            <ManualHoursButton />
+          </Group>
+        </Stack>
+      </Box>
 
       {/* CALENDARIO */}
       <Box visibleFrom="sm" style={{ flex: 1, minHeight: 0 }}>
@@ -321,7 +349,7 @@ export default function PizarraPage() {
             initialView="timeGridWeek"
             headerToolbar={false}
             locale={esLocale}
-            firstDay={6} // <--- CAMBIO AQUI: 6 = Sábado
+            firstDay={6}
             events={events}
             eventContent={renderEventContent}
             eventClick={(info) => {
@@ -342,7 +370,7 @@ export default function PizarraPage() {
         </Paper>
       </Box>
 
-      {/* MÓVIL (Sin cambios) */}
+      {/* MÓVIL */}
       <Box hiddenFrom="sm">
         <MobileAgendaView events={events} router={router} />
       </Box>
@@ -351,10 +379,9 @@ export default function PizarraPage() {
 }
 
 // ==========================================
-// 3. VISTA MÓVIL (Se mantiene igual que tu código original)
+// 3. VISTA MÓVIL
 // ==========================================
 function MobileAgendaView({ events, router }) {
-  // ... (Tu código de mobile se mantiene igual, ya está optimizado para scroll nativo del body)
   const grouped = useMemo(() => {
     const groups = {};
     const sorted = [...events].sort((a, b) => new Date(b.start) - new Date(a.start));

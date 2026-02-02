@@ -16,7 +16,8 @@ import {
     IconClock, IconBriefcase, IconNotes, IconLink,
     IconTrash,
     IconCalendar,
-    IconShirt, IconShoe, IconHanger, IconRuler2
+    IconShirt, IconShoe, IconHanger, IconRuler2,
+    IconChevronLeft
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMediaQuery } from "@mantine/hooks"; // <--- IMPORTANTE
@@ -31,9 +32,10 @@ import { formatToInputDate, getSafeDate, toLocalDate } from "@/app/helpers/fecha
 import DocumentosManager from "../../components/DocumentosManager";
 
 // --- COMPONENTE PARA EL REGISTRO DE HORAS EN MÓVIL ---
-const MobileWorkLogCard = ({ log }) => {
+// Ahora recibe onEdit y onDelete
+const MobileWorkLogCard = ({ log, onEdit, onDelete }) => {
     const isExtra = log.horas > 8;
-    const fechaFormatted = formatToInputDate((log.fecha)); // O tu lógica de substring
+    const fechaFormatted = formatToInputDate((log.fecha));
 
     return (
         <Paper withBorder p="md" radius="md" mb="sm" shadow="xs">
@@ -42,9 +44,21 @@ const MobileWorkLogCard = ({ log }) => {
                     <IconClock size={16} color="gray" />
                     <Text fw={700} size="sm">{fechaFormatted}</Text>
                 </Group>
-                <Badge color={isExtra ? 'orange' : 'blue'} variant="light">
-                    {log.horas} hrs
-                </Badge>
+                
+                {/* GRUPO DE ACCIONES + BADGE */}
+                <Group gap={5}>
+                    <Badge color={isExtra ? 'orange' : 'blue'} variant="light" mr={5}>
+                        {log.horas} hrs
+                    </Badge>
+                    
+                    {/* BOTONES DE EDICIÓN MÓVIL */}
+                    <ActionIcon variant="light" color="blue" size="sm" onClick={onEdit}>
+                        <IconEdit size={14} />
+                    </ActionIcon>
+                    <ActionIcon variant="light" color="red" size="sm" onClick={onDelete}>
+                        <IconTrash size={14} />
+                    </ActionIcon>
+                </Group>
             </Group>
 
             <Divider my="xs" variant="dashed" />
@@ -153,6 +167,28 @@ export default function Page({ params }) {
         console.log(empleado);
     }, [empleado]);
 
+    // Función para borrar horas (Faltaba en tu código original)
+    const handleDeleteHora = async (horaId) => {
+        if (!confirm("¿Estás seguro de eliminar este registro de horas?")) return;
+        
+        try {
+            const res = await fetch(`/api/rrhh/horas/${horaId}`, { method: 'DELETE' });
+            if (res.ok) {
+                notifications.show({ title: 'Eliminado', message: 'Registro eliminado', color: 'green' });
+                // Actualizar estado localmente para no recargar toda la página
+                setEmpleado(prev => ({
+                    ...prev,
+                    HorasTrabajadas: prev.HorasTrabajadas.filter(h => h.id !== horaId)
+                }));
+            } else {
+                notifications.show({ title: 'Error', message: 'No se pudo eliminar', color: 'red' });
+            }
+        } catch (error) {
+            console.error(error);
+            notifications.show({ title: 'Error', message: 'Error de conexión', color: 'red' });
+        }
+    };
+
     if (cargando) {
         return (
             <Center h="80vh">
@@ -194,10 +230,21 @@ export default function Page({ params }) {
         <Paper>
             {/* Header */}
             <Group justify="space-between" mb="lg">
-                <div>
-                    <Title order={2}>Perfil de Empleado</Title>
-                    <Text c="dimmed" size="sm">Gestión de RRHH y Nómina</Text>
-                </div>
+                <Group>
+                    <ActionIcon
+                        variant="subtle" 
+                        color="gray" 
+                        size="lg" 
+                        onClick={() => router.back()} // Acción para volver atrás
+                    >
+                        <IconChevronLeft size={24} />
+                    </ActionIcon>
+                    <div>
+                        <Title order={2}>Perfil de Empleado</Title>
+                        <Text c="dimmed" size="sm">Gestión de RRHH y Nómina</Text>
+                    </div>
+                </Group>
+
                 <Button leftSection={<IconEdit size={18} />} variant="outline" onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}/editar`)}>
                     Editar
                 </Button>
@@ -208,7 +255,7 @@ export default function Page({ params }) {
                 <Grid.Col span={{ base: 12, md: 4, lg: 3 }}>
                     <Card withBorder padding="xl" radius="md" shadow="sm">
                         <Card.Section inheritPadding py="md" bg="gray.0">
-                            <Stack align="center" gap="xs">
+                           <Stack align="center" gap="xs" pt="xl"> 
                                 <Avatar
                                     src={empleado.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${empleado.imagen}` : null}
                                     size={120} radius={120} color="blue"
@@ -432,7 +479,16 @@ export default function Page({ params }) {
                                     {isMobile ? (
                                         <Box>
                                             {empleado.HorasTrabajadas?.map((h) => (
-                                                <MobileWorkLogCard key={h.id} log={h} />
+                                                <MobileWorkLogCard 
+                                                    key={h.id} 
+                                                    log={h}
+                                                    // Pasamos las funciones de editar y borrar
+                                                    onEdit={() => {
+                                                        setSelectedHora(h);
+                                                        setModalCrearHora(true);
+                                                    }}
+                                                    onDelete={() => handleDeleteHora(h.id)}
+                                                />
                                             ))}
                                         </Box>
                                     ) : (
