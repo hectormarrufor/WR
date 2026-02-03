@@ -4,160 +4,149 @@ import React from 'react';
 import {
     Title, Text, Button, Container, Paper, Box, Stack,
     Group, Anchor, Center, Image, rem, ThemeIcon, Grid, 
-    Flex, SimpleGrid, Card, Badge, List, Divider
+    Flex, SimpleGrid, Card, Badge, List, Divider, Overlay
 } from '@mantine/core';
 import { useMediaQuery, useViewportSize } from '@mantine/hooks';
 import { 
     IconMail, IconPhone, IconBrandWhatsapp, IconArrowRight, 
-    IconTruck, IconRecycle, IconCertificate, IconShieldCheck 
+    IconTruck, IconRecycle, IconCertificate, IconShieldCheck,
+    IconMapPin, IconCheck, IconWorld, IconClock
 } from '@tabler/icons-react';
 import { Fade } from 'react-slideshow-image';
 import 'react-slideshow-image/dist/styles.css';
 
-// --- DATOS ESTÁTICOS ---
-const slideImages = [
-    '/carrusel1.jpg',
-    '/carrusel2.jpg',
-    '/carrusel3.jpg'
-];
+// --- DATOS ---
+const slideImages = ['/carrusel1.jpg', '/carrusel2.jpg', '/carrusel3.jpg', '/carrusel4.jpg', '/carrusel5.jpg'];
 
 const servicios = [
-    { title: "Gestión de carga", img: "/plataforma.jpg", desc: "Logística integral punto a punto." },
-    { title: "Mantenimiento de locaciones", img: "/retro.jpg", desc: "Preparación de terreno y adecuación." },
-    { title: "Recolección de residuos", img: "/vaccum.jpg", desc: "Transporte especializado y certificado." },
-    { title: "Cargas pesadas", img: "/lowboy.jpg", desc: "Equipos sobredimensionados y maquinaria." },
+    { title: "Gestión de carga", img: "/plataforma.jpg", desc: "Logística integral punto a punto con trazabilidad." },
+    { title: "Adecuación de Locaciones", img: "/retro.jpg", desc: "Movimiento de tierra y preparación de terrenos." },
+    { title: "Gestión Ambiental", img: "/vaccum.jpg", desc: "Transporte certificado de fluidos y residuos." },
+    { title: "Cargas Especiales", img: "/lowboy.jpg", desc: "Transporte de equipos sobredimensionados." },
 ];
 
-const flota = [
-    "16 Chutos", "5 Volteos", "1 Volqueta", "3 Lowboys", 
-    "8 Bateas", "Montacargas", "Vacuum", "Fénix Trailers"
-];
+const flota = ["16 Chutos", "5 Volteos", "1 Volqueta", "3 Lowboys", "8 Bateas", "Montacargas", "Vacuum", "Fénix Trailers"];
 
 export default function LandingPage() {
     const isMobile = useMediaQuery('(max-width: 768px)');
-    const { height: viewportHeight } = useViewportSize();
     
-    // --- SOLUCIÓN DE ALTURA ---
-    // En Móvil: Altura fija de 500px (Suficiente para ver contenido, pero no ocupa toda la pantalla)
-    // En Desktop: Mínimo 700px o el 90% de la pantalla.
-    const heroHeight = isMobile ? 380 : Math.max(700, viewportHeight * 0.9);
+    // --- 1. AJUSTE DE ALTURA (50vh en móvil / 80vh en desktop) ---
+    const heroHeight = isMobile ? '50vh' : '80vh';
 
-    // --- SOLUCIÓN DE RECORTES ---
-    // En Móvil: El pico de abajo es menos profundo (95%) para no cortar texto ni imagen.
-    // En Desktop: El pico es más pronunciado (85%) para estilo.
+    // --- 2. FLECHA CLIP-PATH ---
     const heroClipPath = isMobile 
-        ? 'polygon(0% 0%, 100% 0%, 100% 95%, 50% 100%, 0% 95%)'
+        ? 'polygon(0% 0%, 100% 0%, 100% 90%, 50% 100%, 0% 90%)' 
         : 'polygon(0% 0%, 100% 0%, 100% 85%, 50% 100%, 0% 85%)';
 
-    const handleMailto = () => {
-        window.location.href = `mailto:transportedadica@gmail.com`;
+    // --- 3. PATRÓN DE FONDO MÁS VISIBLE ---
+    const bgPattern = {
+        backgroundColor: '#f4f6f8',
+        // Aumenté a 2px y oscurecí el color del punto (#cbd3da) para que se note más
+        backgroundImage: 'radial-gradient(#cbd3da 2px, transparent 2px)',
+        backgroundSize: '24px 24px' // Espaciado entre puntos
     };
 
     return (
-        <Box style={{ overflowX: 'hidden', width: '100%', backgroundColor: '#e2e1cd9d', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(10px)' }}>
+        <Box style={{ overflowX: 'hidden', width: '100%', fontFamily: 'sans-serif', ...bgPattern }}>
             
             {/* =========================================
-                SECCIÓN 1: HERO (AJUSTADO) 
+                SECCIÓN 1: HERO
                ========================================= */}
             <Box 
                 pos="relative" 
                 w="100%" 
                 h={heroHeight} 
+                bg="black"
                 style={{ 
-                    clipPath: heroClipPath,
-                    backgroundColor: '#000',
-                    transition: 'height 0.3s ease' // Suaviza el cambio de tamaño al rotar pantalla
+                    clipPath: heroClipPath, 
+                    zIndex: 1 
                 }}
             >
-                {/* 1.A - SLIDESHOW DE FONDO */}
-                <Box pos="absolute" top={0} left={0} right={0} bottom={0} style={{ zIndex: 0 }}>
-                    <Fade duration={5000} transitionDuration={1000} arrows={false} pauseOnHover={false} infinite>
+                {/* SLIDESHOW */}
+                <Box pos="absolute" inset={0} style={{ zIndex: 0 }}>
+                    <Fade duration={4000} transitionDuration={1500} arrows={false} pauseOnHover={false} infinite>
                         {slideImages.map((img, index) => (
-                            <div key={index} style={{ height: '100%', width: '100%' }}>
+                            <div key={index} style={{ height: heroHeight, width: '100%' }}>
                                 <Image
                                     src={img}
                                     alt="Slide"
                                     h={heroHeight} 
                                     w="100%"
                                     fit="cover"
-                                    // SOLUCIÓN ZOOM: En móvil centramos la imagen para que se vea el camión y no el cielo/suelo
                                     style={{ objectPosition: 'center center' }} 
-                                    fallbackSrc="https://placehold.co/1920x1080?text=Transporte+Dadica"
+                                    fallbackSrc="https://placehold.co/1920x1080/1a1b1e/FFF?text=Transporte+Dadica"
                                 />
                             </div>
                         ))}
                     </Fade>
                 </Box>
 
-                {/* 1.B - OVERLAY */}
+                {/* OVERLAY */}
                 <Box 
-                    pos="absolute" top={0} left={0} right={0} bottom={0} 
+                    pos="absolute" inset={0} 
                     style={{ 
                         zIndex: 1,
-                        background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.9) 100%)'
+                        background: 'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.6) 60%, rgba(10,25,40,0.95) 100%)'
                     }} 
                 />
 
-                {/* 1.C - CONTENIDO DEL HERO */}
+                {/* CONTENIDO HERO */}
                 <Container size="xl" h="100%" pos="relative" style={{ zIndex: 2 }}>
-                    {/* Ajustamos padding top en móvil para subir el contenido */}
-                    <Center h="100%" pt={isMobile ? 0 : 0}> 
-                        <Stack align="center" spacing={isMobile ? 'xs' : 'xl'}>
+                    <Center h="100%" pb={isMobile ? 20 : 80}> 
+                        {/* En movil reducimos el gap para que quepa todo en 50vh */}
+                        <Stack align="center" gap={isMobile ? 'xs' : 'lg'} mt={10}>
                             {/* Logo */}
-                            <Image
-                                src="/logo.png"
-                                alt="DADICA Logo"
-                                w={isMobile ? 180 : 450} // Logo más pequeño en móvil
-                                fit="contain"
-                                style={{ filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.6))' }}
-                                mb={isMobile ? 'xs' : 'md'}
-                            />
+                            <Box style={{ filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.2))' }}>
+                                <Image src="/logo.png" alt="DADICA Logo" w={isMobile ? 120 : 320} fit="contain" />
+                            </Box>
                             
-                            {/* Eyebrow */}
+                            {/* Badge oculto en pantallas MUY pequeñas si es necesario, o reducido */}
                             <Badge 
-                                size={isMobile ? 'md' : 'lg'} 
+                                size={isMobile ? 'xs' : 'lg'} 
                                 variant="gradient" 
-                                gradient={{ from: 'blue', to: 'cyan' }}
-                                style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
+                                gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
+                                style={{ boxShadow: '0 0 15px rgba(34, 139, 230, 0.4)', letterSpacing: '1px' }}
                             >
-                                Logística Industrial & Petrolera
+                                LOGÍSTICA INDUSTRIAL
                             </Badge>
 
-                            {/* Título Principal */}
                             <Title
                                 order={1}
                                 c="white"
                                 ta="center"
-                                fz={isMobile ? 24 : 54} // Fuente reducida considerablemente en móvil
+                                fz={{ base: 24, sm: 36, md: 46 }} // Fuente más pequeña en móvil para 50vh
                                 fw={900}
                                 lh={1.1}
-                                maw={900}
-                                px={isMobile ? 'md' : 0}
-                                style={{ textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}
+                                maw={800}
+                                style={{ textShadow: '0 4px 20px rgba(0,0,0,0.6)', letterSpacing: '-0.5px' }}
                             >
-                                Movemos tu industria con fuerza y precisión.
+                                Potencia en movimiento, <br />
+                                <Text span c="blue.4" inherit>precisión en cada entrega.</Text>
                             </Title>
 
-                            {/* Botones */}
-                            <Group mt={isMobile ? 'md' : 'md'}>
+                            <Group mt={isMobile ? 'xs' : 'md'}>
                                 <Button 
-                                    size={isMobile ? 'sm' : 'xl'} 
+                                    size={isMobile ? 'sm' : 'lg'} 
                                     color="green"
                                     radius="xl"
-                                    onClick={() => window.open('https://wa.me/584120756457', '_blank')}
-                                    rightSection={<IconArrowRight size={isMobile ? 16 : 20} />}
-                                    leftSection={<IconBrandWhatsapp size={isMobile ? 16 : 20} />}
+                                    component="a"
+                                    href="https://wa.me/584120756457"
+                                    target="_blank"
+                                    rightSection={<IconArrowRight size={18} />}
+                                    leftSection={<IconBrandWhatsapp size={isMobile ? 18 : 22} />}
+                                    style={{ boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}
                                 >
-                                    Contactar
+                                    Cotizar
                                 </Button>
                                 <Button 
-                                    size={isMobile ? 'sm' : 'xl'} 
+                                    size={isMobile ? 'sm' : 'lg'} 
                                     variant="white" 
                                     color="dark" 
                                     radius="xl"
                                     component="a"
                                     href="tel:+584120756457"
-                                    leftSection={<IconPhone size={isMobile ? 16 : 20} />}
+                                    leftSection={<IconPhone size={isMobile ? 18 : 22} />}
+                                    style={{ boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }}
                                 >
                                     Llamar
                                 </Button>
@@ -168,50 +157,129 @@ export default function LandingPage() {
             </Box>
 
             {/* =========================================
-                SECCIÓN 2: INTRODUCCIÓN 
+                SECCIÓN 2: STATS (Posición Corregida)
                ========================================= */}
-            <Container size="xl" mt={isMobile ? 40 : 80} mb={80}>
-                <SimpleGrid cols={{ base: 1, md: 2 }} spacing={50}>
-                    <Stack justify="center">
-                        <Group>
-                            <ThemeIcon size={40} radius="md" variant="light" color="blue"><IconTruck /></ThemeIcon>
-                            <Title order={2} tt="uppercase" c="blue.9" fz={isMobile ? 24 : 32}>Nuestra Esencia</Title>
-                        </Group>
-                        <Text size={isMobile ? 'md' : 'lg'} c="dimmed" style={{ textAlign: 'justify' }}>
-                            Fundada en 2008, Transporte DADICA, C.A. se ha consolidado como líder en soluciones integrales de transporte. Combinamos una flota moderna con un equipo profesional altamente calificado.
-                        </Text>
-                        <Text size={isMobile ? 'md' : 'lg'} fw={500} c="dark">
-                            Garantizamos operaciones seguras, eficientes y puntuales en todo el territorio nacional.
-                        </Text>
-                    </Stack>
-                    <SimpleGrid cols={1} spacing="md">
-                         <Card withBorder padding="lg" radius="md" style={{ borderLeft: '5px solid #228be6' }}>
-                            <Title order={4} mb="xs">Misión</Title>
-                            <Text size="sm" c="dimmed">Servicio seguro y eficiente, cuidando al trabajador y al medio ambiente.</Text>
-                         </Card>
-                         <Card withBorder padding="lg" radius="md" style={{ borderLeft: '5px solid #fd7e14' }}>
-                            <Title order={4} mb="xs">Visión</Title>
-                            <Text size="sm" c="dimmed">Ser el referente indiscutible en transporte de cargas especiales en la región.</Text>
-                         </Card>
-                    </SimpleGrid>
+            {/* En Desktop: mt={-60} para que suban sutilmente sobre el hero sin tapar texto.
+                En Móvil: mt={20} (positivo) para que bajen y NO tapen el hero.
+            */}
+            <Container size="xl" mt={isMobile ? 20 : 20} pos="relative" style={{ zIndex: 10 }}>
+                <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">
+                     {[
+                        { icon: IconWorld, title: "Cobertura Nacional", text: "Logística punto a punto en todo el país.", color: 'blue' },
+                        { icon: IconShieldCheck, title: "Permisología al Día", text: "RACDA, DAEX y RNC 100% vigentes.", color: 'green' },
+                        { icon: IconClock, title: "Disponibilidad 24/7", text: "Operaciones continuas sin interrupciones.", color: 'orange' }
+                     ].map((stat, i) => (
+                        <Paper 
+                            key={i} 
+                            shadow="xl" 
+                            radius="lg" 
+                            p="xl" 
+                            bg="white"
+                            withBorder
+                            style={{ 
+                                borderTop: `4px solid var(--mantine-color-${stat.color}-6)`,
+                                transition: 'transform 0.3s ease',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                        >
+                            <Group align="flex-start" wrap="nowrap">
+                                <ThemeIcon 
+                                    size={50} 
+                                    radius="md" 
+                                    variant="gradient" 
+                                    gradient={{ from: stat.color, to: `${stat.color}.3`, deg: 135 }}
+                                >
+                                    <stat.icon size={26} stroke={1.5} />
+                                </ThemeIcon>
+                                <div>
+                                    <Text fw={800} size="lg" c="dark.9" mb={2}>{stat.title}</Text>
+                                    <Text size="sm" c="dimmed" lh={1.3}>{stat.text}</Text>
+                                </div>
+                            </Group>
+                        </Paper>
+                     ))}
                 </SimpleGrid>
             </Container>
 
             {/* =========================================
-                SECCIÓN 3: SERVICIOS
+                SECCIÓN 3: SOBRE NOSOTROS
                ========================================= */}
-            <Box bg="white" py={80}>
-                <Container size="xl">
-                    <Title order={2} ta="center" mb="xl" tt="uppercase" fz={isMobile ? 24 : 32}>Nuestros Servicios</Title>
-                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
+            <Container size="xl" py={isMobile ? 60 : 100}>
+                <SimpleGrid cols={{ base: 1, md: 2 }} spacing={80} verticalSpacing={40}>
+                    <Stack justify="center" gap="lg">
+                        <Group gap="xs">
+                            <Box w={40} h={4} bg="blue" style={{ borderRadius: 4 }} />
+                            <Text tt="uppercase" c="blue" fw={800} lts={1}>Nuestra Trayectoria</Text>
+                        </Group>
+                        
+                        <Title order={2} c="dark.9" fz={{ base: 28, md: 42 }} lh={1.2}>
+                            Más de 15 años impulsando la industria venezolana.
+                        </Title>
+                        
+                        <Text size="lg" c="dimmed" lh={1.6}>
+                            Fundada en 2008, <Text span fw={700} c="dark">Transporte DADICA</Text> es su socio estratégico en logística pesada. Hemos ejecutado proyectos críticos para gigantes como Schlumberger, Chevron y PDVSA.
+                        </Text>
+                    </Stack>
+                    
+                    <Stack gap="md">
+                         <Card padding="xl" radius="lg" shadow="sm" withBorder bg="white">
+                            <Group align="start" wrap="nowrap">
+                                <ThemeIcon variant="light" color="blue" size="xl" radius="md"><IconTruck size={24}/></ThemeIcon>
+                                <div>
+                                    <Text fw={700} size="lg" mb={5}>Misión</Text>
+                                    <Text size="sm" c="dimmed">Soluciones logísticas seguras y eficientes, cuidando la carga y el medio ambiente.</Text>
+                                </div>
+                            </Group>
+                         </Card>
+
+                         <Card padding="xl" radius="lg" shadow="sm" withBorder bg="white">
+                             <Group align="start" wrap="nowrap">
+                                <ThemeIcon variant="light" color="orange" size="xl" radius="md"><IconMapPin size={24}/></ThemeIcon>
+                                <div>
+                                    <Text fw={700} size="lg" mb={5}>Visión</Text>
+                                    <Text size="sm" c="dimmed">Ser el referente indiscutible en transporte de carga extrapesada en el Occidente.</Text>
+                                </div>
+                            </Group>
+                         </Card>
+                    </Stack>
+                </SimpleGrid>
+            </Container>
+
+            {/* =========================================
+                SECCIÓN 4: SERVICIOS
+               ========================================= */}
+            <Box py={100} bg="white" style={{ clipPath: 'polygon(0 3%, 100% 0, 100% 97%, 0 100%)' }}>
+                <Container size="xl" py="xl">
+                    <Stack align="center" mb={60}>
+                        <Title order={2} ta="center" fz={{ base: 28, md: 42 }}>Soluciones Integrales</Title>
+                        <Text c="dimmed" ta="center" maw={600}>
+                            Estrategias logísticas personalizadas para optimizar tiempos y recursos.
+                        </Text>
+                    </Stack>
+
+                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="xl">
                         {servicios.map((item, index) => (
-                            <Card key={index} shadow="sm" padding="none" radius="md" withBorder>
+                            <Card 
+                                key={index} 
+                                shadow="md" 
+                                padding="none" 
+                                radius="lg" 
+                                withBorder
+                                style={{ transition: 'transform 0.3s', backgroundColor: '#fff' }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
                                 <Card.Section>
-                                    <Image src={item.img} height={180} alt={item.title} fallbackSrc="https://placehold.co/600x400" />
+                                    <Image src={item.img} height={200} alt={item.title} fallbackSrc="https://placehold.co/600x400/e0e0e0/888?text=Servicio" />
                                 </Card.Section>
-                                <Stack p="md" spacing="xs">
-                                    <Title order={5}>{item.title}</Title>
-                                    <Text size="sm" c="dimmed">{item.desc}</Text>
+                                <Stack p="lg" gap="xs" h={180}>
+                                    <Title order={4} size="h4">{item.title}</Title>
+                                    <Text size="sm" c="dimmed" lh={1.5}>{item.desc}</Text>
+                                    <Group mt="auto">
+                                        <Text size="xs" fw={700} c="blue" tt="uppercase">Detalles</Text>
+                                        <IconArrowRight size={14} color="var(--mantine-color-blue-6)" />
+                                    </Group>
                                 </Stack>
                             </Card>
                         ))}
@@ -220,57 +288,99 @@ export default function LandingPage() {
             </Box>
 
             {/* =========================================
-                SECCIÓN 4: FLOTA (OSCURA)
+                SECCIÓN 5: FLOTA
                ========================================= */}
-            <Box bg="gray.9" py={80} c="white">
+            <Box bg="#1A1B1E" py={120} c="white">
                 <Container size="xl">
-                    <Grid align="center" gutter={50}>
-                        <Grid.Col span={{ base: 12, md: 6 }}>
-                            <Title order={2} mb="md" c="white" fz={isMobile ? 24 : 32}>FLOTA Y EQUIPAMIENTO</Title>
-                            <Text c="gray.4" mb="xl" size={isMobile ? 'md' : 'lg'}>
-                                Maquinaria certificada y mantenida rigurosamente para desafíos logísticos exigentes.
+                    <Grid align="center" gutter={60}>
+                        <Grid.Col span={{ base: 12, md: 5 }}>
+                            <Badge variant="filled" color="yellow" size="lg" mb="md" c="dark">INFRAESTRUCTURA</Badge>
+                            <Title order={2} mb="md" c="white" fz={42}>Poder para Mover</Title>
+                            <Text c="gray.5" mb="xl" size="lg" lh={1.6}>
+                                Equipos modernos, certificados y sometidos a rigurosos planes de mantenimiento preventivo.
                             </Text>
-                            <Group gap="sm">
+                            
+                            <Title order={4} c="white" mb="md">Inventario Destacado:</Title>
+                            <Group gap="xs">
                                 {flota.map((item, index) => (
-                                    <Badge key={index} size="lg" radius="sm" variant="outline" color="gray" style={{ color: 'white' }}>
+                                    <Badge 
+                                        key={index} 
+                                        size="lg" 
+                                        radius="sm" 
+                                        variant="outline" 
+                                        color="gray"
+                                        style={{ color: '#e9ecef', borderColor: '#495057' }}
+                                    >
                                         {item}
                                     </Badge>
                                 ))}
                             </Group>
                         </Grid.Col>
-                        <Grid.Col span={{ base: 12, md: 6 }}>
-                            <Image src="/flota.jpg" radius="md" alt="Flota" style={{ border: '2px solid rgba(255,255,255,0.1)' }} fallbackSrc="https://placehold.co/800x400?text=Flota" />
+                        <Grid.Col span={{ base: 12, md: 7 }}>
+                            <Box 
+                                style={{ 
+                                    position: 'relative', 
+                                    borderRadius: 16, 
+                                    overflow: 'hidden',
+                                    border: '1px solid #333',
+                                    boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+                                }}
+                            >
+                                <Image src="/flota.jpg" alt="Flota" fallbackSrc="https://placehold.co/800x500/333/666?text=Flota+Moderna" />
+                                <Overlay color="#000" opacity={0.2} />
+                            </Box>
                         </Grid.Col>
                     </Grid>
                 </Container>
             </Box>
 
             {/* =========================================
-                SECCIÓN 5: SEGURIDAD Y RSE
+                SECCIÓN 6: SEGURIDAD
                ========================================= */}
-            <Container size="xl" py={80}>
-                <Grid gutter="xl">
+            <Container size="xl" py={100}>
+                <Grid gutter={60}>
                     <Grid.Col span={{ base: 12, md: 7 }}>
-                        <Title order={2} mb="md" tt="uppercase" fz={isMobile ? 24 : 32}>Seguridad y Permisología</Title>
-                        <Text size={isMobile ? 'md' : 'lg'} mb="lg">Cumplimos con todos los estándares nacionales (RACDA, DAEX, RNC) para garantizar la integridad de su carga.</Text>
-                        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                            <Group><IconShieldCheck color="green" /><Text fw={500}>RACDA / DAEX</Text></Group>
-                            <Group><IconShieldCheck color="green" /><Text fw={500}>Monitoreo GPS 24/7</Text></Group>
-                            <Group><IconShieldCheck color="green" /><Text fw={500}>Inscripción RNC</Text></Group>
-                            <Group><IconShieldCheck color="green" /><Text fw={500}>Permisos Bolipuerto</Text></Group>
+                        <Title order={2} mb="lg" fz={36} c="dark.9">Seguridad y Permisología</Title>
+                        <Text size="lg" c="dimmed" mb="xl">
+                            En la industria petrolera, el cumplimiento normativo es vital. Nosotros nos encargamos de la burocracia operativa.
+                        </Text>
+                        
+                        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl">
+                            <Group align="start">
+                                <ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={20} /></ThemeIcon>
+                                <div><Text fw={700}>RACDA / DAEX</Text><Text size="sm" c="dimmed">Manejo de sustancias</Text></div>
+                            </Group>
+                            <Group align="start">
+                                <ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={20} /></ThemeIcon>
+                                <div><Text fw={700}>GPS Satelital</Text><Text size="sm" c="dimmed">Monitoreo 24/7</Text></div>
+                            </Group>
+                            <Group align="start">
+                                <ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={20} /></ThemeIcon>
+                                <div><Text fw={700}>RNC Vigente</Text><Text size="sm" c="dimmed">Contrataciones públicas</Text></div>
+                            </Group>
+                            <Group align="start">
+                                <ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={20} /></ThemeIcon>
+                                <div><Text fw={700}>Bolipuertos</Text><Text size="sm" c="dimmed">Acceso portuario</Text></div>
+                            </Group>
                         </SimpleGrid>
                     </Grid.Col>
+                    
                     <Grid.Col span={{ base: 12, md: 5 }}>
-                        <Card shadow="md" radius="md" p="xl" bg="blue.0" style={{ border: '1px solid #a5d8ff' }}>
-                            <Stack align="center" spacing="xs">
-                                <IconCertificate size={40} color="#228be6" />
-                                <Title order={4} ta="center" c="blue.9">Responsabilidad Total</Title>
+                        <Card shadow="xl" radius="lg" p={40} bg="blue.6" style={{ backgroundImage: 'linear-gradient(135deg, #228be6 0%, #15aabf 100%)' }}>
+                            <Stack align="center" gap="md">
+                                <ThemeIcon size={80} radius="100%" color="white" variant="white" style={{ color: '#228be6' }}>
+                                    <IconCertificate size={40} />
+                                </ThemeIcon>
+                                <Title order={3} ta="center" c="white">Compromiso RSE</Title>
+                                <Text ta="center" size="sm" c="white" style={{ opacity: 0.9 }}>
+                                    Operamos bajo estrictos protocolos ambientales y de seguridad industrial.
+                                </Text>
                             </Stack>
-                            <Divider my="md" />
-                            <List spacing="sm" size="sm" center icon={<ThemeIcon color="blue" size={20} radius="xl"><IconRecycle size={12} /></ThemeIcon>}>
-                                <List.Item>Reducción de emisiones</List.Item>
-                                <List.Item>Gestión de residuos</List.Item>
-                                <List.Item>Seguridad vial</List.Item>
+                            <Divider my="lg" color="white" style={{ opacity: 0.3 }} />
+                            <List spacing="sm" size="sm" center icon={<ThemeIcon color="white" variant="transparent"><IconRecycle size={18} /></ThemeIcon>}>
+                                <List.Item style={{color:'white'}}>Gestión de desechos peligrosos</List.Item>
+                                <List.Item style={{color:'white'}}>Reducción de huella de carbono</List.Item>
+                                <List.Item style={{color:'white'}}>Capacitación en seguridad vial</List.Item>
                             </List>
                         </Card>
                     </Grid.Col>
@@ -278,48 +388,68 @@ export default function LandingPage() {
             </Container>
 
             {/* =========================================
-                SECCIÓN 6: CTA (CONTACTO)
+                SECCIÓN 7: CTA 
                ========================================= */}
-            <Paper radius={0} py={80} bg="blue.9" style={{ backgroundImage: 'linear-gradient(135deg, var(--mantine-color-blue-9) 0%, var(--mantine-color-cyan-9) 100%)', color: 'white' }}>
-                 <Container size="md">
-                    <Stack align="center" spacing="xl">
-                        <Stack spacing={0} align="center">
-                            <Title order={2} tt="uppercase" ta="center" mb="sm" fz={isMobile ? 24 : 32}>¿Listo para movilizar su carga?</Title>
-                            <Text size="lg" ta="center" style={{ opacity: 0.9 }}>Contacte a operaciones hoy mismo.</Text>
-                        </Stack>
-                        <Paper p="xl" radius="md" shadow="xl" bg="white" w="100%" maw={500} c="dark">
-                            <Stack>
-                                <Group wrap="nowrap">
-                                    <ThemeIcon size="xl" radius="md" variant="light" color="blue"><IconMail /></ThemeIcon>
-                                    <div>
-                                        <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Correo</Text>
-                                        <Anchor href="mailto:transportedadica@gmail.com" fw={600} size="md" c="dark">transportedadica@gmail.com</Anchor>
-                                    </div>
-                                </Group>
-                                <Divider />
-                                <Group wrap="nowrap">
-                                    <ThemeIcon size="xl" radius="md" variant="light" color="green"><IconBrandWhatsapp /></ThemeIcon>
-                                    <div>
-                                        <Text size="xs" c="dimmed" tt="uppercase" fw={700}>WhatsApp</Text>
-                                        <Anchor href="https://wa.me/584120756457" fw={600} size="md" c="dark">+58 412 075 6457</Anchor>
-                                    </div>
-                                </Group>
-                            </Stack>
-                        </Paper>
+            <Box py={100} style={{ position: 'relative', overflow: 'hidden', background: '#081c36' }}>
+                 <Box pos="absolute" top={-100} right={-100} w={400} h={400} style={{ borderRadius: '50%', background: 'radial-gradient(circle, rgba(34,139,230,0.15) 0%, rgba(0,0,0,0) 70%)' }} />
+                 <Container size="md" pos="relative" style={{ zIndex: 2 }}>
+                    <Stack align="center" gap="xl">
+                        <Title order={2} c="white" ta="center" fz={{ base: 32, md: 48 }}>
+                            ¿Listo para movilizar su carga?
+                        </Title>
+                        <Text size="xl" c="blue.1" ta="center" maw={600}>
+                            Obtenga una cotización rápida y transparente. Nuestro equipo de operaciones está listo.
+                        </Text>
+                        
+                        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" w="100%" mt="lg">
+                             <Button 
+                                fullWidth
+                                size="xl" 
+                                variant="white"
+                                color="dark"
+                                component="a" 
+                                href="mailto:transportedadica@gmail.com"
+                                leftSection={<IconMail />}
+                                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}
+                            >
+                                Enviar Correo
+                            </Button>
+                            <Button 
+                                fullWidth
+                                size="xl" 
+                                color="green"
+                                component="a" 
+                                href="https://wa.me/584120756457"
+                                target="_blank"
+                                leftSection={<IconBrandWhatsapp />}
+                                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}
+                            >
+                                WhatsApp
+                            </Button>
+                        </SimpleGrid>
                     </Stack>
                 </Container>
-            </Paper>
+            </Box>
 
              {/* =========================================
-                SECCIÓN 7: FOOTER
+                SECCIÓN 8: FOOTER
                ========================================= */}
-             <Box bg="#1A1B1E" c="dimmed" py="xl" style={{ borderTop: '4px solid #228be6' }}>
+             <Box bg="#141517" c="dimmed" py={60} style={{ borderTop: '1px solid #333' }}>
                 <Container size="lg">
-                    <Stack align="center" spacing="xs">
-                        <Image src="/logo.png" w={140} alt="Dadica Footer" style={{ opacity: 0.8, filter: 'grayscale(100%) brightness(200%)' }} mb="md" />
-                        <Text size="sm" tt="uppercase" fw={700} c="white" ta="center">Transporte DADICA C.A.</Text>
-                        <Text size="xs" mt="sm" ta="center">© {new Date().getFullYear()} Todos los derechos reservados.</Text>
-                    </Stack>
+                    <Flex direction={isMobile ? 'column' : 'row'} justify="space-between" align="center" gap="xl">
+                        <Stack gap={5} align={isMobile ? 'center' : 'flex-start'}>
+                            <Image src="/logo.png" w={120} alt="Dadica" style={{ filter: 'grayscale(100%) brightness(150%)' }} />
+                            <Text size="xs">Rif: J-29599557-0</Text>
+                        </Stack>
+                        
+                        <Group gap="xl">
+                            <Anchor c="dimmed" size="sm" href="#">Inicio</Anchor>
+                            <Anchor c="dimmed" size="sm" href="#">Servicios</Anchor>
+                            <Anchor c="dimmed" size="sm" href="#">Flota</Anchor>
+                        </Group>
+
+                        <Text size="xs">© {new Date().getFullYear()} Transporte DADICA C.A.</Text>
+                    </Flex>
                 </Container>
             </Box>
         </Box>

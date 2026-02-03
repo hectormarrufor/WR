@@ -30,12 +30,13 @@ import ModalCuentaBancaria from "./ModalCuentaBancaria";
 import ModalPagoMovil from "./ModalPagoMovil";
 import { formatToInputDate, getSafeDate, toLocalDate } from "@/app/helpers/fechaCaracas";
 import DocumentosManager from "../../components/DocumentosManager";
+import { formatDateLong } from "@/app/helpers/dateUtils";
 
 // --- COMPONENTE PARA EL REGISTRO DE HORAS EN MÓVIL ---
 // Ahora recibe onEdit y onDelete
 const MobileWorkLogCard = ({ log, onEdit, onDelete }) => {
     const isExtra = log.horas > 8;
-    const fechaFormatted = formatToInputDate((log.fecha));
+    const fechaFormatted = formatDateLong(log.fecha);
 
     return (
         <Paper withBorder p="md" radius="md" mb="sm" shadow="xs">
@@ -508,7 +509,7 @@ export default function Page({ params }) {
                                                     {empleado.HorasTrabajadas?.map((h) => (
                                                         <Table.Tr key={h.id}>
                                                             <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                                                                {new Date(h.fecha).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}
+                                                                {formatDateLong(h.fecha)}
                                                             </Table.Td>
                                                             <Table.Td>
                                                                 <Badge color={h.horas > 8 ? 'orange' : 'blue'} variant="light">

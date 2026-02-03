@@ -1,27 +1,21 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Importar useRouter
 import {
     Container, Title, Button, Group, SimpleGrid, Card, Text,
     Badge, ActionIcon, Modal, TextInput, Select, NumberInput,
-    Stack, LoadingOverlay, ThemeIcon, Menu, Box, Alert
+    Stack, LoadingOverlay, ThemeIcon, Menu, Box, Alert, Center, Loader
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import {
     IconPlus, IconBuildingBank, IconDotsVertical, IconEdit,
-    IconTrash, IconAlertCircle, IconWallet
+    IconTrash, IconAlertCircle, IconChevronLeft // Importar IconChevronLeft
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { AsyncCatalogComboBox } from "@/app/components/CatalogCombobox";
 
-// Catálogo de Bancos Venezuela (Fuente de verdad visual)
-const LISTA_BANCOS = [
-    "Banesco", "Banco de Venezuela", "Mercantil", "Bancamiga",
-    "Banco Provincial", "BNC (Nacional de Crédito)", "Banco del Tesoro",
-    "Banplus", "Bicentenario", "Banco Plaza", "Banco Exterior",
-    "Banco Activo", "Bancaribe", "Zelle (USA)", "Bofa (USA)", "Panama (Intl)", "Efectivo", "Binance Pay"
-];
-
 export default function GestionCuentasPage() {
+    const router = useRouter(); // Inicializar router
     const [cuentas, setCuentas] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -30,17 +24,15 @@ export default function GestionCuentasPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // 1. USEFORM CONFIGURADO SEGÚN TU MODELO SEQUELIZE
+    // 1. USEFORM CONFIGURADO
     const form = useForm({
         initialValues: {
             id: null,
             nombreBanco: "",
             titularCuenta: "Transporte Dadica",
-            cedulaCuenta: "", // RIF o Cédula
+            cedulaCuenta: "", 
             numeroCuenta: "",
-            // Debe coincidir estrictamente con: ENUM('Corriente', 'Ahorros', 'Dólares', 'Euros')
             tipoCuenta: "Corriente",
-            // 'VES' para Bolívares, 'USD' para Dólares/Euros
             moneda: "VES",
             saldoActual: 0,
         },
@@ -114,7 +106,7 @@ export default function GestionCuentasPage() {
         form.reset();
         form.setValues({
             nombreBanco: "",
-            titularCuenta: "Transporte Dadica", // Valor por defecto sugerido
+            titularCuenta: "Transporte Dadica",
             tipoCuenta: "Corriente",
             moneda: "VES",
             saldoActual: 0
@@ -130,7 +122,7 @@ export default function GestionCuentasPage() {
             numeroCuenta: cuenta.numeroCuenta,
             titularCuenta: cuenta.titularCuenta,
             cedulaCuenta: cuenta.cedulaCuenta,
-            tipoCuenta: cuenta.tipoCuenta, // Debe coincidir con el ENUM
+            tipoCuenta: cuenta.tipoCuenta,
             moneda: cuenta.moneda,
             saldoActual: Number(cuenta.saldoActual)
         });
@@ -139,40 +131,79 @@ export default function GestionCuentasPage() {
 
     return (
         <Container size="xl" py="md">
-            <Group justify="space-between" mb="xl">
-                <div>
-                    <Title order={2}>Cuentas Bancarias</Title>
-                    <Text c="dimmed">Tesorería / Cuentas de la Empresa</Text>
-                </div>
-                <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>
+            {/* ENCABEZADO CON BOTÓN ATRÁS */}
+            <Group mb="xl" align="center" justify="space-between">
+                 <Group>
+                    <ActionIcon 
+                        variant="subtle" 
+                        color="gray" 
+                        size="lg" 
+                        onClick={() => router.back()}
+                        aria-label="Volver"
+                    >
+                        <IconChevronLeft size={24} />
+                    </ActionIcon>
+                    <div>
+                        <Title order={2}>Cuentas Bancarias</Title>
+                        <Text c="dimmed" size="sm">Tesorería / Cuentas de la Empresa</Text>
+                    </div>
+                 </Group>
+                 
+                 <Button leftSection={<IconPlus size={18} />} onClick={openCreate}>
                     Nueva Cuenta
                 </Button>
             </Group>
 
-            {loading ? <Text>Cargando saldos...</Text> : (
+            {loading ? (
+                <Center h={200}>
+                    <Loader type="dots" />
+                </Center>
+            ) : (
                 <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
                     {cuentas.map((cuenta) => (
-                        <Card key={cuenta.id} shadow="sm" padding="lg" radius="md" withBorder>
+                        <Card 
+                            key={cuenta.id} 
+                            shadow="sm" 
+                            padding="lg" 
+                            radius="md" 
+                            withBorder
+                            style={{ transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = 'var(--mantine-shadow-md)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = 'var(--mantine-shadow-sm)';
+                            }}
+                        >
                             {/* Cabecera */}
-                            <Group justify="space-between" mb="xs">
-                                <Group gap="xs">
+                            <Group justify="space-between" mb="xs" align="flex-start">
+                                <Group gap="sm">
                                     <ThemeIcon
-                                        size="lg" radius="md" variant="light"
+                                        size="xl" radius="md" variant="light"
                                         color={cuenta.moneda === 'VES' ? 'blue' : 'green'}
                                     >
-                                        <IconBuildingBank size={20} />
+                                        <IconBuildingBank size={24} />
                                     </ThemeIcon>
                                     <Box>
-                                        <Text fw={700} lineClamp={1}>{cuenta.nombreBanco}</Text>
-                                        <Badge size="xs" variant="outline" color="gray">{cuenta.tipoCuenta}</Badge>
+                                        <Text fw={700} lineClamp={1} size="lg" style={{ lineHeight: 1.2 }}>
+                                            {cuenta.nombreBanco}
+                                        </Text>
+                                        <Badge size="xs" variant="outline" color="gray" mt={4}>
+                                            {cuenta.tipoCuenta}
+                                        </Badge>
                                     </Box>
                                 </Group>
 
                                 <Menu shadow="md" width={200} position="bottom-end">
                                     <Menu.Target>
-                                        <ActionIcon variant="subtle" color="gray"><IconDotsVertical size={16} /></ActionIcon>
+                                        <ActionIcon variant="transparent" color="gray">
+                                            <IconDotsVertical size={18} />
+                                        </ActionIcon>
                                     </Menu.Target>
                                     <Menu.Dropdown>
+                                        <Menu.Label>Acciones</Menu.Label>
                                         <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => openEdit(cuenta)}>
                                             Editar / Ajustar
                                         </Menu.Item>
@@ -184,27 +215,27 @@ export default function GestionCuentasPage() {
                             </Group>
 
                             {/* Saldos */}
-                            <Stack gap={0} my="md">
+                            <Stack gap={0} my="lg">
                                 <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Saldo Disponible</Text>
-                                <Group align="flex-end" gap={5}>
+                                <Group align="baseline" gap={5}>
                                     <Text
                                         size="2rem" fw={900} lh={1}
                                         c={cuenta.moneda === 'VES' ? 'blue.8' : 'green.8'}
                                     >
                                         {cuenta.moneda === 'VES' ? 'Bs.' : '$'} {Number(cuenta.saldoActual).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                                     </Text>
-                                    <Text size="sm" fw={500} c="dimmed" mb={4}>
+                                    <Text size="sm" fw={500} c="dimmed">
                                         {cuenta.moneda}
                                     </Text>
                                 </Group>
                             </Stack>
 
                             {/* Footer Detalles */}
-                            <Card.Section inheritPadding py="xs" bg="gray.0">
+                            <Card.Section inheritPadding py="sm" bg="gray.0" style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
                                 <Group justify="space-between">
                                     <Box>
-                                        <Text size="xs" c="dimmed">Nro. Cuenta</Text>
-                                        <Text size="sm" ff="monospace" style={{ wordBreak: 'break-all' }}>
+                                        <Text size="xs" c="dimmed" fw={600}>NRO. CUENTA</Text>
+                                        <Text size="sm" ff="monospace" style={{ wordBreak: 'break-all' }} c="dark.3">
                                             {cuenta.numeroCuenta}
                                         </Text>
                                     </Box>
@@ -213,7 +244,7 @@ export default function GestionCuentasPage() {
                         </Card>
                     ))}
                     {cuentas.length === 0 && (
-                        <Alert icon={<IconAlertCircle />} title="Sin Cuentas" color="gray">
+                        <Alert icon={<IconAlertCircle />} title="Sin Cuentas" color="gray" variant="light">
                             No hay cuentas registradas en el sistema.
                         </Alert>
                     )}
@@ -227,13 +258,14 @@ export default function GestionCuentasPage() {
                 title={isEditing ? "Editar Cuenta" : "Registrar Nueva Cuenta"}
                 centered
                 size="lg"
+                padding="lg"
             >
-                <LoadingOverlay visible={saving} />
+                <LoadingOverlay visible={saving} overlayProps={{ radius: "sm", blur: 2 }} />
 
                 <form onSubmit={form.onSubmit(handleSubmit)}>
-                    <Stack>
+                    <Stack gap="md">
 
-                        {/* 1. SELECCIÓN DE BANCO (SIMULANDO CATALOG COMBOBOX) */}
+                        {/* 1. SELECCIÓN DE BANCO */}
                         <AsyncCatalogComboBox
                             label="Banco"
                             placeholder="Seleccione o cree un banco"
@@ -241,7 +273,8 @@ export default function GestionCuentasPage() {
                             fieldKey="nombreBanco"
                             form={form}
                         />
-                        <Group grow>
+                        
+                        <SimpleGrid cols={{ base: 1, sm: 2 }}>
                             <Select
                                 label="Moneda"
                                 data={[
@@ -252,7 +285,6 @@ export default function GestionCuentasPage() {
                                 allowDeselect={false}
                                 {...form.getInputProps('moneda')}
                             />
-                            {/* ESTE SELECT AHORA COINCIDE CON TU ENUM DE SEQUELIZE */}
                             <Select
                                 label="Tipo de Cuenta"
                                 data={[
@@ -264,7 +296,7 @@ export default function GestionCuentasPage() {
                                 allowDeselect={false}
                                 {...form.getInputProps('tipoCuenta')}
                             />
-                        </Group>
+                        </SimpleGrid>
 
                         <NumberInput
                             label="Saldo Inicial / Actual"
@@ -274,6 +306,7 @@ export default function GestionCuentasPage() {
                             decimalSeparator=","
                             decimalScale={2}
                             allowNegative={true}
+                            hideControls
                             {...form.getInputProps('saldoActual')}
                         />
 
@@ -283,7 +316,7 @@ export default function GestionCuentasPage() {
                             {...form.getInputProps('numeroCuenta')}
                         />
 
-                        <Group grow>
+                        <SimpleGrid cols={{ base: 1, sm: 2 }}>
                             <TextInput
                                 label="Titular"
                                 placeholder="Transporte Dadica"
@@ -294,11 +327,9 @@ export default function GestionCuentasPage() {
                                 placeholder="J-123456789"
                                 {...form.getInputProps('cedulaCuenta')}
                             />
-                        </Group>
+                        </SimpleGrid>
 
-                        {/* NOTA: Eliminé el campo Teléfono porque no está en tu modelo CuentaBancaria.js */}
-
-                        <Group justify="flex-end" mt="md">
+                        <Group justify="flex-end" mt="lg">
                             <Button variant="default" onClick={() => setOpened(false)}>Cancelar</Button>
                             <Button type="submit" loading={saving} color="blue">
                                 {isEditing ? "Guardar Cambios" : "Crear Cuenta"}
