@@ -276,10 +276,10 @@ export default function LandingPage() {
                                 <Stack p="lg" gap="xs" h={180}>
                                     <Title order={4} size="h4">{item.title}</Title>
                                     <Text size="sm" c="dimmed" lh={1.5}>{item.desc}</Text>
-                                    <Group mt="auto">
+                                    {/* <Group mt="auto">
                                         <Text size="xs" fw={700} c="blue" tt="uppercase">Detalles</Text>
                                         <IconArrowRight size={14} color="var(--mantine-color-blue-6)" />
-                                    </Group>
+                                    </Group> */}
                                 </Stack>
                             </Card>
                         ))}
