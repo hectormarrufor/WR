@@ -111,7 +111,7 @@ export default function SuperUserHome() {
 
     return (
         <Box style={bgPattern}>
-            <Box maw={1200} mx="auto">
+            <Box maw={1200} mx="auto" pb={40}>
                 
                 {/* HEADER */}
                 <FadeInSection>
