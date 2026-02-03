@@ -236,7 +236,7 @@ export default function ModalEquivalencias({
 
                                                     <Stack align="center">
                                                         <Avatar
-                                                            src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen || ""}?${Date.now()}`}
+                                                            src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen || ""}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`}
                                                             alt={item.codigo}
                                                             radius="xl"
                                                             size={90}
@@ -280,7 +280,7 @@ export default function ModalEquivalencias({
                             <Card key={id} padding="sm" radius="md" withBorder>
                                 <Group>
                                     <Avatar
-                                        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen || ""}?${Date.now()}`}
+                                        src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${item.imagen || ""}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`}
                                         alt={item.nombre}
                                         radius="xl"
                                     />

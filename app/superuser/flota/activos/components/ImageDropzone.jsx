@@ -71,7 +71,7 @@ export default function ImageDropzone({ label, form, fieldPath }) {
             setPreview(initialValue);
         }
         else if (typeof initialValue === "string") {
-            setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${initialValue}?${Date.now()}`);
+            setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${initialValue}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`);
         }
     }, [initialValue]);
 

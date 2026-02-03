@@ -16,7 +16,7 @@ import { Fade } from 'react-slideshow-image';
 import 'react-slideshow-image/dist/styles.css';
 
 // --- DATOS ---
-const slideImages = ['/carrusel1.jpg', '/carrusel2.jpg', '/carrusel3.jpg', '/carrusel4.jpg', '/carrusel5.jpg'];
+const slideImages = [`/carrusel1.jpg?v=${process.env.NEXT_PUBLIC_APP_VERSION}`, `/carrusel2.jpg?v=${process.env.NEXT_PUBLIC_APP_VERSION}`, `/carrusel3.jpg?v=${process.env.NEXT_PUBLIC_APP_VERSION}`, `/carrusel4.jpg?v=${process.env.NEXT_PUBLIC_APP_VERSION}`, `/carrusel5.jpg?v=${process.env.NEXT_PUBLIC_APP_VERSION}`];
 
 const servicios = [
     { title: "Gestión de carga", img: "/plataforma.jpg", desc: "Logística integral punto a punto con trazabilidad." },

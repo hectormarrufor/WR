@@ -47,7 +47,7 @@ const LayoutMenu = ({ router }) => {
                         >
                             <Group gap="xs">
                                 <Avatar 
-                                    src={imagen ? `${imagen}` : null} 
+                                    src={imagen ? `${imagen}/?v=${process.env.APP_VERSION}` : null} 
                                     alt={nombre} 
                                     radius="xl" 
                                     size="md" 

@@ -95,7 +95,7 @@ export default function DetalleModeloPage() {
             <Grid.Col span={{ base: 12, md: 4 }}>
               {modelo.imagen ? (
                 <Image
-                  src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${modelo.imagen}?${Date.now()}`}
+                  src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${modelo.imagen}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`}
                   radius="md"
                   h={250}
                   fit="contain"

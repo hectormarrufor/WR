@@ -236,7 +236,7 @@ export default function EmpleadosTable() {
     {
         accessorKey: 'imagen', header: "", size: 80, enableColumnFilter: false,
         Cell: ({ cell }) => (
-          <Avatar src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${cell.getValue()}?${Date.now()}`} radius="xl" size="md" />
+          <Avatar src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${cell.getValue()}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`} radius="xl" size="md" />
         ),
     },
     { accessorKey: 'cedula', header: 'Cédula', size: 100 },
