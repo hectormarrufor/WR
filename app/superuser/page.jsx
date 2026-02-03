@@ -1,27 +1,49 @@
-// app/superuser/page.js
 'use client';
 
-import { Button, Title, Stack, SimpleGrid, useMantineTheme, Box, Text, Badge, Flex, LoadingOverlay, Loader, Center, Paper, UnstyledButton } from '@mantine/core';
+import { Title, Stack, useMantineTheme, Box, Text, Badge, Flex, Loader, Center, Paper, UnstyledButton, Group, ThemeIcon, Card, SimpleGrid } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
-    IconFileText, IconTools, IconTruck, IconGasStation, IconUsers,
-    IconToolsKitchen2, IconSteeringWheel, IconCash, IconShoppingCart,
-    IconFileInvoice, IconArchive, IconUser, IconChartBar, IconMapPin, IconShieldLock,
-    IconExchange,
-    IconTrash,
-    IconClock2,
-    IconClipboardText,
-    IconBuildingBank
+    IconTruck, IconCash, IconArchive, IconUser, IconClock2,
+    IconClipboardText, IconBuildingBank, IconChartBar, IconExchange, IconShoppingCart, IconFileInvoice
 } from '@tabler/icons-react';
-import './superuser.css';
+import './superuser.css'; // Asegúrate de que este archivo no tenga estilos que choquen
 import { useAuth } from '@/hooks/useAuth';
-import { eliminarTodasSuscripcionesInactivas } from '../handlers/push';
+import DashboardTareas from '../components/DashboardTareas';
+
+// --- ANIMACIÓN FADE UP (Reutilizada de la Landing) ---
+const FadeInSection = ({ children, delay = 0 }) => {
+    const [isVisible, setVisible] = useState(false);
+    const domRef = useRef();
+    useEffect(() => {
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    setVisible(true);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        const currentElement = domRef.current;
+        if (currentElement) observer.observe(currentElement);
+        return () => { if (currentElement) observer.unobserve(currentElement); };
+    }, []);
+    return (
+        <div ref={domRef} style={{
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
+            transition: `opacity 0.6s ease-out ${delay}s, transform 0.6s ease-out ${delay}s`,
+            width: '100%'
+        }}>
+            {children}
+        </div>
+    );
+};
 
 export default function SuperUserHome() {
     const [isLoading, setIsLoading] = useState(true);
-    const { isAdmin, departamentos, rol, imagen } = useAuth();
+    const { isAdmin, departamentos, rol } = useAuth();
     const [precioBCV, setPrecioBCV] = useState(0);
     const router = useRouter();
     const theme = useMantineTheme();
@@ -34,150 +56,141 @@ export default function SuperUserHome() {
                 if (req.ok) {
                     const data = await req.json();
                     setPrecioBCV(data.precio);
-                } else {
-                    console.error("Error fetching BCV price: ", req.statusText);
                 }
             } catch (error) {
                 console.error("Error fetching BCV price:", error);
             }
         })();
-
         setIsLoading(false);
     }, []);
 
-    // useEffect(() => {
-    //     if (isAdmin) {
-    //         setIsLoading(false);
-    //         return
-    //     }
+    // --- ESTILOS VISUALES (Copiados de la Landing) ---
+    const bgPattern = {
+        backgroundColor: '#f8f9fa15',
+        backgroundImage: 'radial-gradient(#cbd3da 1.5px, transparent 1.5px)',
+        backgroundSize: '24px 24px',
+        minHeight: '100vh', // Asegura que cubra toda la pantalla
+    };
 
-    //     else {
+    const glassStyle = {
+        backgroundColor: 'rgba(255, 255, 255, 0.65)', // Un poco más opaco para legibilidad
+        backdropFilter: 'blur(16px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+        border: '1px solid rgba(255, 255, 255, 0.5)',
+        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.1)',
+        transition: 'all 0.3s ease',
+    };
 
-    //         if (rol) {
-    //             console.log(rol)
-    //             switch (true) {
-    //                 case rol.includes("Administrador"):
-    //                     setIsLoading(false);
-    //                     router.push('/superuser/rrhh/empleados');
-    //                     break;
-    //                 case rol.includes("Presidente"):
-    //                     setIsLoading(false);
-    //                     router.push('/superuser/rrhh/empleados');
-    //                     break;
-    //                 case rol.includes("Gerente de Mantenimiento"):
-    //                     router.push('/superuser/flota');
-    //                 case rol.includes("Analista de Recursos Humanos"):
-    //                     router.push('/superuser/rrhh');
-    //                     break;
-    //                 case rol.includes("Chofer"):
-    //                     router.push(`/superuser/flota/activos`);
-    //                     break;
-    //                 case rol.includes("Gerente Operacional"):
-    //                     router.push('/superuser/odt');
-    //                     break;
-    //                 default:
-    //                     router.push("/forbidden")
-    //                     break;
-    //             }
-    //         }
-    //     }
-    // }, [rol])
-
+    const handleGlassHover = (e, lift) => {
+        e.currentTarget.style.transform = lift ? 'translateY(-5px)' : 'translateY(0)';
+        e.currentTarget.style.boxShadow = lift 
+            ? '0 15px 40px 0 rgba(31, 38, 135, 0.2)' 
+            : '0 8px 32px 0 rgba(31, 38, 135, 0.1)';
+    };
 
     const menuOptions = [
-        // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Estimación de costos', href: '/superuser/estimacion-costos', description: 'Calcula el costo operativo por servicio de transporte.', icon: IconChartBar, size: 32, color: theme.colors.orange[6] },
-        // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Gastos Fijos mensuales', href: '/superuser/gastos', description: 'Configura los gastos fijos de la empresa', icon: IconExchange, size: 32, color: theme.colors.cyan[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Pagar Empleados', href: '/superuser/pagar', description: 'Pagar a los empleados la semana.', icon: IconCash, size: 32, color: theme.colors.green[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Cuentas Bancarias', href: '/superuser/mis-cuentas', description: 'Gestiona las cuentas bancarias de la empresa.', icon: IconBuildingBank, size: 32, color: theme.colors.yellow[6] },
-        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Contratos', href: '/superuser/contratos', description: 'Gestiona contratos de servicio con clientes.', icon: IconFileText, size: 32, color: theme.colors.blue[5] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Mantenimiento"), title: 'Mantenimiento', href: '/superuser/flota', description: 'Administra todos los vehículos y equipos.', icon: IconTruck, size: 32, color: theme.colors.teal[6] },
-        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Tesorería', href: '#', description: 'Gestiona cuentas bancarias y flujos de caja.', icon: IconCash, size: 32, color: theme.colors.cyan[6] },
-        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Compras', href: '/superuser/compras', description: 'Administra proveedores y órdenes de compra.', icon: IconShoppingCart, size: 32, color: theme.colors.pink[5] },
-        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Cobranza', href: '/superuser/facturacion', description: 'Seguimiento de facturas y pagos de clientes.', icon: IconFileInvoice, size: 32, color: theme.colors.lime[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Almacen"), title: 'Inventario', href: '/superuser/inventario', description: 'Control de stock de partes y consumibles.', icon: IconArchive, size: 32, color: theme.colors.indigo[5] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Recursos Humanos") || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Recursos Humanos', href: '/superuser/rrhh', description: 'Administra personal, puestos y departamentos.', icon: IconUser, size: 32, color: theme.colors.cyan[8] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'ODTs', href: '/superuser/odt', description: 'Registro de ODT para horas del personal y vehiculos.', icon: IconClock2, size: 32, color: theme.colors.cyan[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Fletes', href: '/superuser/fletes', description: 'Registro de Fletes para horas del personal y vehiculos.', icon: IconTruck, size: 32, color: theme.colors.red[6] },
-        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Pizarra', href: '/superuser/pizarra', description: 'Ver la pizarra con las actividades y horas registradas.', icon: IconClipboardText, size: 32, color: theme.colors.green[6] },
-        // { disabled: false, visible: isAdmin || departamentos.includes("not set"), title: 'Reportes', href: '/superuser/reportes', description: 'Genera reportes gerenciales y operativos.', icon: IconChartBar, size: 32, color: theme.colors.red[8] },
+        // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Estimación de costos', href: '/superuser/estimacion-costos', description: 'Calcula el costo operativo por servicio.', icon: IconChartBar, color: 'orange' },
+        // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Gastos Fijos', href: '/superuser/gastos', description: 'Configura los gastos mensuales.', icon: IconExchange, color: 'cyan' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Pagar Empleados', href: '/superuser/pagar', description: 'Gestión de nómina semanal.', icon: IconCash, color: 'green' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Cuentas Bancarias', href: '/superuser/mis-cuentas', description: 'Gestión de tesorería.', icon: IconBuildingBank, color: 'yellow' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Mantenimiento"), title: 'Mantenimiento', href: '/superuser/flota', description: 'Administración de flota y equipos.', icon: IconTruck, color: 'teal' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Almacen"), title: 'Inventario', href: '/superuser/inventario', description: 'Control de stock y repuestos.', icon: IconArchive, color: 'indigo' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Recursos Humanos") || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Recursos Humanos', href: '/superuser/rrhh', description: 'Personal y departamentos.', icon: IconUser, color: 'cyan' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'ODTs', href: '/superuser/odt', description: 'Órdenes de Trabajo.', icon: IconClock2, color: 'blue' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Fletes', href: '/superuser/fletes', description: 'Registro de viajes.', icon: IconTruck, color: 'red' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Pizarra', href: '/superuser/pizarra', description: 'Visualización de actividades.', icon: IconClipboardText, color: 'grape' },
     ];
 
+    if (isLoading) {
+        return (
+            <Box style={{ ...bgPattern, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+                <Loader size="xl" />
+            </Box>
+        );
+    }
+
     return (
-        <Paper>
-            {isLoading ?
-                <Center>
-                    <Loader />
-                </Center>
-                : <>
+        <Box style={bgPattern}>
+            <Box maw={1200} mx="auto">
+                
+                {/* HEADER */}
+                <FadeInSection>
+                    <Stack align="center" spacing={ 0}>
+                        <Title order={1} align="center" style={{ 
+                            background: '-webkit-linear-gradient(45deg, #1c7ed6, #22b8cf)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.1))'
+                        }}>
+                            PANEL DE ADMINISTRACIÓN
+                        </Title>
 
-                    <Title order={1} align="center" c="blue.8">
-                        PANEL DE ADMINISTRACIÓN
-                    </Title>
-
-
-                    <Box mb="sm" style={{ display: 'flex', justifyContent: 'center' }}>
-                        <UnstyledButton
-                            onClick={() => router.push('/superuser/bcv')}
-                        >
-
-                            <Badge color={precioBCV ? "green" : "gray"} size="lg">
+                        <UnstyledButton onClick={() => router.push('/superuser/bcv')}>
+                            <Badge 
+                                size="xl" 
+                                variant="gradient" 
+                                gradient={precioBCV ? { from: 'green', to: 'teal' } : { from: 'gray', to: 'gray' }}
+                                style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.1)', cursor: 'pointer' }}
+                            >
                                 BCV: {precioBCV ? `${precioBCV} BS` : "Cargando..."}
                             </Badge>
                         </UnstyledButton>
+                    </Stack>
+                </FadeInSection>
+
+                {/* DASHBOARD TAREAS (Integrado visualmente) */}
+                <FadeInSection delay={0.1}>
+                    <Box mb={40}>
+                        <DashboardTareas glassStyle={glassStyle} />
                     </Box>
-                    <Flex
-                        justify="center"
-                        align="stretch"
-                        wrap="wrap"
-                        gap="md"
-                        style={{
-                            maxWidth: isMobile ? '100%' : 1200,
-                            margin: '0 auto',
-                            padding: isMobile ? '0 1rem' : '0',
-                        }}
-                    // spacing="xl"
-                    // verticalSpacing="xl"
-                    // breakpoints={[
-                    //     { maxWidth: 'lg', cols: 4 },
-                    //     { maxWidth: 'md', cols: 3 },
-                    //     { maxWidth: 'sm', cols: 2 },
-                    // ]}
-                    >
-                        {menuOptions.map((option, index) => (
-                            option.visible && <Button
-                                w={isMobile ? "100%" : 200}
-                                h={isMobile ? 100 : 120}
-                                p={isMobile ? 5 : 10}
-                                key={index}
-                                variant="default"
-                                disabled={option.disabled}
-                                onClick={() => !option.disabled && router.push(option.href)}
-                                className="superuser-button"
-                            >
-                                {<option.icon color={option.disabled ? "gray" : option.color} size={option.size} />}
-                                <Text fw={700} size="sm" mt={5}>{option.title}</Text>
-                                <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
-                                    {option.disabled ? '(No disponible)' : option.description}
-                                </Text>
-                            </Button>
-                        ))}
-                        {/* <Button
-                            w={isMobile ? "100%" : 200}
-                            h={isMobile ? 100 : 120}
-                            p={isMobile ? 5 : 10}
-                            key="eliminar-suscripciones"
-                            variant="default"
-                            onClick={() => eliminarTodasSuscripcionesInactivas()}
-                            className="superuser-button"
-                        >
-                            {<IconTrash color="red" size={32} />}
-                            <Text fw={700} size="sm" mt={5}>Limpiar</Text>
-                            <Text size="xs" c="dimmed" mt={3} style={{ whiteSpace: 'normal', lineHeight: 1.2 }}>
-                                Eliminar suscripciones inactivas de notificaciones push
-                            </Text>
-                        </Button> */}
-                    </Flex>
-                </>}
-        </Paper>
+                </FadeInSection>
+
+                {/* GRID DE MENÚ */}
+                <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
+                    {menuOptions.map((option, index) => (
+                        option.visible && (
+                            <FadeInSection key={index} delay={index * 0.05}>
+                                <UnstyledButton 
+                                    onClick={() => !option.disabled && router.push(option.href)}
+                                    style={{ width: '100%', height: '100%' }}
+                                    disabled={option.disabled}
+                                >
+                                    <Card 
+                                        p="lg" 
+                                        radius="lg" 
+                                        style={{ 
+                                            ...glassStyle, 
+                                            height: '100%', 
+                                            cursor: option.disabled ? 'not-allowed' : 'pointer',
+                                            opacity: option.disabled ? 0.6 : 1
+                                        }}
+                                        onMouseEnter={(e) => !option.disabled && handleGlassHover(e, true)}
+                                        onMouseLeave={(e) => !option.disabled && handleGlassHover(e, false)}
+                                    >
+                                        <Group align="flex-start" wrap="nowrap" mb="xs">
+                                            <ThemeIcon 
+                                                size={48} 
+                                                radius="md" 
+                                                variant="gradient" 
+                                                gradient={{ from: option.color, to: `${option.color}.4`, deg: 135 }}
+                                                style={{ boxShadow: `0 4px 15px var(--mantine-color-${option.color}-2)` }}
+                                            >
+                                                <option.icon size={26} stroke={1.5} />
+                                            </ThemeIcon>
+                                            <div>
+                                                <Text fw={700} size="md" lh={1.2}>{option.title}</Text>
+                                                <Text size="xs" c="dimmed" mt={4} lineClamp={2}>
+                                                    {option.description}
+                                                </Text>
+                                            </div>
+                                        </Group>
+                                    </Card>
+                                </UnstyledButton>
+                            </FadeInSection>
+                        )
+                    ))}
+                </SimpleGrid>
+            </Box>
+        </Box>
     );
 }

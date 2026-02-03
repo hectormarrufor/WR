@@ -107,6 +107,7 @@ export function AuthProvider({ children }) {
     return <AuthContext.Provider value={{ 
         imagen: user?.imagen, 
         rol: user?.rol, 
+        user: user,
         userId: user?.id, 
         nombre: user?.nombre || "Admin", 
         apellido: user?.apellido || "", 

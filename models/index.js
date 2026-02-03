@@ -2,7 +2,7 @@
 const sequelize = require('../sequelize');
 
 const db = {
-    
+    Tarea: require('./recursosHumanos/Tarea'),
     InmuebleInstancia: require('./gestionMantenimiento/InmuebleInstancia'),
     Inmueble: require('./gestionMantenimiento/Inmueble'),
     Equipo: require('./gestionMantenimiento/Equipo'),

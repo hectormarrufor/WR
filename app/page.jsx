@@ -331,10 +331,10 @@ export default function LandingPage() {
                             <Title order={2} mb="lg" fz={42} c="dark.9">Seguridad y Permisología</Title>
                             <Text size="xl" c="dimmed" mb="xl">En la industria petrolera, el cumplimiento normativo es vital. Nosotros nos encargamos de la burocracia operativa.</Text>
                             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" verticalSpacing="xl">
-                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">RACDA / DAEX</Text><Text size="sm" c="dimmed">Manejo de sustancias</Text></div></Group>
-                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">GPS Satelital</Text><Text size="sm" c="dimmed">Monitoreo 24/7</Text></div></Group>
-                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">RNC Vigente</Text><Text size="sm" c="dimmed">Contrataciones públicas</Text></div></Group>
-                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" variant="light"><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">Bolipuertos</Text><Text size="sm" c="dimmed">Acceso portuario</Text></div></Group>
+                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" ><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">RACDA / DAEX</Text><Text size="sm" c="dimmed">Manejo de sustancias</Text></div></Group>
+                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" ><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">GPS Satelital</Text><Text size="sm" c="dimmed">Monitoreo 24/7</Text></div></Group>
+                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" ><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">RNC Vigente</Text><Text size="sm" c="dimmed">Contrataciones públicas</Text></div></Group>
+                                <Group align="start"><ThemeIcon color="green" radius="xl" size="lg" ><IconCheck size={24} /></ThemeIcon><div><Text fw={700} size="lg">Bolipuertos</Text><Text size="sm" c="dimmed">Acceso portuario</Text></div></Group>
                             </SimpleGrid>
                         </FadeInSection>
                     </Grid.Col>

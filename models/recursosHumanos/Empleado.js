@@ -106,6 +106,8 @@ Empleado.associate = (models) => {
   Empleado.hasMany(models.GastoVariable, { foreignKey: "empleadoId", as: "pagos" });
   Empleado.hasMany(models.Flete, { as: 'fletesComoChofer', foreignKey: 'choferId' });
   Empleado.hasMany(models.Flete, { as: 'fletesComoAyudante', foreignKey: 'ayudanteId' });
+  Empleado.hasMany(models.Tarea, { foreignKey: 'creadoPorId', as: 'tareasCreadas' });
+  Empleado.hasMany(models.Tarea, { foreignKey: 'asignadoAId', as: 'tareasAsignadas' });
 
 
   // Un Empleado puede ser el Supervisor de muchas Operaciones de Campo
