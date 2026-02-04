@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 const cheerio = require  ('cheerio'); // Importación corregida para Next.js
 import BcvPrecioHistorico from '../../../models/BcvPrecioHistorico';
 import { notificarUsuario } from '../notificar/route';
+import sequelize from '@/sequelize';
 
 // Configuración para Binance
 const URL_BINANCE = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
