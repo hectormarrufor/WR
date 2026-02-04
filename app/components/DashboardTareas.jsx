@@ -58,10 +58,12 @@ export default function DashboardTareas({ glassStyle }) {
                 const lista = Array.isArray(data) ? data : data.data || [];
 
                 console.log('Empleados obtenidos para asignación de tareas:', lista);
+
+                const listaConUsuario = lista.filter(e => e.usuario); // Solo con usuario asociado
                 
                 // Construimos la lista con la opción GENERAL al principio
-                const opciones = lista.map(e => ({
-                    value: String(e.id),
+                const opciones = listaConUsuario.map(e => ({
+                    value: String(e.usuario?.id),
                     label: `${e.nombre} ${e.apellido} - ${e.puestos.map(p => p.nombre).join(', ') || 'General'}`
                 }));
                 

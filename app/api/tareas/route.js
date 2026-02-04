@@ -57,6 +57,8 @@ export async function POST(request) {
         // asignadoAId ahora puede venir null o "general"
         let { titulo, descripcion, prioridad, fechaVencimiento, creadoPorId, asignadoAId } = body;
 
+        console.log('Creando tarea con datos:', body);
+
         // Si asignadoAId es 'general' o string vacío, lo forzamos a null
         if (asignadoAId === 'general' || asignadoAId === '') {
             asignadoAId = null;
