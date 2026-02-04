@@ -1,5 +1,6 @@
 // models/Tarea.js
 const { DataTypes } = require('sequelize');
+const sequelize = require('../../sequelize');
 
 
   const Tarea = sequelize.define('Tarea', {
