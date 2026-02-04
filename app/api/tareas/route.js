@@ -7,10 +7,11 @@ import { notificarAdminsYUnUsuario } from '../notificar/route';
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const empleadoId = searchParams.get('empleadoId');
+        const userId = searchParams.get('userId');
         const esPresidencia = searchParams.get('esPresidencia') === 'true';
 
-        if (!empleadoId) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
+
+        if (!userId) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
 
         let whereCondition = {};
 
@@ -18,8 +19,8 @@ export async function GET(request) {
             // Presidencia ve: Las que creó, las asignadas a él, Y las generales
             whereCondition = {
                 [Op.or]: [
-                    { creadoPorId: empleadoId },
-                    { asignadoAId: empleadoId },
+                    { creadoPorId: userId },
+                    { asignadoAId: userId },
                     { asignadoAId: null } // <--- Tareas Generales
                 ]
             };
@@ -27,7 +28,7 @@ export async function GET(request) {
             // Empleado normal ve: Las asignadas a él Y las generales
             whereCondition = {
                 [Op.or]: [
-                    { asignadoAId: empleadoId },
+                    { asignadoAId: userId },
                     { asignadoAId: null } // <--- Tareas Generales
                 ]
             };
@@ -36,8 +37,8 @@ export async function GET(request) {
         const tareas = await db.Tarea.findAll({
             where: whereCondition,
             include: [
-                { model: db.Empleado, as: 'creador', attributes: ['id', 'nombre', 'apellido'] },
-                { model: db.Empleado, as: 'responsable', attributes: ['id', 'nombre', 'apellido'] }
+                { model: db.User, as: 'creador', attributes: ['id', 'nombre', 'apellido'] },
+                { model: db.User, as: 'responsable', attributes: ['id', 'nombre', 'apellido'] }
             ],
             order: [['createdAt', 'DESC']]
         });
@@ -61,9 +62,9 @@ export async function POST(request) {
             asignadoAId = null;
         }
 
-        const empleado = await db.Empleado.findByPk(asignadoAId);
-        if (!empleado) {
-            return NextResponse.json({ error: 'Empleado creador no encontrado' }, { status: 404 });
+        const usuario = await db.User.findByPk(asignadoAId);
+        if (!usuario) {
+            return NextResponse.json({ error: 'usuario asignado no encontrado' }, { status: 404 });
         }
 
         const nuevaTarea = await db.Tarea.create({
@@ -76,7 +77,7 @@ export async function POST(request) {
             // Notificar al empleado asignado (lógica de notificación no implementada aquí)
             notificarAdminsYUnUsuario(asignadoAId, {
                 title: 'Nueva Tarea Asignada',
-                body: `tarea asignada a ${empleado.nombre} ${empleado.apellido}: ${titulo}. Por favor, revisa el panel de tareas.`,
+                body: `tarea asignada a ${usuario.nombre} ${usuario.apellido}: ${titulo}. Por favor, revisa el panel de tareas.`,
                 url: `/superuser`
             })
         : 

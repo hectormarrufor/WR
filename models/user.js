@@ -80,6 +80,8 @@ User.associate = (models) => {
     foreignKey: 'creadoPorId',
     as: 'odtsCreadas' // Un usuario puede crear muchas órdenes de trabajo
   });
+  User.hasMany(models.Tarea, { foreignKey: 'creadoPorId', as: 'tareasCreadas' });
+  User.hasMany(models.Tarea, { foreignKey: 'asignadoAId', as: 'tareasAsignadas' });
 
 
 };

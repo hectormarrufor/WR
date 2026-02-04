@@ -32,8 +32,8 @@ const sequelize = require('../../sequelize');
   });
 
   Tarea.associate = (models) => {
-    Tarea.belongsTo(models.Empleado, { foreignKey: 'creadoPorId', as: 'creador' });
-    Tarea.belongsTo(models.Empleado, { foreignKey: 'asignadoAId', as: 'responsable' });
+    Tarea.belongsTo(models.User, { foreignKey: 'creadoPorId', as: 'creador' });
+    Tarea.belongsTo(models.User, { foreignKey: 'asignadoAId', as: 'responsable' });
   }
 
 module.exports = Tarea;

@@ -41,8 +41,9 @@ export default function DashboardTareas({ glassStyle }) {
     const fetchTareas = async () => {
         if (!user?.id) return;
         setLoading(true);
+        console.log(user);
         try {
-            const res = await fetch(`/api/tareas?empleadoId=${user.id}&esPresidencia=${esPresidencia}`);
+            const res = await fetch(`/api/tareas?userId=${user.id}&esPresidencia=${esPresidencia}`);
             const data = await res.json();
             if (Array.isArray(data)) setTareas(data);
         } catch (error) { console.error(error); } 
