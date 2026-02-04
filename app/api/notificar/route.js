@@ -116,7 +116,7 @@ export async function crearYNotificar(data) {
         }
 
         const subscripciones = await PushSubscription.findAll({ where: whereSubscriptions });
-        console.log(`\x1b[42m [INFO]: Enviando a ${subscripciones.length} dispositivos. \x1b[0m`);
+        console.log(`[NOTIFICADOR] Enviando a: ${subscripciones.map(s => s.usuarioId).join(', ')}`);
 
         // E. ENVÍO MASIVO
         const promesas = subscripciones.map(async (sub) => {
