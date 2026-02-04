@@ -55,11 +55,13 @@ export default function DashboardTareas({ glassStyle }) {
                 const res = await fetch('/api/rrhh/empleados?where=estado:Activo');
                 const data = await res.json();
                 const lista = Array.isArray(data) ? data : data.data || [];
+
+                console.log('Empleados obtenidos para asignación de tareas:', lista);
                 
                 // Construimos la lista con la opción GENERAL al principio
                 const opciones = lista.map(e => ({
                     value: String(e.id),
-                    label: `${e.nombre} ${e.apellido} - ${e.departamento || 'General'}`
+                    label: `${e.nombre} ${e.apellido} - ${e.puestos.map(p => p.nombre).join(', ') || 'General'}`
                 }));
                 
                 // Agregamos opción "General" al inicio
@@ -128,13 +130,13 @@ export default function DashboardTareas({ glassStyle }) {
 
     return (
         <Paper p="lg" radius="lg" style={{ ...containerStyle, transition: 'all 0.3s ease' }}>
-            <Group justify="space-between" mb="lg">
+            <Group justify="space-between" mb={0}>
                 <Group gap="sm">
                     <ThemeIcon variant="gradient" gradient={{ from: 'blue', to: 'cyan' }} size="lg" radius="md">
                         <IconListCheck size={20}/>
                     </ThemeIcon>
                     <div>
-                        <Title order={4} style={{ lineHeight: 1 }}>Mis Tareas</Title>
+                        <Title order={4} style={{ lineHeight: 1 }}>{esPresidencia? 'Asignar Tareas' : 'Mis Tareas'}</Title>
                         <Text size="xs" c="dimmed">Gestión de actividades</Text>
                     </div>
                     {tareas.filter(t => t.estado !== 'Completada').length > 0 && (
@@ -146,18 +148,18 @@ export default function DashboardTareas({ glassStyle }) {
                 
                 {esPresidencia && (
                     <Button leftSection={<IconPlus size={16}/>} size="xs" radius="xl" variant="filled" color="blue" onClick={() => { setModalOpen(true); fetchEmpleados(); }} style={{ boxShadow: '0 4px 10px rgba(34, 139, 230, 0.3)' }}>
-                        Nueva Tarea
+                        {esPresidencia ? 'Asignar Tarea' : 'Nueva Tarea'}
                     </Button>
                 )}
             </Group>
 
-            <ScrollArea h={300} type="auto" offsetScrollbars>
+           <ScrollArea.Autosize mah={350}>
                 {loading ? (
-                    <Stack align="center" mt="xl"><Loader size="sm" type="dots" /></Stack>
+                    <Stack align="center" mt={0}><Loader size="sm" type="dots" /></Stack>
                 ) : tareas.length === 0 ? (
-                    <Stack align="center" mt="xl" gap="xs">
+                    <Stack align="center" mt={0} gap="xs">
                         <ThemeIcon color="gray" variant="light" size="xl" radius="xl"><IconCheck /></ThemeIcon>
-                        <Text c="dimmed" size="sm">¡Todo al día! No tienes tareas pendientes.</Text>
+                        <Text c="dimmed" size="sm">¡Todo al día! No hay tareas pendientes.</Text>
                     </Stack>
                 ) : (
                     <Stack gap="sm">
@@ -272,10 +274,10 @@ export default function DashboardTareas({ glassStyle }) {
                         })}
                     </Stack>
                 )}
-            </ScrollArea>
+            </ScrollArea.Autosize>
 
             {/* MODAL */}
-            <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Nueva Tarea" centered radius="lg">
+            <Modal opened={modalOpen} onClose={() => setModalOpen(false)} title="Generar Nueva Tarea" centered radius="lg">
                 <Stack>
                     <TextInput 
                         label="Título" 
