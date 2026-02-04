@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/models';
 import { Op } from 'sequelize';
+import { notificarAdminsYUnUsuario } from '../notificar/route';
 
 export async function GET(request) {
     try {
@@ -60,11 +61,31 @@ export async function POST(request) {
             asignadoAId = null;
         }
 
+        const empleado = await db.Empleado.findByPk(asignadoAId);
+        if (!empleado) {
+            return NextResponse.json({ error: 'Empleado creador no encontrado' }, { status: 404 });
+        }
+
         const nuevaTarea = await db.Tarea.create({
             titulo, descripcion, prioridad, fechaVencimiento, creadoPorId,
             asignadoAId: asignadoAId, // Puede ser ID o null
             estado: 'Pendiente'
         });
+
+        asignadoAId ? 
+            // Notificar al empleado asignado (lógica de notificación no implementada aquí)
+            notificarAdminsYUnUsuario(asignadoAId, {
+                title: 'Nueva Tarea Asignada',
+                body: `tarea asignada a ${empleado.nombre} ${empleado.apellido}: ${titulo}. Por favor, revisa el panel de tareas.`,
+                url: `/superuser`
+            })
+        : 
+            notificarAdmins({
+                title: 'Nueva Tarea General',
+                body: `Se ha creado una nueva tarea: "${titulo}". Por favor, revisa tu panel de tareas.`,
+                url: `/superuser`
+            })
+        ;
 
         return NextResponse.json(nuevaTarea);
     } catch (error) {

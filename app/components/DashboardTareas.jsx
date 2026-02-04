@@ -100,7 +100,7 @@ export default function DashboardTareas({ glassStyle }) {
     const cambiarEstado = async (id, nuevoEstado) => {
         try {
             const res = await fetch(`/api/tareas/${id}`, {
-                method: 'PATCH',
+                method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })
             });

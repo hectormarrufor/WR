@@ -1,6 +1,6 @@
 'use client';
 
-import { Title, Stack, useMantineTheme, Box, Text, Badge, Flex, Loader, Center, Paper, UnstyledButton, Group, ThemeIcon, Card, SimpleGrid } from '@mantine/core';
+import { Title, Stack, useMantineTheme, Box, Text, Badge, Flex, Loader, Center, Paper, UnstyledButton, Group, ThemeIcon, Card, SimpleGrid, Divider } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
@@ -11,6 +11,45 @@ import {
 import './superuser.css'; // Asegúrate de que este archivo no tenga estilos que choquen
 import { useAuth } from '@/hooks/useAuth';
 import DashboardTareas from '../components/DashboardTareas';
+import { notifications } from '@mantine/notifications';
+
+const copiarAlPortapapeles = async (texto) => {
+    // 1. Intento Moderno (HTTPS / Localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(texto);
+            console.log('Copiado con API moderna');
+            return true;
+        } catch (err) {
+            console.error('Error al copiar (API moderna):', err);
+        }
+    }
+
+    // 2. Intento Legacy (HTTP / Móviles antiguos / Red local)
+    // Crea un textarea temporal, selecciona el texto y ejecuta el comando de copiado
+    const textArea = document.createElement("textarea");
+    textArea.value = texto;
+
+    // Asegurar que el textarea no sea visible ni cause scroll
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    document.body.appendChild(textArea);
+
+    textArea.focus();
+    textArea.select();
+
+    try {
+        document.execCommand('copy');
+        console.log('Copiado con método legacy');
+        document.body.removeChild(textArea);
+        return true;
+    } catch (err) {
+        console.error('Error al copiar (Legacy):', err);
+        document.body.removeChild(textArea);
+        return false;
+    }
+};
 
 // --- ANIMACIÓN FADE UP (Reutilizada de la Landing) ---
 const FadeInSection = ({ children, delay = 0 }) => {
@@ -83,8 +122,8 @@ export default function SuperUserHome() {
 
     const handleGlassHover = (e, lift) => {
         e.currentTarget.style.transform = lift ? 'translateY(-5px)' : 'translateY(0)';
-        e.currentTarget.style.boxShadow = lift 
-            ? '0 15px 40px 0 rgba(31, 38, 135, 0.2)' 
+        e.currentTarget.style.boxShadow = lift
+            ? '0 15px 40px 0 rgba(31, 38, 135, 0.2)'
             : '0 8px 32px 0 rgba(31, 38, 135, 0.1)';
     };
 
@@ -112,11 +151,11 @@ export default function SuperUserHome() {
     return (
         <Box style={bgPattern}>
             <Box maw={1200} mx="auto" pb={40}>
-                
-                {/* HEADER */}
+
+                {/* /* HEADER */}
                 <FadeInSection>
-                    <Stack align="center" spacing={ 0}>
-                        <Title order={1} align="center" style={{ 
+                    <Stack align="center" gap={0}>
+                        <Title order={3} align="center" style={{
                             background: '-webkit-linear-gradient(45deg, #1c7ed6, #22b8cf)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
@@ -125,10 +164,28 @@ export default function SuperUserHome() {
                             PANEL DE ADMINISTRACIÓN
                         </Title>
 
-                        <UnstyledButton onClick={() => router.push('/superuser/bcv')}>
-                            <Badge 
-                                size="xl" 
-                                variant="gradient" 
+                        <UnstyledButton
+                            onClick={() => router.push('/superuser/bcv')}
+                            onContextMenu={(e) => {
+                                e.preventDefault(); // Evita que salga el menú contextual nativo del navegador
+
+                                if (precioBCV) {
+                                    const exito = copiarAlPortapapeles(precioBCV.toString());
+
+                                    if (exito) {
+                                        // Feedback visual (Muy importante en móvil)
+                                        notifications.show({
+                                            title: 'Copiado',
+                                            message: `Precio BCV: ${precioBCV} copiado al portapapeles`,
+                                            color: 'green',
+                                        });
+                                    }
+                                }
+                            }}
+                        >
+                            <Badge
+                                size="lg"
+                                variant="gradient"
                                 gradient={precioBCV ? { from: 'green', to: 'teal' } : { from: 'gray', to: 'gray' }}
                                 style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.1)', cursor: 'pointer' }}
                             >
@@ -140,27 +197,29 @@ export default function SuperUserHome() {
 
                 {/* DASHBOARD TAREAS (Integrado visualmente) */}
                 <FadeInSection delay={0.1}>
-                    <Box mb={40}>
+                    <Box my={5}>
                         <DashboardTareas glassStyle={glassStyle} />
                     </Box>
                 </FadeInSection>
 
+                <Divider my={5} />
+
                 {/* GRID DE MENÚ */}
-                <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
+                <SimpleGrid cols={{ base: 2, sm: 2, md: 3, lg: 4 }} spacing="xs">
                     {menuOptions.map((option, index) => (
                         option.visible && (
                             <FadeInSection key={index} delay={index * 0.05}>
-                                <UnstyledButton 
+                                <UnstyledButton
                                     onClick={() => !option.disabled && router.push(option.href)}
                                     style={{ width: '100%', height: '100%' }}
                                     disabled={option.disabled}
                                 >
-                                    <Card 
-                                        p="lg" 
-                                        radius="lg" 
-                                        style={{ 
-                                            ...glassStyle, 
-                                            height: '100%', 
+                                    <Card
+                                        p="xs"
+                                        radius="lg"
+                                        style={{
+                                            ...glassStyle,
+                                            height: '100%',
                                             cursor: option.disabled ? 'not-allowed' : 'pointer',
                                             opacity: option.disabled ? 0.6 : 1
                                         }}
@@ -168,10 +227,10 @@ export default function SuperUserHome() {
                                         onMouseLeave={(e) => !option.disabled && handleGlassHover(e, false)}
                                     >
                                         <Group align="flex-start" wrap="nowrap" mb="xs">
-                                            <ThemeIcon 
-                                                size={48} 
-                                                radius="md" 
-                                                variant="gradient" 
+                                            <ThemeIcon
+                                                size={48}
+                                                radius="md"
+                                                variant="gradient"
                                                 gradient={{ from: option.color, to: `${option.color}.4`, deg: 135 }}
                                                 style={{ boxShadow: `0 4px 15px var(--mantine-color-${option.color}-2)` }}
                                             >
