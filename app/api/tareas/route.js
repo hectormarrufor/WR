@@ -37,8 +37,8 @@ export async function GET(request) {
         const tareas = await db.Tarea.findAll({
             where: whereCondition,
             include: [
-                { model: db.User, as: 'creador', attributes: ['id', 'nombre', 'apellido'] },
-                { model: db.User, as: 'responsable', attributes: ['id', 'nombre', 'apellido'] }
+                { model: db.User, as: 'creador', include: [{ model: db.Empleado, as: 'empleado' }] },
+                { model: db.User, as: 'responsable', include: [{ model: db.Empleado, as: 'empleado' }] }
             ],
             order: [['createdAt', 'DESC']]
         });
@@ -79,7 +79,7 @@ export async function POST(request) {
             // Notificar al empleado asignado (lógica de notificación no implementada aquí)
             notificarAdminsYUnUsuario(asignadoAId, {
                 title: 'Nueva Tarea Asignada',
-                body: `tarea asignada a ${usuario.nombre} ${usuario.apellido}: ${titulo}. Por favor, revisa el panel de tareas.`,
+                body: `tarea asignada a ${usuario.empleado.nombre} ${usuario.empleado.apellido}: ${titulo}. Por favor, revisa el panel de tareas.`,
                 url: `/superuser`
             })
         : 

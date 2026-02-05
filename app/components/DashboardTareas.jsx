@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
+import { formatDateLong, formatDateShort } from '../helpers/dateUtils';
 
 export default function DashboardTareas({ glassStyle }) {
     const { user } = useAuth();
@@ -232,20 +233,20 @@ export default function DashboardTareas({ glassStyle }) {
                                                     
                                                     {tarea.fechaVencimiento && (
                                                         <Badge size="xs" color="gray" variant="outline" leftSection={<IconClock size={10}/>} style={{ border: '1px solid #dee2e6' }}>
-                                                            {new Date(tarea.fechaVencimiento).toLocaleDateString()}
+                                                            {formatDateLong(tarea.fechaVencimiento)}
                                                         </Badge>
                                                     )}
                                                     
                                                     {/* Mostrar quién la tiene asignada (si no es general) */}
                                                     {!esGeneral && esPresidencia && tarea.asignadoAId !== user?.id && (
                                                         <Badge size="xs" color="violet" variant="dot" leftSection={<IconUser size={10}/>} style={{ backgroundColor: 'transparent' }}>
-                                                            {tarea.responsable?.nombre}
+                                                            {tarea.responsable?.empleado?.nombre}
                                                         </Badge>
                                                     )}
 
                                                     {/* Mostrar quién la creó */}
                                                     {!esPresidencia && (
-                                                        <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>De: {tarea.creador?.nombre}</Text>
+                                                        <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>De: {tarea.creador?.empleado?.nombre}</Text>
                                                     )}
                                                 </Group>
                                             </div>
