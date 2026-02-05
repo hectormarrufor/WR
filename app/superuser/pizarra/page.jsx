@@ -188,16 +188,17 @@ const EventMiniature = ({ event, router }) => {
           .map(r => r.observaciones)
           .filter(o => o && o.length > 3);
 
-        // --- ESTRATEGIA ANTI-429: JITTER (Retraso Aleatorio) ---
-        // Generamos un retraso aleatorio entre 500ms y 3000ms.
-        // Esto hace que las 7 peticiones no salgan juntas, sino una por una.
-        const randomDelay = Math.floor(Math.random() * 2500) + 500;
+        // Retraso aleatorio (Jitter) sigue siendo útil para la primera carga masiva
+        const randomDelay = Math.floor(Math.random() * 2000) + 500;
 
         const timeoutId = setTimeout(() => {
             fetch('/api/ai/generar-resumen', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ observaciones: obsList }) // Ya no guardamos en BD, no enviamos fecha
+              body: JSON.stringify({ 
+                  observaciones: obsList,
+                  fecha: event.start // <--- IMPORTANTE: Enviamos la fecha
+              })
             })
               .then(res => {
                   if (res.status === 429) throw new Error("Busy");
@@ -205,15 +206,15 @@ const EventMiniature = ({ event, router }) => {
               })
               .then(data => setResumenAI(data.resumen))
               .catch(err => {
-                  // Si falla por 'Busy', ponemos un texto fallback suave
-                  if(err.message === "Busy") setResumenAI("Mucha carga, intente luego.");
+                  console.error(err);
+                  if(err.message === "Busy") setResumenAI("Límite IA alcanzado.");
                   else setResumenAI("Operaciones en planta.");
               })
               .finally(() => setLoadingAI(false));
         }, randomDelay);
 
-        // Cleanup si el componente se desmonta antes de enviar
         return () => clearTimeout(timeoutId);
+      
 
       } else {
         // Si es fecha vieja (semanas pasadas) o futura: Texto estático (Ahorro 100%)
