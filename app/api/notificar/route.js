@@ -30,7 +30,7 @@ export async function crearYNotificar(data) {
     const resultados = { exitosos: 0, fallidos: 0 };
 
     try {
-        // A. Preparar datos
+        // A. Preparar datos (Igual)
         const fechaCaracas = new Date().toLocaleString('es-VE', {
             timeZone: 'America/Caracas',
             day: '2-digit', month: '2-digit', year: 'numeric',
@@ -40,7 +40,7 @@ export async function crearYNotificar(data) {
         const targetDeptos = Array.isArray(data.departamentos) && data.departamentos.length > 0 ? data.departamentos : null;
         const targetPuestos = Array.isArray(data.puestos) && data.puestos.length > 0 ? data.puestos : null;
 
-        // B. Guardar HISTORIAL
+        // B. Guardar HISTORIAL (Igual)
         const nuevaNotificacion = await Notificacion.create({
             titulo: data.title,
             mensaje: data.body,
@@ -53,40 +53,57 @@ export async function crearYNotificar(data) {
 
         await t.commit();
 
-        // C. LÓGICA DE RECOPILACIÓN DE IDS (MULTICRITERIO)
-        // Usamos un Set para evitar IDs duplicados si un usuario cumple varias condiciones
-        const idsUsuariosFinales = new Set();
+        // =====================================================================
+        // C. RECOPILACIÓN DE IDS Y DATOS (OPTIMIZADO)
+        // =====================================================================
+        // En lugar de solo guardar IDs, guardamos ID -> "Nombre Apellido"
+        // Así evitamos consultar de nuevo en el paso D.
+        const usuariosMap = new Map(); 
+
+        // Helper para formatear nombre
+        const formatearNombre = (u) => u.empleado ? `${u.empleado.nombre} ${u.empleado.apellido}` : `Usuario: ${u.user}`;
 
         // C1. Por Usuario ID específico
         if (data.usuarioId) {
-            idsUsuariosFinales.add(data.usuarioId);
+            // Aquí solo guardamos el ID, si no lo tenemos "completo" por los otros filtros, 
+            // saldrá como ID en el log, lo cual es aceptable para ahorrar una query de 1 solo user.
+            usuariosMap.set(data.usuarioId, `ID Manual: ${data.usuarioId}`);
         }
 
-        // C2. Por Roles (Admin, Presidente, etc.)
+        // C2. Por Roles
         if (data.roles && data.roles.length > 0) {
             const usuariosPorRol = await User.findAll({
                 where: { rol: { [Op.in]: data.roles } },
-                attributes: ['id']
+                attributes: ['id', 'user'], // ✨ TRAEMOS DATA DE UNA VEZ
+                include: [{
+                    model: Empleado,
+                    as: 'empleado',
+                    attributes: ['nombre', 'apellido']
+                }]
             });
-            usuariosPorRol.forEach(u => idsUsuariosFinales.add(u.id));
+            // Guardamos en el mapa
+            usuariosPorRol.forEach(u => usuariosMap.set(u.id, formatearNombre(u)));
         }
 
         // C3. Por Departamentos o Puestos
         if (targetDeptos || targetPuestos) {
             const usuariosTarget = await User.findAll({
-                attributes: ['id'],
+                attributes: ['id', 'user'], // ✨ TRAEMOS DATA DE UNA VEZ
                 include: [{
                     model: Empleado,
                     as: 'empleado',
                     required: true,
+                    attributes: ['nombre', 'apellido'],
                     include: [{
                         model: Puesto,
                         as: 'puestos',
                         required: true,
+                        attributes: [], // No necesitamos data del puesto, solo filtro
                         include: [{
                             model: Departamento,
                             as: 'departamento',
-                            required: false
+                            required: false,
+                            attributes: [] // No necesitamos data del depto
                         }]
                     }]
                 }],
@@ -97,28 +114,39 @@ export async function crearYNotificar(data) {
                     ].filter(Boolean)
                 }
             });
-            usuariosTarget.forEach(u => idsUsuariosFinales.add(u.id));
+            // Guardamos en el mapa (si ya existe por rol, se sobrescribe, no pasa nada)
+            usuariosTarget.forEach(u => usuariosMap.set(u.id, formatearNombre(u)));
         }
 
-        // D. BUSCAR SUSCRIPCIONES
+        // =====================================================================
+        // D. BUSCAR SUSCRIPCIONES Y ENVIAR (OPTIMIZADO)
+        // =====================================================================
         let whereSubscriptions = { activo: true };
-
-        // Si se especificó algún filtro, filtramos las suscripciones por los IDs recolectados
-        // Si no se especificó NADA (data vacío), se asume GLOBAL
-        const tieneFiltros = data.usuarioId || (data.roles && data.roles.length > 0) || targetDeptos || targetPuestos;
+        const tieneFiltros = usuariosMap.size > 0 || data.usuarioId;
 
         if (tieneFiltros) {
-            if (idsUsuariosFinales.size === 0) {
+            if (usuariosMap.size === 0) {
                 console.log('[NOTIFICADOR] Filtros aplicados pero no se encontró ningún usuario.');
                 return nuevaNotificacion;
             }
-            whereSubscriptions.usuarioId = { [Op.in]: Array.from(idsUsuariosFinales) };
+            // Usamos las llaves del mapa (IDs) para filtrar
+            whereSubscriptions.usuarioId = { [Op.in]: Array.from(usuariosMap.keys()) };
         }
 
-        const subscripciones = await PushSubscription.findAll({ where: whereSubscriptions });
-        console.log(`[NOTIFICADOR] Enviando a: ${subscripciones.map(s => s.usuarioId).join(', ')}`);
+        // PASO 1: Buscar las suscripciones
+        const subscripciones = await PushSubscription.findAll({
+            where: whereSubscriptions
+        });
 
-        // E. ENVÍO MASIVO
+        // PASO 2: Generar Log usando el MAPA (Sin hacer query a User) ✨
+        const listaDestinatarios = subscripciones.map(s => {
+            // Buscamos en memoria, costo O(1)
+            return usuariosMap.get(s.usuarioId) || `ID Desconocido (${s.usuarioId})`;
+        }).join(', ');
+
+        console.log(`[NOTIFICADOR] Enviando a: ${listaDestinatarios} (${subscripciones.length} dispositivos)`);
+
+        // E. ENVÍO MASIVO (Igual)
         const promesas = subscripciones.map(async (sub) => {
             try {
                 const payloadPush = JSON.stringify({
@@ -136,7 +164,7 @@ export async function crearYNotificar(data) {
             } catch (err) {
                 resultados.fallidos++;
                 if (err.statusCode === 410 || err.statusCode === 404) {
-                    await sub.destroy();
+                    await sub.destroy(); // Limpieza automática
                 } else {
                     console.error(`Error push usuario ${sub.usuarioId}:`, err.message);
                 }
@@ -154,9 +182,9 @@ export async function crearYNotificar(data) {
 }
 
 export async function crearSinNotificar(data) {
-   const t = await sequelize.transaction();
+    const t = await sequelize.transaction();
 
-   try {
+    try {
         // A. Preparar datos
         const fechaCaracas = new Date().toLocaleString('es-VE', {
             timeZone: 'America/Caracas',
@@ -215,7 +243,7 @@ export async function notificarAdminsYUnUsuario(usuarioId, payload) {
     });
 }
 
-export async function notificarPresidente( payload) {
+export async function notificarPresidente(payload) {
     return crearYNotificar({
         ...payload,
         departamentos: ['Presidencia'] // Mapeo directo 1 a 1
@@ -269,14 +297,14 @@ export async function notificarCabezas(payload) {
 }
 
 export async function notificarCabezasSinPush(payload) {
-   return crearSinNotificar({
+    return crearSinNotificar({
         ...payload,
         puestos: ['Presidente', 'Desarrollador Web', 'Administradora', "Gerente Operacional"]
     });
-}   
+}
 
 export async function notificarTodosSinPush(payload) {
-   return crearSinNotificar({
+    return crearSinNotificar({
         ...payload
         // Al no pasar filtros, se va a todos (Filtro Default)
     });

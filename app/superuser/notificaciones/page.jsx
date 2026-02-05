@@ -1,17 +1,24 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { 
-  Container, Title, Timeline, Text, Paper, Group, Badge, Loader, Center, ThemeIcon 
+  Container, Title, Timeline, Text, Paper, Group, Badge, Loader, Center, ThemeIcon, ActionIcon, Tooltip 
 } from '@mantine/core';
 import { 
-  IconInfoCircle, IconAlertTriangle, IconAlertOctagon, IconBell 
+  IconInfoCircle, IconAlertTriangle, IconAlertOctagon, IconBell, IconTrash 
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { notifications } from '@mantine/notifications'; // Opcional: para feedback visual
+
+// 1. IMPORTA TU HOOK DE AUTH (Ajusta la ruta según tu proyecto)
+import { useAuth } from '@/hooks/useAuth'; 
 
 export default function NotificacionesPage() {
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  
+  // 2. OBTENER SI ES ADMIN
+  const { isAdmin } = useAuth(); 
 
   useEffect(() => {
     fetch('/api/notificaciones')
@@ -21,6 +28,29 @@ export default function NotificacionesPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // 3. FUNCIÓN PARA BORRAR NOTIFICACIÓN
+  const handleDelete = async (id) => {
+    if (!confirm('¿Estás seguro de borrar esta notificación del historial?')) return;
+
+    try {
+      // Asumiendo que tu API soporta DELETE en /api/notificaciones/[id] o similar
+      // Si tu ruta es diferente, ajusta aquí (ej: /api/notificaciones?id=${id})
+      const res = await fetch(`/api/notificaciones/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        // Actualizar estado local eliminando el item borrado
+        setNotificaciones((prev) => prev.filter((n) => n.id !== id));
+        notifications.show({ title: 'Eliminado', message: 'Notificación borrada', color: 'green' });
+      } else {
+        notifications.show({ title: 'Error', message: 'No se pudo borrar', color: 'red' });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const getIcon = (tipo) => {
     if (tipo === 'Critico') return <IconAlertOctagon size={18} />;
@@ -59,15 +89,32 @@ export default function NotificacionesPage() {
                 bullet={getIcon(notif.tipo)}
                 color={getColor(notif.tipo)}
                 title={
-                  <Group>
-                    <Text fw={500}>{notif.titulo}</Text>
-                    {notif.tipo !== 'Info' && (
+                  <Group justify="space-between">
+                    {/* Título y Badge a la izquierda */}
+                    <Group gap="xs">
+                      <Text fw={500}>{notif.titulo}</Text>
+                      {notif.tipo !== 'Info' && (
                         <Badge color={getColor(notif.tipo)} size="xs">{notif.tipo}</Badge>
+                      )}
+                    </Group>
+
+                    {/* 4. BOTÓN DE BORRAR (SOLO ADMIN) */}
+                    {isAdmin && (
+                      <Tooltip label="Eliminar notificación">
+                        <ActionIcon 
+                          color="red" 
+                          variant="subtle" 
+                          size="sm" 
+                          onClick={() => handleDelete(notif.id)}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Tooltip>
                     )}
                   </Group>
                 }
               >
-                <Text c="dimmed" size="sm">{notif.mensaje}</Text>
+                <Text c="dimmed" size="sm" mt={4}>{notif.mensaje}</Text>
                 
                 <Group justify="space-between" mt="xs">
                   <Text size="xs" c="dimmed">
@@ -78,6 +125,7 @@ export default function NotificacionesPage() {
                     <Text 
                       size="xs" 
                       c="blue" 
+                      fw={500}
                       style={{ cursor: 'pointer' }}
                       onClick={() => router.push(notif.url)}
                     >

@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatDateLong, formatDateShort } from '../helpers/dateUtils';
 
 export default function DashboardTareas({ glassStyle }) {
-    const { user } = useAuth();
+    const { user, nombre } = useAuth();
     
     const containerStyle = glassStyle || {
         backgroundColor: 'rgba(255, 255, 255, 0.7)',
@@ -104,9 +104,9 @@ export default function DashboardTareas({ glassStyle }) {
     const cambiarEstado = async (id, nuevoEstado) => {
         try {
             const res = await fetch(`/api/tareas/${id}`, {
-                method: 'DELETE',
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado: nuevoEstado })
+                body: JSON.stringify({ nombre: nombre, estado: nuevoEstado })
             });
             if (res.ok) fetchTareas();
         } catch (error) { console.error(error); }
