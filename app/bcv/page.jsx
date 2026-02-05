@@ -19,7 +19,7 @@ dayjs.locale('es');
 
 // --- SUB-COMPONENTE: CALCULADORA DE TASAS ---
 const CalculadoraDeTasas = ({ stats }) => {
-    const [monto, setMonto] = useState(1); // Valor por defecto
+    const [monto, setMonto] = useState(undefined); // Valor por defecto
     const [monedaBase, setMonedaBase] = useState('usd'); // 'usd', 'eur', 'usdt', 'bs'
 
     if (!stats) return null;
@@ -148,7 +148,7 @@ const CalculadoraDeTasas = ({ stats }) => {
 export default function BcvDashboard() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [rango, setRango] = useState('30d');
+  const [rango, setRango] = useState('7d');
   const [mounted, setMounted] = useState(false);
 
   // 1. Cargar Datos
