@@ -8,7 +8,8 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { 
-    IconPlus, IconCheck, IconClock, IconUser, IconDotsVertical, IconListCheck, IconUsers, IconHandStop
+    IconPlus, IconCheck, IconClock, IconUser, IconDotsVertical, IconListCheck, IconUsers, IconHandStop,
+    IconRefresh
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -112,6 +113,17 @@ export default function DashboardTareas({ glassStyle }) {
         } catch (error) { console.error(error); }
     };
 
+    const eliminarTarea = async (id) => {
+        if (!window.confirm("¿Estás seguro de borrarla definitivamente de la base de datos?")) return;
+        try {
+            const res = await fetch(`/api/tareas/${id}?nombre=${encodeURIComponent(nombre)}`, { method: 'DELETE' });
+            if (res.ok) {
+                notifications.show({ message: 'Tarea eliminada', color: 'red' });
+                fetchTareas();
+            }
+        } catch (error) { console.error(error); }
+    };
+
     // Nueva función: Asignarse una tarea general a uno mismo
     const asumirTarea = async (id) => {
         try {
@@ -167,10 +179,20 @@ export default function DashboardTareas({ glassStyle }) {
                     </Stack>
                 ) : (
                     <Stack gap="sm">
-                        {tareas.map(tarea => {
-                            // Detectar si es tarea general (sin responsable)
+                        {/* 1. ORDENAMOS LAS TAREAS AQUÍ MISMO */}
+                        {[...tareas].sort((a, b) => {
+                            // Definimos pesos: Activa (0) < Completada (1) < Cancelada (2)
+                            const getScore = (estado) => {
+                                if (estado === 'Cancelada') return 2;
+                                if (estado === 'Completada') return 1;
+                                return 0;
+                            };
+                            return getScore(a.estado) - getScore(b.estado);
+                        }).map(tarea => {
                             const esGeneral = !tarea.asignadoAId;
-                            
+                            const esCancelada = tarea.estado === 'Cancelada'; // Flag para facilitar estilos
+                            const esCompletada = tarea.estado === 'Completada';
+
                             return (
                                 <Paper 
                                     key={tarea.id} 
@@ -178,48 +200,48 @@ export default function DashboardTareas({ glassStyle }) {
                                     radius="md"
                                     withBorder
                                     style={{ 
-                                        backgroundColor: tarea.estado === 'Completada' ? 'rgba(241, 243, 245, 0.5)' : 'rgba(255, 255, 255, 0.6)',
-                                        opacity: tarea.estado === 'Completada' ? 0.7 : 1,
-                                        borderColor: esGeneral ? 'rgba(34, 139, 230, 0.3)' : 'rgba(0,0,0,0.05)', // Borde azulito si es general
+                                        // 2. ESTILOS VISUALES PARA DIFERENCIAR ESTADOS
+                                        backgroundColor: esCancelada 
+                                            ? 'rgba(255, 200, 200, 0.3)' // Rojo suave si está cancelada
+                                            : esCompletada ? 'rgba(241, 243, 245, 0.5)' : 'rgba(255, 255, 255, 0.6)',
+                                        opacity: (esCancelada || esCompletada) ? 0.6 : 1,
+                                        // Borde rojo si cancelada, azul si general, gris normal
+                                        borderColor: esCancelada 
+                                            ? 'rgba(255, 0, 0, 0.2)' 
+                                            : esGeneral ? 'rgba(34, 139, 230, 0.3)' : 'rgba(0,0,0,0.05)',
                                         transition: 'transform 0.2s',
                                     }}
                                 >
                                     <Group justify="space-between" align="flex-start" wrap="nowrap">
                                         <Group gap="sm" align="flex-start" wrap="nowrap" style={{ flex: 1 }}>
                                             
-                                            {/* CHECKBOX: Solo habilitado si la tarea es mía o ya está completada. Si es general y no es mía, muestro botón de asumir */}
-                                            {esGeneral && tarea.estado !== 'Completada' ? (
+                                            {/* Checkbox (Deshabilitado si está cancelada) */}
+                                            {esGeneral && !esCompletada && !esCancelada ? (
                                                 <Tooltip label="Tomar esta tarea">
-                                                    <ActionIcon 
-                                                        color="blue" 
-                                                        variant="light" 
-                                                        radius="xl" 
-                                                        size="md" 
-                                                        mt={2}
-                                                        onClick={() => asumirTarea(tarea.id)}
-                                                    >
+                                                    <ActionIcon color="blue" variant="light" radius="xl" size="md" mt={2} onClick={() => asumirTarea(tarea.id)}>
                                                         <IconHandStop size={16} />
                                                     </ActionIcon>
                                                 </Tooltip>
                                             ) : (
                                                 <Checkbox 
-                                                    checked={tarea.estado === 'Completada'}
-                                                    onChange={() => cambiarEstado(tarea.id, tarea.estado === 'Completada' ? 'Pendiente' : 'Completada')}
+                                                    checked={esCompletada}
+                                                    // Si está cancelada, deshabilitamos el check
+                                                    disabled={esCancelada} 
+                                                    onChange={() => cambiarEstado(tarea.id, esCompletada ? 'Pendiente' : 'Completada')}
                                                     color="green"
                                                     radius="xl"
                                                     mt={4}
-                                                    style={{ cursor: 'pointer' }}
+                                                    style={{ cursor: esCancelada ? 'not-allowed' : 'pointer' }}
                                                 />
                                             )}
 
                                             <div style={{ width: '100%' }}>
                                                 <Group gap={5} mb={2}>
-                                                    {esGeneral && (
-                                                        <Badge size="xs" variant="gradient" gradient={{ from: 'indigo', to: 'cyan' }} leftSection={<IconUsers size={10} />}>
-                                                            GENERAL
-                                                        </Badge>
-                                                    )}
-                                                    <Text fw={600} size="sm" td={tarea.estado === 'Completada' ? 'line-through' : 'none'} c="dark.8">
+                                                    {esGeneral && <Badge size="xs" variant="gradient" gradient={{ from: 'indigo', to: 'cyan' }} leftSection={<IconUsers size={10} />}>GENERAL</Badge>}
+                                                    {esCancelada && <Badge size="xs" color="red" variant="filled">CANCELADA</Badge>}
+                                                    
+                                                    {/* Título tachado si completada o cancelada */}
+                                                    <Text fw={600} size="sm" td={(esCompletada || esCancelada) ? 'line-through' : 'none'} c={esCancelada ? 'red.8' : 'dark.8'}>
                                                         {tarea.titulo}
                                                     </Text>
                                                 </Group>
@@ -230,21 +252,16 @@ export default function DashboardTareas({ glassStyle }) {
                                                 
                                                 <Group gap={6} mt={6}>
                                                     <Badge size="xs" color={getPriorityColor(tarea.prioridad)} variant="light">{tarea.prioridad}</Badge>
-                                                    
                                                     {tarea.fechaVencimiento && (
                                                         <Badge size="xs" color="gray" variant="outline" leftSection={<IconClock size={10}/>} style={{ border: '1px solid #dee2e6' }}>
                                                             {formatDateLong(tarea.fechaVencimiento)}
                                                         </Badge>
                                                     )}
-                                                    
-                                                    {/* Mostrar quién la tiene asignada (si no es general) */}
                                                     {!esGeneral && esPresidencia && tarea.asignadoAId !== user?.id && (
                                                         <Badge size="xs" color="violet" variant="dot" leftSection={<IconUser size={10}/>} style={{ backgroundColor: 'transparent' }}>
                                                             {tarea.responsable?.empleado?.nombre}
                                                         </Badge>
                                                     )}
-
-                                                    {/* Mostrar quién la creó */}
                                                     {!esPresidencia && (
                                                         <Text size="xs" c="dimmed" style={{ fontSize: 10 }}>De: {tarea.creador?.empleado?.nombre}</Text>
                                                     )}
@@ -258,16 +275,49 @@ export default function DashboardTareas({ glassStyle }) {
                                             </Menu.Target>
                                             <Menu.Dropdown>
                                                 <Menu.Label>Acciones</Menu.Label>
-                                                {esGeneral && (
-                                                     <Menu.Item leftSection={<IconUser size={14}/>} onClick={() => asumirTarea(tarea.id)}>Asumir Tarea</Menu.Item>
+                                                
+                                                {esGeneral && <Menu.Item leftSection={<IconUser size={14}/>} onClick={() => asumirTarea(tarea.id)}>Asumir Tarea</Menu.Item>}
+                                                
+                                                {/* Si NO está cancelada, mostramos estados normales */}
+                                                {!esCancelada && (
+                                                    <>
+                                                        <Menu.Item leftSection={<IconClock size={14}/>} onClick={() => cambiarEstado(tarea.id, 'Pendiente')}>Pendiente</Menu.Item>
+                                                        <Menu.Item leftSection={<IconListCheck size={14}/>} onClick={() => cambiarEstado(tarea.id, 'En Progreso')}>En Progreso</Menu.Item>
+                                                        <Menu.Item leftSection={<IconCheck size={14}/>} onClick={() => cambiarEstado(tarea.id, 'Completada')}>Completada</Menu.Item>
+                                                    </>
                                                 )}
-                                                <Menu.Item leftSection={<IconClock size={14}/>} onClick={() => cambiarEstado(tarea.id, 'Pendiente')}>Pendiente</Menu.Item>
-                                                <Menu.Item leftSection={<IconListCheck size={14}/>} onClick={() => cambiarEstado(tarea.id, 'En Progreso')}>En Progreso</Menu.Item>
-                                                <Menu.Item leftSection={<IconCheck size={14}/>} onClick={() => cambiarEstado(tarea.id, 'Completada')}>Completada</Menu.Item>
+
                                                 {esPresidencia && (
                                                     <>
                                                         <Menu.Divider />
-                                                        <Menu.Item color="red" onClick={() => cambiarEstado(tarea.id, 'Cancelada')}>Eliminar</Menu.Item>
+                                                        
+                                                        {esCancelada ? (
+                                                            // --- AQUÍ ESTÁ EL CAMBIO ---
+                                                            <>
+                                                                {/* 1. Opción para Revivir (Vuelve a Pendiente) */}
+                                                                <Menu.Item 
+                                                                    color="blue" 
+                                                                    leftSection={<IconRefresh size={14}/>} 
+                                                                    onClick={() => cambiarEstado(tarea.id, 'Pendiente')}
+                                                                >
+                                                                    Revivir Tarea
+                                                                </Menu.Item>
+
+                                                                {/* 2. Opción para Eliminar Definitivamente */}
+                                                                <Menu.Item 
+                                                                    color="red" 
+                                                                    leftSection={<IconHandStop size={14}/>} 
+                                                                    onClick={() => eliminarTarea(tarea.id)}
+                                                                >
+                                                                    Eliminar Definitivamente
+                                                                </Menu.Item>
+                                                            </>
+                                                        ) : (
+                                                            // Si está activa, opción para Cancelar
+                                                            <Menu.Item color="orange" onClick={() => cambiarEstado(tarea.id, 'Cancelada')}>
+                                                                Cancelar Tarea
+                                                            </Menu.Item>
+                                                        )}
                                                     </>
                                                 )}
                                             </Menu.Dropdown>

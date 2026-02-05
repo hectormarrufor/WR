@@ -80,3 +80,38 @@ export async function PATCH(request, { params }) {
         return NextResponse.json({ error: 'Error al actualizar la tarea' }, { status: 500 });
     }
 }
+
+export async function DELETE(request, { params }) {
+    try {
+        const { id } = await params;
+        
+        // Obtener el nombre de quien borra desde la URL (query param)
+        const { searchParams } = new URL(request.url);
+        const nombreUsuario = searchParams.get('nombre') || 'Alguien';
+
+        // 1. Buscar la tarea antes de borrarla (para tener el título para la notificación)
+        const tarea = await db.Tarea.findByPk(id);
+
+        if (!tarea) {
+            return NextResponse.json({ error: 'Tarea no encontrada' }, { status: 404 });
+        }
+
+        const tituloTarea = tarea.titulo;
+
+        // 2. Eliminar físicamente el registro
+        await tarea.destroy();
+
+        // 3. Notificar (Opcional, pero recomendado para mantener la trazabilidad)
+        await notificarCabezas({
+            title: 'Tarea Eliminada 🗑️',
+            body: `La tarea "${tituloTarea}" ha sido eliminada permanentemente por ${nombreUsuario}.`,
+            url: `/superuser`
+        });
+
+        return NextResponse.json({ success: true, message: 'Tarea eliminada correctamente' });
+
+    } catch (error) {
+        console.error('Error al eliminar tarea:', error);
+        return NextResponse.json({ error: 'Error al eliminar la tarea' }, { status: 500 });
+    }
+}
