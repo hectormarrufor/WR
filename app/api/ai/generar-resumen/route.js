@@ -1,43 +1,47 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import db from '@/models'; // Asegúrate de que esto apunta a tu index de modelos
+import db from '@/models';
+import crypto from 'crypto'; // 1. Importamos librería nativa de criptografía
 
 export async function POST(request) {
     try {
         const { observaciones, fecha } = await request.json();
 
-        // 1. Validaciones
-        if (!fecha) {
-            return NextResponse.json({ error: "Fecha es requerida" }, { status: 400 });
-        }
-        
-        // Formateamos la fecha para asegurar consistencia (YYYY-MM-DD)
-        // Cortamos el string ISO para quedarnos solo con la fecha
+        if (!fecha) return NextResponse.json({ error: "Fecha requerida" }, { status: 400 });
+        if (!observaciones || observaciones.length === 0) return NextResponse.json({ resumen: "Sin actividad." });
+
         const fechaKey = new Date(fecha).toISOString().split('T')[0];
 
         // ---------------------------------------------------------
-        // 2. ESTRATEGIA DE CACHÉ (AHORRO DE DINERO)
+        // 2. GENERAR HUELLA DIGITAL (HASH) DE LOS DATOS ENTRANTES
+        // ---------------------------------------------------------
+        // Convertimos el array de observaciones a un string único y creamos su firma
+        // Si cambia una sola letra en una observación, este hash cambiará totalmente.
+        const stringData = JSON.stringify(observaciones.sort()); // Ordenamos para que el orden no afecte
+        const incomingHash = crypto.createHash('md5').update(stringData).digest('hex');
+
+        // ---------------------------------------------------------
+        // 3. ESTRATEGIA DE CACHÉ INTELIGENTE (INVALIDACIÓN)
         // ---------------------------------------------------------
         
-        // A. Buscamos si ya existe en DB
-        const resumenGuardado = await db.ResumenDiario.findOne({
-            where: { fecha: fechaKey }
-        });
+        // Buscamos si existe registro
+        let registroDB = await db.ResumenDiario.findOne({ where: { fecha: fechaKey } });
 
-        // B. Si existe, lo devolvemos y NO tocamos la API de Google
-        if (resumenGuardado) {
-            // (Opcional) Si hay muchas más observaciones nuevas que antes, podríamos regenerar,
-            // pero para ahorrar al máximo, devolvemos lo guardado siempre.
-            return NextResponse.json({ resumen: resumenGuardado.contenido, source: 'cache' });
+        // VERIFICACIÓN:
+        // Si existe Y el hash guardado es IGUAL al hash nuevo -> Retornamos caché (Ahorro)
+        if (registroDB && registroDB.hashContenido === incomingHash) {
+            console.log(`[AI-CACHE] Hit válido para ${fechaKey}`);
+            return NextResponse.json({ resumen: registroDB.contenido, source: 'cache' });
         }
 
-        // C. Si no hay observaciones, no gastamos IA, guardamos un default
-        if (!observaciones || observaciones.length === 0) {
-             return NextResponse.json({ resumen: "Sin actividad registrada." });
+        if (registroDB) {
+            console.log(`[AI-CACHE] Stale (Obsoleto) para ${fechaKey}. Regenerando...`);
+        } else {
+            console.log(`[AI-LIVE] Nuevo registro para ${fechaKey}`);
         }
 
         // ---------------------------------------------------------
-        // 3. LLAMADA A GEMINI (SOLO SI NO ESTABA EN CACHÉ)
+        // 4. LLAMADA A GEMINI (Si no existe o si cambió el hash)
         // ---------------------------------------------------------
         const apiKey = process.env.GOOGLE_API_KEY;
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -54,28 +58,27 @@ export async function POST(request) {
         const response = await result.response;
         const textoIA = response.text().replace(/\*/g, '').trim();
 
-        // 4. GUARDAR EN BASE DE DATOS PARA EL FUTURO
-        try {
+        // 5. GUARDAR O ACTUALIZAR (UPSERT)
+        // Si ya existía el registro (pero el hash era viejo), actualizamos. Si no, creamos.
+        if (registroDB) {
+            registroDB.contenido = textoIA;
+            registroDB.hashContenido = incomingHash;
+            await registroDB.save();
+        } else {
             await db.ResumenDiario.create({
                 fecha: fechaKey,
                 contenido: textoIA,
-                cantidadRegistros: observaciones.length
+                hashContenido: incomingHash
             });
-        } catch (dbError) {
-            // Si falla el guardado (ej: condición de carrera), no rompemos la respuesta
-            console.error("Error guardando caché:", dbError);
         }
 
-        return NextResponse.json({ resumen: textoIA, source: 'api' });
+        return NextResponse.json({ resumen: textoIA, source: 'api-updated' });
 
     } catch (error) {
         console.error("Error Gemini/DB:", error);
-        
-        // Si es error de cuota (429), devolvemos un mensaje amigable
         if (error.message?.includes('429') || error.status === 429) {
-             return NextResponse.json({ resumen: "Cuota diaria excedida (IA)." }, { status: 429 });
+             return NextResponse.json({ resumen: "Cuota IA excedida." }, { status: 429 });
         }
-
         return NextResponse.json({ resumen: "Operaciones en planta." }, { status: 500 });
     }
 }

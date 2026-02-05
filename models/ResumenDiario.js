@@ -17,6 +17,10 @@ const sequelize = require('../sequelize');
     cantidadRegistros: {
         type: DataTypes.INTEGER,
         defaultValue: 0
+    },
+    hashContenido: {
+        type: DataTypes.STRING,
+        allowNull: true // Puede ser nulo al principio si ya tienes datos
     }
   }, {
     tableName: 'ResumenesDiarios',
