@@ -5,6 +5,17 @@
   font-style: normal;
 }
 
+/* Agrega esto a tu CSS global o styles.css */
+@keyframes pulse-yellow {
+  0% { box-shadow: 0 0 0 0 rgba(250, 176, 5, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(250, 176, 5, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 176, 5, 0); }
+}
+
+.pulsing-badge {
+  animation: pulse-yellow 2s infinite;
+}
+
 /* app/global.css o similar */
 
 .rbc-calendar {
