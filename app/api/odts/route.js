@@ -83,6 +83,7 @@ export async function POST(req) {
       choferSalidaBase,
       ayudanteEntradaBase,
       ayudanteSalidaBase,
+
       ...restoDatos
     } = body;
 
@@ -101,6 +102,8 @@ export async function POST(req) {
       choferSalidaBase: choferSalidaBase || null,
       ayudanteEntradaBase: ayudanteEntradaBase || null,
       ayudanteSalidaBase: ayudanteSalidaBase || null,
+      salidaActivosBase: body.salidaActivosBase || null,   // Hora salida camión
+      llegadaActivosBase: body.llegadaActivosBase || null, // Hora llegada camión
       // Relaciones:
       choferId,
       ayudanteId,
@@ -111,7 +114,7 @@ export async function POST(req) {
     }, { transaction });
 
     if (tieneHoras) {
-        // 2. CÁLCULOS DE TIEMPO
+      // 2. CÁLCULOS DE TIEMPO
 
       // A. Horas Labor (Para Vehículos/Maquinaria) -> Usan horaLlegada y horaSalida de la ODT
       const horasLaborVehiculos = calcularHoras(horaLlegada, horaSalida);

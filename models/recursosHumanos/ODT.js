@@ -33,6 +33,14 @@ const ODT = sequelize.define("ODT", {
         type: DataTypes.TIME,
         allowNull: true,
     },
+    salidaActivosBase: {
+        type: DataTypes.TIME,
+        allowNull: true,
+    },
+    llegadaActivosBase: {
+        type: DataTypes.TIME,
+        allowNull: true,
+    },
     // Nuevos campos para el personal
     choferEntradaBase: {
         type: DataTypes.TIME,

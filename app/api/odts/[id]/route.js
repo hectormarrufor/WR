@@ -99,9 +99,9 @@ export async function GET(req, { params }) {
                 { model: Cliente, as: "cliente" },
                 { model: Empleado, as: "chofer", attributes: ['id', 'nombre', 'apellido', 'imagen'] },
                 { model: Empleado, as: "ayudante", attributes: ['id', 'nombre', 'apellido', 'imagen'] },
-                { model: Activo, as: "vehiculoPrincipal", attributes: ['id', 'codigoInterno', 'tipoActivo'] },
-                { model: Activo, as: "vehiculoRemolque", attributes: ['id', 'codigoInterno', 'tipoActivo'] },
-                { model: Activo, as: "maquinaria", attributes: ['id', 'codigoInterno', 'tipoActivo'] },
+                { model: Activo, as: "vehiculoPrincipal", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"] },
+                { model: Activo, as: "vehiculoRemolque", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"] },
+                { model: Activo, as: "maquinaria", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"] },
             ],
         });
 

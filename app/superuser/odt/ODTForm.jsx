@@ -100,6 +100,8 @@ export default function ODTForm({ mode = "create", odtId }) {
       choferSalidaBase: null,
       ayudanteEntradaBase: null,
       ayudanteSalidaBase: null,
+      salidaActivosBase: null,  // <--- NUEVO
+      llegadaActivosBase: null, // <--- NUEVO
     },
     validate: {
       fecha: (value) => (value ? null : "Fecha requerida"),
@@ -354,12 +356,22 @@ export default function ODTForm({ mode = "create", odtId }) {
           <Divider my="md" />
           <Divider my="md" />
           <TimeInput
-            label="Llegada al Sitio"
+            label="Salida de Base"
+            description="Salida del portón de la base"
+            {...form.getInputProps('salidaActivosBase')}
+          />
+          <TimeInput
+            label="Retorno a Base"
+            description="Entrada al portón de la base"
+            {...form.getInputProps('llegadaActivosBase')}
+          />
+          <TimeInput
+            label="Llegada a contacto con cliente"
             description={mode === 'create' ? "(Opcional al despachar)" : ""}
             {...form.getInputProps('horaLlegada')}
           />
           <TimeInput
-            label="Salida del Sitio"
+            label="Fin de contacto con cliente"
             description={mode === 'create' ? "(Opcional al despachar)" : ""}
             {...form.getInputProps('horaSalida')}
           />
