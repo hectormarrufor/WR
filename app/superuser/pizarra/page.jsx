@@ -148,7 +148,8 @@ const VehiculoItem = ({ activo }) => {
   )
 }
 
-
+const summaryCache = {};   // Guarda el texto del resumen por ID
+const fetchStatus = {};    // Guarda si ya se está pidiendo ('loading', 'done')
 // ==========================================
 // 2. COMPONENTE EVENT MINIATURE (TARJETA CALENDARIO + HOVER)
 // ==========================================
@@ -156,79 +157,101 @@ const EventMiniature = ({ event, router }) => {
   const props = event.extendedProps;
   const isODT = event.id.startsWith('odt');
   const isManualGroup = event.id.startsWith('group-manual');
+  // Usamos el ID del evento como clave única
+  const eventId = event.id;
 
   // Estado para el resumen IA
   const [resumenAI, setResumenAI] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
   useEffect(() => {
-    // Solo ejecutamos si es un grupo manual y no tenemos resumen aún
-    if (isManualGroup && !resumenAI) {
+    // LOG DE DEPURACIÓN (Míralo en la consola del navegador)
+    console.log(`[${eventId}] Efecto disparado.`, {
+      cache: summaryCache[eventId],
+      status: fetchStatus[eventId]
+    });
 
-      const fechaEvento = new Date(event.start);
-      // Normalizamos a las 00:00:00 para comparar solo fechas sin horas
-      fechaEvento.setHours(0, 0, 0, 0);
+    // 1. CONDICIONES DE SALIDA
+    if (!isManualGroup) return;
 
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-
-      // --- CÁLCULO DEL VIERNES DE LA SEMANA EN CURSO ---
-      // getDay(): 0=Domingo, 1=Lunes, ..., 5=Viernes, 6=Sábado
-      // Queremos saber cuántos días restar para llegar al último viernes.
-      // Si hoy es Viernes(5) -> restar 0.
-      // Si hoy es Sábado(6) -> restar 1.
-      // Si hoy es Jueves(4) -> restar 6.
-      // Fórmula mágica: (diaSemana + 2) % 7 nos da los días transcurridos desde el viernes
-      const diaSemana = hoy.getDay();
-      const diasDesdeViernes = (diaSemana + 2) % 7;
-
-      const viernesInicioSemana = new Date(hoy);
-      viernesInicioSemana.setDate(hoy.getDate() - diasDesdeViernes);
-      viernesInicioSemana.setHours(0, 0, 0, 0);
-
-      // --- REGLA DE ORO: Solo consultar desde el Viernes actual hasta Hoy ---
-      const estaEnRango = fechaEvento >= viernesInicioSemana && fechaEvento <= hoy;
-
-      if (estaEnRango) {
-        setLoadingAI(true);
-        const obsList = props.registros
-          .map(r => r.observaciones)
-          .filter(o => o && o.length > 3);
-
-        // Retraso aleatorio (Jitter) sigue siendo útil para la primera carga masiva
-        const randomDelay = Math.floor(Math.random() * 2000) + 500;
-
-        const timeoutId = setTimeout(() => {
-          fetch('/api/ai/generar-resumen', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              observaciones: obsList,
-              fecha: event.start // <--- IMPORTANTE: Enviamos la fecha
-            })
-          })
-            .then(res => {
-              if (res.status === 429) throw new Error("Busy");
-              return res.json();
-            })
-            .then(data => setResumenAI(data.resumen))
-            .catch(err => {
-              console.error(err);
-              if (err.message === "Busy") setResumenAI("Límite IA alcanzado.");
-              else setResumenAI("Operaciones en planta.");
-            })
-            .finally(() => setLoadingAI(false));
-        }, randomDelay);
-
-        return () => clearTimeout(timeoutId);
-
-
-      } else {
-        // Si es fecha vieja (semanas pasadas) o futura: Texto estático (Ahorro 100%)
-        setResumenAI("Registro histórico.");
-      }
+    // Si ya tengo datos en caché, los uso y no hago nada más.
+    if (summaryCache[eventId]) {
+      console.log(`[${eventId}] Usando caché.`);
+      setResumenAI(summaryCache[eventId]);
+      return;
     }
-  }, [isManualGroup, event.start]); // Dependencias limpias
+
+    // CORRECCIÓN: Solo bloqueamos si está activamente cargando ('loading').
+    // Quitamos el bloqueo de 'done' por si acaso hubo un error previo o recarga.
+    if (fetchStatus[eventId] === 'loading') {
+      console.log(`[${eventId}] Ya está cargando, omitiendo.`);
+      return;
+    }
+
+    // 2. INICIAR PROCESO
+    console.log(`[${eventId}] Iniciando FETCH...`);
+    fetchStatus[eventId] = 'loading';
+    setLoadingAI(true);
+
+    const fechaEvento = new Date(event.start);
+    fechaEvento.setHours(0, 0, 0, 0);
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const diaSemana = hoy.getDay();
+    const diasDesdeViernes = (diaSemana + 2) % 7;
+    const viernesInicioSemana = new Date(hoy);
+    viernesInicioSemana.setDate(hoy.getDate() - diasDesdeViernes);
+    viernesInicioSemana.setHours(0, 0, 0, 0);
+
+    const esFechaReciente = fechaEvento >= viernesInicioSemana && fechaEvento <= hoy;
+
+    // Si es histórico, delay 0 para que sea instantáneo
+    const delay = esFechaReciente ? Math.floor(Math.random() * 1000) + 500 : 0;
+
+    const timeoutId = setTimeout(() => {
+      fetch(`/api/ai/generar-resumen?t=${Date.now()}`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          // Esto le grita al navegador: "¡No uses caché, ve al servidor!"
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
+        body: JSON.stringify({
+          observaciones: props.registros.map(r => r.observaciones).filter(o => o?.length > 3),
+          fecha: event.start,
+          permitirGeneracion: esFechaReciente
+        })
+      })
+        .then(res => {
+          if (res.status === 429) throw new Error("Busy");
+          return res.json();
+        })
+        .then(data => {
+          const textoFinal = data.resumen || "Histórico sin resumen.";
+
+          console.log(`[${eventId}] Fetch completado:`, textoFinal);
+
+          summaryCache[eventId] = textoFinal;
+          fetchStatus[eventId] = 'done';
+          setResumenAI(textoFinal);
+        })
+        .catch(err => {
+          console.error(`[${eventId}] Error:`, err);
+          // IMPORTANTE: Reseteamos status a null para permitir reintentos si falló la red
+          fetchStatus[eventId] = null;
+
+          if (err.message === "Busy") setResumenAI("IA saturada.");
+          else setResumenAI("Ver detalles.");
+        })
+        .finally(() => setLoadingAI(false));
+    }, delay);
+
+    return () => clearTimeout(timeoutId);
+
+  }, [eventId, isManualGroup]); // Dependencias correctas
 
   // --- DEFINICIÓN DEL HOVER CONTENT (EL DETALLE GRANDE AL PASAR MOUSE) ---
   const HoverContent = () => {
@@ -381,18 +404,57 @@ const EventMiniature = ({ event, router }) => {
                   {isODT ? props.cliente?.nombre : `${props.total} EMPLEADOS`}
                 </Text>
                 {/* 2. AVATARES (Pegados al fondo) */}
+                {/* BUSCA ESTA SECCIÓN EN EL RETURN DE EventMiniature */}
+                {/* 2. AVATARES (Pegados al fondo de la tarjeta pequeña) */}
                 <Group mt="auto" pt={6} justify="space-between" align="center" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
                   <Avatar.Group spacing="md">
-                    {props.registros.slice(0, 5).map((reg, i) => (
+
+                    {/* CASO 1: ES GRUPO MANUAL (Tiene registros) */}
+                    {/* Verificamos !isODT y que props.registros exista antes de hacer slice */}
+                    {!isODT && props.registros && props.registros.slice(0, 5).map((reg, i) => (
                       <Avatar
                         key={i}
                         src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null}
                         size={40}
                         radius="xl"
                         style={{ border: '2px solid rgba(255,255,255,0.9)' }}
-                      />
+                      >
+                        {reg.Empleado?.nombre?.charAt(0)}
+                      </Avatar>
                     ))}
-                    {props.total > 5 && (
+
+                    {/* CASO 2: ES ODT (Tiene chofer y ayudante) */}
+                    {isODT && (
+                      <>
+                        {props.chofer && (
+                          <Tooltip label={`Operador: ${props.chofer.nombre}`}>
+                            <Avatar
+                              src={props.chofer.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.chofer.imagen}` : null}
+                              size={40}
+                              radius="xl"
+                              style={{ border: '2px solid rgba(255,255,255,0.9)' }}
+                            >
+                              {props.chofer.nombre?.charAt(0)}
+                            </Avatar>
+                          </Tooltip>
+                        )}
+                        {props.ayudante && (
+                          <Tooltip label={`Ayudante: ${props.ayudante.nombre}`}>
+                            <Avatar
+                              src={props.ayudante.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.ayudante.imagen}` : null}
+                              size={40}
+                              radius="xl"
+                              style={{ border: '2px solid rgba(255,255,255,0.9)' }}
+                            >
+                              {props.ayudante.nombre?.charAt(0)}
+                            </Avatar>
+                          </Tooltip>
+                        )}
+                      </>
+                    )}
+
+                    {/* Contador extra solo para manuales */}
+                    {!isODT && props.total > 5 && (
                       <Avatar size={24} radius="xl" bg="white" c="dark">
                         <Text size="9px" fw={800}>+{props.total - 5}</Text>
                       </Avatar>
@@ -549,7 +611,7 @@ export default function PizarraPage() {
   // --- RENDERIZADO VISUAL DEL EVENTO (FullCalendar) ---
   const renderEventContent = (info) => {
     // Retornamos nuestro componente miniatura inteligente
-    return <EventMiniature event={info.event} router={router} />;
+    return <EventMiniature key={info.event.id} event={info.event} router={router} />;
   };
 
   if (loading) return (

@@ -23,7 +23,7 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value })
     // Si no, selecciona el nuevo ID y cierra el modal inmediatamente
     const newValue = value === id ? null : id;
     onChange(newValue);
-    setOpened(false); 
+    setOpened(false);
     setSearch(""); // Limpiar búsqueda para la próxima vez
   };
 
@@ -33,10 +33,10 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value })
     <Box>
       <Group justify="space-between" mb="xs">
         <Text fw={600} size="sm">{label}</Text>
-        <Button 
-          variant="light" 
-          size="compact-xs" 
-          leftSection={<IconPlus size={14} />} 
+        <Button
+          variant="light"
+          size="compact-xs"
+          leftSection={<IconPlus size={14} />}
           onClick={() => setOpened(true)}
         >
           {value ? "Cambiar" : "Seleccionar"}
@@ -67,23 +67,31 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value })
 
             return (
               <Transition mounted={true} transition="fade" key={item.id}>
-                {(styles) => (
+                {(transitionStyles) => (
                   <Paper
                     shadow={isSelected ? "xs" : "sm"}
                     p="md"
                     radius="md"
                     withBorder
                     onClick={() => handleSelect(item.id)}
+                    // 1. Usamos props de Mantine para colores (Evita el error de consola)
+                    bg={isSelected ? "blue.0" : undefined}
                     style={{
-                      ...styles,
+                      ...transitionStyles, // Solo estilos de la transición (opacity, transform)
                       cursor: "pointer",
                       position: "relative",
-                      backgroundColor: isSelected ? "var(--mantine-color-blue-0)" : undefined,
+                      // 2. Controlamos el borde explícitamente si es necesario, o dejamos que withBorder maneje el default
                       borderColor: isSelected ? "var(--mantine-color-blue-filled)" : undefined,
                     }}
                   >
                     {isSelected && (
-                      <ActionIcon color="blue" variant="filled" radius="xl" size="sm" style={{ position: "absolute", top: -8, right: -8, zIndex: 10 }}>
+                      <ActionIcon
+                        color="blue"
+                        variant="filled"
+                        radius="xl"
+                        size="sm"
+                        style={{ position: "absolute", top: -8, right: -8, zIndex: 10 }}
+                      >
                         <IconCheck size={14} />
                       </ActionIcon>
                     )}
@@ -99,11 +107,11 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value })
                         {detalleExtra ? (
                           <Badge variant="filled" color="dark" size="sm" mt={4}>{detalleExtra}</Badge>
                         ) : (
-                           item.puestos && (
+                          item.puestos && (
                             <Text size="xs" c="dimmed" lineClamp={1}>
-                                {item.puestos.map(p => p.nombre).join(", ")}
+                              {item.puestos.map(p => p.nombre).join(", ")}
                             </Text>
-                           )
+                          )
                         )}
                       </Box>
                     </Stack>

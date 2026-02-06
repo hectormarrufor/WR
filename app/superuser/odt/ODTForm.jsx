@@ -95,15 +95,13 @@ export default function ODTForm({ mode = "create", odtId }) {
       nroODT: "", fecha: null, descripcionServicio: "", horaLlegada: "", horaSalida: "",
       clienteId: "", vehiculoPrincipalId: null, vehiculoRemolqueId: null, maquinariaId: null,
       choferId: null, ayudanteId: null,
-      choferEntradaBase: "",
-      choferSalidaBase: "",
-      ayudanteEntradaBase: "",
-      ayudanteSalidaBase: "",
+      choferEntradaBase: null,
+      choferSalidaBase: null,
+      ayudanteEntradaBase: null,
+      ayudanteSalidaBase: null,
     },
     validate: {
       fecha: (value) => (value ? null : "Fecha requerida"),
-      horaLlegada: (value) => (value ? null : "Hora requerida"),
-      horaSalida: (value) => (value ? null : "Hora requerida"),
       // NOTA: Eliminamos la validación que impedía salida < llegada
     },
   });
@@ -341,9 +339,18 @@ export default function ODTForm({ mode = "create", odtId }) {
 
           <DateInput label="Fecha" valueFormat="DD/MM/YYYY" {...form.getInputProps('fecha')} rightSection={loadingAvailability && <Loader size="xs" />} />
           <Textarea label="Descripción" {...form.getInputProps('descripcionServicio')} />
-          <TimeInput label="Llegada" {...form.getInputProps('horaLlegada')} />
-          <TimeInput label="Salida" description="Si es menor a la llegada, se asume día siguiente" {...form.getInputProps('horaSalida')} />
-
+          <Group grow>
+            <TimeInput
+              label="Llegada al Sitio"
+              description={mode === 'create' ? "(Opcional al despachar)" : ""}
+              {...form.getInputProps('horaLlegada')}
+            />
+            <TimeInput
+              label="Salida del Sitio"
+              description={mode === 'create' ? "(Opcional al despachar)" : ""}
+              {...form.getInputProps('horaSalida')}
+            />
+          </Group>
           {/* --- CHOFER --- */}
           <Box>
             <Group justify="space-between" mb={5}>
@@ -391,7 +398,7 @@ export default function ODTForm({ mode = "create", odtId }) {
               onChange={(v) => form.setFieldValue("ayudanteId", v)}
               value={form.values.ayudanteId}
             />
-            {form.values.choferId && (
+            {form.values.ayudanteId && (
               <Group grow mt="xs">
                 <TimeInput
                   label="Entrada Base"
@@ -461,7 +468,76 @@ export default function ODTForm({ mode = "create", odtId }) {
           </Box>
 
         </SimpleGrid>
-        <Button fullWidth size="md" mt="xl" loading={loadingInit} type="submit">Guardar</Button>
+        {/* ... dentro del return de ODTForm ... */}
+
+        {/* Inputs de Hora (Siempre visibles, pero opcionales al inicio) */}
+        <Group grow>
+          <TimeInput
+            label="Llegada al Sitio"
+            description={mode === 'create' ? "(Opcional al despachar)" : ""}
+            {...form.getInputProps('horaLlegada')}
+          />
+          <TimeInput
+            label="Salida del Sitio"
+            description={mode === 'create' ? "(Opcional al despachar)" : ""}
+            {...form.getInputProps('horaSalida')}
+          />
+        </Group>
+
+        {/* ... Inputs de Chofer/Base ... */}
+
+
+        {/* BOTONERA INTELIGENTE */}
+        <Group mt="xl" justify="flex-end">
+
+          {/* CASO 1: MODO CREACIÓN (Despacho) */}
+          {mode === 'create' && (
+            <Button
+              size="md"
+              type="submit"
+              loading={loadingInit}
+              color="blue"
+              leftSection={<IconTruck size={20} />}
+            >
+              Despachar Unidad (Abrir ODT)
+            </Button>
+          )}
+
+          {/* CASO 2: EDICIÓN DE ODT EN CURSO */}
+          {mode === 'edit' && form.values.estado === 'En Curso' && (
+            <Group>
+              <Button
+                variant="default"
+                onClick={() => handleSubmit(form.values)} // Guarda cambios sin cerrar
+              >
+                Guardar Cambios
+              </Button>
+              <Button
+                color="green"
+                leftSection={<IconCheck size={20} />}
+                onClick={() => {
+                  // Validación manual antes de cerrar
+                  if (!form.values.horaLlegada || !form.values.horaSalida) {
+                    notifications.show({ message: "Debes ingresar las horas para finalizar", color: 'red' });
+                    return;
+                  }
+                  // Forzamos el cambio de estado y enviamos
+                  form.setFieldValue('estado', 'Finalizada');
+                  // Usamos un timeout pequeño para asegurar que el estado se actualizó o pasamos el valor directo
+                  const valuesClosing = { ...form.values, estado: 'Finalizada' };
+                  handleSubmit(valuesClosing);
+                }}
+              >
+                Finalizar ODT (Cerrar)
+              </Button>
+            </Group>
+          )}
+
+          {/* CASO 3: ODT YA FINALIZADA (Solo ver/editar correcciones) */}
+          {mode === 'edit' && form.values.estado === 'Finalizada' && (
+            <Button type="submit" color="blue">Actualizar Datos</Button>
+          )}
+        </Group>
       </form>
     </Paper>
   );

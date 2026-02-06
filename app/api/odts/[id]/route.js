@@ -1,21 +1,30 @@
-import db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, ODT } from "@/models";
-import { NextResponse } from "next/server";
-import { Op } from "sequelize"; // Importante para el operador NotIn
+// app/api/odts/[id]/route.js
 
+import { NextResponse } from "next/server";
+import db, { ODT, HorasTrabajadas, Horometro, Activo, Empleado, Cliente } from "@/models";
+import { Op } from "sequelize";
+
+// ==========================================
+// 1. HELPERS (Cálculos y Sincronización)
+// ==========================================
+
+// Calcula la diferencia en horas (decimales)
 function calcularHoras(horaEntrada, horaSalida) {
   if (!horaEntrada || !horaSalida) return 0;
+  
   const [hIn, mIn] = horaEntrada.split(':').map(Number);
   const [hOut, mOut] = horaSalida.split(':').map(Number);
 
   let entrada = hIn * 60 + mIn;
   let salida = hOut * 60 + mOut;
 
+  // Si cruza la medianoche (Ej: 22:00 a 02:00), sumamos 24h a la salida
   if (salida < entrada) salida += 24 * 60;
 
-  return (salida - entrada) / 60;
+  return parseFloat(((salida - entrada) / 60).toFixed(2));
 }
 
-// Función auxiliar para sincronizar (Borrar sobrantes, Actualizar existentes, Crear nuevos)
+// Sincroniza (Upsert/Delete) los registros hijos
 async function sincronizarRegistros({ 
   model, 
   fkField, 
@@ -24,8 +33,10 @@ async function sincronizarRegistros({
   datosComunes, 
   transaction 
 }) {
+  // 1. Identificar IDs que deben permanecer
   const idsNuevos = itemsNuevos.map(i => i.id).filter(Boolean);
 
+  // 2. BORRAR (Prune): Eliminar lo que ya no está en la lista (ej: cambiaron el chofer)
   await model.destroy({
     where: {
       odtId: odtId,
@@ -35,210 +46,234 @@ async function sincronizarRegistros({
     transaction
   });
 
+  // 3. ACTUALIZAR O CREAR
   for (const item of itemsNuevos) {
     if (!item.id) continue;
 
-    // DETERMINAR HORAS: Prioridad al item individual, luego al dato común
+    // Lógica Clave: Si el item trae sus propias horas (Personal), úsalas. 
+    // Si no (Vehículos), usa las comunes.
     const horasAFijar = item.horasIndividuales !== undefined 
         ? item.horasIndividuales 
         : datosComunes.horas;
 
+    // Buscamos si ya existe el registro
     const registroExistente = await model.findOne({
-      where: { odtId, origen: 'odt', [fkField]: item.id },
+      where: {
+        odtId: odtId,
+        origen: 'odt',
+        [fkField]: item.id
+      },
       transaction
     });
 
-    const updateData = {
+    const camposActualizar = {
       fecha: datosComunes.fecha,
+      // Horometro usa 'fecha_registro' y 'valor', HorasTrabajadas usa 'fecha' y 'horas'
       [model === Horometro ? 'fecha_registro' : 'fecha']: datosComunes.fecha,
-      [model === Horometro ? 'valor' : 'horas']: horasAFijar, // <-- Usamos la variable calculada
+      [model === Horometro ? 'valor' : 'horas']: horasAFijar,
       observaciones: item.observaciones
     };
 
     if (registroExistente) {
-      await registroExistente.update(updateData, { transaction });
+      await registroExistente.update(camposActualizar, { transaction });
     } else {
       await model.create({
-        odtId,
+        odtId: odtId,
         [fkField]: item.id,
         origen: 'odt',
-        ...updateData
+        ...camposActualizar
       }, { transaction });
     }
   }
 }
 
-// GET se mantiene igual...
+// ==========================================
+// 2. GET (Obtener ODT con relaciones)
+// ==========================================
 export async function GET(req, { params }) {
-  try {
-    // En Next.js 15 params es una promesa, es buena práctica esperarla
-    const { id } = await params;
+    try {
+        const { id } = await params; 
 
-    const odt = await ODT.findByPk(id, {
-      include: [
-        // 1. Cliente
-        { model: Cliente, as: "cliente" },
+        const odt = await ODT.findByPk(id, {
+            include: [
+                { model: Cliente, as: "cliente" },
+                { model: Empleado, as: "chofer", attributes: ['id', 'nombre', 'apellido', 'imagen'] },
+                { model: Empleado, as: "ayudante", attributes: ['id', 'nombre', 'apellido', 'imagen'] },
+                { model: Activo, as: "vehiculoPrincipal", attributes: ['id', 'codigoInterno', 'tipoActivo'] },
+                { model: Activo, as: "vehiculoRemolque", attributes: ['id', 'codigoInterno', 'tipoActivo'] },
+                { model: Activo, as: "maquinaria", attributes: ['id', 'codigoInterno', 'tipoActivo'] },
+            ],
+        });
 
-        // 2. Personal (Usando los alias definidos en las asociaciones)
-        {
-          model: Empleado,
-          as: "chofer",
-          attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula']
-        },
-        {
-          model: Empleado,
-          as: "ayudante",
-          attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula']
-        },
+        if (!odt) return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
+        return NextResponse.json(odt);
 
-        // 3. Activos (Usando los alias definidos)
-        {
-          model: Activo,
-          as: "vehiculoPrincipal",
-          attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
-        },
-        {
-          model: Activo,
-          as: "vehiculoRemolque",
-          attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
-        },
-        {
-          model: Activo,
-          as: "maquinaria",
-          attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
-        },
-
-        // 4. Historial de Horas (Opcional, pero útil para ver el detalle)
-        { model: HorasTrabajadas }
-      ],
-    });
-
-    if (!odt) {
-      return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
+    } catch (error) {
+        console.error("Error GET ODT:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    return NextResponse.json(odt);
-
-  } catch (error) {
-    console.error("Error obteniendo ODT:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
 }
 
 // ==========================================
-// PUT (Actualización Inteligente)
+// 3. PUT (Actualización y Cierre de ODT)
 // ==========================================
 export async function PUT(req, { params }) {
   const transaction = await db.sequelize.transaction();
-  const { id } = params;
+  const { id } = await params;
 
   try {
     const body = await req.json();
 
+    // Extraemos campos clave para manejarlos explícitamente
     const {
       vehiculoPrincipalId,
       vehiculoRemolqueId,
       maquinariaId,
       choferId,
       ayudanteId,
-      ...odtData
+      horaLlegada,
+      horaSalida,
+      choferEntradaBase,
+      choferSalidaBase,
+      ayudanteEntradaBase,
+      ayudanteSalidaBase,
+      estado,
+      ...odtData // Resto de campos (fecha, nroODT, descripcion...)
     } = body;
 
     // 1. Verificar existencia
     const odtExistente = await ODT.findByPk(id);
     if (!odtExistente) {
-      await transaction.rollback();
-      return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
+        await transaction.rollback();
+        return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
     }
 
-    // 2. Actualizar la ODT Principal
+    // 2. Validación de Cierre
+    // Si intentan poner el estado en 'Finalizada' pero faltan las horas principales
+    if (estado === 'Finalizada' && (!horaLlegada || !horaSalida)) {
+        await transaction.rollback();
+        return NextResponse.json({ error: "No se puede finalizar la ODT sin horas de Llegada y Salida." }, { status: 400 });
+    }
+
+    // 3. Actualizar Cabecera de ODT
     await odtExistente.update({
       ...odtData,
-      vehiculoPrincipalId,
-      vehiculoRemolqueId,
-      maquinariaId,
-      choferId,
-      ayudanteId
+      estado,
+      horaLlegada,
+      horaSalida,
+      choferEntradaBase,
+      choferSalidaBase,
+      ayudanteEntradaBase,
+      ayudanteSalidaBase,
+      // Actualizamos las relaciones también por si cambiaron el vehículo o chofer
+      vehiculoPrincipalId: vehiculoPrincipalId || null,
+      vehiculoRemolqueId: vehiculoRemolqueId || null,
+      maquinariaId: maquinariaId || null,
+      choferId: choferId || null,
+      ayudanteId: ayudanteId || null
     }, { transaction });
 
-    // Calculamos las horas nuevas
-    // const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
-    // --- 1. Lógica de horas para el Chofer ---
-    const hEntradaChofer = body.choferEntradaBase || odtData.horaLlegada;
-    const hSalidaChofer = body.choferSalidaBase || odtData.horaSalida;
-    const horasChofer = calcularHoras(hEntradaChofer, hSalidaChofer);
 
-    // --- 2. Lógica de horas para el Ayudante ---
-    const hEntradaAyudante = body.ayudanteEntradaBase || odtData.horaLlegada;
-    const hSalidaAyudante = body.ayudanteSalidaBase || odtData.horaSalida;
-    const horasAyudante = calcularHoras(hEntradaAyudante, hSalidaAyudante);
+    // 4. LÓGICA DE TIEMPOS Y NÓMINA
+    // Solo generamos registros hijos si hay horas válidas en la ODT
+    if (horaLlegada && horaSalida) {
+        
+        // A. Calcular Horas LABOR (Lo que trabajó la máquina/camión en sitio)
+        const horasLaborVehiculos = calcularHoras(horaLlegada, horaSalida);
 
-    // --- 3. Construir lista con horas específicas ---
-    const listaPersonal = [];
-    if (choferId) {
-      listaPersonal.push({
-        id: choferId,
-        observaciones: `Chofer ODT #${odtExistente.nroODT}`,
-        horasIndividuales: horasChofer // <-- Pasamos el dato aquí
-      });
+        // B. Calcular Horas PERSONAL (Base o Labor como fallback)
+        
+        // Chofer
+        const finalChoferEntrada = choferEntradaBase || horaLlegada;
+        const finalChoferSalida = choferSalidaBase || horaSalida;
+        const horasChofer = calcularHoras(finalChoferEntrada, finalChoferSalida);
+
+        // Ayudante
+        const finalAyudanteEntrada = ayudanteEntradaBase || horaLlegada;
+        const finalAyudanteSalida = ayudanteSalidaBase || horaSalida;
+        const horasAyudante = calcularHoras(finalAyudanteEntrada, finalAyudanteSalida);
+
+        // C. Preparar Listas para Sincronizar
+
+        // --- Lista Personal ---
+        const listaPersonal = [];
+        if (choferId) {
+            listaPersonal.push({ 
+                id: choferId, 
+                observaciones: `Chofer ODT #${odtExistente.nroODT}`, 
+                horasIndividuales: horasChofer // <--- Dato clave
+            });
+        }
+        if (ayudanteId) {
+            listaPersonal.push({ 
+                id: ayudanteId, 
+                observaciones: `Ayudante ODT #${odtExistente.nroODT}`, 
+                horasIndividuales: horasAyudante // <--- Dato clave
+            });
+        }
+
+        // --- Lista Activos ---
+        const listaActivos = [];
+        if (vehiculoPrincipalId) listaActivos.push({ id: vehiculoPrincipalId, observaciones: 'Uso Principal' });
+        if (vehiculoRemolqueId) listaActivos.push({ id: vehiculoRemolqueId, observaciones: 'Uso Remolque' });
+        if (maquinariaId) listaActivos.push({ id: maquinariaId, observaciones: 'Uso Maquinaria' });
+
+        // D. Ejecutar Sincronización
+        
+        // Sync Empleados (HorasTrabajadas)
+        await sincronizarRegistros({
+            model: HorasTrabajadas,
+            fkField: 'empleadoId',
+            itemsNuevos: listaPersonal,
+            odtId: id,
+            datosComunes: { fecha: odtData.fecha }, // No pasamos horas comunes aquí, se usan las individuales
+            transaction
+        });
+
+        // Sync Activos (Horometro)
+        await sincronizarRegistros({
+            model: Horometro,
+            fkField: 'activoId',
+            itemsNuevos: listaActivos,
+            odtId: id,
+            datosComunes: { fecha: odtData.fecha, horas: horasLaborVehiculos }, // Aquí SÍ hay horas comunes
+            transaction
+        });
+
+    } else {
+        // CASO BORDE: Si el usuario borró las horas para "re-abrir" la ODT, 
+        // deberíamos limpiar los registros asociados para que no queden datos fantasma.
+        // Esto es opcional, pero recomendado para mantener la consistencia.
+        if (estado === 'En Curso') {
+             await HorasTrabajadas.destroy({ where: { odtId: id, origen: 'odt' }, transaction });
+             await Horometro.destroy({ where: { odtId: id, origen: 'odt' }, transaction });
+        }
     }
-    if (ayudanteId) {
-      listaPersonal.push({
-        id: ayudanteId,
-        observaciones: `Ayudante ODT #${odtExistente.nroODT}`,
-        horasIndividuales: horasAyudante // <-- Pasamos el dato aquí
-      });
-    }
-
-    // 4. Llamar a la función (datosComunes queda como fallback o para la fecha)
-    await sincronizarRegistros({
-      model: HorasTrabajadas,
-      fkField: 'empleadoId',
-      itemsNuevos: listaPersonal,
-      odtId: id,
-      datosComunes: { fecha: odtData.fecha }, // Ya no pasamos 'horas' globales aquí para el personal
-      transaction
-    });
-
-    // --- Activos (Horómetros) ---
-    const listaActivos = [];
-    if (vehiculoPrincipalId) listaActivos.push({ id: vehiculoPrincipalId, observaciones: 'Uso Principal' });
-    if (vehiculoRemolqueId) listaActivos.push({ id: vehiculoRemolqueId, observaciones: 'Uso Remolque' });
-    if (maquinariaId) listaActivos.push({ id: maquinariaId, observaciones: 'Uso Maquinaria' });
-
-    await sincronizarRegistros({
-      model: Horometro,
-      fkField: 'activoId',
-      itemsNuevos: listaActivos,
-      odtId: id,
-      datosComunes: { fecha: odtData.fecha, horas: horasCalculadas }, // El helper maneja el nombre del campo 'valor' internamente
-      transaction
-    });
 
     await transaction.commit();
     return NextResponse.json(odtExistente);
 
   } catch (error) {
-    console.error("Error en PUT ODT:", error);
+    console.error("Error PUT ODT:", error);
     await transaction.rollback();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-// =======================
-// DELETE ODT específica
-// =======================
-export async function DELETE(_, { params }) {
+
+// ==========================================
+// 4. DELETE (Eliminar ODT)
+// ==========================================
+export async function DELETE(req, { params }) {
   try {
     const { id } = await params;
     const odt = await ODT.findByPk(id);
+    
     if (!odt) return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
-    // Para borrar todo de una vez
-    //     await db.sequelize.query(`
-    //   TRUNCATE TABLE "ODT_Vehiculos", "ODT_Empleados", "HorasTrabajadas", "ODTs" RESTART IDENTITY CASCADE;
-    // `);
 
-
+    // Gracias al "onDelete: CASCADE" en las relaciones, esto borrará 
+    // automáticamente los hijos en HorasTrabajadas y Horometro.
     await odt.destroy();
+    
     return NextResponse.json({ message: "ODT eliminada correctamente" });
   } catch (error) {
     console.error(error);

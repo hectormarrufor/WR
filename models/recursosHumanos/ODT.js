@@ -27,11 +27,11 @@ const ODT = sequelize.define("ODT", {
     },
     horaLlegada: {
         type: DataTypes.TIME,
-        allowNull: false,
+        allowNull: true,
     },
     horaSalida: {
         type: DataTypes.TIME,
-        allowNull: false,
+        allowNull: true,
     },
     // Nuevos campos para el personal
     choferEntradaBase: {

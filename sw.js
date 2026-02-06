@@ -3,8 +3,23 @@ precacheAndRoute(self.__WB_MANIFEST || []);
 
 console.log('[SW personalizado] cargado');
 
+// =================================================================
+// CORRECCIÓN AGREGADA: BLINDAJE PARA LA API
+// =================================================================
+self.addEventListener('fetch', (event) => {
+  // Si la petición va dirigida a la API o es un método POST (como generar-resumen),
+  // le decimos al SW: "No toques esto, ve directo a internet".
+  if (
+    event.request.url.includes('/api/') || 
+    event.request.method === 'POST'
+  ) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+});
+// =================================================================
 
-// service-worker.js
+
 self.skipWaiting();
 self.addEventListener('activate', () => self.clients.claim());
 
