@@ -97,7 +97,6 @@ export default function ODTForm({ mode = "create", odtId }) {
       choferId: null, ayudanteId: null,
     },
     validate: {
-      nroODT: (value) => (value?.trim().length === 4 ? null : "El número debe ser de 4 caracteres"),
       fecha: (value) => (value ? null : "Fecha requerida"),
       horaLlegada: (value) => (value ? null : "Hora requerida"),
       horaSalida: (value) => (value ? null : "Hora requerida"),

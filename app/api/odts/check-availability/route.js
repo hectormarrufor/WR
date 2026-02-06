@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ODT } from "@/models"; 
+import { ODT, sequelize } from "@/models"; 
 import { Op } from "sequelize";
 import { subDays, format } from "date-fns";
 

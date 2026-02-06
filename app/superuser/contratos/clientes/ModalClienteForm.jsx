@@ -49,7 +49,11 @@ export function ModalClienteForm({ onClienteCreated, onClienteUpdated, onClose, 
   }, [cliente]);
 
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async (values, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     let finalPayload = { ...values };
     setLoading(true);
     try {
@@ -113,7 +117,7 @@ export function ModalClienteForm({ onClienteCreated, onClienteUpdated, onClose, 
     <>
    
       <Modal opened={opened} onClose={onClose} title="Registrar Nuevo Cliente" size="lg" my={80} centered>
-        <Box component="form" onSubmit={form.onSubmit(handleSubmit)}>
+        <Box component="form" onSubmit={form.onSubmit((values, e) => handleSubmit(values, e))}>
           <Stack>
             <Grid>
               <Grid.Col span={{ base: 12, sm: 6 }}>
