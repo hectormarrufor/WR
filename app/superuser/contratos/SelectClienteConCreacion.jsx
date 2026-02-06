@@ -42,6 +42,12 @@ export function SelectClienteConCreacion({ form, fieldName = 'clienteId', label 
     fetchClientes();
   }, []);
 
+  useEffect(() => {
+    if (selectedCliente) {
+      form.setFieldValue("cliente", String(selectedCliente.nombre));
+    }
+  }, [selectedCliente]);
+
   // Callback para cuando se crea un nuevo cliente en el modal
   const handleClienteCreado = (nuevoCliente) => {
     // Añadir el nuevo cliente a la lista y seleccionarlo automáticamente

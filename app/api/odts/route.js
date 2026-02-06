@@ -1,6 +1,7 @@
 import db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, Maquina, MaquinaInstancia, ODT, Remolque, RemolqueInstancia, Vehiculo, VehiculoInstancia } from "@/models";
 import { NextResponse } from "next/server";
 import { notificarTodos } from "../notificar/route";
+import { formatDateLong } from "@/app/helpers/dateUtils";
 
 // =======================
 // GET todas las ODTs
@@ -78,6 +79,7 @@ export async function POST(req) {
       horaLlegada,
       horaSalida,
       choferEntradaBase,
+      cliente,
       choferSalidaBase,
       ayudanteEntradaBase,
       ayudanteSalidaBase,
@@ -174,9 +176,10 @@ export async function POST(req) {
 
     // Notificación (Fuera de transacción para no bloquear)
     try {
+      // Quitamos ceros iniciales del número de ODT
       await notificarTodos({
         title: 'Nueva ODT Registrada',
-        body: `${nombreCreador} ha creado la ODT #${nuevaODT.nroODT} para el día ${nuevaODT.fecha}.`,
+        body: `${nombreCreador} ha creado la ODT #${nuevaODT.nroOdt.replace(/^0+/, '')} del cliente ${cliente} el ${formatDateLong(nuevaODT.fecha)}: ${nuevaODT.descripcionServicio}`,
         url: `/superuser/odt/${nuevaODT.id}`,
       });
     } catch (e) { console.error("Error notificando:", e); }

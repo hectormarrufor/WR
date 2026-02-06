@@ -95,6 +95,7 @@ export default function ODTForm({ mode = "create", odtId }) {
       nroODT: "", fecha: null, descripcionServicio: "", horaLlegada: "", horaSalida: "",
       clienteId: "", vehiculoPrincipalId: null, vehiculoRemolqueId: null, maquinariaId: null,
       choferId: null, ayudanteId: null,
+      cliente: null,
       choferEntradaBase: null,
       choferSalidaBase: null,
       ayudanteEntradaBase: null,
@@ -287,14 +288,25 @@ export default function ODTForm({ mode = "create", odtId }) {
       const url = mode === "create" ? "/api/odts" : `/api/odts/${odtId}`;
       const method = mode === "create" ? "POST" : "PUT";
 
-      // Formateamos valores finales (incluyendo fecha en formato ISO correcto si es necesario)
+      // --- CAMBIO AQUÍ: SANITIZACIÓN DE DATOS ---
+      // Convertimos cadenas vacías "" a null para que PostgreSQL no falle
       const payload = {
         ...values,
         nombreCreador: nombre + " " + apellido,
         userId,
-        // Aseguramos fecha limpia
-        fecha: format(values.fecha, 'yyyy-MM-dd')
+        fecha: format(values.fecha, 'yyyy-MM-dd'),
+
+        // Limpiamos las horas: Si es "" o undefined, mandamos null
+        horaLlegada: values.horaLlegada || null,
+        horaSalida: values.horaSalida || null,
+
+        choferEntradaBase: values.choferEntradaBase || null,
+        choferSalidaBase: values.choferSalidaBase || null,
+
+        ayudanteEntradaBase: values.ayudanteEntradaBase || null,
+        ayudanteSalidaBase: values.ayudanteSalidaBase || null,
       };
+      // ------------------------------------------
 
       const response = await fetch(url, {
         method,
@@ -339,18 +351,21 @@ export default function ODTForm({ mode = "create", odtId }) {
 
           <DateInput label="Fecha" valueFormat="DD/MM/YYYY" {...form.getInputProps('fecha')} rightSection={loadingAvailability && <Loader size="xs" />} />
           <Textarea label="Descripción" {...form.getInputProps('descripcionServicio')} />
-          <Group grow>
-            <TimeInput
-              label="Llegada al Sitio"
-              description={mode === 'create' ? "(Opcional al despachar)" : ""}
-              {...form.getInputProps('horaLlegada')}
-            />
-            <TimeInput
-              label="Salida del Sitio"
-              description={mode === 'create' ? "(Opcional al despachar)" : ""}
-              {...form.getInputProps('horaSalida')}
-            />
-          </Group>
+          <Divider my="md" />
+          <Divider my="md" />
+          <TimeInput
+            label="Llegada al Sitio"
+            description={mode === 'create' ? "(Opcional al despachar)" : ""}
+            {...form.getInputProps('horaLlegada')}
+          />
+          <TimeInput
+            label="Salida del Sitio"
+            description={mode === 'create' ? "(Opcional al despachar)" : ""}
+            {...form.getInputProps('horaSalida')}
+          />
+          <Divider my="md" />
+          <Divider my="md" />
+
           {/* --- CHOFER --- */}
           <Box>
             <Group justify="space-between" mb={5}>
@@ -468,23 +483,7 @@ export default function ODTForm({ mode = "create", odtId }) {
           </Box>
 
         </SimpleGrid>
-        {/* ... dentro del return de ODTForm ... */}
 
-        {/* Inputs de Hora (Siempre visibles, pero opcionales al inicio) */}
-        <Group grow>
-          <TimeInput
-            label="Llegada al Sitio"
-            description={mode === 'create' ? "(Opcional al despachar)" : ""}
-            {...form.getInputProps('horaLlegada')}
-          />
-          <TimeInput
-            label="Salida del Sitio"
-            description={mode === 'create' ? "(Opcional al despachar)" : ""}
-            {...form.getInputProps('horaSalida')}
-          />
-        </Group>
-
-        {/* ... Inputs de Chofer/Base ... */}
 
 
         {/* BOTONERA INTELIGENTE */}
