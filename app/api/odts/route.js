@@ -1,4 +1,4 @@
-import  db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, Maquina, MaquinaInstancia, ODT, Remolque, RemolqueInstancia, Vehiculo, VehiculoInstancia } from "@/models";
+import db, { Activo, Cliente, Empleado, HorasTrabajadas, Horometro, Maquina, MaquinaInstancia, ODT, Remolque, RemolqueInstancia, Vehiculo, VehiculoInstancia } from "@/models";
 import { NextResponse } from "next/server";
 import { notificarTodos } from "../notificar/route";
 
@@ -28,18 +28,24 @@ export async function GET() {
     const odts = await ODT.findAll({
       include: [
         { model: Cliente, as: "cliente" },
-        { model: Activo, as: "vehiculoPrincipal", include: [{ 
+        {
+          model: Activo, as: "vehiculoPrincipal", include: [{
             model: VehiculoInstancia, as: 'vehiculoInstancia',
             include: [{ model: Vehiculo, as: 'plantilla' }]
-        }] },
-        { model: Activo, as: "vehiculoRemolque", include: [{ 
+          }]
+        },
+        {
+          model: Activo, as: "vehiculoRemolque", include: [{
             model: RemolqueInstancia, as: 'remolqueInstancia',
             include: [{ model: Remolque, as: 'plantilla' }]
-        }] },
-        { model: Activo, as: "maquinaria", include: [{ 
+          }]
+        },
+        {
+          model: Activo, as: "maquinaria", include: [{
             model: MaquinaInstancia, as: 'maquinaInstancia',
             include: [{ model: Maquina, as: 'plantilla' }]
-        }] },
+          }]
+        },
         { model: Empleado, as: "chofer" },
         { model: Empleado, as: "ayudante" },
         { model: HorasTrabajadas },
@@ -91,14 +97,25 @@ export async function POST(req) {
       creadoPorId: userId,
     }, { transaction });
 
-    const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
+    // const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
+
+    const finalChoferEntrada = body.choferEntradaBase || body.horaLlegada;
+    const finalChoferSalida = body.choferSalidaBase || body.horaSalida;
+    const finalAyudanteEntrada = body.ayudanteEntradaBase || body.horaLlegada;
+    const finalAyudanteSalida = body.ayudanteSalidaBase || body.horaSalida;
+
+    // Al calcular horas para el registro de HorasTrabajadas del CHOFER:
+    const horasChofer = calcularHoras(finalChoferEntrada, finalChoferSalida);
+
+    // Al calcular horas para el registro de HorasTrabajadas del AYUDANTE:
+    const horasAyudante = calcularHoras(finalAyudanteEntrada, finalAyudanteSalida);
 
     if (choferId) {
       await HorasTrabajadas.create({
         odtId: nuevaODT.id,
         empleadoId: choferId,
         fecha: odtData.fecha,
-        horas: horasCalculadas,
+        horas: horasChofer,
         origen: 'odt',
         observaciones: odtData.descripcionServicio
       }, { transaction });
@@ -109,7 +126,7 @@ export async function POST(req) {
         odtId: nuevaODT.id,
         empleadoId: ayudanteId,
         fecha: odtData.fecha,
-        horas: horasCalculadas,
+        horas: horasAyudante,
         origen: 'odt',
         observaciones: odtData.descripcionServicio
       }, { transaction });

@@ -17,13 +17,13 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import esLocale from "@fullcalendar/core/locales/es";
-import { format } from "date-fns"; 
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 // Asegúrate de que estas rutas existan o ajustalas a tu proyecto
 import ManualHoursButton from "./ManualHoursButton";
-import { toLocalDate } from "@/app/helpers/fechaCaracas"; 
-import { formatDateLong } from "@/app/helpers/dateUtils"; 
+import { toLocalDate } from "@/app/helpers/fechaCaracas";
+import { formatDateLong } from "@/app/helpers/dateUtils";
 
 // Si tienes el CSS custom, impórtalo aquí. Si no, el diseño se verá un poco más simple pero funcional.
 // import "./fullcalendar-custom.css"; 
@@ -56,7 +56,7 @@ const agruparRegistros = (registros) => {
         key,
         horas: reg.horas,
         observaciones: obs,
-        empleados: [] 
+        empleados: []
       };
     }
     grupos[key].empleados.push(reg.Empleado);
@@ -107,28 +107,35 @@ function VehiculoLineMobile({ activo, icon, color = "gray" }) {
 }
 
 // Avatar con nombre (Reutilizable)
-const PersonalAvatar = ({ empleado, rol, router }) => {
+// Avatar con nombre y HORAS DE BASE
+const PersonalAvatar = ({ empleado, rol, router, entrada, salida }) => {
   if (!empleado) return null;
   return (
     <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${empleado.id}`)} style={{ width: '100%' }}>
-      <Group wrap="nowrap">
+      <Group wrap="nowrap" align="flex-start">
         <Avatar
           src={empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${empleado.imagen}` : null}
-          size={32}
+          size={38} // Un poco más grande para que quepan las 3 líneas de texto
           radius="xl"
           color="blue"
         >
           {empleado.nombre?.charAt(0)}
         </Avatar>
         <Box>
-          <Text size="sm" fw={600} lh={1.1}>{empleado.nombre} {empleado.apellido}</Text>
-          <Text size="xs" c="dimmed">{rol}</Text>
+          <Text size="sm" fw={700} lh={1.1}>{empleado.nombre} {empleado.apellido}</Text>
+          <Text size="xs" c="dimmed" fw={500}>{rol}</Text>
+          {/* MOSTRAR HORAS DE BASE */}
+          <Group gap={4} mt={2}>
+            <IconClock size={10} color="var(--mantine-color-blue-6)" />
+            <Text size="10px" fw={700} c="blue.7">
+              Base: {entrada} - {salida}
+            </Text>
+          </Group>
         </Box>
       </Group>
     </UnstyledButton>
   )
 }
-
 // Item de vehículo en Popover
 const VehiculoItem = ({ activo }) => {
   const instancia = activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinariaInstancia;
@@ -157,7 +164,7 @@ const EventMiniature = ({ event, router }) => {
   useEffect(() => {
     // Solo ejecutamos si es un grupo manual y no tenemos resumen aún
     if (isManualGroup && !resumenAI) {
-      
+
       const fechaEvento = new Date(event.start);
       // Normalizamos a las 00:00:00 para comparar solo fechas sin horas
       fechaEvento.setHours(0, 0, 0, 0);
@@ -172,9 +179,9 @@ const EventMiniature = ({ event, router }) => {
       // Si hoy es Sábado(6) -> restar 1.
       // Si hoy es Jueves(4) -> restar 6.
       // Fórmula mágica: (diaSemana + 2) % 7 nos da los días transcurridos desde el viernes
-      const diaSemana = hoy.getDay(); 
-      const diasDesdeViernes = (diaSemana + 2) % 7; 
-      
+      const diaSemana = hoy.getDay();
+      const diasDesdeViernes = (diaSemana + 2) % 7;
+
       const viernesInicioSemana = new Date(hoy);
       viernesInicioSemana.setDate(hoy.getDate() - diasDesdeViernes);
       viernesInicioSemana.setHours(0, 0, 0, 0);
@@ -192,29 +199,29 @@ const EventMiniature = ({ event, router }) => {
         const randomDelay = Math.floor(Math.random() * 2000) + 500;
 
         const timeoutId = setTimeout(() => {
-            fetch('/api/ai/generar-resumen', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  observaciones: obsList,
-                  fecha: event.start // <--- IMPORTANTE: Enviamos la fecha
-              })
+          fetch('/api/ai/generar-resumen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              observaciones: obsList,
+              fecha: event.start // <--- IMPORTANTE: Enviamos la fecha
             })
-              .then(res => {
-                  if (res.status === 429) throw new Error("Busy");
-                  return res.json();
-              })
-              .then(data => setResumenAI(data.resumen))
-              .catch(err => {
-                  console.error(err);
-                  if(err.message === "Busy") setResumenAI("Límite IA alcanzado.");
-                  else setResumenAI("Operaciones en planta.");
-              })
-              .finally(() => setLoadingAI(false));
+          })
+            .then(res => {
+              if (res.status === 429) throw new Error("Busy");
+              return res.json();
+            })
+            .then(data => setResumenAI(data.resumen))
+            .catch(err => {
+              console.error(err);
+              if (err.message === "Busy") setResumenAI("Límite IA alcanzado.");
+              else setResumenAI("Operaciones en planta.");
+            })
+            .finally(() => setLoadingAI(false));
         }, randomDelay);
 
         return () => clearTimeout(timeoutId);
-      
+
 
       } else {
         // Si es fecha vieja (semanas pasadas) o futura: Texto estático (Ahorro 100%)
@@ -255,6 +262,9 @@ const EventMiniature = ({ event, router }) => {
             <Text size="sm" c="dimmed" lh={1.4}>{props.descripcionServicio}</Text>
 
             <Box bg="gray.0" p="xs" style={{ borderRadius: 8 }}>
+              <Badge variant="dot" color="gray" size="sm">
+                Labor en sitio: {props.horaLlegada.substring(0, 5)} - {props.horaSalida.substring(0, 5)}
+              </Badge>
               <Text size="10px" tt="uppercase" fw={800} c="dimmed" mb={4}>Flota Asignada</Text>
               <Stack gap={6}>
                 {props.vehiculoPrincipal && <VehiculoItem activo={props.vehiculoPrincipal} />}
@@ -266,8 +276,21 @@ const EventMiniature = ({ event, router }) => {
             <Box>
               <Text size="10px" tt="uppercase" fw={800} c="dimmed" mb={4}>Personal</Text>
               <Group gap="sm">
-                <PersonalAvatar empleado={props.chofer} rol="Operador" router={router} />
-                <PersonalAvatar empleado={props.ayudante} rol="Ayudante" router={router} />
+                <PersonalAvatar
+                  empleado={props.chofer}
+                  rol="Operador"
+                  router={router}
+                  // Lógica: Si no hay base, usa labor
+                  entrada={props.choferEntradaBase || props.horaLlegada.substring(0, 5)}
+                  salida={props.choferSalidaBase || props.horaSalida.substring(0, 5)}
+                />
+                <PersonalAvatar
+                  empleado={props.ayudante}
+                  rol="Ayudante"
+                  router={router}
+                  entrada={props.ayudanteEntradaBase || props.horaLlegada.substring(0, 5)}
+                  salida={props.ayudanteSalidaBase || props.horaSalida.substring(0, 5)}
+                />
               </Group>
             </Box>
           </>
@@ -341,7 +364,7 @@ const EventMiniature = ({ event, router }) => {
               display: 'flex',
               flexDirection: 'column',
               // Cambio CLAVE: Esto permite que los hijos se expandan
-              justifyContent: 'space-between', 
+              justifyContent: 'space-between',
               gap: 6,
               // Añadimos un degradado sutil sobre el color base para que no se vea plano
               background: 'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.1) 100%)'
@@ -349,98 +372,98 @@ const EventMiniature = ({ event, router }) => {
           >
             {/* HEADER: TÍTULO Y BADGE */}
             <Group gap={8} wrap="nowrap" align="center" align-items="flex-start">
-              {isManualGroup ? <IconUsers size={16} color="white" style={{marginTop: 2}} /> : <IconTruck size={16} color="white" style={{marginTop: 2}} />}
+              {isManualGroup ? <IconUsers size={16} color="white" style={{ marginTop: 2 }} /> : <IconTruck size={16} color="white" style={{ marginTop: 2 }} />}
               <Box style={{ flex: 1, lineHeight: 1 }}>
-                 <Text size="11px" fw={800} c="white" tt="uppercase" style={{opacity: 0.8, letterSpacing: '0.5px'}}>
-                    {isODT ? `ODT #${props.nroODT}` : `TRABAJO EN BASE`}
-                 </Text>
-                 <Text size="13px" fw={900} c="white" lineClamp={2} style={{lineHeight: 1.1, marginTop: 2}}>
-                    {isODT ? props.cliente?.nombre : `${props.total} EMPLEADOS`}
-                 </Text>
-                  {/* 2. AVATARES (Pegados al fondo) */}
-                     <Group mt="auto" pt={6} justify="space-between" align="center" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                        <Avatar.Group spacing="md">
-                            {props.registros.slice(0, 5).map((reg, i) => (
-                                <Avatar
-                                    key={i}
-                                    src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null}
-                                    size={40}
-                                    radius="xl"
-                                    style={{ border: '2px solid rgba(255,255,255,0.9)' }}
-                                />
-                            ))}
-                            {props.total > 5 && (
-                                <Avatar size={24} radius="xl" bg="white" c="dark">
-                                    <Text size="9px" fw={800}>+{props.total - 5}</Text>
-                                </Avatar>
-                            )}
-                        </Avatar.Group>
-                     </Group>
+                <Text size="11px" fw={800} c="white" tt="uppercase" style={{ opacity: 0.8, letterSpacing: '0.5px' }}>
+                  {isODT ? `ODT #${props.nroODT}` : `TRABAJO EN BASE`}
+                </Text>
+                <Text size="13px" fw={900} c="white" lineClamp={2} style={{ lineHeight: 1.1, marginTop: 2 }}>
+                  {isODT ? props.cliente?.nombre : `${props.total} EMPLEADOS`}
+                </Text>
+                {/* 2. AVATARES (Pegados al fondo) */}
+                <Group mt="auto" pt={6} justify="space-between" align="center" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                  <Avatar.Group spacing="md">
+                    {props.registros.slice(0, 5).map((reg, i) => (
+                      <Avatar
+                        key={i}
+                        src={reg.Empleado?.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${reg.Empleado.imagen}` : null}
+                        size={40}
+                        radius="xl"
+                        style={{ border: '2px solid rgba(255,255,255,0.9)' }}
+                      />
+                    ))}
+                    {props.total > 5 && (
+                      <Avatar size={24} radius="xl" bg="white" c="dark">
+                        <Text size="9px" fw={800}>+{props.total - 5}</Text>
+                      </Avatar>
+                    )}
+                  </Avatar.Group>
+                </Group>
               </Box>
             </Group>
 
             {/* CONTENIDO PRINCIPAL (Ocupa el resto del espacio) */}
             <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                
-                {isODT ? (
-                  // --- ODT CONTENT ---
-                  <>
-                     {/* Descripción ocupa el espacio disponible */}
-                     <Text 
-                        size="11px" 
-                        c="white" 
-                        style={{ 
-                            opacity: 0.9, 
-                            lineHeight: 1.3, 
-                            flex: 1, // Esto hace que el texto use el espacio vertical disponible
-                            overflow: 'hidden' 
-                        }}
-                     >
-                        {props.descripcionServicio}
-                     </Text>
-                     
-                     {/* Vehículo pegado al fondo */}
-                     <Box mt="auto" style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                        {props.vehiculoPrincipal && <VehiculoLine activo={props.vehiculoPrincipal} />}
-                     </Box>
-                  </>
-                ) : (
-                  // --- MANUAL GROUP CONTENT ---
-                  <>
-                  <Divider color="rgb(255, 255, 255)" />
-                     {/* 1. RESUMEN IA (Prioridad visual, ocupa espacio) */}
-                     <Box 
-                        style={{ 
-                            flex: 1, // Ocupa todo el espacio vertical disponible
-                            overflow: 'hidden',
-                            marginTop: 4
-                        }}
-                     >
-                        {loadingAI ? (
-                            <Group gap={6}>
-                                <Loader size={12} color="white" type="dots" />
-                                <Text size="10px" c="white" fs="italic">Procesando...</Text>
-                            </Group>
-                        ) : (
-                            <Text 
-                                size="16px" // Letra un poco más grande
-                                c="white" 
-                                fw={700} 
-                                // Quitamos lineClamp estricto para que llene el cuadro si es alto
-                                style={{ 
-                                    lineHeight: 1.4, 
-                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                                    whiteSpace: 'pre-wrap' // Respeta saltos de línea si la IA los manda
-                                }}
-                            >
-                                {resumenAI || "Generando resumen..."}
-                            </Text>
-                        )}
-                     </Box>
 
-                    
-                  </>
-                )}
+              {isODT ? (
+                // --- ODT CONTENT ---
+                <>
+                  {/* Descripción ocupa el espacio disponible */}
+                  <Text
+                    size="11px"
+                    c="white"
+                    style={{
+                      opacity: 0.9,
+                      lineHeight: 1.3,
+                      flex: 1, // Esto hace que el texto use el espacio vertical disponible
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {props.descripcionServicio}
+                  </Text>
+
+                  {/* Vehículo pegado al fondo */}
+                  <Box mt="auto" style={{ paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                    {props.vehiculoPrincipal && <VehiculoLine activo={props.vehiculoPrincipal} />}
+                  </Box>
+                </>
+              ) : (
+                // --- MANUAL GROUP CONTENT ---
+                <>
+                  <Divider color="rgb(255, 255, 255)" />
+                  {/* 1. RESUMEN IA (Prioridad visual, ocupa espacio) */}
+                  <Box
+                    style={{
+                      flex: 1, // Ocupa todo el espacio vertical disponible
+                      overflow: 'hidden',
+                      marginTop: 4
+                    }}
+                  >
+                    {loadingAI ? (
+                      <Group gap={6}>
+                        <Loader size={12} color="white" type="dots" />
+                        <Text size="10px" c="white" fs="italic">Procesando...</Text>
+                      </Group>
+                    ) : (
+                      <Text
+                        size="16px" // Letra un poco más grande
+                        c="white"
+                        fw={700}
+                        // Quitamos lineClamp estricto para que llene el cuadro si es alto
+                        style={{
+                          lineHeight: 1.4,
+                          textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                          whiteSpace: 'pre-wrap' // Respeta saltos de línea si la IA los manda
+                        }}
+                      >
+                        {resumenAI || "Generando resumen..."}
+                      </Text>
+                    )}
+                  </Box>
+
+
+                </>
+              )}
             </Box>
           </Box>
         </div>
@@ -702,8 +725,8 @@ function MobileAgendaView({ events, router }) {
                     {/* Renderizamos los SubGrupos */}
                     <Stack gap="md">
                       {subGrupos.map((grupo, idx) => (
-                         // AQUÍ ESTÁ EL CAMBIO: Usamos el nuevo componente
-                         <GroupedEmployeeRow key={idx} grupo={grupo} router={router} />
+                        // AQUÍ ESTÁ EL CAMBIO: Usamos el nuevo componente
+                        <GroupedEmployeeRow key={idx} grupo={grupo} router={router} />
                       ))}
                     </Stack>
                   </Card>
@@ -748,20 +771,24 @@ function MobileAgendaView({ events, router }) {
 
                     <Group grow>
                       {props.chofer && (
-                        <Group gap={8}>
+                        <Group gap={8} align="flex-start">
                           <Avatar src={props.chofer.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.chofer.imagen}` : null} size="sm" radius="xl" />
                           <Box>
-                            <Text size="xs" fw={700}>Operador</Text>
-                            <Text size="xs" c="dimmed" lineClamp={1}>{props.chofer.nombre}</Text>
+                            <Text size="xs" fw={700}>{props.chofer.nombre}</Text>
+                            <Text size="10px" c="blue.7" fw={800}>
+                              Base: {props.choferEntradaBase || props.horaLlegada.substring(0, 5)} - {props.choferSalidaBase || props.horaSalida.substring(0, 5)}
+                            </Text>
                           </Box>
                         </Group>
                       )}
                       {props.ayudante && (
-                        <Group gap={8}>
+                        <Group gap={8} align="flex-start">
                           <Avatar src={props.ayudante.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${props.ayudante.imagen}` : null} size="sm" radius="xl" />
                           <Box>
-                            <Text size="xs" fw={700}>Ayudante</Text>
-                            <Text size="xs" c="dimmed" lineClamp={1}>{props.ayudante.nombre}</Text>
+                            <Text size="xs" fw={700}>{props.ayudante.nombre}</Text>
+                            <Text size="10px" c="blue.7" fw={800}>
+                              Base: {props.ayudanteEntradaBase || props.horaLlegada.substring(0, 5)} - {props.ayudanteSalidaBase || props.horaSalida.substring(0, 5)}
+                            </Text>
                           </Box>
                         </Group>
                       )}
@@ -785,125 +812,125 @@ function MobileAgendaView({ events, router }) {
 // ==========================================
 const GroupedEmployeeRow = ({ grupo, router }) => {
   const [opened, setOpened] = useState(false);
-  
+
   // Detectamos si es un solo empleado
   const isSingle = grupo.empleados.length === 1;
 
   // Extraemos el contenido visual de la tarjeta para reutilizarlo en ambos casos
   const CardContent = (
     <Paper withBorder p="sm" radius="md" bg="white" style={{ position: 'relative' }}>
-        
-        {/* Indicador visual de que es desplegable (Solo si son varios) */}
-        {!isSingle && (
-             <Box style={{ position: 'absolute', top: 8, right: 8, opacity: 0.4 }}>
-                 <IconChevronRight size={14} style={{ transform: opened ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
-             </Box>
-        )}
 
-        {/* Header: Observación */}
-        <Text size="xs" fw={700} c="dimmed" tt="uppercase" lts={1} mb="xs" style={{ borderBottom: '1px dashed #eee', paddingBottom: 4, paddingRight: 16 }}>
-            {grupo.observaciones}
-        </Text>
+      {/* Indicador visual de que es desplegable (Solo si son varios) */}
+      {!isSingle && (
+        <Box style={{ position: 'absolute', top: 8, right: 8, opacity: 0.4 }}>
+          <IconChevronRight size={14} style={{ transform: opened ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+        </Box>
+      )}
 
-        <Group align="flex-start" wrap="nowrap">
-            {/* Stack de Avatares */}
-            <Avatar.Group spacing="sm">
-                {grupo.empleados.slice(0,4).map(emp => (
-                    <Avatar
-                        key={emp.id}
-                        src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null}
-                        size="md"
-                        radius="xl"
-                        color="blue"
-                        style={{ border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
-                    >
-                        {emp.nombre?.charAt(0)}
-                    </Avatar>
-                ))}
-                 {grupo.empleados.length > 4 && (
-                    <Avatar size="md" radius="xl" color="gray" variant="light">+{grupo.empleados.length - 4}</Avatar>
-                )}
-            </Avatar.Group>
+      {/* Header: Observación */}
+      <Text size="xs" fw={700} c="dimmed" tt="uppercase" lts={1} mb="xs" style={{ borderBottom: '1px dashed #eee', paddingBottom: 4, paddingRight: 16 }}>
+        {grupo.observaciones}
+      </Text>
 
-            {/* Resumen Texto */}
-            <Box style={{ flex: 1 }}>
-                <Text size="sm" fw={600} c="dark.8" lh={1.3} lineClamp={2}>
-                    {grupo.empleados.map(e => `${e.nombre} ${e.apellido}`).join(', ')}
-                </Text>
-                <Group gap={6} mt={4}>
-                    <Badge size="sm" color="dark" variant="light">{grupo.horas} Horas</Badge>
-                    {/* Si son varios, mostramos "Ver detalle", si es uno, nada extra */}
-                    {!isSingle && <Text size="xs" c="dimmed" fs="italic" style={{fontSize: '10px'}}>Toca para ver lista</Text>}
-                </Group>
-            </Box>
-        </Group>
+      <Group align="flex-start" wrap="nowrap">
+        {/* Stack de Avatares */}
+        <Avatar.Group spacing="sm">
+          {grupo.empleados.slice(0, 4).map(emp => (
+            <Avatar
+              key={emp.id}
+              src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null}
+              size="md"
+              radius="xl"
+              color="blue"
+              style={{ border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+            >
+              {emp.nombre?.charAt(0)}
+            </Avatar>
+          ))}
+          {grupo.empleados.length > 4 && (
+            <Avatar size="md" radius="xl" color="gray" variant="light">+{grupo.empleados.length - 4}</Avatar>
+          )}
+        </Avatar.Group>
+
+        {/* Resumen Texto */}
+        <Box style={{ flex: 1 }}>
+          <Text size="sm" fw={600} c="dark.8" lh={1.3} lineClamp={2}>
+            {grupo.empleados.map(e => `${e.nombre} ${e.apellido}`).join(', ')}
+          </Text>
+          <Group gap={6} mt={4}>
+            <Badge size="sm" color="dark" variant="light">{grupo.horas} Horas</Badge>
+            {/* Si son varios, mostramos "Ver detalle", si es uno, nada extra */}
+            {!isSingle && <Text size="xs" c="dimmed" fs="italic" style={{ fontSize: '10px' }}>Toca para ver lista</Text>}
+          </Group>
+        </Box>
+      </Group>
     </Paper>
   );
 
   // --- CASO 1: UN SOLO EMPLEADO (REDIRECT DIRECTO) ---
   if (isSingle) {
-      return (
-        <UnstyledButton 
-            onClick={() => router.push(`/superuser/rrhh/empleados/${grupo.empleados[0].id}`)} 
-            style={{ width: '100%', display: 'block' }}
-        >
-            {CardContent}
-        </UnstyledButton>
-      );
+    return (
+      <UnstyledButton
+        onClick={() => router.push(`/superuser/rrhh/empleados/${grupo.empleados[0].id}`)}
+        style={{ width: '100%', display: 'block' }}
+      >
+        {CardContent}
+      </UnstyledButton>
+    );
   }
 
   // --- CASO 2: GRUPO (POPOVER MACOS) ---
   return (
-    <Popover 
-      opened={opened} 
-      onChange={setOpened} 
-      width={320} 
-      position="bottom" 
-      withArrow 
+    <Popover
+      opened={opened}
+      onChange={setOpened}
+      width={320}
+      position="bottom"
+      withArrow
       shadow="xl"
       transitionProps={{ transition: 'pop', duration: 200 }}
       withinPortal
     >
       <Popover.Target>
-        <UnstyledButton 
-            onClick={() => setOpened((o) => !o)} 
-            style={{ width: '100%', display: 'block' }}
+        <UnstyledButton
+          onClick={() => setOpened((o) => !o)}
+          style={{ width: '100%', display: 'block' }}
         >
-            {CardContent}
+          {CardContent}
         </UnstyledButton>
       </Popover.Target>
 
       <Popover.Dropdown p={0} style={{ borderRadius: 12, overflow: 'hidden', border: `1px solid ${COLORS.petrol}` }}>
         <Box bg={COLORS.petrol} p="xs">
-            <Text c="white" fw={700} size="sm" ta="center">Personal Asignado ({grupo.empleados.length})</Text>
+          <Text c="white" fw={700} size="sm" ta="center">Personal Asignado ({grupo.empleados.length})</Text>
         </Box>
         <ScrollArea.Autosize mah={300} type="always">
-            <Stack gap={0}>
-                {grupo.empleados.map((emp) => (
-                    <UnstyledButton 
-                        key={emp.id}
-                        onClick={() => router.push(`/superuser/rrhh/empleados/${emp.id}`)}
-                        style={{ padding: '10px 14px', borderBottom: '1px solid #f1f3f5' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                        <Group>
-                            <Avatar 
-                                src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} 
-                                size={32} 
-                                radius="xl" 
-                                color="blue"
-                            >
-                                {emp.nombre?.charAt(0)}
-                            </Avatar>
-                            <Box>
-                                <Text size="sm" fw={600}>{emp.nombre} {emp.apellido}</Text>
-                                <Text size="xs" c="dimmed">Ver Perfil →</Text>
-                            </Box>
-                        </Group>
-                    </UnstyledButton>
-                ))}
-            </Stack>
+          <Stack gap={0}>
+            {grupo.empleados.map((emp) => (
+              <UnstyledButton
+                key={emp.id}
+                onClick={() => router.push(`/superuser/rrhh/empleados/${emp.id}`)}
+                style={{ padding: '10px 14px', borderBottom: '1px solid #f1f3f5' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Group>
+                  <Avatar
+                    src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null}
+                    size={32}
+                    radius="xl"
+                    color="blue"
+                  >
+                    {emp.nombre?.charAt(0)}
+                  </Avatar>
+                  <Box>
+                    <Text size="sm" fw={600}>{emp.nombre} {emp.apellido}</Text>
+                    <Text size="xs" c="dimmed">Ver Perfil →</Text>
+                  </Box>
+                </Group>
+              </UnstyledButton>
+            ))}
+          </Stack>
         </ScrollArea.Autosize>
       </Popover.Dropdown>
     </Popover>

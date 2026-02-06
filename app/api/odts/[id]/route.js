@@ -24,50 +24,45 @@ async function sincronizarRegistros({
   datosComunes, 
   transaction 
 }) {
-  // 1. Identificar IDs actuales que se quedan
   const idsNuevos = itemsNuevos.map(i => i.id).filter(Boolean);
 
-  // 2. BORRAR (Prune): Eliminar los que ya no están en la lista nueva
   await model.destroy({
     where: {
       odtId: odtId,
       origen: 'odt',
-      [fkField]: { [Op.notIn]: idsNuevos } // Borra todo lo que NO esté en la lista nueva
+      [fkField]: { [Op.notIn]: idsNuevos }
     },
     transaction
   });
 
-  // 3. UPSERT (Update or Insert)
   for (const item of itemsNuevos) {
     if (!item.id) continue;
 
-    // Buscamos si ya existe el registro para este ID en esta ODT
+    // DETERMINAR HORAS: Prioridad al item individual, luego al dato común
+    const horasAFijar = item.horasIndividuales !== undefined 
+        ? item.horasIndividuales 
+        : datosComunes.horas;
+
     const registroExistente = await model.findOne({
-      where: {
-        odtId: odtId,
-        origen: 'odt',
-        [fkField]: item.id
-      },
+      where: { odtId, origen: 'odt', [fkField]: item.id },
       transaction
     });
 
+    const updateData = {
+      fecha: datosComunes.fecha,
+      [model === Horometro ? 'fecha_registro' : 'fecha']: datosComunes.fecha,
+      [model === Horometro ? 'valor' : 'horas']: horasAFijar, // <-- Usamos la variable calculada
+      observaciones: item.observaciones
+    };
+
     if (registroExistente) {
-      // ACTUALIZAR: Solo cambiamos las horas y observaciones
-      await registroExistente.update({
-        fecha: datosComunes.fecha, // Por si cambió la fecha de la ODT
-        [model === Horometro ? 'fecha_registro' : 'fecha']: datosComunes.fecha,
-        [model === Horometro ? 'valor' : 'horas']: datosComunes.horas,
-        observaciones: item.observaciones
-      }, { transaction });
+      await registroExistente.update(updateData, { transaction });
     } else {
-      // CREAR: No existía, lo creamos
       await model.create({
-        odtId: odtId,
+        odtId,
         [fkField]: item.id,
         origen: 'odt',
-        [model === Horometro ? 'fecha_registro' : 'fecha']: datosComunes.fecha,
-        [model === Horometro ? 'valor' : 'horas']: datosComunes.horas,
-        observaciones: item.observaciones
+        ...updateData
       }, { transaction });
     }
   }
@@ -75,59 +70,59 @@ async function sincronizarRegistros({
 
 // GET se mantiene igual...
 export async function GET(req, { params }) {
-    try {
-        // En Next.js 15 params es una promesa, es buena práctica esperarla
-        const { id } = await params; 
+  try {
+    // En Next.js 15 params es una promesa, es buena práctica esperarla
+    const { id } = await params;
 
-        const odt = await ODT.findByPk(id, {
-            include: [
-                // 1. Cliente
-                { model: Cliente, as: "cliente" },
-                
-                // 2. Personal (Usando los alias definidos en las asociaciones)
-                { 
-                    model: Empleado, 
-                    as: "chofer",
-                    attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula'] 
-                },
-                { 
-                    model: Empleado, 
-                    as: "ayudante",
-                    attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula'] 
-                },
+    const odt = await ODT.findByPk(id, {
+      include: [
+        // 1. Cliente
+        { model: Cliente, as: "cliente" },
 
-                // 3. Activos (Usando los alias definidos)
-                { 
-                    model: Activo, 
-                    as: "vehiculoPrincipal",
-                    attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
-                },
-                { 
-                    model: Activo, 
-                    as: "vehiculoRemolque",
-                    attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
-                },
-                { 
-                    model: Activo, 
-                    as: "maquinaria",
-                    attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
-                },
+        // 2. Personal (Usando los alias definidos en las asociaciones)
+        {
+          model: Empleado,
+          as: "chofer",
+          attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula']
+        },
+        {
+          model: Empleado,
+          as: "ayudante",
+          attributes: ['id', 'nombre', 'apellido', 'imagen', 'cedula']
+        },
 
-                // 4. Historial de Horas (Opcional, pero útil para ver el detalle)
-                { model: HorasTrabajadas }
-            ],
-        });
+        // 3. Activos (Usando los alias definidos)
+        {
+          model: Activo,
+          as: "vehiculoPrincipal",
+          attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
+        },
+        {
+          model: Activo,
+          as: "vehiculoRemolque",
+          attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
+        },
+        {
+          model: Activo,
+          as: "maquinaria",
+          attributes: ['id', 'codigoInterno', 'tipoActivo', 'imagen']
+        },
 
-        if (!odt) {
-            return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
-        }
+        // 4. Historial de Horas (Opcional, pero útil para ver el detalle)
+        { model: HorasTrabajadas }
+      ],
+    });
 
-        return NextResponse.json(odt);
-
-    } catch (error) {
-        console.error("Error obteniendo ODT:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!odt) {
+      return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
     }
+
+    return NextResponse.json(odt);
+
+  } catch (error) {
+    console.error("Error obteniendo ODT:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
 // ==========================================
@@ -152,8 +147,8 @@ export async function PUT(req, { params }) {
     // 1. Verificar existencia
     const odtExistente = await ODT.findByPk(id);
     if (!odtExistente) {
-        await transaction.rollback();
-        return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
+      await transaction.rollback();
+      return NextResponse.json({ error: "ODT no encontrada" }, { status: 404 });
     }
 
     // 2. Actualizar la ODT Principal
@@ -167,21 +162,41 @@ export async function PUT(req, { params }) {
     }, { transaction });
 
     // Calculamos las horas nuevas
-    const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
+    // const horasCalculadas = calcularHoras(odtData.horaLlegada, odtData.horaSalida);
+    // --- 1. Lógica de horas para el Chofer ---
+    const hEntradaChofer = body.choferEntradaBase || odtData.horaLlegada;
+    const hSalidaChofer = body.choferSalidaBase || odtData.horaSalida;
+    const horasChofer = calcularHoras(hEntradaChofer, hSalidaChofer);
 
-    // 3. Preparar arrays para la sincronización
-    
-    // --- Personal ---
+    // --- 2. Lógica de horas para el Ayudante ---
+    const hEntradaAyudante = body.ayudanteEntradaBase || odtData.horaLlegada;
+    const hSalidaAyudante = body.ayudanteSalidaBase || odtData.horaSalida;
+    const horasAyudante = calcularHoras(hEntradaAyudante, hSalidaAyudante);
+
+    // --- 3. Construir lista con horas específicas ---
     const listaPersonal = [];
-    if (choferId) listaPersonal.push({ id: choferId, observaciones: `Chofer ODT #${odtExistente.nroODT}` });
-    if (ayudanteId) listaPersonal.push({ id: ayudanteId, observaciones: `Ayudante ODT #${odtExistente.nroODT}` });
+    if (choferId) {
+      listaPersonal.push({
+        id: choferId,
+        observaciones: `Chofer ODT #${odtExistente.nroODT}`,
+        horasIndividuales: horasChofer // <-- Pasamos el dato aquí
+      });
+    }
+    if (ayudanteId) {
+      listaPersonal.push({
+        id: ayudanteId,
+        observaciones: `Ayudante ODT #${odtExistente.nroODT}`,
+        horasIndividuales: horasAyudante // <-- Pasamos el dato aquí
+      });
+    }
 
+    // 4. Llamar a la función (datosComunes queda como fallback o para la fecha)
     await sincronizarRegistros({
       model: HorasTrabajadas,
       fkField: 'empleadoId',
       itemsNuevos: listaPersonal,
       odtId: id,
-      datosComunes: { fecha: odtData.fecha, horas: horasCalculadas },
+      datosComunes: { fecha: odtData.fecha }, // Ya no pasamos 'horas' globales aquí para el personal
       transaction
     });
 

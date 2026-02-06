@@ -33,6 +33,23 @@ const ODT = sequelize.define("ODT", {
         type: DataTypes.TIME,
         allowNull: false,
     },
+    // Nuevos campos para el personal
+    choferEntradaBase: {
+        type: DataTypes.TIME,
+        allowNull: true, // Permitir nulo para aplicar tu lógica de "asumir"
+    },
+    choferSalidaBase: {
+        type: DataTypes.TIME,
+        allowNull: true,
+    },
+    ayudanteEntradaBase: {
+        type: DataTypes.TIME,
+        allowNull: true,
+    },
+    ayudanteSalidaBase: {
+        type: DataTypes.TIME,
+        allowNull: true,
+    },
 });
 
 // 🚛 Relación muchos-a-muchos con Activo (vehículos)
