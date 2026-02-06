@@ -515,7 +515,9 @@ export default function ODTForm({ mode = "create", odtId }) {
           )}
 
           {/* CASO 2: EDICIÓN DE ODT EN CURSO */}
-          {mode === 'edit' && form.values.estado === 'En Curso' && (
+          {mode === 'edit'
+          // &&           form.values.estado === 'En Curso' 
+          && (
             <Group>
               <Button
                 variant="default"
@@ -545,7 +547,9 @@ export default function ODTForm({ mode = "create", odtId }) {
           )}
 
           {/* CASO 3: ODT YA FINALIZADA (Solo ver/editar correcciones) */}
-          {mode === 'edit' && form.values.estado === 'Finalizada' && (
+          {mode === 'edit' 
+          // && form.values.estado === 'Finalizada' 
+          && (
             <Button type="submit" color="blue">Actualizar Datos</Button>
           )}
         </Group>
