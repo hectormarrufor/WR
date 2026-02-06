@@ -30,7 +30,6 @@ export function ModalClienteForm({ onClienteCreated, onClienteUpdated, onClose, 
     validate: {
       identificacion: (value) => (value ? null : 'Identificación es requerida'),
       nombre: (value) => (value ? null : 'Nombre es requerido'),
-
       email: (value) => (value && !/^\S+@\S+$/.test(value) ? 'Email inválido' : null),
     },
   });

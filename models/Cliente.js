@@ -24,8 +24,14 @@ const Cliente = sequelize.define('Cliente', {
   email: {
     type: DataTypes.STRING,
     allowNull: true,
+    set(value) {
+      // Si el valor es una cadena vacía o solo espacios, guarda NULL
+      this.setDataValue('email', value === "" ? null : value);
+    },
     validate: {
-      isEmail: true,
+      isEmail: {
+        msg: "Formato de email inválido"
+      }
     },
   },
   direccion: {
