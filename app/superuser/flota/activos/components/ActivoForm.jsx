@@ -53,7 +53,13 @@ export default function ActivoForm({ plantilla, tipoActivo, onCancel }) {
         },
         validate: {
             codigoInterno: (val) => (val.length < 2 ? 'Código requerido' : null),
-            placa: (val) => (isVehiculo || isRemolque || isMaquina && val.length < 3 ? 'Placa requerida' : null),
+            placa: (value, values) => {
+
+                if ((isVehiculo || isRemolque || isMaquina) && (!value || value.trim().length < 3)) {
+                    return 'Placa requerida (mínimo 3 caracteres)';
+                }
+                return null;
+            },
         }
     });
 
