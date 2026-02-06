@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { DateInput, TimeInput } from "@mantine/dates";
-import { IconArrowLeft, IconSearch } from "@tabler/icons-react";
+import { IconArrowLeft, IconSearch, IconTruck } from "@tabler/icons-react";
 import { format, addDays, parseISO } from "date-fns";
 import '@mantine/dates/styles.css';
 import ODTSelectableGrid from "./ODTSelectableGrid";
