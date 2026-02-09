@@ -1,7 +1,7 @@
 // app/api/odts/[id]/route.js
 
 import { NextResponse } from "next/server";
-import db, { ODT, HorasTrabajadas, Horometro, Activo, Empleado, Cliente } from "@/models";
+import db, { ODT, HorasTrabajadas, Horometro, Activo, Empleado, Cliente, VehiculoInstancia, Vehiculo, MaquinaInstancia, Maquina, Remolque, RemolqueInstancia } from "@/models";
 import { Op } from "sequelize";
 
 // ==========================================
@@ -97,11 +97,25 @@ export async function GET(req, { params }) {
         const odt = await ODT.findByPk(id, {
             include: [
                 { model: Cliente, as: "cliente" },
-                { model: Empleado, as: "chofer", attributes: ['id', 'nombre', 'apellido', 'imagen'] },
-                { model: Empleado, as: "ayudante", attributes: ['id', 'nombre', 'apellido', 'imagen'] },
-                { model: Activo, as: "vehiculoPrincipal", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"] },
-                { model: Activo, as: "vehiculoRemolque", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"] },
-                { model: Activo, as: "maquinaria", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"] },
+                { model: Empleado, as: "chofer", attributes: ['id', 'cedula', 'nombre', 'apellido', 'imagen'] },
+                { model: Empleado, as: "ayudante", attributes: ['id', 'cedula', 'nombre', 'apellido', 'imagen'] },
+                { model: Activo, as: "vehiculoPrincipal", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"],
+                  include: [{ model: VehiculoInstancia, as: "vehiculoInstancia", attributes: ['placa'],
+                    include: [{model: Vehiculo, as: 'plantilla', attributes: ['marca', 'modelo']}]
+                   }] // Para mostrar placa del vehículo principal
+                },
+                { model: Activo, as: "vehiculoRemolque", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"],
+                  include: [{ model: RemolqueInstancia, as: "remolqueInstancia", attributes: ['placa'],
+                    include: [{model: Remolque, as: 'plantilla', attributes: ['marca', 'modelo']}]
+                   }] // Para mostrar placa del remolque
+                 },
+                { model: Activo, as: "maquinaria", attributes: ['id', 'codigoInterno', 'tipoActivo', "imagen"],
+                  include: [{ model: MaquinaInstancia, as: "maquinaInstancia", attributes: ['placa'],
+                    include: [{model: Maquina, as: 'plantilla', attributes: ['marca', 'modelo']}]
+                   }] // Para mostrar serial de la máquina
+                   },
+                { model: HorasTrabajadas
+                 },
             ],
         });
 

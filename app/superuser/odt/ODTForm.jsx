@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { DateInput, TimeInput } from "@mantine/dates";
-import { IconArrowLeft, IconSearch, IconTruck } from "@tabler/icons-react";
+import { IconArrowLeft, IconCheck, IconSearch, IconTruck, IconLockOpen } from "@tabler/icons-react";
 import { format, addDays, parseISO } from "date-fns";
 import '@mantine/dates/styles.css';
 import ODTSelectableGrid from "./ODTSelectableGrid";
@@ -102,6 +102,7 @@ export default function ODTForm({ mode = "create", odtId }) {
       ayudanteSalidaBase: null,
       salidaActivosBase: null,  // <--- NUEVO
       llegadaActivosBase: null, // <--- NUEVO
+      estado: 'En Curso', // Valor por defecto
     },
     validate: {
       fecha: (value) => (value ? null : "Fecha requerida"),
@@ -326,14 +327,27 @@ export default function ODTForm({ mode = "create", odtId }) {
 
   if (loadingInit) return <Center h="94vh"><Loader size="xl" /></Center>;
 
+  // CONFIGURACIÓN VISUAL DEL ESTADO
+  const isFinalizada = form.values.estado === 'Finalizada';
+  const statusColor = isFinalizada ? 'green' : 'blue';
+
   return (
     <Paper mt={70} p="md">
-      <Group mb="lg">
-        <Button variant="default" size="xs" onClick={() => router.back()}><IconArrowLeft size={18} /></Button>
-        <Title order={3} style={{ flex: 1, textAlign: 'center' }}>
-          {mode === "create" ? "Nueva ODT" : "Editar ODT"}
-        </Title>
-        <Box w={34} />
+      <Group mb="lg" justify="space-between">
+        <Group>
+            <Button variant="default" size="xs" onClick={() => router.back()}><IconArrowLeft size={18} /></Button>
+            <Box>
+                <Title order={3}>
+                {mode === "create" ? "Nueva ODT" : `Editando ODT #${form.values.nroODT || ''}`}
+                </Title>
+                {/* Badge de estado visual */}
+                {mode === 'edit' && (
+                    <Badge color={statusColor} variant="light" size="lg" mt={4}>
+                        {form.values.estado}
+                    </Badge>
+                )}
+            </Box>
+        </Group>
       </Group>
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -498,59 +512,60 @@ export default function ODTForm({ mode = "create", odtId }) {
 
 
 
-        {/* BOTONERA INTELIGENTE */}
-        <Group mt="xl" justify="flex-end">
+        <Group mt="xl" justify="flex-end" style={{ position: 'sticky', bottom: 0, background: 'white', padding: '10px 0', borderTop: '1px solid #eee', zIndex: 10 }}>
 
-          {/* CASO 1: MODO CREACIÓN (Despacho) */}
+          {/* CASO 1: MODO CREACIÓN */}
           {mode === 'create' && (
-            <Button
-              size="md"
-              type="submit"
-              loading={loadingInit}
-              color="blue"
-              leftSection={<IconTruck size={20} />}
-            >
-              Despachar Unidad (Abrir ODT)
+            <Button size="md" type="submit" loading={loadingInit} color="blue" leftSection={<IconTruck size={20} />}>
+              Despachar Unidad (Crear)
             </Button>
           )}
 
-          {/* CASO 2: EDICIÓN DE ODT EN CURSO */}
-          {mode === 'edit'
-          // &&           form.values.estado === 'En Curso' 
-          && (
+          {/* CASO 2: MODO EDICIÓN */}
+          {mode === 'edit' && (
             <Group>
-              <Button
-                variant="default"
-                onClick={() => handleSubmit(form.values)} // Guarda cambios sin cerrar
-              >
+                
+              {/* BOTÓN: GUARDAR CAMBIOS (Siempre visible) */}
+              <Button variant="default" onClick={() => handleSubmit(form.values)}>
                 Guardar Cambios
               </Button>
-              <Button
-                color="green"
-                leftSection={<IconCheck size={20} />}
-                onClick={() => {
-                  // Validación manual antes de cerrar
-                  if (!form.values.horaLlegada || !form.values.horaSalida) {
-                    notifications.show({ message: "Debes ingresar las horas para finalizar", color: 'red' });
-                    return;
-                  }
-                  // Forzamos el cambio de estado y enviamos
-                  form.setFieldValue('estado', 'Finalizada');
-                  // Usamos un timeout pequeño para asegurar que el estado se actualizó o pasamos el valor directo
-                  const valuesClosing = { ...form.values, estado: 'Finalizada' };
-                  handleSubmit(valuesClosing);
-                }}
-              >
-                Finalizar ODT (Cerrar)
-              </Button>
-            </Group>
-          )}
 
-          {/* CASO 3: ODT YA FINALIZADA (Solo ver/editar correcciones) */}
-          {mode === 'edit' 
-          // && form.values.estado === 'Finalizada' 
-          && (
-            <Button type="submit" color="blue">Actualizar Datos</Button>
+              {/* LÓGICA DE ESTADOS */}
+              {!isFinalizada ? (
+                  // SI ESTÁ EN CURSO -> MOSTRAR FINALIZAR
+                  <Button
+                    color="green"
+                    leftSection={<IconCheck size={20} />}
+                    onClick={() => {
+                      if (!form.values.horaLlegada || !form.values.horaSalida) {
+                        notifications.show({ title:"Faltan datos", message: "Ingresa horas de Llegada y Salida para finalizar", color: 'red' });
+                        return;
+                      }
+                      // CAMBIO MÁGICO DE ESTADO
+                      const valuesClosing = { ...form.values, estado: 'Finalizada' };
+                      handleSubmit(valuesClosing);
+                    }}
+                  >
+                    Finalizar ODT
+                  </Button>
+              ) : (
+                  // SI ESTÁ FINALIZADA -> MOSTRAR REABRIR
+                  <Button
+                    color="orange"
+                    variant="light"
+                    leftSection={<IconLockOpen size={20} />}
+                    onClick={() => {
+                        // CAMBIO MÁGICO DE ESTADO INVERSO
+                        // Al reabrir, podrías querer limpiar las horas o dejarlas para edición.
+                        // Aquí las dejamos, pero cambiamos el estado.
+                        const valuesReopening = { ...form.values, estado: 'En Curso' };
+                        handleSubmit(valuesReopening);
+                    }}
+                  >
+                    Reabrir ODT
+                  </Button>
+              )}
+            </Group>
           )}
         </Group>
       </form>

@@ -81,7 +81,7 @@ export default function ODTDetailPage() {
               </Group>
               <Group gap="xs" c="dimmed" mt={4}>
                 <IconCalendar size={14} />
-                <Text size="sm">{new Date(odt.fecha).toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                <Text size="sm">{formatDateLong(odt.fecha)}</Text>
               </Group>
             </Box>
           </Group>
@@ -350,16 +350,17 @@ function AssetCard({ title, data, getImageUrl, type }) {
 
   // Resolver nombre del activo (según tu modelo podría variar)
   const nombre = data.codigoInterno || 'S/C';
-  const detalle = data.vehiculoInstancia?.placa || data.maquinaInstancia?.serialVin || '';
+  const detalle = data.vehiculoInstancia?.plantilla?.marca + ' ' + data.vehiculoInstancia?.plantilla?.modelo  + ' ' + data.vehiculoInstancia?.placa || 'Activo sin detalle';
 
   return (
     <Paper withBorder radius="md" overflow="hidden">
-      <Box h={80} bg="gray.1" style={{ position: 'relative' }}>
+      <Box  h={180} bg="gray.1" style={{ position: 'relative' }}>
         {data.imagen ? (
           <Image
             src={getImageUrl(data.imagen)}
             alt="Activo"
-            style={{ width: '100%', height: '100%', objectFit: 'fit' }}
+            radius="md"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
           <Center h="100%">
@@ -385,3 +386,4 @@ function AssetCard({ title, data, getImageUrl, type }) {
 
 // Helper simple para centrar si no hay imagen
 import { Center } from "@mantine/core";
+import { formatDateLong } from "@/app/helpers/dateUtils";

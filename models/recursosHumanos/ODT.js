@@ -58,6 +58,11 @@ const ODT = sequelize.define("ODT", {
         type: DataTypes.TIME,
         allowNull: true,
     },
+    estado: {
+        type: DataTypes.ENUM('En Curso', 'Finalizada', 'Cancelada'),
+        defaultValue: 'En Curso',
+        allowNull: true
+    }
 });
 
 // 🚛 Relación muchos-a-muchos con Activo (vehículos)
