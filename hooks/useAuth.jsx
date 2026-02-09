@@ -4,6 +4,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
 import { desuscribirsePush, suscribirsePush } from '@/app/handlers/push';
+import { usePathname } from 'next/navigation';
 
 const AuthContext = createContext(null);
 
@@ -11,33 +12,42 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const pathname = usePathname();
 
     // Esta función ahora se puede llamar desde cualquier lugar
+   // Función unificada para verificar sesión
     const fetchUser = async () => {
-        console.log(`\x1b[32m FETCHING USER \x1b[0m`);
-
         try {
+            // Llamamos a tu API session (que ahora revisa la BD)
             const response = await fetch('/api/users/session');
+            
             if (response.ok) {
                 const data = await response.json();
-                console.log(`\x1b[44m [DEBUG] DATA FETCHED FROM AuthProvider: ${JSON.stringify(data)} \x1b[0m`);
-
                 setUser(data);
                 return data;
             } else {
-                setUser(null);
+                // SI LA RESPUESTA NO ES OK (Ej: 401 porque borraste el usuario)
+                // Ejecutamos logout automático si había un usuario cargado previamente
+                if (user) { 
+                    console.warn("Sesión invalidada por el servidor");
+                    await logout(false); // false = no notificar, o manejar silencioso
+                } else {
+                    setUser(null);
+                }
             }
         } catch (error) {
+            console.error("Error fetching session", error);
             setUser(null);
         } finally {
             setLoading(false);
         }
     };
 
+    // 1. Carga Inicial
     useEffect(() => {
-        fetchUser(); // Verificar sesión al cargar la app
+        fetchUser(); 
     }, []);
-
+    
     // ✨ NUEVA FUNCIÓN DE LOGIN ✨
     const login = async (user, password) => {
         setLoading(true);

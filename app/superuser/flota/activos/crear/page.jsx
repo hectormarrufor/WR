@@ -12,7 +12,8 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import {
   IconTruck, IconTruckLoading, IconBackhoe,
-  IconPlus, IconAlertCircle
+  IconPlus, IconAlertCircle,
+  IconBuilding
 } from '@tabler/icons-react';
 
 // IMPORTA TU NUEVO COMPONENTE
@@ -25,6 +26,7 @@ const TipoSelector = ({ value, onChange }) => {
     { id: 'Vehiculo', label: 'Vehículo', icon: IconTruck, desc: 'Camiones, Chutos, Vans' },
     { id: 'Remolque', label: 'Remolque', icon: IconTruckLoading, desc: 'Bateas, Lowboys, Cisternas' },
     { id: 'Maquina', label: 'Máquina', icon: IconBackhoe, desc: 'Retroexcavadoras, Taladros' },
+    { id: 'Inmueble', label: 'Inmueble', icon: IconBuilding, desc: 'Edificios, Terrenos' },
   ];
 
   return (
