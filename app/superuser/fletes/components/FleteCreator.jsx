@@ -31,7 +31,6 @@ import axios from "axios";
 import GoogleRouteMap from "./GoogleRouteMap";
 import ODTSelectableGrid from "../../odt/ODTSelectableGrid";
 import { SelectClienteConCreacion } from "../../contratos/SelectClienteConCreacion";
-import { calcularCostoFlete } from "@/app/handlers/calculoCostoFlete";
 
 // Función de cálculo mejorada (puedes moverla a lib/calcularCostoFlete.js)
 
