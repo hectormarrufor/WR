@@ -141,14 +141,14 @@ export default function FleteCreator() {
     const { data: estimacion, isLoading: calcLoading } = useQuery({
         queryKey: [
             "calcular-flete",
-            formValues.activoPrincipalId,
+            form.values.activoPrincipalId,
             rutaData?.distanciaTotal,
-            formValues.tonelaje,
-            formValues.tipoCarga,
-            formValues.cantidadPeajes,
+            form.values.tonelaje,
+            form.values.tipoCarga,
+            form.values.cantidadPeajes,
         ],
         queryFn: async () => {
-            if (!rutaData?.distanciaTotal || !formValues.activoPrincipalId) return null;
+            if (!rutaData?.distanciaTotal || !form.values.activoPrincipalId) return null;
 
             const response = await fetch('/api/fletes/estimar', {
                 method: 'POST',
@@ -156,11 +156,11 @@ export default function FleteCreator() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    activoPrincipalId: formValues.activoPrincipalId,
+                    activoPrincipalId: form.values.activoPrincipalId,
                     distanciaKm: rutaData.distanciaTotal,
-                    tonelaje: formValues.tonelaje,
-                    tipoCarga: formValues.tipoCarga,
-                    cantidadPeajes: formValues.cantidadPeajes,
+                    tonelaje: form.values.tonelaje,
+                    tipoCarga: form.values.tipoCarga,
+                    cantidadPeajes: form.values.cantidadPeajes,
                     precioPeajeUnitario: configPrecios.peaje,
                     precioGasoilUsd: configPrecios.gasoil,
                     porcentajeGanancia: 0.30,
@@ -175,7 +175,7 @@ export default function FleteCreator() {
 
             return response.json();
         },
-        enabled: !!rutaData?.distanciaTotal && !!formValues.activoPrincipalId,
+        enabled: !!rutaData?.distanciaTotal && !!form.values.activoPrincipalId,
         staleTime: 1000 * 60 * 5, // 5 minutos – ajusta según quieras
     });
 
