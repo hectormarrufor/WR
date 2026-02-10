@@ -19,6 +19,7 @@ async function calcularCostoFlete({
   precioGasoilUsd = 0.8,      // Desde config o BCV
   porcentajeGanancia = 0.30,  // 30% margen típico
   horasEstimadas = null,      // Si no se pasa, se calcula
+  bcv = 390,                     // Tipo de cambio BCV
 }) {
   // 1. Obtener métricas reales del activo
   const desde = new Date();
@@ -111,7 +112,7 @@ async function calcularCostoFlete({
   const diasViaje = Math.ceil(horas / 10) + 1;
   const viaticos = diasViaje * 25; // $25/día estándar
 
-  const peajes = cantidadPeajes * precioPeajeUnitario;
+  const peajes = cantidadPeajes * precioPeajeUnitario / bcv;
   const desgasteCaucho = distanciaKm * 0.015; // $0.015/km estándar
 
   // Costos fijos prorrateados (aproximado; mejorar con CostParameters real)

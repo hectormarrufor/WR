@@ -164,6 +164,7 @@ export default function FleteCreator() {
                     precioPeajeUnitario: configPrecios.peaje,
                     precioGasoilUsd: configPrecios.gasoil,
                     porcentajeGanancia: 0.30,
+                    bcv: bcv || 390, // pasa el BCV actual para cálculos más precisos
                     // horasEstimadas: lo calculamos en el backend ahora
                     // bcv: lo puedes pasar si lo necesitas en backend
                 }),
@@ -377,12 +378,12 @@ export default function FleteCreator() {
 
                             <>
                                 <Badge
-                                    color={estimacion.metricsUsados.fuente === 'historial_real' ? 'green' : 'orange'}
+                                    color={estimacion.metrics.fuente === 'historial_real' ? 'green' : 'orange'}
                                     variant="light"
                                     size="lg"
                                     mt="md"
                                 >
-                                    {estimacion.metricsUsados.detalle}
+                                    {estimacion.metrics.detalle}
                                 </Badge>
                                 <Grid>
                                     <Grid.Col span={8}><Text>Combustible:</Text></Grid.Col>
