@@ -28,9 +28,9 @@ import { actualizarSueldos } from "@/app/helpers/calcularSueldo";
 import ModalCrearHora from "./ModalCrearHora";
 import ModalCuentaBancaria from "./ModalCuentaBancaria";
 import ModalPagoMovil from "./ModalPagoMovil";
-import { formatToInputDate, getSafeDate, toLocalDate } from "@/app/helpers/fechaCaracas";
 import DocumentosManager from "../../components/DocumentosManager";
 import { formatDateLong } from "@/app/helpers/dateUtils";
+import { notifications } from "@mantine/notifications";
 
 // --- COMPONENTE PARA EL REGISTRO DE HORAS EN MÓVIL ---
 // Ahora recibe onEdit y onDelete
@@ -173,7 +173,7 @@ export default function Page({ params }) {
         if (!confirm("¿Estás seguro de eliminar este registro de horas?")) return;
         
         try {
-            const res = await fetch(`/api/rrhh/horas/${horaId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/rrhh/horas-manuales/${horaId}`, { method: 'DELETE' });
             if (res.ok) {
                 notifications.show({ title: 'Eliminado', message: 'Registro eliminado', color: 'green' });
                 // Actualizar estado localmente para no recargar toda la página
@@ -291,11 +291,11 @@ export default function Page({ params }) {
                             </Group>
                             <Group wrap="nowrap">
                                 <IconCalendar size={20} color="gray" style={{ minWidth: 20 }} />
-                                <div><Text size="xs" c="dimmed">Nacimiento</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaNacimiento).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })}</Text></div>
+                                <div><Text size="xs" c="dimmed">Nacimiento</Text><Text size="sm" fw={500}>{formatDateLong(empleado.fechaNacimiento)}</Text></div>
                             </Group>
                             <Group wrap="nowrap">
                                 <IconBriefcase size={20} color="gray" style={{ minWidth: 20 }} />
-                                <div><Text size="xs" c="dimmed">Ingreso</Text><Text size="sm" fw={500}>{toLocalDate(empleado.fechaIngreso).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })}</Text></div>
+                                <div><Text size="xs" c="dimmed">Ingreso</Text><Text size="sm" fw={500}>{formatDateLong(empleado.fechaIngreso)}</Text></div>
                             </Group>
 
                             {(empleado.tallaCamisa || empleado.tallaPantalon || empleado.tallaCalzado || empleado.tallaBraga) && (
@@ -330,7 +330,7 @@ export default function Page({ params }) {
                                 </>
                             )}
 
-                            {(rol.includes("Presidente") || rol.includes("admin")) && (
+                            {(rol?.includes("Presidente") || rol?.includes("admin")) && (
                                 <>
                                     <Divider my="sm" />
                                     <Title order={5} align="center">Sueldo</Title>

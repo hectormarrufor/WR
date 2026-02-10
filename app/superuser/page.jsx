@@ -82,7 +82,7 @@ const FadeInSection = ({ children, delay = 0 }) => {
 
 export default function SuperUserHome() {
     const [isLoading, setIsLoading] = useState(true);
-    const { isAdmin, departamentos, rol } = useAuth();
+    const { isAdmin, departamentos, rol, userId } = useAuth();
     const [precioBCV, setPrecioBCV] = useState(0);
     const router = useRouter();
     const theme = useMantineTheme();
@@ -130,14 +130,14 @@ export default function SuperUserHome() {
     const menuOptions = [
         // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Estimación de costos', href: '/superuser/estimacion-costos', description: 'Calcula el costo operativo por servicio.', icon: IconChartBar, color: 'orange' },
         // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Gastos Fijos', href: '/superuser/gastos', description: 'Configura los gastos mensuales.', icon: IconExchange, color: 'cyan' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Pagar Empleados', href: '/superuser/pagar', description: 'Gestión de nómina semanal.', icon: IconCash, color: 'green' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Cuentas Bancarias', href: '/superuser/mis-cuentas', description: 'Gestión de tesorería.', icon: IconBuildingBank, color: 'yellow' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Mantenimiento"), title: 'Mantenimiento', href: '/superuser/flota', description: 'Administración de flota y equipos.', icon: IconTruck, color: 'teal' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Almacen"), title: 'Inventario', href: '/superuser/inventario', description: 'Control de stock y repuestos.', icon: IconArchive, color: 'indigo' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Recursos Humanos") || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Recursos Humanos', href: '/superuser/rrhh', description: 'Personal y departamentos.', icon: IconUser, color: 'cyan' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'ODTs', href: '/superuser/odt', description: 'Órdenes de Trabajo.', icon: IconClock2, color: 'blue' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Fletes', href: '/superuser/fletes', description: 'Registro de viajes.', icon: IconTruck, color: 'red' },
-        { disabled: false, visible: isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Pizarra', href: '/superuser/pizarra', description: 'Visualización de actividades.', icon: IconClipboardText, color: 'grape' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Presidencia"), title: 'Pagar Empleados', href: '/superuser/pagar', description: 'Gestión de nómina semanal.', icon: IconCash, color: 'green' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Presidencia"), title: 'Cuentas Bancarias', href: '/superuser/mis-cuentas', description: 'Gestión de tesorería.', icon: IconBuildingBank, color: 'yellow' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Mantenimiento"), title: 'Mantenimiento', href: '/superuser/flota', description: 'Administración de flota y equipos.', icon: IconTruck, color: 'teal' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Almacen"), title: 'Inventario', href: '/superuser/inventario', description: 'Control de stock y repuestos.', icon: IconArchive, color: 'indigo' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Recursos Humanos") || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Recursos Humanos', href: '/superuser/rrhh', description: 'Personal y departamentos.', icon: IconUser, color: 'cyan' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'ODTs', href: '/superuser/odt', description: 'Órdenes de Trabajo.', icon: IconClock2, color: 'blue' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Fletes', href: '/superuser/fletes', description: 'Registro de viajes.', icon: IconTruck, color: 'red' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Pizarra', href: '/superuser/pizarra', description: 'Visualización de actividades.', icon: IconClipboardText, color: 'grape' },
     ];
 
     if (isLoading) {

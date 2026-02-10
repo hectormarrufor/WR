@@ -12,3 +12,7 @@ const CostEstimate = sequelize.define("CostEstimate", {
     breakdown: DataTypes.JSON // para guardar el desglose completo
 });
 module.exports = CostEstimate;
+
+CostEstimate.associate = (models) => {
+    CostEstimate.belongsTo(models.Flete, { foreignKey: 'fleteId' });
+}

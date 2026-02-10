@@ -33,6 +33,13 @@ const Activo = sequelize.define('Activo', {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0.00,
   },
+  valorAdquisicion: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0 }, // Para depreciación
+  consumoCombustibleLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.35 }, // Ej: 0.35 L/km para chuto
+  consumoCombustibleLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.35 }, // ej. 0.35 L/km chuto cargado
+  consumoBaseLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.25 }, // sin carga
+  desgasteNeumaticoPorKm: { type: DataTypes.DECIMAL(10, 4), defaultValue: 0.015 }, // $/km
+  capacidadTonelajeMax: { type: DataTypes.FLOAT },
+  depreciacionAnualPorc: { type: DataTypes.FLOAT, defaultValue: 15 }, // % anual
 
 
 
