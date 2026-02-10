@@ -1,5 +1,5 @@
+import calcularCostoFlete from '@/app/handlers/calculoCostoFlete';
 import { NextResponse } from 'next/server';
-import calcularCostoFlete from '@/lib/estimacion/calcularCostoFlete';
 
 export async function POST(request) {
   try {

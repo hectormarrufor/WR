@@ -76,6 +76,7 @@ Activo.associate = (models) => {
   Activo.hasMany(models.Activo, { as: 'ActivosHijos', foreignKey: 'padreId' });
   Activo.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId' }); // "Oficina Presidencia"
   Activo.hasMany(models.DocumentoActivo, { foreignKey: 'activoId', as: 'documentos' });
+  Activo.hasMany(models.GastoVariable, { foreignKey: 'activoId', as: 'gastosVariables' });
 }
 
 module.exports = Activo;

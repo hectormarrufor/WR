@@ -24,11 +24,11 @@ async function calcularCostoFlete({
   const desde = new Date();
   desde.setMonth(desde.getMonth() - MESES_HISTORIAL);
 
-  const activo = await db.Activo.findByPk(activoId, {
+  const activo = await db.Activo.findByPk(activoPrincipalId, {
     include: [
-      { model: db.VehiculoInstancia, include: ['plantilla'] },
-      { model: db.RemolqueInstancia, include: ['plantilla'] },
-      { model: db.MaquinaInstancia, include: ['plantilla'] },
+      { model: db.VehiculoInstancia, as: "vehiculoInstancia", include: [{model: db.Vehiculo, as: "plantilla"}] },
+      { model: db.RemolqueInstancia, as: "remolqueInstancia", include: [{model: db.Remolque, as: "plantilla"}] },
+      { model: db.MaquinaInstancia, as: "maquinaInstancia", include: [{model: db.Maquina, as: "plantilla"}] },
     ]
   });
 
@@ -44,13 +44,13 @@ async function calcularCostoFlete({
       attributes: ['distanciaKm']
     }),
     db.Kilometraje.findAll({
-      where: { activoId: activoPrincipalId, fecha: { [Op.gte]: desde } }
+      where: { activoId: activoPrincipalId, fecha_registro: { [Op.gte]: desde } }
     }),
     db.CargaCombustible.findAll({
       where: { activoId: activoPrincipalId, fecha: { [Op.gte]: desde } }
     }),
     db.GastoVariable.findAll({
-      where: { activoId: activoPrincipalId, fecha: { [Op.gte]: desde } }
+      where: { activoId: activoPrincipalId, fechaGasto: { [Op.gte]: desde } }
     })
   ]);
 
