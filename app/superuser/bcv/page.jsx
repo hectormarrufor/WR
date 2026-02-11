@@ -4,13 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Paper, Title, Group, Text, SimpleGrid, 
   LoadingOverlay, SegmentedControl, Stack, ThemeIcon, Badge, Tooltip,
-  Button, NumberInput, Select, Divider, Card, Center
+  Button, NumberInput, Card, Center, Box, rem
 } from '@mantine/core';
 import { LineChart } from '@mantine/charts';
 import {
   IconCurrencyDollar, IconCurrencyEuro, IconCoin,
   IconArrowUpRight, IconArrowDownRight, IconScale, IconChartBar,
-  IconCalculator, IconArrowRight, IconEqual
+  IconCalculator, IconEqual
 } from '@tabler/icons-react';
 import '@mantine/charts/styles.css';
 import dayjs from 'dayjs';
@@ -19,12 +19,12 @@ dayjs.locale('es');
 
 // --- SUB-COMPONENTE: CALCULADORA DE TASAS ---
 const CalculadoraDeTasas = ({ stats }) => {
-    const [monto, setMonto] = useState(undefined); // Valor por defecto
+    const [monto, setMonto] = useState(undefined);
     const [monedaBase, setMonedaBase] = useState('usd'); // 'usd', 'eur', 'usdt', 'bs'
 
     if (!stats) return null;
 
-    // 1. Mapa de Tasas (Todo relativo a Bs)
+    // 1. Mapa de Tasas
     const tasas = {
         usd: stats.usd.monto,
         eur: stats.eur.monto,
@@ -32,36 +32,35 @@ const CalculadoraDeTasas = ({ stats }) => {
         bs: 1
     };
 
-    // 2. Calcular el valor total en Bolívares (Pivote)
+    // 2. Calcular pivote en Bs
     const totalEnBolivares = monto * tasas[monedaBase];
 
-    // 3. Opciones para el Select
-    const opcionesMoneda = [
-        { value: 'usd', label: 'Dólar BCV ($)' },
-        { value: 'eur', label: 'Euro BCV (€)' },
-        { value: 'usdt', label: 'USDT (Binance ₮)' },
-        { value: 'bs', label: 'Bolívares (Bs)' },
-    ];
+    // 3. Helper para icono dinámico en el Input
+    const getCurrencyIcon = () => {
+        switch (monedaBase) {
+            case 'usd': return <IconCurrencyDollar style={{ width: rem(18), height: rem(18) }} />;
+            case 'eur': return <IconCurrencyEuro style={{ width: rem(18), height: rem(18) }} />;
+            case 'usdt': return <IconCoin style={{ width: rem(18), height: rem(18) }} />;
+            default: return <Text size="xs" fw={700}>Bs</Text>;
+        }
+    };
 
     // 4. Renderizar tarjeta de resultado
     const ResultadoCard = ({ codigo, icono: Icono, color, label }) => {
-        if (codigo === monedaBase) return null; // No mostrar la misma moneda de origen
+        if (codigo === monedaBase) return null; 
 
         const valorConvertido = totalEnBolivares / tasas[codigo];
         
-        // Calcular "Ahorro/Diferencia" nominal solo entre monedas fuertes (ignorar Bs en la comparación %)
         let porcentajeDif = 0;
         let mostrarPorcentaje = false;
 
         if (monedaBase !== 'bs' && codigo !== 'bs') {
             mostrarPorcentaje = true;
-            // (ValorDestino - ValorOrigen) / ValorOrigen * 100
-            // Ejemplo: Origen 45 USD, Destino 38 USDT. (38 - 45) / 45 = -15%
             porcentajeDif = ((valorConvertido - monto) / monto) * 100;
         }
 
         return (
-            <Card padding="sm" radius="md" withBorder style={{ backgroundColor: 'rgba(255,255,255,0.5)' }}>
+            <Card padding="sm" radius="md" withBorder style={{ backgroundColor: 'rgba(255,255,255,0.6)' }}>
                 <Group justify="space-between" wrap="nowrap">
                     <Group gap="xs">
                         <ThemeIcon color={color} variant="light" size="md" radius="xl">
@@ -71,7 +70,7 @@ const CalculadoraDeTasas = ({ stats }) => {
                             <Text size="xs" c="dimmed" fw={700} tt="uppercase">{label}</Text>
                             <Text fw={700} size="lg" style={{ lineHeight: 1.2 }}>
                                 {codigo === 'bs' ? 'Bs. ' : ''}
-                                {valorConvertido.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {(valorConvertido || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 {codigo !== 'bs' ? ` ${codigo.toUpperCase()}` : ''}
                             </Text>
                         </div>
@@ -83,7 +82,7 @@ const CalculadoraDeTasas = ({ stats }) => {
                             variant="light" 
                             size="sm"
                         >
-                            {porcentajeDif > 0 ? '+' : ''}{porcentajeDif.toFixed(1)}%
+                            {porcentajeDif > 0 ? '+' : ''}{isNaN(porcentajeDif.toFixed(1)) ? 0 : porcentajeDif.toFixed(1)}%
                         </Badge>
                     )}
                 </Group>
@@ -99,39 +98,85 @@ const CalculadoraDeTasas = ({ stats }) => {
             </Group>
             
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg" mb="md">
-                {/* INPUTS */}
-                <Paper p="sm" radius="md" withBorder bg="white">
-                    <Stack gap="xs">
-                        <Text size="xs" fw={700} c="dimmed" tt="uppercase">Tengo / Me cobran:</Text>
-                        <Group align="end" grow>
-                            <NumberInput
-                                value={monto}
-                                onChange={(val) => setMonto(val || 0)}
-                                min={0}
-                                thousandSeparator="."
-                                decimalSeparator=","
-                                hideControls
-                                size="md"
-                                leftSection={<IconEqual size={16} color="gray" />}
-                            />
-                            <Select
-                                value={monedaBase}
-                                onChange={setMonedaBase}
-                                data={opcionesMoneda}
-                                allowDeselect={false}
-                                size="md"
-                                style={{ maxWidth: 160 }}
-                            />
+                {/* INPUTS Y SELECCIÓN DE MONEDA */}
+                <Paper p="md" radius="md" withBorder bg="white">
+                    <Stack gap="md">
+                        <Group justify="space-between">
+                             <Text size="sm" fw={700} c="dimmed" tt="uppercase">Tengo / Me cobran:</Text>
+                             <Text size="xs" c="dimmed">
+                                Base: <Text span fw={700} c="dark">Bs. {isNaN(totalEnBolivares) ? '0.00' : totalEnBolivares.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</Text>
+                             </Text>
                         </Group>
-                        <Text size="xs" c="dimmed" ta="right">
-                            Base de cálculo: <Text span fw={700} c="dark">Bs. {totalEnBolivares.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</Text>
-                        </Text>
+                       
+                        {/* 1. INPUT NUMÉRICO */}
+                        <NumberInput
+                            value={monto}
+                            onChange={(val) => setMonto(val || undefined)}
+                            min={0}
+                            thousandSeparator="."
+                            decimalSeparator=","
+                            hideControls
+                            size="lg"
+                            radius="md"
+                            placeholder="0.00"
+                            leftSection={getCurrencyIcon()} // Icono cambia según selección
+                            styles={{ input: { fontSize: '1.2rem', fontWeight: 600 } }}
+                        />
+
+                        {/* 2. BUTTON GROUP (Segmented Control) */}
+                        <SegmentedControl
+                            value={monedaBase}
+                            onChange={setMonedaBase}
+                            fullWidth
+                            size="md"
+                            radius="md"
+                            color="blue"
+                            transitionDuration={200}
+                            data={[
+                                { 
+                                    value: 'usd', 
+                                    label: (
+                                        <Center>
+                                            <IconCurrencyDollar style={{ width: rem(16), height: rem(16) }} />
+                                            <Box ml={5}>USD</Box>
+                                        </Center>
+                                    ) 
+                                },
+                                { 
+                                    value: 'bs', 
+                                    label: (
+                                        <Center>
+                                            <Text span fw={700} size="xs" style={{ lineHeight: 1 }}>Bs</Text>
+                                            <Box ml={5}>Bolívar</Box>
+                                        </Center>
+                                    ) 
+                                },
+                                { 
+                                    value: 'eur', 
+                                    label: (
+                                        <Center>
+                                            <IconCurrencyEuro style={{ width: rem(16), height: rem(16) }} />
+                                            <Box ml={5}>EUR</Box>
+                                        </Center>
+                                    ) 
+                                },
+                                { 
+                                    value: 'usdt', 
+                                    label: (
+                                        <Center>
+                                            <IconCoin style={{ width: rem(16), height: rem(16) }} />
+                                            <Box ml={5}>USDT</Box>
+                                        </Center>
+                                    ) 
+                                },
+                            ]}
+                        />
                     </Stack>
                 </Paper>
 
                 {/* OUTPUTS (Resultados) */}
                 <Stack gap="xs">
-                    <Text size="xs" fw={700} c="dimmed" tt="uppercase">Equivale a:</Text>
+                    <Text size="sm" fw={700} c="dimmed" tt="uppercase">Equivale a:</Text>
                     <SimpleGrid cols={{ base: 1, sm: 2 }}>
                         <ResultadoCard codigo="usdt" icono={IconCoin} color="teal" label="Binance (USDT)" />
                         <ResultadoCard codigo="usd" icono={IconCurrencyDollar} color="blue" label="Dólar BCV" />
@@ -148,7 +193,7 @@ const CalculadoraDeTasas = ({ stats }) => {
 export default function BcvDashboard() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [rango, setRango] = useState('7d');
+  const [rango, setRango] = useState('30d');
   const [mounted, setMounted] = useState(false);
 
   // 1. Cargar Datos
@@ -231,7 +276,7 @@ export default function BcvDashboard() {
     };
   }, [data, chartData]);
 
-  // Componente de Tarjeta KPI (Reutilizado)
+  // Componente de Tarjeta KPI
   const CurrencyCard = ({ title, amount, mainMetric, secondaryMetric, isBaseCurrency, icon: Icon, color }) => (
     <Paper withBorder p="md" radius="md" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
       <div>
@@ -335,7 +380,7 @@ export default function BcvDashboard() {
           </SimpleGrid>
         )}
 
-        {/* --- AQUÍ INSERTAMOS LA CALCULADORA --- */}
+        {/* CALCULADORA (ACTUALIZADA) */}
         {stats && <CalculadoraDeTasas stats={stats} />}
 
         {/* GRÁFICO */}

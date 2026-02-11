@@ -128,7 +128,7 @@ export default function SuperUserHome() {
     };
 
     const menuOptions = [
-        // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Estimación de costos', href: '/superuser/estimacion-costos', description: 'Calcula el costo operativo por servicio.', icon: IconChartBar, color: 'orange' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Estimación de costos', href: '/superuser/estimacion-costos/configuracion', description: 'Calcula el costo operativo por servicio.', icon: IconChartBar, color: 'orange' },
         // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Gastos Fijos', href: '/superuser/gastos', description: 'Configura los gastos mensuales.', icon: IconExchange, color: 'cyan' },
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Presidencia"), title: 'Pagar Empleados', href: '/superuser/pagar', description: 'Gestión de nómina semanal.', icon: IconCash, color: 'green' },
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Presidencia"), title: 'Cuentas Bancarias', href: '/superuser/mis-cuentas', description: 'Gestión de tesorería.', icon: IconBuildingBank, color: 'yellow' },

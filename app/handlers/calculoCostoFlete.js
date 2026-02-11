@@ -1,168 +1,199 @@
-// lib/estimacion/calcularCostoFlete.js
 const { Op } = require('sequelize');
 const db = require('../../models');
 
-// Umbrales para confiar en datos históricos
+// CONFIGURACIÓN GLOBAL (Podría venir de DB también)
+const COSTO_OVERHEAD_HORA = 3.50; // Vigilancia + Admin (Prorrateado)
+const PRECIO_GASOIL_DEFAULT = 0.50; // $/Litro
+const VIATICO_CHOFER_DIA = 30; // $
+const VIATICO_AYUDANTE_DIA = 15; // $
+
+// Umbrales para confiar en datos históricos (Escenario 1)
 const KM_MINIMO_REAL = 3000;
-const FLETES_MINIMO_REAL = 8;
-const MESES_HISTORIAL = 12;
+const FLETES_MINIMO_REAL = 5;
+const MESES_HISTORIAL = 6; // Miramos últimos 6 meses
 
 async function calcularCostoFlete({
-  activoPrincipalId,          // Obligatorio
-  distanciaKm,                // Desde Google Maps (ida + vuelta)
-  tonelaje = 0,               // Toneladas reales
-  tipoCarga = 'general',      // 'general', 'petrolera', 'peligrosa'
-  choferId,                   // Para estimar nómina
-  ayudanteId = null,          // Opcional
+  activoPrincipalId,
+  remolqueId = null,
+  distanciaKm,
+  tonelaje = 0,
+  tipoCarga = 'general',
+  choferId,
+  ayudanteId = null,
   cantidadPeajes = 0,
-  precioPeajeUnitario = 5,    // Desde config
-  precioGasoilUsd = 0.8,      // Desde config o BCV
-  porcentajeGanancia = 0.30,  // 30% margen típico
-  horasEstimadas = null,      // Si no se pasa, se calcula
-  bcv = 390,                     // Tipo de cambio BCV
+  precioPeajeUnitario = 5,
+  precioGasoilUsd = null, // Si viene null, usa default
+  porcentajeGanancia = 0.30,
+  bcv = 400,
+  // Overrides manuales (opcional)
+  overrideConsumo = null,
+  overrideMantenimiento = null
 }) {
-  // 1. Obtener métricas reales del activo
-  const desde = new Date();
-  desde.setMonth(desde.getMonth() - MESES_HISTORIAL);
+  const precioGasoil = precioGasoilUsd || PRECIO_GASOIL_DEFAULT;
 
-  const activo = await db.Activo.findByPk(activoPrincipalId, {
-    include: [
-      { model: db.VehiculoInstancia, as: "vehiculoInstancia", include: [{model: db.Vehiculo, as: "plantilla"}] },
-      { model: db.RemolqueInstancia, as: "remolqueInstancia", include: [{model: db.Remolque, as: "plantilla"}] },
-      { model: db.MaquinaInstancia, as: "maquinaInstancia", include: [{model: db.Maquina, as: "plantilla"}] },
-    ]
+  // 1. CARGAR ACTIVOS
+  const chuto = await db.Activo.findByPk(activoPrincipalId, {
+    include: [{ model: db.VehiculoInstancia, as: 'vehiculoInstancia', include: ['plantilla'] }]
   });
+  if (!chuto) throw new Error(`Activo ${activoPrincipalId} no encontrado`);
 
-  if (!activo) throw new Error(`Activo ${activoPrincipalId} no encontrado`);
+  let remolque = null;
+  if (remolqueId) {
+    remolque = await db.Activo.findByPk(remolqueId, {
+      include: [{ model: db.RemolqueInstancia, as: 'remolqueInstancia', include: ['plantilla'] }]
+    });
+  }
 
-  const [fletes, kilometrajes, cargasCombustible, gastosVariables] = await Promise.all([
-    db.Flete.findAll({
-      where: {
-        activoPrincipalId,
-        fechaSalida: { [Op.gte]: desde },
-        estado: 'completado'
-      },
-      attributes: ['distanciaKm']
-    }),
-    db.Kilometraje.findAll({
-      where: { activoId: activoPrincipalId, fecha_registro: { [Op.gte]: desde } }
-    }),
-    db.CargaCombustible.findAll({
-      where: { activoId: activoPrincipalId, fecha: { [Op.gte]: desde } }
-    }),
-    db.GastoVariable.findAll({
-      where: { activoId: activoPrincipalId, fechaGasto: { [Op.gte]: desde } }
-    })
+  // ==========================================
+  // 2. DETERMINAR VARIABLES (Real vs Teórico)
+  // ==========================================
+  
+  // Buscar historial reciente del Chuto
+  const fechaLimite = new Date();
+  fechaLimite.setMonth(fechaLimite.getMonth() - MESES_HISTORIAL);
+
+  const [historialFletes, historialKm, historialCombustible, historialGastos] = await Promise.all([
+      db.Flete.count({ where: { activoPrincipalId, fechaSalida: { [Op.gte]: fechaLimite }, estado: 'completado' } }),
+      db.Kilometraje.sum('valor', { where: { activoId: activoPrincipalId, fecha: { [Op.gte]: fechaLimite } } }), // O lógica diferencial
+      db.CargaCombustible.sum('litros', { where: { activoId: activoPrincipalId, fecha: { [Op.gte]: fechaLimite } } }),
+      db.GastoVariable.sum('monto', { where: { activoId: activoPrincipalId, fechaGasto: { [Op.gte]: fechaLimite } } })
   ]);
 
-  const kmTotales = fletes.reduce((sum, f) => sum + (f.distanciaKm || 0), 0) +
-                    kilometrajes.reduce((sum, k) => sum + (k.kilometros || 0), 0);
+  // Decisión: ¿Usamos Real o Matriz?
+  let fuenteDatos = 'MATRIZ_COSTOS'; // Default
+  let mntChutoKm = 0.45; // Fallback extremo
+  let consumoL_Km = 0.40;
+  let posesionChutoHr = 3.50;
+  let velocidad = 45;
 
-  const litrosTotales = cargasCombustible.reduce((sum, c) => sum + (c.litros || 0), 0);
-  const costoCombustibleTotal = cargasCombustible.reduce((sum, c) => sum + (c.montoUsd || 0), 0);
-  const costoRepuestosTotal = gastosVariables.reduce((sum, g) => sum + (g.monto || 0), 0);
-
-  const tieneDatosSuficientes = kmTotales >= KM_MINIMO_REAL && fletes.length >= FLETES_MINIMO_REAL;
-
-  // 2. Valores a usar (reales o estándar)
-  let consumoLPorKm;
-  let costoVariablePorKm;
-
-  if (tieneDatosSuficientes) {
-    consumoLPorKm = kmTotales > 0 ? litrosTotales / kmTotales : 0.37;
-    costoVariablePorKm = kmTotales > 0 
-      ? (costoCombustibleTotal + costoRepuestosTotal) / kmTotales 
-      : 1.50;
-  } else {
-    // Valores estándar por marca (promedios mundiales 2025-2026)
-    const marca = (activo.vehiculoInstancia?.plantilla?.marca?.toLowerCase() ||
-                   activo.maquinaInstancia?.plantilla?.marca?.toLowerCase() || '');
-
-    const defaults = {
-      scania:    { consumo: 0.36, costoKm: 1.45 },
-      volvo:     { consumo: 0.35, costoKm: 1.50 },
-      mercedes:  { consumo: 0.38, costoKm: 1.48 },
-      caterpillar: { consumo: 0.42, costoKm: 2.00 },
-      kenworth:  { consumo: 0.40, costoKm: 1.55 },
-      default:   { consumo: 0.37, costoKm: 1.50 }
-    };
-
-    const key = Object.keys(defaults).find(k => marca.includes(k)) || 'default';
-    consumoLPorKm = defaults[key].consumo;
-    costoVariablePorKm = defaults[key].costoKm;
-  }
-
-  // 3. Cálculos principales
-  const factorCarga = 1 + (tonelaje / (activo.capacidadTonelajeMax || 30)) * 0.15; // +15% máx ajuste
-  const combustibleLitros = distanciaKm * consumoLPorKm * factorCarga;
-  const costoCombustible = combustibleLitros * precioGasoilUsd;
-
-  // Nómina (estimada)
-  let horas = horasEstimadas;
-  if (!horas) {
-    horas = (distanciaKm / 50) + 4; // 50 km/h promedio + 4h operativas
-  }
-
-  // Rates aproximados (mejorar con datos reales de Empleado cuando tengas)
-  const choferRate = 15; // $/hora
-  const ayudanteRate = ayudanteId ? 10 : 0;
-  const costoNomina = horas * (choferRate + ayudanteRate);
-
-  // Viáticos
-  const diasViaje = Math.ceil(horas / 10) + 1;
-  const viaticos = diasViaje * 25; // $25/día estándar
-
-  const peajes = cantidadPeajes * precioPeajeUnitario / bcv;
-  const desgasteCaucho = distanciaKm * 0.015; // $0.015/km estándar
-
-  // Costos fijos prorrateados (aproximado; mejorar con CostParameters real)
-  const cfPorViaje = 5000 / 20; // $250/viaje (ejemplo: admin + depreciación / 20 viajes mes)
-
-  let costoTotal = 
-    costoCombustible +
-    costoNomina +
-    viaticos +
-    peajes +
-    desgasteCaucho +
-    (distanciaKm * costoVariablePorKm) +
-    cfPorViaje;
-
-  // Sobretasa PDVSA (valores aproximados gaceta antigua; actualiza si hay nueva)
-  let sobretasa = 0;
-  if (tipoCarga.includes('petrolera') || tipoCarga === 'hidrocarburos') {
-    sobretasa = distanciaKm < 750 ? 1.9951 * distanciaKm : 1.4396 * distanciaKm;
-  }
-  costoTotal += sobretasa;
-
-  const precioSugerido = costoTotal * (1 + porcentajeGanancia);
-
-  // Breakdown detallado
-  const breakdown = {
-    combustible: parseFloat(costoCombustible.toFixed(2)),
-    nomina: parseFloat(costoNomina.toFixed(2)),
-    viaticos: parseFloat(viaticos.toFixed(2)),
-    peajes: parseFloat(peajes.toFixed(2)),
-    desgasteCaucho: parseFloat(desgasteCaucho.toFixed(2)),
-    variablesActivo: parseFloat((distanciaKm * costoVariablePorKm).toFixed(2)),
-    fijosProrrateados: parseFloat(cfPorViaje.toFixed(2)),
-    sobretasa: parseFloat(sobretasa.toFixed(2)),
-    total: parseFloat(costoTotal.toFixed(2)),
-    precioSugerido: parseFloat(precioSugerido.toFixed(2))
-  };
-
-  return {
-    costoTotal: breakdown.total,
-    precioSugerido: breakdown.precioSugerido,
-    breakdown,
-    metrics: {
-      fuente: tieneDatosSuficientes ? 'historial_real' : 'valores_estandar',
-      detalle: tieneDatosSuficientes
-        ? `Basado en ${kmTotales.toLocaleString()} km reales y ${fletes.length} fletes`
-        : `Valores estándar ficha técnica (${consumoLPorKm} L/km, $${costoVariablePorKm.toFixed(2)}/km)`,
-      kmAnalizados: kmTotales,
-      consumoUsadoLPorKm: parseFloat(consumoLPorKm.toFixed(3)),
-      costoVariablePorKmUsado: parseFloat(costoVariablePorKm.toFixed(4))
+  // Intentar buscar perfil en MatrizCosto (por coincidencia de nombre/modelo)
+  // Esto es para tener un valor base "Teórico" mejor que el fallback
+  const modeloChuto = chuto.vehiculoInstancia?.plantilla?.modelo || '';
+  const perfilChuto = await db.MatrizCosto.findOne({
+    where: { 
+        tipoActivo: 'Vehiculo',
+        // Lógica simple: si el nombre del perfil está contenido en el modelo o viceversa
+        // (Mejorar lógica de match según tus necesidades)
+        [Op.or]: [
+            { nombre: { [Op.iLike]: `%${modeloChuto}%` } },
+            { nombre: { [Op.iLike]: `%Mack%` } } // Default a Mack si no encuentra
+        ]
     }
+  });
+
+  if (perfilChuto) {
+      mntChutoKm = perfilChuto.costoMantenimientoKm;
+      consumoL_Km = perfilChuto.consumoCombustibleKm;
+      posesionChutoHr = perfilChuto.costoPosesionHora;
+      velocidad = perfilChuto.velocidadPromedio;
+  }
+
+  // AHORA: Si hay historial suficiente, SOBRESCRIBIMOS con datos reales
+  if (historialKm > KM_MINIMO_REAL && historialFletes >= FLETES_MINIMO_REAL) {
+      fuenteDatos = 'HISTORICO_REAL';
+      
+      // Rendimiento Real
+      if (historialCombustible > 0) {
+          consumoL_Km = historialCombustible / historialKm; // L/km real
+      }
+      
+      // Costo Mantenimiento Real ($/km)
+      if (historialGastos > 0) {
+          mntChutoKm = historialGastos / historialKm;
+      }
+  }
+
+  // Overrides manuales (Ganan a todo)
+  if (overrideConsumo) { consumoL_Km = parseFloat(overrideConsumo); fuenteDatos = 'MANUAL_USUARIO'; }
+  if (overrideMantenimiento) { mntChutoKm = parseFloat(overrideMantenimiento); fuenteDatos = 'MANUAL_USUARIO'; }
+
+  // --- REMOLQUE (Siempre Teórico por ahora, es difícil trackear gastos de batea por km) ---
+  let mntRemolqueKm = 0.15; // Default Batea
+  let posesionRemolqueHr = 0.50;
+  
+  if (remolque) {
+      // Buscar perfil en Matriz
+      const perfilRemolque = await db.MatrizCosto.findOne({ where: { tipoActivo: 'Remolque' } }); // Simplificado
+      if (perfilRemolque) {
+          mntRemolqueKm = perfilRemolque.costoMantenimientoKm;
+          posesionRemolqueHr = perfilRemolque.costoPosesionHora;
+      }
+  }
+
+  // ==========================================
+  // 3. CÁLCULOS MATEMÁTICOS
+  // ==========================================
+
+  // 3.1 Tiempo Estimado
+  // Factor 1.25 para holgura (tráfico, pernocta, carga/descarga)
+  const horasViaje = (distanciaKm / velocidad) * 1.25; 
+  const diasViaje = Math.ceil(horasViaje / 9); // Jornadas de 9h
+
+  // 3.2 Costos Variables (Dependen de Km)
+  // Combustible
+  const factorCarga = 1 + (tonelaje / 30) * 0.20; // +20% si va full
+  const litrosTotal = distanciaKm * consumoL_Km * factorCarga;
+  const costoCombustible = litrosTotal * precioGasoil;
+
+  // Mantenimiento (Chuto + Remolque)
+  const costoMantenimiento = distanciaKm * (mntChutoKm + mntRemolqueKm);
+
+  // 3.3 Costos Fijos (Dependen de Tiempo)
+  // Posesión (Depreciación + Interés)
+  const costoPosesion = horasViaje * (posesionChutoHr + posesionRemolqueHr);
+  
+  // Overhead Admin (Vigilancia, Secretaria, etc)
+  const costoOverhead = horasViaje * COSTO_OVERHEAD_HORA;
+
+  // 3.4 Mano de Obra (Viáticos)
+  let costoViaticos = diasViaje * VIATICO_CHOFER_DIA;
+  if (ayudanteId) costoViaticos += (diasViaje * VIATICO_AYUDANTE_DIA);
+  
+  // Nómina Estimada (Opcional, si no está en overhead)
+  const costoSalarioChofer = diasViaje * 15; // Aprox diario salario base
+  const costoNominaVariable = costoSalarioChofer; 
+
+  // 3.5 Gastos Ruta
+  const costoPeajes = cantidadPeajes * (precioPeajeUnitario / bcv);
+
+  // ==========================================
+  // 4. TOTALIZACIÓN
+  // ==========================================
+  
+  let costoTotal = 
+      costoCombustible + 
+      costoMantenimiento + 
+      costoPosesion + 
+      costoOverhead + 
+      costoViaticos + 
+      costoNominaVariable +
+      costoPeajes;
+
+  // Sobretasas
+  if (tipoCarga === 'peligrosa') costoTotal *= 1.15;
+  if (tipoCarga === 'petrolera') costoTotal *= 1.10;
+
+  const precioSugerido = costoTotal / (1 - porcentajeGanancia);
+
+  // Construir respuesta
+  return {
+    escenario: fuenteDatos, // 'MATRIZ_COSTOS', 'HISTORICO_REAL', 'MANUAL'
+    parametros: {
+        distancia: distanciaKm,
+        tiempo_estimado: `${diasViaje} días (${horasViaje.toFixed(1)} hrs)`,
+        consumo_usado: consumoL_Km.toFixed(3) + ' L/km',
+        mantenimiento_usado: `$${(mntChutoKm + mntRemolqueKm).toFixed(3)}/km`
+    },
+    breakdown: {
+        combustible: parseFloat(costoCombustible.toFixed(2)),
+        mantenimiento: parseFloat(costoMantenimiento.toFixed(2)),
+        posesion_activos: parseFloat(costoPosesion.toFixed(2)),
+        overhead_admin: parseFloat(costoOverhead.toFixed(2)),
+        mano_obra_viaticos: parseFloat((costoViaticos + costoNominaVariable).toFixed(2)),
+        peajes: parseFloat(costoPeajes.toFixed(2)),
+        total_costo: parseFloat(costoTotal.toFixed(2))
+    },
+    precioSugerido: parseFloat(precioSugerido.toFixed(2))
   };
 }
 

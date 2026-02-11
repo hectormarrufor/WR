@@ -40,6 +40,18 @@ const Activo = sequelize.define('Activo', {
   desgasteNeumaticoPorKm: { type: DataTypes.DECIMAL(10, 4), defaultValue: 0.015 }, // $/km
   capacidadTonelajeMax: { type: DataTypes.FLOAT },
   depreciacionAnualPorc: { type: DataTypes.FLOAT, defaultValue: 15 }, // % anual
+  costoMantenimientoTeorico: {
+    type: DataTypes.FLOAT, // Costo variable por Km (Aceite, cauchos, filtros) segun matriz Excel
+    defaultValue: 0.46, // Valor promedio de tus Excels ($/Km)
+},
+costoPosesionTeorico: {
+    type: DataTypes.FLOAT, //Costo fijo por Hora (Depreciación + Interés de inversión)
+    defaultValue: 3.00, // Valor promedio de tus Excels ($/Hr)
+},
+velocidadPromedioTeorica: {
+    type: DataTypes.INTEGER, //Velocidad para calcular las horas de posesión en una ruta
+    defaultValue: 50, // Km/h para estimar tiempos si no hay data
+},
 
 
 
