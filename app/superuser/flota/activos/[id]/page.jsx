@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import {
     Container, Grid, Paper, Image, Title, Text, Badge, Group, Button,
     Tabs, ThemeIcon, Stack, Divider, LoadingOverlay, Modal, SimpleGrid,
-    Box, Card, Accordion, Progress, ActionIcon, Tooltip, Table, Alert,
-    Timeline, RingProgress
+    Card, Accordion, Progress, ActionIcon, Tooltip, Table, Alert,
+    Timeline
 } from '@mantine/core';
 import { AreaChart, BarChart } from '@mantine/charts';
 import {
@@ -15,8 +15,7 @@ import {
     IconChartLine, IconClipboardCheck,
     IconShoppingCart, IconAlertOctagon,
     IconTool,
-    IconGauge, IconX
-
+    IconGauge, IconX, IconEdit // <--- IMPORTADO ICONO EDITAR
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,21 +26,21 @@ import ModalDesinstalarComponente from '../components/ModalDesinstalarComponente
 
 export default function DetalleActivoPage({ params }) {
 
-    const { userId } = useAuth(); // Necesitas el ID del usuario
-    const [modalFallaOpened, setModalFallaOpened] = useState(false);
+    const { userId } = useAuth();
     const { id } = use(params);
     const router = useRouter();
-    const { isAdmin } = useAuth();
+    // const { isAdmin } = useAuth(); // Puedes usar esto si quieres restringir el botón de editar
 
     const [activo, setActivo] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Modales
+    const [modalFallaOpened, setModalFallaOpened] = useState(false);
     const [modalInstallOpened, setModalInstallOpened] = useState(false);
     const [modalOrdenOpened, setModalOrdenOpened] = useState(false);
     const [modalLecturaOpened, setModalLecturaOpened] = useState(false);
-    const [selectedItem, setSelectedItem] = useState(null); // Para instalar consumible
-    const [selectedHallazgo, setSelectedHallazgo] = useState(null); // Para crear ODT
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [selectedHallazgo, setSelectedHallazgo] = useState(null);
     const [modalUninstallOpened, setModalUninstallOpened] = useState(false);
     const [itemToUninstall, setItemToUninstall] = useState(null);
 
@@ -49,7 +48,7 @@ export default function DetalleActivoPage({ params }) {
         try {
             const response = await fetch(`/api/gestionMantenimiento/activos/${id}`);
             const result = await response.json();
-            console.log('Activo fetch result:', result);
+            
             if (result.success) {
                 // Parche para asegurar que tenemos el último KM aunque la tabla maestra no se haya actualizado
                 const dataMejorada = {
@@ -90,7 +89,6 @@ export default function DetalleActivoPage({ params }) {
 
     const fNum = (val) => val ? parseFloat(val) : 0;
 
-    // Helpers de UI
     const getEstadoColor = (estado) => {
         switch (estado) {
             case 'Operativo': return 'teal';
@@ -99,7 +97,6 @@ export default function DetalleActivoPage({ params }) {
             default: return 'gray';
         }
     };
-
 
     return (
         <Container size="xl" py="xl">
@@ -123,26 +120,34 @@ export default function DetalleActivoPage({ params }) {
                         {plantilla.marca} {plantilla.modelo} • {instance.placa || 'N/A'} • {activo.ubicacionActual}
                     </Text>
                 </Stack>
+                
                 <Group>
-                    <Button variant="default" onClick={() => router.back()}>Volver</Button>
-                    {/* ... dentro del Group de botones del header ... */}
-                    <Group>
+                    <Button variant="subtle" color="gray" onClick={() => router.back()}>Volver</Button>
+                    
+                    <Group gap="xs">
+                        {/* --- BOTÓN EDITAR AGREGADO AQUÍ --- */}
+                        <Button
+                            variant="default"
+                            leftSection={<IconEdit size={18} />}
+                            onClick={() => router.push(`/superuser/flota/activos/${activo.id}/editar`)}
+                        >
+                            Editar
+                        </Button>
 
-                        {/* NUEVO BOTÓN */}
                         <Button
                             variant="light"
                             leftSection={<IconGauge size={18} />}
                             onClick={() => setModalLecturaOpened(true)}
                         >
-                            Actualizar Lectura
+                            Lectura
                         </Button>
 
                         <Button
                             color="red"
                             leftSection={<IconClipboardCheck size={18} />}
-                            onClick={() => setModalFallaOpened(true)} // Usando tu estado existente
+                            onClick={() => setModalFallaOpened(true)}
                         >
-                            Reportar Falla
+                            Reportar
                         </Button>
                     </Group>
                 </Group>
@@ -153,7 +158,11 @@ export default function DetalleActivoPage({ params }) {
                 <Grid.Col span={{ base: 12, md: 3 }}>
                     <Stack>
                         <Card withBorder radius="md" p={0}>
-                            <Image src={activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null} h={200} fallbackSrc="https://placehold.co/400x300?text=Sin+Foto" />
+                            <Image 
+                                src={activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null} 
+                                h={200} 
+                                fallbackSrc="https://placehold.co/400x300?text=Sin+Foto" 
+                            />
                             <Stack p="md" gap="xs">
                                 <Text size="xs" fw={700} c="dimmed">ESTADÍSTICAS VITALES</Text>
                                 <Group justify="space-between">
@@ -175,6 +184,7 @@ export default function DetalleActivoPage({ params }) {
                                 <InfoLine label="S/N Motor" value={instance.serialMotor} />
                                 <InfoLine label="S/N Chasis" value={instance.serialChasis} />
                                 <InfoLine label="Combustible" value={plantilla.tipoCombustible} />
+                                <InfoLine label="Costo Posesión" value={activo.costoPosesionHora ? `$${activo.costoPosesionHora.toFixed(2)}/hr` : 'N/D'} />
                             </Stack>
                         </Paper>
                     </Stack>
@@ -192,26 +202,26 @@ export default function DetalleActivoPage({ params }) {
                                     Taller (ODT)
                                 </Tabs.Tab>
                                 <Tabs.Tab value="componentes" leftSection={<IconSettings size={16} />}>
-                                    Inventario Instalado
+                                    Inventario
                                 </Tabs.Tab>
                                 <Tabs.Tab value="uso" leftSection={<IconChartLine size={16} />}>
                                     Uso y Eficiencia
                                 </Tabs.Tab>
                             </Tabs.List>
 
-                            {/* 1. TAB: ALERTAS Y HALLAZGOS (MATA ESTADOS) */}
+                            {/* 1. TAB: ALERTAS */}
                             <Tabs.Panel value="alertas">
                                 <Stack>
                                     {hallazgosPendientes.length === 0 ? (
                                         <Alert color="green" icon={<IconCheck />} title="Todo en orden">
-                                            No hay hallazgos pendientes de revisión. El equipo está saludable.
+                                            No hay hallazgos pendientes. El equipo está saludable.
                                         </Alert>
                                     ) : (
                                         <Table striped highlightOnHover withTableBorder>
                                             <Table.Thead bg="red.0">
                                                 <Table.Tr>
                                                     <Table.Th>Gravedad</Table.Th>
-                                                    <Table.Th>Descripción del Hallazgo</Table.Th>
+                                                    <Table.Th>Descripción</Table.Th>
                                                     <Table.Th>Reportado Por</Table.Th>
                                                     <Table.Th>Fecha</Table.Th>
                                                     <Table.Th>Acción</Table.Th>
@@ -228,19 +238,11 @@ export default function DetalleActivoPage({ params }) {
                                                             <Text size="xs" c="dimmed">Subsistema: {h.subsistema?.nombre || 'General'}</Text>
                                                         </Table.Td>
                                                         <Table.Td>
-                                                            <Group gap="xs">
-                                                                <ThemeIcon size="xs" radius="xl"><IconClipboardCheck size={10} /></ThemeIcon>
-                                                                <Text size="sm">{h.inspeccion?.reportadoPor?.nombre || 'Chofer'}</Text>
-                                                            </Group>
+                                                            <Text size="sm">{h.inspeccion?.reportadoPor?.nombre || 'Chofer'}</Text>
                                                         </Table.Td>
                                                         <Table.Td>{new Date(h.createdAt).toLocaleDateString()}</Table.Td>
                                                         <Table.Td>
-                                                            <Button
-                                                                size="xs"
-                                                                variant="light"
-                                                                color="blue"
-                                                                onClick={() => { setSelectedHallazgo(h); setModalOrdenOpened(true); }}
-                                                            >
+                                                            <Button size="xs" variant="light" color="blue" onClick={() => { setSelectedHallazgo(h); setModalOrdenOpened(true); }}>
                                                                 Crear Orden
                                                             </Button>
                                                         </Table.Td>
@@ -250,24 +252,19 @@ export default function DetalleActivoPage({ params }) {
                                         </Table>
                                     )}
 
-                                    <Divider label="Historial Reciente de Inspecciones" labelPosition="center" my="md" />
-
+                                    <Divider label="Historial Reciente" labelPosition="center" my="md" />
                                     <Timeline active={0} bulletSize={24} lineWidth={2}>
                                         {activo.inspecciones?.slice(0, 3).map(ins => (
-                                            <Timeline.Item
-                                                key={ins.id}
-                                                bullet={<IconClipboardCheck size={12} />}
-                                                title={`Inspección ${ins.origen}`}
-                                            >
-                                                <Text c="dimmed" size="xs">Por: {ins.reportadoPor?.nombre} • {new Date(ins.fecha).toLocaleString()}</Text>
-                                                <Text size="sm" mt={4}>{ins.observacionGeneral || 'Sin observaciones generales'}</Text>
+                                            <Timeline.Item key={ins.id} bullet={<IconClipboardCheck size={12} />} title={`Inspección ${ins.origen}`}>
+                                                <Text c="dimmed" size="xs">{new Date(ins.fecha).toLocaleString()}</Text>
+                                                <Text size="sm">{ins.observacionGeneral || 'Sin observaciones'}</Text>
                                             </Timeline.Item>
                                         ))}
                                     </Timeline>
                                 </Stack>
                             </Tabs.Panel>
 
-                            {/* 2. TAB: TALLER Y ODTs (FLUJO DE REQUISICIÓN) */}
+                            {/* 2. TAB: ODT */}
                             <Tabs.Panel value="mantenimiento">
                                 <Grid>
                                     {activo.ordenesMantenimiento?.map(odt => (
@@ -275,60 +272,35 @@ export default function DetalleActivoPage({ params }) {
                                             <Card withBorder padding="md" radius="md">
                                                 <Group justify="space-between" mb="xs">
                                                     <Text fw={700} size="lg">{odt.codigo}</Text>
-                                                    <Badge color={odt.estado === 'Esperando Stock' ? 'orange' : 'blue'}>
-                                                        {odt.estado}
-                                                    </Badge>
+                                                    <Badge color={odt.estado === 'Esperando Stock' ? 'orange' : 'blue'}>{odt.estado}</Badge>
                                                 </Group>
-                                                <Text size="sm" c="dimmed" mb="md">
-                                                    Tipo: {odt.tipo} • Prioridad: {odt.prioridad}
-                                                </Text>
-
+                                                <Text size="sm" c="dimmed" mb="md">Tipo: {odt.tipo} • Prioridad: {odt.prioridad}</Text>
                                                 <Stack gap="xs">
                                                     {odt.repuestos?.map(rep => (
                                                         <Paper key={rep.id} withBorder p="xs" bg="gray.0">
                                                             <Group justify="space-between">
                                                                 <Text size="sm">{rep.consumible?.nombre}</Text>
-                                                                <Badge
-                                                                    size="xs"
-                                                                    color={rep.estado === 'Sin Stock' || rep.estado === 'En Requisicion' ? 'red' : 'green'}
-                                                                    variant="outline"
-                                                                >
+                                                                <Badge size="xs" color={rep.estado === 'Sin Stock' ? 'red' : 'green'} variant="outline">
                                                                     {rep.estado}
                                                                 </Badge>
                                                             </Group>
-                                                            {rep.estado === 'En Requisicion' && (
-                                                                <Group gap={4} mt={4}>
-                                                                    <IconShoppingCart size={12} color="orange" />
-                                                                    <Text size="xs" c="orange" fw={700}>
-                                                                        Requisición Automática Generada
-                                                                    </Text>
-                                                                </Group>
-                                                            )}
                                                         </Paper>
                                                     ))}
                                                 </Stack>
-
-                                                <Button fullWidth mt="md" variant="default">Ver Detalle ODT</Button>
                                             </Card>
                                         </Grid.Col>
                                     ))}
-                                    {(!activo.ordenesMantenimiento || activo.ordenesMantenimiento.length === 0) && (
-                                        <Grid.Col span={12}>
-                                            <Text c="dimmed" ta="center" py="xl">No hay órdenes de mantenimiento activas.</Text>
-                                        </Grid.Col>
+                                    {(!activo.ordenesMantenimiento?.length) && (
+                                        <Grid.Col span={12}><Text c="dimmed" ta="center" py="xl">No hay órdenes activas.</Text></Grid.Col>
                                     )}
                                 </Grid>
                             </Tabs.Panel>
 
-                            {/* 3. TAB: INVENTARIO INSTALADO (COMPONENTES) */}
-                            {/* 3. TAB: INVENTARIO INSTALADO (COMPONENTES) */}
+                            {/* 3. TAB: COMPONENTES */}
                             <Tabs.Panel value="componentes">
                                 <Stack gap="md">
                                     {subsistemas.map((sub) => {
-                                        // 1. Obtenemos lo que la plantilla EXIGE
                                         const recomendaciones = sub.subsistemaPlantilla?.listaRecomendada || [];
-
-                                        // 2. Obtenemos lo que el activo TIENE
                                         const instalaciones = sub.instalaciones || [];
 
                                         return (
@@ -336,259 +308,104 @@ export default function DetalleActivoPage({ params }) {
                                                 <Accordion.Item value="open">
                                                     <Accordion.Control>
                                                         <Group justify="space-between" pr="md">
-                                                            <Group>
-                                                                <ThemeIcon variant="light" color="blue"><IconSettings size={18} /></ThemeIcon>
-                                                                <Text fw={600} size="sm">{sub.nombre}</Text>
-                                                                {sub.subsistemaPlantilla && (
-                                                                    <Badge size="xs" variant="dot" color="gray">
-                                                                        Base: {sub.subsistemaPlantilla.nombre}
-                                                                    </Badge>
-                                                                )}
-                                                            </Group>
-                                                            <Badge size="sm" variant="light" color="blue">
-                                                                {recomendaciones.length} Requisitos
-                                                            </Badge>
+                                                            <Text fw={600} size="sm">{sub.nombre}</Text>
+                                                            <Badge size="sm" variant="light" color="blue">{recomendaciones.length} Items</Badge>
                                                         </Group>
                                                     </Accordion.Control>
-
                                                     <Accordion.Panel>
-                                                        {recomendaciones.length === 0 ? (
-                                                            <Alert color="gray" variant="light" title="Sin requisitos definidos">
-                                                                La plantilla no especifica consumibles obligatorios.
-                                                            </Alert>
-                                                        ) : (
-                                                            <Table verticalSpacing="sm" withTableBorder>
-                                                                <Table.Thead bg="gray.1">
-                                                                    <Table.Tr>
-                                                                        <Table.Th>Componente Requerido</Table.Th>
-                                                                        <Table.Th>Progreso</Table.Th>
-                                                                        <Table.Th ta="center">Estado</Table.Th>
-                                                                        <Table.Th ta="right">Acción</Table.Th>
-                                                                    </Table.Tr>
-                                                                </Table.Thead>
-                                                                <Table.Tbody>
-                                                                    {recomendaciones.map((rec) => {
-                                                                        // --- CORRECCIÓN DE NOMBRES (NORMALIZACIÓN) ---
-                                                                        // Mapeamos lo que viene del JSON (corto) a lo que usamos (largo)
-                                                                        const recCantidad = parseFloat(rec.canti || rec.cantidad || 1);
-                                                                        const recCategoria = rec.categ || rec.categoria;
-                                                                        const recTipo = rec.tipoC || rec.tipoCriterio;
-                                                                        // El label suele ser el valor técnico (ej: 315/80R22.5) o el nombre asignado
-                                                                        const recLabel = rec.label || rec.valor || recCategoria;
-                                                                        const recValorTecnico = rec.valor || rec.valorCriterio;
+                                                        <Table verticalSpacing="sm" withTableBorder>
+                                                            <Table.Thead bg="gray.1">
+                                                                <Table.Tr>
+                                                                    <Table.Th>Componente</Table.Th>
+                                                                    <Table.Th>Estado</Table.Th>
+                                                                    <Table.Th ta="right">Acción</Table.Th>
+                                                                </Table.Tr>
+                                                            </Table.Thead>
+                                                            <Table.Tbody>
+                                                                {recomendaciones.map((rec) => {
+                                                                    const matches = instalaciones.filter(inst => inst.recomendacionId === rec.id);
+                                                                    const cantidadInstalada = matches.reduce((sum, inst) => sum + parseFloat(inst.cantidad || 0), 0);
+                                                                    const recCantidad = parseFloat(rec.cantidad || 1);
+                                                                    const estaCompleto = cantidadInstalada >= recCantidad;
 
-                                                                        // 3. CRUCE DE DATOS
-                                                                        const matches = instalaciones.filter(inst => inst.recomendacionId === rec.id);
-
-                                                                        // Sumamos cantidades instaladas
-                                                                        const cantidadInstalada = matches.reduce((sum, inst) => sum + parseFloat(inst.cantidad || 0), 0);
-
-                                                                        // Calculamos porcentaje
-                                                                        const porcentaje = Math.min((cantidadInstalada / recCantidad) * 100, 100);
-                                                                        const estaCompleto = cantidadInstalada >= recCantidad;
-
-                                                                        return (
-                                                                            <Table.Tr key={rec.id}>
-                                                                                <Table.Th>
-                                                                                    <Text size="sm" fw={600}>
-                                                                                        {recLabel}
-                                                                                    </Text>
-                                                                                    {recTipo === 'tecnico' && (
-                                                                                        <Badge size="xs" variant="outline" color="gray" mt={2}>
-                                                                                            Espec: {recValorTecnico}
-                                                                                        </Badge>
-                                                                                    )}
-                                                                                </Table.Th>
-
-                                                                                <Table.Td>
-                                                                                    {/* Barra de progreso visual */}
-                                                                                    <Group gap="xs" mb={4}>
-                                                                                        <Text size="sm" fw={700}>{cantidadInstalada} / {recCantidad}</Text>
-                                                                                        <Text size="xs" c="dimmed">unidades</Text>
-                                                                                    </Group>
-                                                                                    <Progress
-                                                                                        value={porcentaje}
-                                                                                        color={estaCompleto ? 'green' : 'orange'}
-                                                                                        size="sm" radius="xl" mb="xs"
-                                                                                    />
-
-                                                                                    {/* --- AQUI ESTA EL CAMBIO: LISTA DE ITEMS INSTALADOS CON BOTÓN BORRAR --- */}
-                                                                                    {matches.length > 0 && (
-                                                                                        console.log('matches for recomendacion', recLabel, matches),
-                                                                                        <Stack gap={4}>
-                                                                                            {matches.map(inst => (
-                                                                                                <Badge
-                                                                                                    key={inst.id}
-                                                                                                    variant="dot"
-                                                                                                    color="gray"
-                                                                                                    size="sm"
-                                                                                                    padding="xs"
-                                                                                                    rightSection={
-                                                                                                        // Botón "X" para eliminar este item específico
-                                                                                                        <ActionIcon
-                                                                                                            size="xs"
-                                                                                                            color="red"
-                                                                                                            radius="xl"
-                                                                                                            variant="transparent"
-                                                                                                            onClick={() => {
-                                                                                                                setItemToUninstall(inst); // Guardamos TODO el objeto instalación
-                                                                                                                setModalUninstallOpened(true); // Abrimos el modal nuevo
-                                                                                                            }}
-                                                                                                        >
-                                                                                                            <IconX size={10} />
-                                                                                                        </ActionIcon>
-                                                                                                    }
-                                                                                                >
-                                                                                                    {/* Mostramos el Serial si existe, o "Instalado" si es fungible */}
-                                                                                                    {inst.ubicacion ? (
-                                                                                                        `${inst.ubicacion}:`
-                                                                                                    ) : null}
-                                                                                                    {inst.fichaTecnica.nombre}
-                                                                                                    {inst.serialActual || `Cant: ${inst.cantidad}`}
-                                                                                                </Badge>
-                                                                                            ))}
-                                                                                        </Stack>
-                                                                                    )}
-                                                                                </Table.Td>
-
-                                                                                <Table.Td ta="center">
-                                                                                    {estaCompleto ? (
-                                                                                        <Badge color="green" variant="light" leftSection={<IconCheck size={10} />}>
-                                                                                            Completo
-                                                                                        </Badge>
-                                                                                    ) : (
-                                                                                        <Badge color="orange" variant="light">
-                                                                                            Pendiente
-                                                                                        </Badge>
-                                                                                    )}
-                                                                                </Table.Td>
-
-                                                                                <Table.Td ta="right">
-                                                                                    <Tooltip label={estaCompleto ? "Instalar extra" : "Instalar componente"}>
-                                                                                        <ActionIcon
-                                                                                            variant={estaCompleto ? "subtle" : "filled"}
-                                                                                            color="blue"
-                                                                                            onClick={() => {
-                                                                                                // IMPORTANTE: Al modal le pasamos los datos normalizados para que se vea bonito
-                                                                                                const recNormalizada = {
-                                                                                                    ...rec,
-                                                                                                    cantidad: recCantidad,
-                                                                                                    categoria: recCategoria,
-                                                                                                    valor: recValorTecnico,
-                                                                                                    label: recLabel
-                                                                                                };
-                                                                                                setSelectedItem({ sub: sub, rec: recNormalizada });
-                                                                                                setModalInstallOpened(true);
-                                                                                            }}
+                                                                    return (
+                                                                        <Table.Tr key={rec.id}>
+                                                                            <Table.Td>
+                                                                                <Text size="sm" fw={600}>{rec.label || rec.categoria}</Text>
+                                                                                <Group gap="xs">
+                                                                                    {matches.map(inst => (
+                                                                                        <Badge 
+                                                                                            key={inst.id} 
+                                                                                            size="sm" 
+                                                                                            color="gray" 
+                                                                                            variant="dot"
+                                                                                            rightSection={
+                                                                                                <ActionIcon size="xs" color="red" variant="transparent" onClick={() => { setItemToUninstall(inst); setModalUninstallOpened(true); }}>
+                                                                                                    <IconX size={10} />
+                                                                                                </ActionIcon>
+                                                                                            }
                                                                                         >
-                                                                                            <IconPlus size={16} />
-                                                                                        </ActionIcon>
-                                                                                    </Tooltip>
-                                                                                </Table.Td>
-                                                                            </Table.Tr>
-                                                                        );
-                                                                    })}
-                                                                </Table.Tbody>
-                                                            </Table>
-                                                        )}
+                                                                                            {inst.fichaTecnica.nombre}
+                                                                                        </Badge>
+                                                                                    ))}
+                                                                                </Group>
+                                                                            </Table.Td>
+                                                                            <Table.Td>
+                                                                                 <Badge color={estaCompleto ? 'green' : 'orange'} variant="light">
+                                                                                    {cantidadInstalada}/{recCantidad}
+                                                                                </Badge>
+                                                                            </Table.Td>
+                                                                            <Table.Td ta="right">
+                                                                                <ActionIcon variant="subtle" color="blue" onClick={() => {
+                                                                                    setSelectedItem({ sub: sub, rec: {...rec, cantidad: recCantidad, label: rec.label || rec.categoria} });
+                                                                                    setModalInstallOpened(true);
+                                                                                }}>
+                                                                                    <IconPlus size={16} />
+                                                                                </ActionIcon>
+                                                                            </Table.Td>
+                                                                        </Table.Tr>
+                                                                    );
+                                                                })}
+                                                            </Table.Tbody>
+                                                        </Table>
                                                     </Accordion.Panel>
                                                 </Accordion.Item>
                                             </Accordion>
                                         );
                                     })}
-
-                                    {subsistemas.length === 0 && (
-                                        <Paper p="xl" withBorder bg="gray.0" ta="center">
-                                            <Text c="dimmed">No se han definido subsistemas para este activo.</Text>
-                                        </Paper>
-                                    )}
                                 </Stack>
                             </Tabs.Panel>
 
-                            {/* 4. TAB: USO Y EFICIENCIA (GRÁFICOS) */}
+                            {/* 4. TAB: USO */}
                             <Tabs.Panel value="uso">
-                                <Stack gap="xl">
-                                    <SimpleGrid cols={{ base: 1, md: 2 }}>
-                                        <Paper withBorder p="md" radius="md">
-                                            <Title order={5} mb="md">Tendencia de Kilometraje</Title>
-                                            <AreaChart
-                                                h={200}
-                                                data={dataKilometraje}
-                                                dataKey="fecha"
-                                                series={[{ name: 'valor', color: 'blue.6', label: 'Km' }]}
-                                                curveType="monotone"
-                                            />
-                                        </Paper>
-                                        <Paper withBorder p="md" radius="md">
-                                            <Title order={5} mb="md">Rendimiento (km/l)</Title>
-                                            <BarChart
-                                                h={200}
-                                                data={dataEficiencia}
-                                                dataKey="fecha"
-                                                series={[{ name: 'rendimiento', color: 'teal.6', label: 'Km/L' }]}
-                                            />
-                                        </Paper>
-                                    </SimpleGrid>
-                                </Stack>
+                                <SimpleGrid cols={{ base: 1, md: 2 }}>
+                                    <Paper withBorder p="md"><Title order={5} mb="md">Kilometraje</Title>
+                                        <AreaChart h={200} data={dataKilometraje} dataKey="fecha" series={[{ name: 'valor', color: 'blue.6' }]} curveType="monotone" />
+                                    </Paper>
+                                    <Paper withBorder p="md"><Title order={5} mb="md">Rendimiento</Title>
+                                        <BarChart h={200} data={dataEficiencia} dataKey="fecha" series={[{ name: 'rendimiento', color: 'teal.6' }]} />
+                                    </Paper>
+                                </SimpleGrid>
                             </Tabs.Panel>
                         </Tabs>
                     </Paper>
                 </Grid.Col>
             </Grid>
 
-            {/* MODAL 2: CREAR ODT DESDE HALLAZGO */}
-            <Modal opened={modalOrdenOpened} onClose={() => setModalOrdenOpened(false)} title="Generar Orden de Mantenimiento" centered size="lg">
-                {selectedHallazgo && (
+            {/* MODALES */}
+            <Modal opened={modalOrdenOpened} onClose={() => setModalOrdenOpened(false)} title="Generar ODT" centered>
+                 {selectedHallazgo && (
                     <Stack>
-                        <Alert color="blue" icon={<IconInfoCircle />}>
-                            Se creará una orden para atender: <b>{selectedHallazgo.descripcion}</b>
-                        </Alert>
-                        <Text size="sm">Diagnóstico preliminar: El sistema verificará stock automáticamente al guardar.</Text>
-
-                        {/* Aquí iría el form de selección de repuestos */}
-                        <Button fullWidth mt="md" onClick={() => {
-                            notifications.show({ title: 'Orden Creada', message: 'Se ha verificado el stock y generado requisiciones necesarias.', color: 'green' });
-                            setModalOrdenOpened(false);
-                        }}>
-                            Confirmar y Verificar Stock
-                        </Button>
+                        <Alert color="blue" icon={<IconInfoCircle />}>Atendiendo: <b>{selectedHallazgo.descripcion}</b></Alert>
+                        <Button onClick={() => { notifications.show({ title: 'Orden Creada', color: 'green' }); setModalOrdenOpened(false); }}>Confirmar</Button>
                     </Stack>
-                )}
+                 )}
             </Modal>
-
-            <ModalReportarFalla
-                opened={modalFallaOpened}
-                onClose={() => setModalFallaOpened(false)}
-                activo={activo} // Pasamos el activo COMPLETO (incluyendo subsistemas)
-                userId={userId} // Pasamos el ID del usuario
-                onSuccess={fetchData} // Para que recargue la página y salgan los hallazgos nuevos
-            />
-            <ModalActualizarLectura
-                opened={modalLecturaOpened}
-                onClose={() => setModalLecturaOpened(false)}
-                activo={activo}
-                userId={userId}
-                onSuccess={fetchData} // Para refrescar los KMs en la UI al instante
-            />
-            <ModalInstallComponente
-                opened={modalInstallOpened}
-                onClose={() => { setModalInstallOpened(false); setSelectedItem(null); }}
-                target={selectedItem} // Pasamos el objeto { sub, rec }
-                activoId={activo.id}  // Necesitamos el ID del activo padre
-                onSuccess={fetchData} // Recargamos la página al terminar
-            />
-            {/* ... otros modales (ModalInstallComponente, etc) ... */}
-
-            <ModalDesinstalarComponente
-                opened={modalUninstallOpened}
-                onClose={() => {
-                    setModalUninstallOpened(false);
-                    setItemToUninstall(null);
-                }}
-                item={itemToUninstall}
-                onSuccess={fetchData} // Refrescar la página al borrar
-            />
-
+            
+            <ModalReportarFalla opened={modalFallaOpened} onClose={() => setModalFallaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
+            <ModalActualizarLectura opened={modalLecturaOpened} onClose={() => setModalLecturaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
+            <ModalInstallComponente opened={modalInstallOpened} onClose={() => { setModalInstallOpened(false); setSelectedItem(null); }} target={selectedItem} activoId={activo.id} onSuccess={fetchData} />
+            <ModalDesinstalarComponente opened={modalUninstallOpened} onClose={() => setModalUninstallOpened(false)} item={itemToUninstall} onSuccess={fetchData} />
         </Container>
     );
 }

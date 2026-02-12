@@ -52,7 +52,39 @@ velocidadPromedioTeorica: {
     type: DataTypes.INTEGER, //Velocidad para calcular las horas de posesión en una ruta
     defaultValue: 50, // Km/h para estimar tiempos si no hay data
 },
+valorReposicion: {
+    type: DataTypes.FLOAT,
+    defaultValue: 40000,
+    comment: 'Valor de mercado actual del activo (para depreciación)'
+},
+vidaUtilAnios: {
+    type: DataTypes.INTEGER,
+    defaultValue: 10,
+    comment: 'Años estimados de vida útil restante'
+},
+valorSalvamento: {
+    type: DataTypes.FLOAT,
+    defaultValue: 5000,
+    comment: 'Valor de venta al final de su vida útil (Chatarra/Venta)'
+},
 
+// --- CAMPOS CALCULADOS (RESULTADOS) ---
+costoPosesionHora: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0,
+    comment: 'Depreciación + Interés (Calculado automáticamente)'
+},
+costoResguardoHora: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0,
+    comment: 'Cuota parte de vigilancia y gastos admin (Calculado desde ConfigGlobal)'
+},
+
+// --- RELACIÓN CON MATRIZ DE MANTENIMIENTO ---
+matrizCostoId: {
+    type: DataTypes.INTEGER,
+    references: { model: 'MatrizCostos', key: 'id' }
+},
 
 
 }, {
@@ -89,6 +121,7 @@ Activo.associate = (models) => {
   Activo.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId' }); // "Oficina Presidencia"
   Activo.hasMany(models.DocumentoActivo, { foreignKey: 'activoId', as: 'documentos' });
   Activo.hasMany(models.GastoVariable, { foreignKey: 'activoId', as: 'gastosVariables' });
+  Activo.belongsTo(models.MatrizCosto, { foreignKey: 'matrizCostoId', as: 'matrizCosto' });
 }
 
 module.exports = Activo;

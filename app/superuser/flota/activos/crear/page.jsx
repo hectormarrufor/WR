@@ -65,6 +65,31 @@ export default function CrearActivoPage() {
   const [loading, setLoading] = useState(false);
   const [modalModeloOpen, setModalModeloOpen] = useState(false);
   const [modelosDisponibles, setModelosDisponibles] = useState([]);
+
+  const [matricesCostos, setMatricesCostos] = useState([]);
+  const [matricesRaw, setMatricesRaw] = useState([]);
+
+  // --- 1. CARGAR MATRICES DE COSTO AL INICIAR ---
+  useEffect(() => {
+    const fetchMatrices = async () => {
+        try {
+            const res = await fetch('/api/configuracion/matriz');
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setMatricesRaw(data); // <--- GUARDAMOS LA DATA CRUDA
+                
+                const lista = data.map(m => ({ 
+                    value: String(m.id), 
+                    label: `${m.nombre} (${m.tipoActivo || 'General'}) - $${m.costoKm || 0}/km` // Tip visual
+                }));
+                setMatricesCostos(lista);
+            }
+        } catch (error) {
+            console.error("Error cargando matrices:", error);
+        }
+    };
+    fetchMatrices();
+  }, []);
   
   // ESTADO NUEVO: Almacena la plantilla completa (con subsistemas)
   const [modeloFullData, setModeloFullData] = useState(null);
@@ -218,6 +243,8 @@ export default function CrearActivoPage() {
                         <ActivoForm 
                             plantilla={modeloFullData}
                             tipoActivo={form.values.tipoActivo}
+                            matricesCostos={matricesCostos}
+                            matricesRaw={matricesRaw}
                             onCancel={handlePrev} // Para que el botón "Atrás" del hijo controle al padre
                         />
                     </div>

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import {
     Container, Title, Text, Button, Group, SimpleGrid, Card,
-    Badge, Modal, TextInput, Select, ActionIcon, LoadingOverlay, Stack, Divider
+    Badge, Modal, TextInput, Select, ActionIcon, LoadingOverlay, Stack, Divider,
+    ButtonGroup
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconPlus, IconTruck, IconSettings, IconArrowRight, IconRefresh, IconDatabaseImport } from '@tabler/icons-react';
@@ -11,12 +12,14 @@ import { notifications } from '@mantine/notifications';
 
 // Importamos tu componente editor
 import MatrizEditor from './MatrizEditor'; // Asegúrate de la ruta correcta
+import { useRouter } from 'next/navigation';
 
 export default function ConfiguracionCostosPage() {
     const [matrices, setMatrices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedId, setSelectedId] = useState(null); // ID de la matriz que estamos editando
     const [modalOpen, setModalOpen] = useState(false); // Modal para CREAR nueva
+    const router = useRouter();
 
     // Formulario para crear nueva matriz
     const form = useForm({
@@ -101,24 +104,32 @@ export default function ConfiguracionCostosPage() {
             <Stack gap="lg">
 
                 {/* CABECERA DE LA PÁGINA */}
-                <Group justify="space-between" align="flex-end">
+                <Stack justify="space-between" align="center">
                     <div>
                         <Title order={2}>Matrices de Costo Operativo</Title>
                         <Text c="dimmed">Gestiona las estructuras de costos (Insumos, Repuestos) para cada tipo de activo.</Text>
                     </div>
                     {/* EL BOTÓN NUEVO AQUÍ */}
-                    <Button
-                        color="red"
-                        variant="light"
-                        leftSection={<IconDatabaseImport size={18} />}
-                        onClick={cargarValoresVenezuela}
-                    >
-                        Restaurar Valores Vzla 2026
-                    </Button>
-                    <Button leftSection={<IconPlus size={18} />} onClick={() => setModalOpen(true)}>
-                        Nuevo Perfil
-                    </Button>
-                </Group>
+                    <ButtonGroup>
+                        <Button
+                            color="red"
+                            leftSection={<IconDatabaseImport size={18} />}
+                            onClick={cargarValoresVenezuela}
+                        >
+                            Restaurar Valores Vzla 2026
+                        </Button>
+                        <Button
+                            color="teal"
+                            leftSection={<IconSettings size={18} />}
+                            onClick={() => router.push('/superuser/estimacion-costos/configuracion/general')}
+                        >
+                            Configurar parametros globales
+                        </Button>
+                        <Button leftSection={<IconPlus size={18} />} onClick={() => setModalOpen(true)}>
+                            Nuevo Perfil
+                        </Button>
+                    </ButtonGroup>
+                </Stack>
 
                 {/* GRID DE PERFILES (TARJETAS) */}
                 <SimpleGrid cols={{ base: 1, sm: 3, md: 4 }}>

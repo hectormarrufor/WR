@@ -2,6 +2,7 @@
 const sequelize = require('../sequelize');
 
 const db = {
+    ConfiguracionGlobal: require('./ConfiguracionGlobal'),
     DetalleMatrizCosto: require('./gestionMantenimiento/DetalleMatrizCosto'),
     MatrizCosto: require('./gestionMantenimiento/MatrizCosto'),
     ResumenDiario: require('./ResumenDiario'),

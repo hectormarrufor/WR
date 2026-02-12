@@ -107,49 +107,77 @@ export async function GET(request, { params }) {
 // PUT: Actualizar (Lógica original respetada + Transacciones)
 // ----------------------------------------------------------------------
 export async function PUT(request, { params }) {
-    const { id } = await params; // Next.js 15 requiere await
+    const { id } = await params; 
+    
+    // IMPORTANTE: Recalcular costos es una operación pesada, mejor hacerla fuera de la transacción principal
+    // o importarla para usarla despues.
+    // import recalcularCostosFlota from '@/lib/finanzas/motorCostos'; 
+
     const t = await sequelize.transaction();
 
     try {
         const activo = await Activo.findByPk(id, { transaction: t });
-        if (!activo) throw new Error('Activo no encontrado');
+
+        if (!activo) {
+            await t.rollback();
+            return NextResponse.json({ success: false, message: 'Activo no encontrado' }, { status: 404 });
+        }
 
         const body = await request.json();
 
-        // Extraemos campos. Nota: cambié 'serialCarroceria' a 'serialChasis' para coincidir con tu JSON anterior
+        // 1. Extraemos TODOS los campos (Viejos + NUEVOS FINANCIEROS)
         const {
             codigoInterno, estado, ubicacionActual, imagen,
-            placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual
+            placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual,
+            // --- NUEVOS ---
+            matrizCostoId, valorReposicion, vidaUtilAnios, valorSalvamento
         } = body;
 
-        // 1. Actualizar Activo Padre
+        // 2. Actualizar Activo Padre (Incluyendo Financieros)
         await activo.update({
             codigoInterno: codigoInterno || activo.codigoInterno,
             estado: estado || activo.estado,
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
-            // Si viene una imagen nueva (URL string), la actualizamos. 
-            // Si no viene (undefined), dejamos la que estaba.
-            imagen: imagen !== undefined ? imagen : activo.imagen
+            imagen: imagen !== undefined ? imagen : activo.imagen,
+            
+            // --- ACTUALIZACIÓN FINANCIERA ---
+            matrizCostoId: matrizCostoId ? parseInt(matrizCostoId) : activo.matrizCostoId,
+            valorReposicion: valorReposicion !== undefined ? parseFloat(valorReposicion) : activo.valorReposicion,
+            vidaUtilAnios: vidaUtilAnios !== undefined ? parseInt(vidaUtilAnios) : activo.vidaUtilAnios,
+            valorSalvamento: valorSalvamento !== undefined ? parseFloat(valorSalvamento) : activo.valorSalvamento
+
         }, { transaction: t });
 
-        // 2. Actualizar Instancia Hija según tipo
-        if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
+        // 3. Actualizar Instancia Hija según tipo (Lógica intacta)
+        if (activo.tipoActivo === 'Vehiculo') {
+            // Buscamos la instancia ID si no la tenemos a mano, aunque tu código asumía tenerla.
+            // Es mas seguro buscarla por activoId si no estamos seguros.
             await VehiculoInstancia.update({
-                placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual
-            }, { where: { id: activo.vehiculoInstanciaId }, transaction: t });
+                placa, serialChasis, serialMotor, color, 
+                // Nota: Kilometraje/Horometro se suelen actualizar via lecturas, pero si quieres permitir corrección manual aquí:
+                kilometrajeActual: kilometrajeActual !== undefined ? parseFloat(kilometrajeActual) : undefined,
+                horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
+            }, { where: { activoId: id }, transaction: t });
         }
-        else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
+        else if (activo.tipoActivo === 'Remolque') {
             await RemolqueInstancia.update({
                 placa, color
-            }, { where: { id: activo.remolqueInstanciaId }, transaction: t });
+            }, { where: { activoId: id }, transaction: t });
         }
-        else if (activo.tipoActivo === 'Maquina' && activo.maquinaInstanciaId) {
+        else if (activo.tipoActivo === 'Maquina') {
             await MaquinaInstancia.update({
-                serialMotor, horometroActual
-            }, { where: { id: activo.maquinaInstanciaId }, transaction: t });
+                serialMotor, 
+                horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
+            }, { where: { activoId: id }, transaction: t });
         }
 
         await t.commit();
+
+        // 4. (OPCIONAL PERO RECOMENDADO) Disparar el recálculo de costos
+        // Esto actualiza el costoPosesionHora ($/h) basado en el nuevo valorReposicion
+        // Lo hacemos en "background" (sin await) para responder rápido al usuario
+        // recalcularCostosFlota().catch(e => console.error("Error background recalc:", e));
+
         return NextResponse.json({ success: true, message: 'Activo actualizado correctamente', data: activo });
 
     } catch (error) {
