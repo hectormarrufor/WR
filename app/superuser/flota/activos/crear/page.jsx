@@ -244,7 +244,7 @@ export default function CrearActivoPage() {
                             plantilla={modeloFullData}
                             tipoActivo={form.values.tipoActivo}
                             matricesCostos={matricesCostos}
-                            matricesRaw={matricesRaw}
+                            matricesData={matricesRaw}
                             onCancel={handlePrev} // Para que el botón "Atrás" del hijo controle al padre
                         />
                     </div>

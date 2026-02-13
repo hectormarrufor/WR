@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import {
     TextInput, NumberInput, Button, Group,
     SimpleGrid, Stack, Select, Text, Divider, Alert,
-    LoadingOverlay, ThemeIcon, Stepper, Paper, Title
+    LoadingOverlay, ThemeIcon, Stepper, Paper, Title,
+    Tooltip, ActionIcon, Accordion, Code, Box,
+    Badge
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconCheck, IconCoin, IconEdit, IconTool, IconAlertCircle } from '@tabler/icons-react';
+import { IconCheck, IconCoin, IconEdit, IconTool, IconAlertCircle, IconInfoCircle, IconCalculator } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import ImageDropzone from '../components/ImageDropzone';
@@ -24,8 +26,11 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const [loading, setLoading] = useState(false);
     const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]);
     
-    // CORRECCIÓN 1: Eliminamos el useState de costoCalculado porque causaba el bucle infinito.
-    // Lo calcularemos como variable directa más abajo.
+    // CONFIGURACIÓN GLOBAL (DB)
+    const [globalConfig, setGlobalConfig] = useState({
+        horasAnuales: 2000, 
+        tasaInteres: 5.0    
+    });
 
     const form = useForm({
         initialValues: {
@@ -59,16 +64,32 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
         }
     });
 
-    // --------------------------------------------------------
-    // 1. CARGA DE INVENTARIO
-    // --------------------------------------------------------
+    // 1. CARGAR CONFIGURACIÓN GLOBAL
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const res = await fetch('/api/configuracion/global');
+                if (res.ok) {
+                    const data = await res.json();
+                    setGlobalConfig({
+                        horasAnuales: parseFloat(data.horasAnualesOperativas) || 2000,
+                        tasaInteres: parseFloat(data.tasaInteresAnual) || 5.0
+                    });
+                }
+            } catch (error) {
+                console.error("Error cargando config global:", error);
+            }
+        };
+        fetchConfig();
+    }, []);
+
+    // 2. CARGA DE INVENTARIO
     useEffect(() => {
         const fetchInventario = async () => {
             try {
                 const res = await fetch('/api/inventario/consumibles?limit=1000');
                 const result = await res.json();
                 const rawItems = result.items || result.data || [];
-
                 if (rawItems.length > 0) {
                     const itemsFormateados = rawItems.map(c => ({
                         value: c.id.toString(),
@@ -80,20 +101,15 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                     }));
                     setConsumiblesCompatibles(itemsFormateados);
                 }
-            } catch (err) {
-                console.error("Error cargando inventario", err);
-            }
+            } catch (err) { console.error(err); }
         };
         fetchInventario();
     }, []);
 
-    // --------------------------------------------------------
-    // 2. PRE-CARGA DE COMPONENTES SI ES EDICIÓN
-    // --------------------------------------------------------
+    // 3. PRE-CARGA DATOS EDICIÓN
     useEffect(() => {
         if (isEditing && initialData?.subsistemasInstancia) {
             const componentesExistentes = [];
-
             initialData.subsistemasInstancia.forEach(sub => {
                 if (sub.instalaciones) {
                     sub.instalaciones.forEach(inst => {
@@ -115,51 +131,52 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     }, [isEditing, initialData]);
 
     // --------------------------------------------------------
-    // CORRECCIÓN 2: CÁLCULO DIRECTO (Sin useEffect)
+    // CÁLCULO
     // --------------------------------------------------------
-    // Esto reemplaza al useEffect que tenías. Al hacerlo así, React calcula
-    // el valor cada vez que renderiza el form, sin causar un bucle infinito.
-    
-    // A. Valores del Formulario
     const valor = parseFloat(form.values.valorReposicion) || 0;
     const salvamento = parseFloat(form.values.valorSalvamento) || 0;
     const vida = parseInt(form.values.vidaUtilAnios) || 1;
     
-    // B. Constantes y Cálculo Posesión
-    const horasAnuales = 2000;
-    const tasaInteres = 0.05;
-    const depHora = (valor - salvamento) / (vida * horasAnuales);
+    const horasAnuales = globalConfig.horasAnuales;
+    const tasaInteres = globalConfig.tasaInteres / 100;
+
+    // Depreciación
+    const montoADepreciar = valor - salvamento;
+    const vidaEnHoras = vida * horasAnuales;
+    const depHora = montoADepreciar / vidaEnHoras;
+    
+    // Interés (Costo Oportunidad)
     const intHora = (valor * tasaInteres) / horasAnuales;
+    
     const costoPosesionHora = depHora + intHora;
 
-    // C. Cálculo Mantenimiento
+    // Mantenimiento
     let costoMantenimientoHora = 0;
+    let costoKmMatriz = 0;
     const matrizIdSeleccionada = form.values.matrizCostoId;
 
     if (matrizIdSeleccionada && matricesData.length > 0) {
         const matriz = matricesData.find(m => String(m.id) === String(matrizIdSeleccionada));
         if (matriz) {
-            const costoPorKm = parseFloat(matriz.costoKm || matriz.costoPromedio || 0);
+            costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);
             const velocidadPromedio = 40; 
-            costoMantenimientoHora = costoPorKm * velocidadPromedio;
+            costoMantenimientoHora = costoKmMatriz * velocidadPromedio;
         }
     }
 
-    // D. Objeto Final (Esto reemplaza al estado costoCalculado)
     const costoCalculado = {
         posesion: costoPosesionHora,
         mantenimiento: costoMantenimientoHora,
-        total: costoPosesionHora + costoMantenimientoHora
+        total: costoPosesionHora + costoMantenimientoHora,
+        depreciacion: depHora,
+        intereses: intHora
     };
-    // --------------------------------------------------------
-
 
     // --------------------------------------------------------
-    // 3. VALIDACIÓN POR PASOS
+    // HANDLERS
     // --------------------------------------------------------
     const handleNextStep = () => {
         let hasError = false;
-
         if (active === 0) {
             const checkCodigo = form.validateField('codigoInterno');
             if (checkCodigo.hasError) hasError = true;
@@ -168,14 +185,9 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             const checkValor = form.validateField('valorReposicion');
             if (checkMatriz.hasError || checkValor.hasError) hasError = true;
         }
-
-        if (!hasError) {
-            setActive((current) => current + 1);
-        } else {
-            notifications.show({ title: 'Atención', message: 'Complete los campos obligatorios antes de continuar.', color: 'orange' });
-        }
+        if (!hasError) setActive((c) => c + 1);
+        else notifications.show({ title: 'Atención', message: 'Verifique los campos requeridos', color: 'orange' });
     };
-
 
     const handleSubmit = async (values) => {
         setLoading(true);
@@ -195,6 +207,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                 valorReposicion: parseFloat(values.valorReposicion),
                 vidaUtilAnios: parseInt(values.vidaUtilAnios),
                 valorSalvamento: parseFloat(values.valorSalvamento),
+                costoPosesionHora: costoCalculado.posesion, 
                 usuario: nombre + ' ' + apellido,
                 instalacionesIniciales: values.instalacionesIniciales
             };
@@ -214,12 +227,9 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                 (tipoActivo === 'Vehiculo' ? '/api/gestionMantenimiento/activos/vehiculos' :
                     tipoActivo === 'Remolque' ? '/api/gestionMantenimiento/activos/remolques' :
                         '/api/gestionMantenimiento/activos/maquinas');
-
             let method = isEditing ? 'PUT' : 'POST';
 
-            if (!isEditing) {
-                payload.modeloVehiculoId = plantilla.id;
-            }
+            if (!isEditing) payload.modeloVehiculoId = plantilla.id;
 
             const response = await fetch(url, {
                 method: method,
@@ -228,24 +238,18 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             });
 
             const res = await response.json();
-
             if (res.success) {
-                notifications.show({ title: 'Éxito', message: 'Operación realizada correctamente', color: 'green' });
+                notifications.show({ title: 'Éxito', message: 'Guardado correctamente', color: 'green' });
                 if (isEditing) router.push(`/superuser/flota/activos/${initialData.id}`);
                 else router.push('/superuser/flota/activos');
-            } else {
-                throw new Error(res.error || 'Error en el servidor');
-            }
+            } else throw new Error(res.error || 'Error en el servidor');
 
         } catch (error) {
             console.error(error);
             notifications.show({ title: 'Error', message: error.message, color: 'red' });
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
-    // Helpers
     const isVehiculo = tipoActivo === 'Vehiculo' || initialData?.tipoActivo === 'Vehiculo';
     const isMaquina = tipoActivo === 'Maquina' || initialData?.tipoActivo === 'Maquina';
 
@@ -254,8 +258,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             <LoadingOverlay visible={loading} zIndex={1000} />
 
             <Stepper active={active} onStepClick={setActive} allowNextStepsSelect={isEditing}>
-
-                {/* PASO 0: FÍSICO */}
+                {/* PASO 0 */}
                 <Stepper.Step label="Físico" description="Identificación">
                     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" mt="md">
                         <Stack>
@@ -279,82 +282,110 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                     </SimpleGrid>
                 </Stepper.Step>
 
-                {/* PASO 1: FINANCIERO */}
+                {/* PASO 1: FINANCIERO CON DETALLE */}
                 <Stepper.Step label="Financiero" description="Costos y Depreciación" icon={<IconCoin size={18} />}>
                     <SimpleGrid cols={{ base: 1, sm: 2 }} mt="md" spacing="xl">
                         <Stack>
-                            <Alert title="Perfil de Costos" color="blue" icon={<IconCoin />}>
-                                La matriz define el costo variable de mantenimiento ($/Km).
+                            <Alert title="Matriz de Mantenimiento" color="blue" icon={<IconCoin />}>
+                                Costos variables basados en repuestos y servicios ($/Km).
                             </Alert>
                             <Select
-                                label="Estructura de Costos (Matriz)"
-                                placeholder="Seleccione un perfil..."
+                                label="Seleccionar Matriz"
+                                placeholder="Buscar perfil..."
                                 data={matricesCostos}
                                 searchable
-                                nothingFoundMessage="No hay matrices creadas"
+                                nothingFoundMessage="No hay matrices"
                                 required
                                 {...form.getInputProps('matrizCostoId')}
                             />
 
-                            {/* Visualización del costo de la matriz seleccionada */}
                             {costoCalculado.mantenimiento > 0 && (
-                                <Paper withBorder p="xs" bg="blue.0">
-                                    <Group justify="space-between">
-                                        <Text size="sm" c="blue.9">Costo Mantenimiento Est.:</Text>
-                                        <Text fw={700} c="blue.9">${costoCalculado.mantenimiento.toFixed(2)} / hr</Text>
+                                <Paper withBorder p="md" bg="blue.0" radius="md">
+                                    <Group justify="space-between" mb="xs">
+                                        <Text size="sm" fw={700} c="blue.9">Costo Matriz (BD):</Text>
+                                        <Text fw={700} c="blue.9">${costoKmMatriz.toFixed(4)} / km</Text>
                                     </Group>
-                                    <Text size="xs" c="dimmed" ta="right">(Basado en matriz x 40km/h prom)</Text>
+                                    <Divider color="blue.2" />
+                                    <Group justify="space-between" mt="xs">
+                                        <Text size="sm" c="dimmed">Velocidad Promedio:</Text>
+                                        <Text size="sm">40 km/h</Text>
+                                    </Group>
+                                    <Group justify="space-between">
+                                        <Text size="sm" fw={700} c="blue.8">Costo Hora Mantenimiento:</Text>
+                                        <Text fw={700} size="lg" c="blue.8">${costoCalculado.mantenimiento.toFixed(2)} / hr</Text>
+                                    </Group>
                                 </Paper>
                             )}
                         </Stack>
 
                         <Stack>
                             <Paper withBorder p="md" radius="md">
-                                <Title order={5} mb="md">Parámetros de Posesión</Title>
-                                <NumberInput
-                                    label="Valor de Reposición ($)"
-                                    prefix="$"
-                                    thousandSeparator
-                                    mb="sm"
-                                    {...form.getInputProps('valorReposicion')}
-                                />
+                                <Group justify="space-between" mb="md">
+                                    <Title order={5}>Parámetros de Posesión</Title>
+                                    <Badge variant="light" color="gray">
+                                        Base: {globalConfig.horasAnuales} hrs/año • Tasa: {globalConfig.tasaInteres}%
+                                    </Badge>
+                                </Group>
+                                
+                                <NumberInput label="Valor de Reposición ($)" prefix="$" thousandSeparator mb="sm" {...form.getInputProps('valorReposicion')} />
                                 <Group grow>
                                     <NumberInput label="Vida Útil (Años)" {...form.getInputProps('vidaUtilAnios')} />
                                     <NumberInput label="Valor Salvamento ($)" prefix="$" thousandSeparator {...form.getInputProps('valorSalvamento')} />
                                 </Group>
                             </Paper>
 
-                            {/* TARJETA DE RESULTADO FINAL */}
-                            <Paper p="md" bg="teal.0" radius="md" withBorder style={{ borderColor: 'var(--mantine-color-teal-4)' }}>
-                                <Stack gap={4}>
-                                    <Group justify="space-between">
-                                        <Text size="sm" c="dimmed">Costo Posesión:</Text>
-                                        <Text size="sm" fw={500}>${costoCalculado.posesion.toFixed(2)}/hr</Text>
-                                    </Group>
-                                    <Group justify="space-between">
-                                        <Text size="sm" c="dimmed">Costo Mantenimiento:</Text>
-                                        <Text size="sm" fw={500}>${costoCalculado.mantenimiento.toFixed(2)}/hr</Text>
-                                    </Group>
-                                    <Divider my="xs" color="teal.2" />
-                                    <Group justify="space-between">
-                                        <Text fw={800} size="lg" c="teal.9">COSTO TOTAL:</Text>
-                                        <Text fw={800} size="xl" c="teal.9">
-                                            ${costoCalculado.total.toFixed(2)} / hr
-                                        </Text>
-                                    </Group>
-                                </Stack>
-                            </Paper>
+                            {/* --- AQUÍ ESTÁ EL DESGLOSE DETALLADO --- */}
+                            <Accordion variant="contained" radius="md" defaultValue="calculo">
+                                <Accordion.Item value="calculo" style={{ backgroundColor: 'var(--mantine-color-teal-0)', borderColor: 'var(--mantine-color-teal-3)' }}>
+                                    <Accordion.Control icon={<IconCalculator size={20} color="teal"/>}>
+                                        <Text fw={700} c="teal.9" size="lg">COSTO TOTAL: ${costoCalculado.total.toFixed(2)} / hr</Text>
+                                    </Accordion.Control>
+                                    <Accordion.Panel>
+                                        <Stack gap="xs">
+                                            <Divider label="1. DEPRECIACIÓN" labelPosition="left" color="teal.2" />
+                                            <Group justify="space-between">
+                                                <Text size="xs" c="dimmed">Fórmula:</Text>
+                                                <Code color="teal.1" c="teal.9">({valor} - {salvamento}) / ({vida} * {horasAnuales})</Code>
+                                            </Group>
+                                            <Group justify="space-between">
+                                                <Text size="sm" fw={500}>Costo Depreciación:</Text>
+                                                <Text size="sm" fw={700}>${costoCalculado.depreciacion.toFixed(2)} / hr</Text>
+                                            </Group>
+
+                                            <Divider label="2. INTERÉS (Costo Oportunidad)" labelPosition="left" color="teal.2" mt="sm" />
+                                            <Group justify="space-between">
+                                                <Text size="xs" c="dimmed">Fórmula:</Text>
+                                                <Code color="teal.1" c="teal.9">({valor} * {globalConfig.tasaInteres}%) / {horasAnuales}</Code>
+                                            </Group>
+                                            <Group justify="space-between">
+                                                <Text size="sm" fw={500}>Costo Financiero:</Text>
+                                                <Text size="sm" fw={700}>${costoCalculado.intereses.toFixed(2)} / hr</Text>
+                                            </Group>
+
+                                            <Divider label="RESUMEN" labelPosition="center" color="teal.3" mt="sm" />
+                                            <Group justify="space-between">
+                                                <Text size="sm">Mantenimiento (Matriz):</Text>
+                                                <Text size="sm">${costoCalculado.mantenimiento.toFixed(2)} / hr</Text>
+                                            </Group>
+                                            <Group justify="space-between">
+                                                <Text size="sm">Posesión (Dep+Int):</Text>
+                                                <Text size="sm">${costoCalculado.posesion.toFixed(2)} / hr</Text>
+                                            </Group>
+                                        </Stack>
+                                    </Accordion.Panel>
+                                </Accordion.Item>
+                            </Accordion>
                         </Stack>
                     </SimpleGrid>
                 </Stepper.Step>
+
                 {/* PASO 2: COMPONENTES */}
                 <Stepper.Step label="Componentes" description="Inventario" icon={<IconTool size={18} />}>
                     {isEditing && (
                         <Alert color="orange" icon={<IconAlertCircle size={16} />} mb="md" title="Modo Edición">
-                            Modificar estos componentes aquí actualizará la configuración base. Si desea registrar un cambio de repuesto (mantenimiento), hágalo desde la pestaña "Taller" del activo.
+                            Modificar estos componentes aquí actualizará la configuración base.
                         </Alert>
                     )}
-
                     {plantilla && (
                         <SimpleGrid cols={1} spacing="md">
                             {plantilla.subsistemas?.map((sub) => (
@@ -386,13 +417,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                 <Button variant="default" onClick={active === 0 ? onCancel : () => setActive(c => c - 1)}>
                     {active === 0 ? 'Cancelar' : 'Atrás'}
                 </Button>
-
-                {/* Lógica del botón Siguiente arreglada */}
-                {active < 2 && (
-                    <Button onClick={handleNextStep}>
-                        Siguiente
-                    </Button>
-                )}
+                {active < 2 && <Button onClick={handleNextStep}>Siguiente</Button>}
             </Group>
         </Stack>
     );
