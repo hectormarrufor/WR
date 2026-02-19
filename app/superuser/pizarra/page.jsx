@@ -288,12 +288,19 @@ const EventMiniature = ({ event, router }) => {
                     <Avatar.Group spacing="sm" mr={10}>
                       {grupo.empleados.map(emp => (
                         <Tooltip key={emp.id} label={`${emp.nombre} ${emp.apellido}`}>
-                          <Avatar src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} radius="xl" size={40} color="blue">{emp.nombre?.charAt(0)}</Avatar>
+
+                          <UnstyledButton onClick={() => router.push(`/superuser/rrhh/empleados/${emp.id}`)}>
+                            <Avatar src={emp.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${emp.imagen}` : null} radius="xl" size={40} color="blue">{emp.nombre?.charAt(0)}</Avatar>
+                          </UnstyledButton>
                         </Tooltip>
                       ))}
                     </Avatar.Group>
                     <Box style={{ flex: 1 }}>
-                      <Text size="sm" fw={700} c="dark.8" lh={1.3}>{grupo.empleados.map(e => e.nombre).join(', ')}</Text>
+                      {grupo.empleados.map((e, index) => (
+                        <UnstyledButton key={e.id} onClick={() => router.push(`/superuser/rrhh/empleados/${e.id}`)}>
+                          <Text size="sm" fw={700} c="dark.8" lh={1.3}> {" " + e.nombre + (index < grupo.empleados.length - 1 ? ", " : "")} </Text>
+                        </UnstyledButton>
+                      ))}
                       <Badge size="sm" color="dark" variant="light" mt={4}>{grupo.horas} Horas</Badge>
                     </Box>
                   </Group>

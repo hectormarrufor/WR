@@ -6,7 +6,7 @@ import {
     TextInput, NumberInput, Button, Group,
     SimpleGrid, Stack, Select, Text, Divider, Alert,
     LoadingOverlay, ThemeIcon, Stepper, Paper, Title,
-    Tooltip, ActionIcon, Accordion, Code, Box,
+    Tooltip, ActionIcon, Accordion, Code,
     Badge
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -48,11 +48,11 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             kilometrajeActual: initialData?.vehiculoInstancia?.kilometrajeActual || 0,
             horometroActual: initialData?.vehiculoInstancia?.horometroActual || initialData?.maquinaInstancia?.horometroActual || 0,
 
-            // --- FINANCIEROS ---
+            // --- FINANCIEROS (AHORA EN BLANCO POR DEFECTO) ---
             matrizCostoId: initialData?.matrizCostoId ? String(initialData.matrizCostoId) : '',
-            valorReposicion: initialData?.valorReposicion || 40000,
-            vidaUtilAnios: initialData?.vidaUtilAnios || 10,
-            valorSalvamento: initialData?.valorSalvamento || 5000,
+            valorReposicion: initialData?.valorReposicion || '',
+            vidaUtilAnios: initialData?.vidaUtilAnios || '',
+            valorSalvamento: initialData?.valorSalvamento || '',
 
             // --- INSTALACIONES ---
             instalacionesIniciales: []
@@ -60,7 +60,9 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
         validate: {
             codigoInterno: (val) => (val.length < 2 ? 'Código requerido' : null),
             matrizCostoId: (val) => (!val ? 'Debes asignar una estructura de costos' : null),
-            valorReposicion: (val) => (val <= 0 ? 'El valor debe ser positivo' : null),
+            valorReposicion: (val) => (!val || val <= 0 ? 'Ingrese el valor del equipo' : null),
+            vidaUtilAnios: (val) => (!val || val <= 0 ? 'Ingrese los años de vida útil' : null),
+            valorSalvamento: (val) => (val === '' || val < 0 ? 'Ingrese un valor de salvamento (puede ser 0)' : null),
         }
     });
 
@@ -143,10 +145,10 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     // Depreciación
     const montoADepreciar = valor - salvamento;
     const vidaEnHoras = vida * horasAnuales;
-    const depHora = montoADepreciar / vidaEnHoras;
+    const depHora = vidaEnHoras > 0 ? (montoADepreciar / vidaEnHoras) : 0;
     
     // Interés (Costo Oportunidad)
-    const intHora = (valor * tasaInteres) / horasAnuales;
+    const intHora = horasAnuales > 0 ? ((valor * tasaInteres) / horasAnuales) : 0;
     
     const costoPosesionHora = depHora + intHora;
 
@@ -183,10 +185,14 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
         } else if (active === 1) {
             const checkMatriz = form.validateField('matrizCostoId');
             const checkValor = form.validateField('valorReposicion');
-            if (checkMatriz.hasError || checkValor.hasError) hasError = true;
+            const checkVida = form.validateField('vidaUtilAnios');
+            const checkSalvamento = form.validateField('valorSalvamento');
+            if (checkMatriz.hasError || checkValor.hasError || checkVida.hasError || checkSalvamento.hasError) {
+                hasError = true;
+            }
         }
         if (!hasError) setActive((c) => c + 1);
-        else notifications.show({ title: 'Atención', message: 'Verifique los campos requeridos', color: 'orange' });
+        else notifications.show({ title: 'Atención', message: 'Verifique los campos obligatorios en rojo', color: 'orange' });
     };
 
     const handleSubmit = async (values) => {
@@ -307,7 +313,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                     </Group>
                                     <Divider color="blue.2" />
                                     <Group justify="space-between" mt="xs">
-                                        <Text size="sm" c="dimmed">Velocidad Promedio:</Text>
+                                        <Text size="sm" c="dimmed">Velocidad Promedio Est.:</Text>
                                         <Text size="sm">40 km/h</Text>
                                     </Group>
                                     <Group justify="space-between">
@@ -327,14 +333,44 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                     </Badge>
                                 </Group>
                                 
-                                <NumberInput label="Valor de Reposición ($)" prefix="$" thousandSeparator mb="sm" {...form.getInputProps('valorReposicion')} />
-                                <Group grow>
-                                    <NumberInput label="Vida Útil (Años)" {...form.getInputProps('vidaUtilAnios')} />
-                                    <NumberInput label="Valor Salvamento ($)" prefix="$" thousandSeparator {...form.getInputProps('valorSalvamento')} />
+                                <NumberInput 
+                                    required 
+                                    label="Valor de Adquisición / Reposición ($)" 
+                                    prefix="$" 
+                                    thousandSeparator 
+                                    mb="sm" 
+                                    {...form.getInputProps('valorReposicion')} 
+                                />
+                                <Group grow align="flex-start">
+                                    <NumberInput 
+                                        required 
+                                        label="Vida Útil (Años)" 
+                                        {...form.getInputProps('vidaUtilAnios')} 
+                                    />
+                                    <NumberInput 
+                                        required 
+                                        label={
+                                            <Group gap={4}>
+                                                Valor Salvamento ($)
+                                                <Tooltip 
+                                                    label="El valor residual o de venta esperado que tendrá el equipo cuando lo vayas a desincorporar/vender en el futuro. Ej: Compras un chuto en $40.000, pero estimas venderlo en $5.000 cuando ya esté muy viejo." 
+                                                    multiline 
+                                                    w={260} 
+                                                    withArrow 
+                                                    position="top"
+                                                >
+                                                    <IconInfoCircle size={14} style={{ cursor: 'help', color: 'var(--mantine-color-blue-6)' }} />
+                                                </Tooltip>
+                                            </Group>
+                                        }
+                                        prefix="$" 
+                                        thousandSeparator 
+                                        {...form.getInputProps('valorSalvamento')} 
+                                    />
                                 </Group>
                             </Paper>
 
-                            {/* --- AQUÍ ESTÁ EL DESGLOSE DETALLADO --- */}
+                            {/* --- DESGLOSE DETALLADO CON FÓRMULAS EXPLÍCITAS --- */}
                             <Accordion variant="contained" radius="md" defaultValue="calculo">
                                 <Accordion.Item value="calculo" style={{ backgroundColor: 'var(--mantine-color-teal-0)', borderColor: 'var(--mantine-color-teal-3)' }}>
                                     <Accordion.Control icon={<IconCalculator size={20} color="teal"/>}>
@@ -343,32 +379,36 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                     <Accordion.Panel>
                                         <Stack gap="xs">
                                             <Divider label="1. DEPRECIACIÓN" labelPosition="left" color="teal.2" />
-                                            <Group justify="space-between">
-                                                <Text size="xs" c="dimmed">Fórmula:</Text>
-                                                <Code color="teal.1" c="teal.9">({valor} - {salvamento}) / ({vida} * {horasAnuales})</Code>
-                                            </Group>
-                                            <Group justify="space-between">
+                                            <Text size="xs" c="dimmed">Fórmula Explícita:</Text>
+                                            <Code block color="teal.1" c="teal.9" style={{ fontSize: '11px', lineHeight: 1.4 }}>
+                                                (Valor Activo: ${valor.toLocaleString()} - Salvamento: ${salvamento.toLocaleString()})<br/>
+                                                ──────────────────────────────────────────────────────────<br/>
+                                                (Vida Útil: {vida} años × {globalConfig.horasAnuales.toLocaleString()} hrs/año)
+                                            </Code>
+                                            <Group justify="space-between" mt={4}>
                                                 <Text size="sm" fw={500}>Costo Depreciación:</Text>
                                                 <Text size="sm" fw={700}>${costoCalculado.depreciacion.toFixed(2)} / hr</Text>
                                             </Group>
 
-                                            <Divider label="2. INTERÉS (Costo Oportunidad)" labelPosition="left" color="teal.2" mt="sm" />
-                                            <Group justify="space-between">
-                                                <Text size="xs" c="dimmed">Fórmula:</Text>
-                                                <Code color="teal.1" c="teal.9">({valor} * {globalConfig.tasaInteres}%) / {horasAnuales}</Code>
-                                            </Group>
-                                            <Group justify="space-between">
+                                            <Divider label="2. INTERÉS (Costo Financiero)" labelPosition="left" color="teal.2" mt="sm" />
+                                            <Text size="xs" c="dimmed">Fórmula Explícita:</Text>
+                                            <Code block color="teal.1" c="teal.9" style={{ fontSize: '11px', lineHeight: 1.4 }}>
+                                                (Valor Activo: ${valor.toLocaleString()} × Tasa Interés: {globalConfig.tasaInteres}%)<br/>
+                                                ──────────────────────────────────────────────────<br/>
+                                                ({globalConfig.horasAnuales.toLocaleString()} hrs/año)
+                                            </Code>
+                                            <Group justify="space-between" mt={4}>
                                                 <Text size="sm" fw={500}>Costo Financiero:</Text>
                                                 <Text size="sm" fw={700}>${costoCalculado.intereses.toFixed(2)} / hr</Text>
                                             </Group>
 
                                             <Divider label="RESUMEN" labelPosition="center" color="teal.3" mt="sm" />
                                             <Group justify="space-between">
-                                                <Text size="sm">Mantenimiento (Matriz):</Text>
+                                                <Text size="sm">Mantenimiento (Matriz BD):</Text>
                                                 <Text size="sm">${costoCalculado.mantenimiento.toFixed(2)} / hr</Text>
                                             </Group>
                                             <Group justify="space-between">
-                                                <Text size="sm">Posesión (Dep+Int):</Text>
+                                                <Text size="sm">Posesión (Depreciación + Interés):</Text>
                                                 <Text size="sm">${costoCalculado.posesion.toFixed(2)} / hr</Text>
                                             </Group>
                                         </Stack>
