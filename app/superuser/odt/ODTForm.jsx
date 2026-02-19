@@ -1,21 +1,23 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { TextInput, Textarea, Button, Paper, Title, Center, SimpleGrid, Box, Divider, Group, Loader, Badge, Text } from "@mantine/core";
+import { 
+  TextInput, Textarea, Button, Paper, Title, Center, 
+  SimpleGrid, Box, Divider, Group, Loader, Badge, Text, NumberInput, Grid, Alert 
+} from "@mantine/core";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { DateInput, TimeInput } from "@mantine/dates";
-import { IconArrowLeft, IconCheck, IconSearch, IconTruck, IconLockOpen } from "@tabler/icons-react";
-import { format, addDays, parseISO } from "date-fns";
+import { IconArrowLeft, IconCheck, IconSearch, IconTruck, IconLockOpen, IconCalculator, IconClockHour4, IconMapPin } from "@tabler/icons-react";
+import { format, addDays } from "date-fns";
 import '@mantine/dates/styles.css';
 import ODTSelectableGrid from "./ODTSelectableGrid";
 import { SelectClienteConCreacion } from "../contratos/SelectClienteConCreacion";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 // --- HELPERS DE FECHAS ---
-
-// Crea un objeto Date base
 const createDateTime = (fechaDate, horaString) => {
   if (!fechaDate || !horaString) return null;
   const d = new Date(fechaDate);
@@ -24,54 +26,32 @@ const createDateTime = (fechaDate, horaString) => {
   return d;
 };
 
-// Lógica inteligente para la fecha de FIN
-// Si horaSalida es menor que horaLlegada (ej: 08:00 < 15:00), asumimos día siguiente.
 const calculateEndDateTime = (fechaDate, horaLlegadaStr, horaSalidaStr) => {
   if (!fechaDate || !horaLlegadaStr || !horaSalidaStr) return null;
-
   let end = createDateTime(fechaDate, horaSalidaStr);
   const start = createDateTime(fechaDate, horaLlegadaStr);
-
-  // Si la salida es "menor" a la entrada, es el día siguiente
-  if (end < start) {
-    end = addDays(end, 1);
-  }
+  if (end < start) end = addDays(end, 1);
   return end;
 };
 
 // --- HELPERS DE ESTADO Y ORDENAMIENTO ---
-
 const getEstadoConfig = (estado, tipo = 'empleado') => {
-  // Definimos colores según el Enum
   const colors = {
-    // Empleados
-    'Activo': 'green',
-    'Vacaciones': 'cyan',
-    'Reposo Medico': 'red',
-    'Permiso': 'orange',
-    'Suspendido': 'gray',
-    'Inactivo': 'gray',
-    'Retirado': 'dark',
-    // Activos
-    'Operativo': 'green',
-    'En Mantenimiento': 'orange',
-    'Inactivo': 'gray',
-    'Desincorporado': 'red'
+    'Activo': 'green', 'Vacaciones': 'cyan', 'Reposo Medico': 'red', 'Permiso': 'orange',
+    'Suspendido': 'gray', 'Inactivo': 'gray', 'Retirado': 'dark',
+    'Operativo': 'green', 'En Mantenimiento': 'orange', 'Desincorporado': 'red'
   };
   return { color: colors[estado] || 'gray', label: estado };
 };
 
-// Función de ordenamiento: Prioridad a los disponibles (Verdes), luego el resto
 const sortPorDisponibilidad = (a, b) => {
   const priority = ['Activo', 'Operativo'];
   const aEsPrioritario = priority.includes(a.estadoRaw);
   const bEsPrioritario = priority.includes(b.estadoRaw);
-
-  if (aEsPrioritario && !bEsPrioritario) return -1; // a va primero
-  if (!aEsPrioritario && bEsPrioritario) return 1;  // b va primero
-  return 0; // igual prioridad
+  if (aEsPrioritario && !bEsPrioritario) return -1;
+  if (!aEsPrioritario && bEsPrioritario) return 1;
+  return 0; 
 };
-
 
 export default function ODTForm({ mode = "create", odtId }) {
   const router = useRouter();
@@ -79,6 +59,7 @@ export default function ODTForm({ mode = "create", odtId }) {
 
   const [empleados, setEmpleados] = useState([]);
   const [activos, setActivos] = useState([]);
+  const [configPrecios, setConfigPrecios] = useState({ gasoil: 0.5, peaje: 5 }); // NUEVO
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [dayOdts, setDayOdts] = useState([]);
@@ -95,18 +76,16 @@ export default function ODTForm({ mode = "create", odtId }) {
       nroODT: "", fecha: null, descripcionServicio: "", horaLlegada: "", horaSalida: "",
       clienteId: "", vehiculoPrincipalId: null, vehiculoRemolqueId: null, maquinariaId: null,
       choferId: null, ayudanteId: null,
-      cliente: null,
-      choferEntradaBase: null,
-      choferSalidaBase: null,
-      ayudanteEntradaBase: null,
-      ayudanteSalidaBase: null,
-      salidaActivosBase: null,  // <--- NUEVO
-      llegadaActivosBase: null, // <--- NUEVO
-      estado: 'En Curso', // Valor por defecto
+      choferEntradaBase: null, choferSalidaBase: null,
+      ayudanteEntradaBase: null, ayudanteSalidaBase: null,
+      salidaActivosBase: null, llegadaActivosBase: null, 
+      estado: 'En Curso', 
+      // NUEVOS CAMPOS PARA CÁLCULO
+      distanciaKm: 0, 
+      cantidadPeajes: 0
     },
     validate: {
       fecha: (value) => (value ? null : "Fecha requerida"),
-      // NOTA: Eliminamos la validación que impedía salida < llegada
     },
   });
 
@@ -114,12 +93,16 @@ export default function ODTForm({ mode = "create", odtId }) {
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
-        const [resEmp, resAct] = await Promise.all([
+        const [resEmp, resAct, resPrecios] = await Promise.all([
           fetch(`/api/rrhh/empleados`).then(r => r.json()),
           fetch(`/api/gestionMantenimiento/activos`).then(r => r.json()),
+          fetch(`/api/configuracion/precios`).then(r => r.json()), // NUEVO
         ]);
         setEmpleados(resEmp || []);
         setActivos(resAct.success ? resAct.data : []);
+        if (resPrecios) {
+            setConfigPrecios({ gasoil: resPrecios.gasoil || 0.5, peaje: resPrecios.peaje5ejes || 5 });
+        }
       } catch (error) { notifications.show({ title: "Error", message: "Error cargando datos", color: "red" }); }
       finally { setLoadingInit(false); }
     };
@@ -130,8 +113,6 @@ export default function ODTForm({ mode = "create", odtId }) {
   useEffect(() => {
     if (mode === "edit" && odtId) {
       fetch(`/api/odts/${odtId}`).then(r => r.json()).then(data => {
-        // Ajustar fecha para evitar UTC issues, usar la fecha local que viene
-        // data.fecha suele ser YYYY-MM-DD
         const [y, m, d] = data.fecha.split('-').map(Number);
         const fechaLocal = new Date(y, m - 1, d);
 
@@ -146,12 +127,13 @@ export default function ODTForm({ mode = "create", odtId }) {
           maquinariaId: data.maquinariaId || null,
           choferId: data.choferId || null,
           ayudanteId: data.ayudanteId || null,
+          distanciaKm: data.distanciaKm || 0, // NUEVO
         });
       });
     }
   }, [mode, odtId]);
 
-  // 3. Listener Disponibilidad (Fetch)
+  // 3. Listener Disponibilidad
   useEffect(() => {
     const fetchDayAvailability = async () => {
       if (!form.values.fecha) return;
@@ -167,60 +149,73 @@ export default function ODTForm({ mode = "create", odtId }) {
     fetchDayAvailability();
   }, [form.values.fecha]);
 
+  // --- CÁLCULO DE HORAS DE OPERACIÓN (NUEVO) ---
+  const horasOperacionCalculadas = useMemo(() => {
+    if (!form.values.fecha || !form.values.horaLlegada || !form.values.horaSalida) return 0;
+    const start = createDateTime(form.values.fecha, form.values.horaLlegada);
+    const end = calculateEndDateTime(form.values.fecha, form.values.horaLlegada, form.values.horaSalida);
+    if (!start || !end) return 0;
+    
+    const diffMs = end - start;
+    return diffMs / (1000 * 60 * 60); // Retorna horas decimales
+  }, [form.values.fecha, form.values.horaLlegada, form.values.horaSalida]);
 
-  // --- MAPEO DE DATOS CON BADGES Y ORDENAMIENTO ---
+  // --- MOTOR DE ESTIMACIÓN REACT QUERY (NUEVO) ---
+  const { data: estimacion, isLoading: calcLoading } = useQuery({
+    queryKey: [
+        "estimar-odt", "servicio", 
+        form.values.vehiculoPrincipalId, form.values.vehiculoRemolqueId, 
+        form.values.distanciaKm, horasOperacionCalculadas
+    ],
+    queryFn: async () => {
+        if (!form.values.vehiculoPrincipalId) return null;
+        
+        // Asumimos que si no han puesto horas de llegada/salida, hacemos un presupuesto base de 8 horas
+        const horasParaCalculo = horasOperacionCalculadas > 0 ? horasOperacionCalculadas : 8;
 
+        const response = await fetch('/api/fletes/estimar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tipoCotizacion: 'servicio', // Fuerza la lógica híbrida del backend
+                activoPrincipalId: form.values.vehiculoPrincipalId,
+                remolqueId: form.values.vehiculoRemolqueId,
+                distanciaKm: form.values.distanciaKm || 0,
+                horasOperacion: horasParaCalculo,
+                cantidadPeajes: form.values.cantidadPeajes || 0,
+                precioPeajeUnitario: configPrecios.peaje,
+                precioGasoilUsd: configPrecios.gasoil,
+                porcentajeGanancia: 0.35, 
+            }),
+        });
+        if (!response.ok) throw new Error('Error estimando costos');
+        return response.json();
+    },
+    enabled: !!form.values.vehiculoPrincipalId,
+  });
+
+  // --- MAPEOS ---
   const empleadosMapeados = useMemo(() => {
-    return empleados
-      .map(e => {
+    return empleados.map(e => {
         const config = getEstadoConfig(e.estado);
-        return {
-          id: e.id,
-          nombre: `${e.nombre} ${e.apellido}`,
-          imagen: e.imagen,
-          puestos: e.puestos,
-          estadoRaw: e.estado, // Para ordenar
-          badge: config.label, // Para mostrar
-          badgeColor: config.color // Para mostrar
-        };
-      })
-      .sort(sortPorDisponibilidad);
+        return { ...e, nombre: `${e.nombre} ${e.apellido}`, estadoRaw: e.estado, badge: config.label, badgeColor: config.color };
+    }).sort(sortPorDisponibilidad);
   }, [empleados]);
 
   const activosMapeados = useMemo(() => {
-    return activos
-      .map(v => {
+    return activos.map(v => {
         let nombreDisplay = v.codigoInterno;
-        let placa = "";
-        if (v.vehiculoInstancia) {
-          nombreDisplay = `${v.vehiculoInstancia.plantilla.marca} ${v.vehiculoInstancia.plantilla.modelo}`;
-          placa = v.vehiculoInstancia.placa;
-        } else if (v.remolqueInstancia) {
-          nombreDisplay = `${v.remolqueInstancia.plantilla.marca} ${v.remolqueInstancia.plantilla.modelo}`;
-          placa = v.remolqueInstancia.placa;
-        } else if (v.maquinaInstancia) {
-          nombreDisplay = `${v.maquinaInstancia.plantilla.marca} ${v.maquinaInstancia.plantilla.modelo}`;
-          placa = v.maquinaInstancia.placa;
-        }
-
+        let placa = v.vehiculoInstancia?.placa || v.remolqueInstancia?.placa || v.maquinaInstancia?.placa || "";
+        if (v.vehiculoInstancia) nombreDisplay = `${v.vehiculoInstancia.plantilla.marca} ${v.vehiculoInstancia.plantilla.modelo}`;
+        else if (v.remolqueInstancia) nombreDisplay = `${v.remolqueInstancia.plantilla.marca} ${v.remolqueInstancia.plantilla.modelo}`;
+        else if (v.maquinaInstancia) nombreDisplay = `${v.maquinaInstancia.plantilla.marca} ${v.maquinaInstancia.plantilla.modelo}`;
+        
         const config = getEstadoConfig(v.estado, 'activo');
-
-        return {
-          id: v.id,
-          nombre: `${nombreDisplay} (${placa})`,
-          imagen: v.imagen,
-          tipo: v.tipoActivo,
-          estadoRaw: v.estado,
-          badge: config.label,
-          badgeColor: config.color
-        };
-      })
-      .sort(sortPorDisponibilidad);
+        return { id: v.id, nombre: `${nombreDisplay} (${placa})`, imagen: v.imagen, tipo: v.tipoActivo, estadoRaw: v.estado, badge: config.label, badgeColor: config.color };
+    }).sort(sortPorDisponibilidad);
   }, [activos]);
 
-
-  // --- VALIDACIONES ---
-
+  // --- VALIDACIONES ORIGINALES INTACTAS ---
   const validarNumeroUnico = async (nro) => {
     try {
       const res = await fetch(`/api/odts/check-number?nro=${nro}`);
@@ -234,32 +229,20 @@ export default function ODTForm({ mode = "create", odtId }) {
   };
 
   const validarConflictos = (values) => {
-    // 1. Calculamos los rangos de la NUEVA ODT
-    // Usamos la función que detecta cross-day
     const newStart = createDateTime(values.fecha, values.horaLlegada);
     const newEnd = calculateEndDateTime(values.fecha, values.horaLlegada, values.horaSalida);
-
     if (!newStart || !newEnd) return null;
 
     for (const odt of dayOdts) {
       if (mode === "edit" && String(odt.id) === String(odtId)) continue;
-
-      // 2. Calculamos los rangos de la ODT EXISTENTE
-      // IMPORTANTE: 'odt.fecha' viene de la BD (String YYYY-MM-DD)
-      // Debemos parsear esa fecha base, no usar values.fecha, porque 'odt' puede ser de ayer
       const [y, m, d] = odt.fecha.split('-').map(Number);
-      const fechaBaseOdt = new Date(y, m - 1, d); // Mes es 0-indexado en JS Date
-
+      const fechaBaseOdt = new Date(y, m - 1, d);
       const existingStart = createDateTime(fechaBaseOdt, odt.horaLlegada?.substring(0, 5));
       const existingEnd = calculateEndDateTime(fechaBaseOdt, odt.horaLlegada?.substring(0, 5), odt.horaSalida?.substring(0, 5));
-
-      // 3. Chequeo de solapamiento
       const haySolapamientoTiempo = (newStart < existingEnd && newEnd > existingStart);
 
       if (haySolapamientoTiempo) {
-        // Construimos mensaje de error detallado
         const msgBase = `Conflicto con ODT #${odt.nroODT} (${format(existingStart, 'HH:mm')} - ${format(existingEnd, 'HH:mm')})`;
-
         if (values.choferId && values.choferId === odt.choferId) return `Chofer ocupado. ${msgBase}`;
         if (values.ayudanteId && values.ayudanteId === odt.ayudanteId) return `Ayudante ocupado. ${msgBase}`;
         if (values.vehiculoPrincipalId && values.vehiculoPrincipalId === odt.vehiculoPrincipalId) return `Vehículo ocupado. ${msgBase}`;
@@ -291,31 +274,23 @@ export default function ODTForm({ mode = "create", odtId }) {
       const url = mode === "create" ? "/api/odts" : `/api/odts/${odtId}`;
       const method = mode === "create" ? "POST" : "PUT";
 
-      // --- CAMBIO AQUÍ: SANITIZACIÓN DE DATOS ---
-      // Convertimos cadenas vacías "" a null para que PostgreSQL no falle
       const payload = {
         ...values,
         nombreCreador: nombre + " " + apellido,
         userId,
         fecha: format(values.fecha, 'yyyy-MM-dd'),
-
-        // Limpiamos las horas: Si es "" o undefined, mandamos null
         horaLlegada: values.horaLlegada || null,
         horaSalida: values.horaSalida || null,
-
         choferEntradaBase: values.choferEntradaBase || null,
         choferSalidaBase: values.choferSalidaBase || null,
-
         ayudanteEntradaBase: values.ayudanteEntradaBase || null,
         ayudanteSalidaBase: values.ayudanteSalidaBase || null,
+        
+        // Opcional: Puedes guardar el costo estimado en la BD si agregas los campos al modelo de ODT
+        // costoEstimado: estimacion?.costoTotal || 0,
       };
-      // ------------------------------------------
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       if (!response.ok) throw new Error("Error en servidor");
       notifications.show({ title: "Éxito", message: "Guardado correctamente", color: "green" });
       router.push("/superuser/odt");
@@ -324,10 +299,8 @@ export default function ODTForm({ mode = "create", odtId }) {
     }
   };
 
-
   if (loadingInit) return <Center h="94vh"><Loader size="xl" /></Center>;
 
-  // CONFIGURACIÓN VISUAL DEL ESTADO
   const isFinalizada = form.values.estado === 'Finalizada';
   const statusColor = isFinalizada ? 'green' : 'blue';
 
@@ -338,202 +311,188 @@ export default function ODTForm({ mode = "create", odtId }) {
             <Button variant="default" size="xs" onClick={() => router.back()}><IconArrowLeft size={18} /></Button>
             <Box>
                 <Title order={3}>
-                {mode === "create" ? "Nueva ODT" : `Editando ODT #${form.values.nroODT || ''}`}
+                {mode === "create" ? "Nueva ODT (Orden de Servicio)" : `Editando ODT #${form.values.nroODT || ''}`}
                 </Title>
-                {/* Badge de estado visual */}
                 {mode === 'edit' && (
-                    <Badge color={statusColor} variant="light" size="lg" mt={4}>
-                        {form.values.estado}
-                    </Badge>
+                    <Badge color={statusColor} variant="light" size="lg" mt={4}>{form.values.estado}</Badge>
                 )}
             </Box>
         </Group>
       </Group>
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-          <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" placeholder='Selecciona un cliente' />
+        <Grid gutter="xl">
+            {/* COLUMNA IZQUIERDA (DATOS OPERATIVOS) */}
+            <Grid.Col span={{ base: 12, md: 7 }}>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+                    <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" placeholder='Selecciona un cliente' />
+                    
+                    <TextInput
+                        label="Nro ODT" placeholder="0000" {...form.getInputProps("nroODT")}
+                        onBlur={async (e) => {
+                            form.getInputProps("nroODT").onBlur(e);
+                            if (e.target.value.length === 4) {
+                                const err = await validarNumeroUnico(e.target.value);
+                                if (err) form.setFieldError('nroODT', 'Ya existe');
+                            }
+                        }}
+                    />
 
-          <TextInput
-            label="Nro ODT" placeholder="0000" {...form.getInputProps("nroODT")}
-            onBlur={async (e) => {
-              form.getInputProps("nroODT").onBlur(e);
-              if (e.target.value.length === 4) {
-                const err = await validarNumeroUnico(e.target.value);
-                if (err) form.setFieldError('nroODT', 'Ya existe');
-              }
-            }}
-          />
+                    <DateInput label="Fecha" valueFormat="DD/MM/YYYY" {...form.getInputProps('fecha')} rightSection={loadingAvailability && <Loader size="xs" />} />
+                    
+                    <Box style={{ gridColumn: '1 / -1' }}>
+                        <Textarea label="Descripción del Servicio" rows={2} {...form.getInputProps('descripcionServicio')} />
+                    </Box>
 
-          <DateInput label="Fecha" valueFormat="DD/MM/YYYY" {...form.getInputProps('fecha')} rightSection={loadingAvailability && <Loader size="xs" />} />
-          <Textarea label="Descripción" {...form.getInputProps('descripcionServicio')} />
-          <Divider my="md" />
-          <Divider my="md" />
-          <TimeInput
-            label="Salida de Base"
-            description="Salida del portón de la base"
-            {...form.getInputProps('salidaActivosBase')}
-          />
-          <TimeInput
-            label="Retorno a Base"
-            description="Entrada al portón de la base"
-            {...form.getInputProps('llegadaActivosBase')}
-          />
-          <TimeInput
-            label="Llegada a contacto con cliente"
-            description={mode === 'create' ? "(Opcional al despachar)" : ""}
-            {...form.getInputProps('horaLlegada')}
-          />
-          <TimeInput
-            label="Fin de contacto con cliente"
-            description={mode === 'create' ? "(Opcional al despachar)" : ""}
-            {...form.getInputProps('horaSalida')}
-          />
-          <Divider my="md" />
-          <Divider my="md" />
+                    {/* NUEVA SECCIÓN: MOVILIZACIÓN (Para el estimador) */}
+                    <Box style={{ gridColumn: '1 / -1' }}>
+                        <Divider label="Datos Geográficos" labelPosition="center" mb="sm" />
+                        <Group grow>
+                            <NumberInput 
+                                label="Distancia a Locación (Km)" 
+                                description="Ida y Vuelta aprox."
+                                leftSection={<IconMapPin size={16} />}
+                                {...form.getInputProps("distanciaKm")} 
+                            />
+                            <NumberInput 
+                                label="Peajes" 
+                                description="Ida y Vuelta"
+                                {...form.getInputProps("cantidadPeajes")} 
+                            />
+                        </Group>
+                    </Box>
 
-          {/* --- CHOFER --- */}
-          <Box>
-            <Group justify="space-between" mb={5}>
-              <Text size="sm" fw={500}>Chofer</Text>
-              <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />}
-                value={qChofer} onChange={(e) => setQChofer(e.target.value)} />
-            </Group>
-            <ODTSelectableGrid
-              label="Chofer"
-              data={empleadosMapeados
-                .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer")))
-                .filter(e => e.nombre.toLowerCase().includes(qChofer.toLowerCase()))}
-              onChange={(v) => form.setFieldValue("choferId", v)}
-              value={form.values.choferId}
-            />
-            {form.values.choferId && (
-              <Group grow mt="xs">
-                <TimeInput
-                  label="Entrada Base"
-                  size="xs"
-                  {...form.getInputProps('choferEntradaBase')}
+                    <Box style={{ gridColumn: '1 / -1' }}><Divider label="Control de Tiempos" labelPosition="center" /></Box>
+
+                    <TimeInput label="Salida de Base" description="Salida del portón de la base" {...form.getInputProps('salidaActivosBase')} />
+                    <TimeInput label="Retorno a Base" description="Entrada al portón de la base" {...form.getInputProps('llegadaActivosBase')} />
+                    
+                    <TimeInput label="Llegada a contacto con cliente" description={mode === 'create' ? "(Opcional al despachar)" : "Inicio del Servicio"} {...form.getInputProps('horaLlegada')} />
+                    <TimeInput label="Fin de contacto con cliente" description={mode === 'create' ? "(Opcional al despachar)" : "Fin del Servicio"} {...form.getInputProps('horaSalida')} />
+                </SimpleGrid>
+
+                <Divider my="xl" label="Asignación de Personal" labelPosition="center" />
+                
+                <Group justify="space-between" mb={5}>
+                    <Text size="sm" fw={500}>Chofer / Operador</Text>
+                    <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />} value={qChofer} onChange={(e) => setQChofer(e.target.value)} />
+                </Group>
+                <ODTSelectableGrid
+                    label="Chofer"
+                    data={empleadosMapeados.filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer") || p.nombre.toLowerCase().includes("operador"))).filter(e => e.nombre.toLowerCase().includes(qChofer.toLowerCase()))}
+                    onChange={(v) => form.setFieldValue("choferId", v)}
+                    value={form.values.choferId}
                 />
-                <TimeInput
-                  label="Salida Base"
-                  size="xs"
-                  {...form.getInputProps('choferSalidaBase')}
+                
+                <Group justify="space-between" mb={5} mt="md">
+                    <Text size="sm" fw={500}>Ayudante</Text>
+                    <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />} value={qAyudante} onChange={(e) => setQAyudante(e.target.value)} />
+                </Group>
+                <ODTSelectableGrid
+                    label="Ayudante"
+                    data={empleadosMapeados.filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante"))).filter(e => e.nombre.toLowerCase().includes(qAyudante.toLowerCase()))}
+                    onChange={(v) => form.setFieldValue("ayudanteId", v)}
+                    value={form.values.ayudanteId}
                 />
-              </Group>
-            )}
-            <Divider my="sm" />
-          </Box>
 
-          {/* --- AYUDANTE --- */}
-          <Box>
-            <Group justify="space-between" mb={5}>
-              <Text size="sm" fw={500}>Ayudante</Text>
-              <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />}
-                value={qAyudante} onChange={(e) => setQAyudante(e.target.value)} />
-            </Group>
-            <ODTSelectableGrid
-              label="Ayudante"
-              data={empleadosMapeados
-                .filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante")))
-                .filter(e => e.nombre.toLowerCase().includes(qAyudante.toLowerCase()))}
-              onChange={(v) => form.setFieldValue("ayudanteId", v)}
-              value={form.values.ayudanteId}
-            />
-            {form.values.ayudanteId && (
-              <Group grow mt="xs">
-                <TimeInput
-                  label="Entrada Base"
-                  size="xs"
-                  {...form.getInputProps('ayudanteEntradaBase')}
+                <Divider my="xl" label="Asignación de Equipos" labelPosition="center" />
+                
+                <Group justify="space-between" mb={5}>
+                    <Text size="sm" fw={500}>Vehículo Principal / Maquinaria</Text>
+                    <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />} value={qVehiculo} onChange={(e) => setQVehiculo(e.target.value)} />
+                </Group>
+                <ODTSelectableGrid
+                    label="Vehículo"
+                    data={activosMapeados.filter(a => a.tipo === "Vehiculo" || a.tipo === "Maquina").filter(a => a.nombre.toLowerCase().includes(qVehiculo.toLowerCase()))}
+                    onChange={(v) => form.setFieldValue("vehiculoPrincipalId", v)}
+                    value={form.values.vehiculoPrincipalId}
                 />
-                <TimeInput
-                  label="Salida Base"
-                  size="xs"
-                  {...form.getInputProps('ayudanteSalidaBase')}
+
+                <Group justify="space-between" mb={5} mt="md">
+                    <Text size="sm" fw={500}>Remolque / Batea</Text>
+                    <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />} value={qRemolque} onChange={(e) => setQRemolque(e.target.value)} />
+                </Group>
+                <ODTSelectableGrid
+                    label="Remolque"
+                    data={activosMapeados.filter(a => a.tipo === "Remolque").filter(a => a.nombre.toLowerCase().includes(qRemolque.toLowerCase()))}
+                    onChange={(v) => form.setFieldValue("vehiculoRemolqueId", v)}
+                    value={form.values.vehiculoRemolqueId} 
                 />
-              </Group>
-            )}
-            <Divider my="sm" />
-          </Box>
+            </Grid.Col>
 
-          {/* --- VEHICULO --- */}
-          <Box>
-            <Group justify="space-between" mb={5}>
-              <Text size="sm" fw={500}>Vehículo Principal</Text>
-              <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />}
-                value={qVehiculo} onChange={(e) => setQVehiculo(e.target.value)} />
-            </Group>
-            <ODTSelectableGrid
-              label="Vehículo"
-              data={activosMapeados
-                .filter(a => a.tipo === "Vehiculo")
-                .filter(a => a.nombre.toLowerCase().includes(qVehiculo.toLowerCase()))}
-              onChange={(v) => form.setFieldValue("vehiculoPrincipalId", v)}
-              value={form.values.vehiculoPrincipalId}
-            />
-            <Divider my="sm" />
-          </Box>
+            {/* COLUMNA DERECHA (ESTIMADOR DE COSTOS DE SERVICIO) */}
+            <Grid.Col span={{ base: 12, md: 5 }}>
+                <Paper withBorder p="md" bg="blue.0" radius="md" style={{ position: 'sticky', top: '80px' }}>
+                    <Group mb="md">
+                        <IconCalculator size={24} color="#1c7ed6" />
+                        <Title order={4}>Análisis de Costos de la ODT</Title>
+                    </Group>
 
-          {/* --- REMOLQUE --- */}
-          <Box>
-            <Group justify="space-between" mb={5}>
-              <Text size="sm" fw={500}>Remolque</Text>
-              <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />}
-                value={qRemolque} onChange={(e) => setQRemolque(e.target.value)} />
-            </Group>
-            <ODTSelectableGrid
-              label="Remolque"
-              data={activosMapeados
-                .filter(a => a.tipo === "Remolque")
-                .filter(a => a.nombre.toLowerCase().includes(qRemolque.toLowerCase()))}
-              onChange={(v) => form.setFieldValue("vehiculoRemolqueId", v)}
-              value={form.values.vehiculoRemolqueId} />
-            <Divider my="sm" />
-          </Box>
+                    {horasOperacionCalculadas > 0 ? (
+                        <Badge color="blue" mb="sm" variant="light" size="lg">Tiempo Operativo: {horasOperacionCalculadas.toFixed(1)} Hrs</Badge>
+                    ) : (
+                        <Text size="xs" c="dimmed" mb="sm">Si no ingresas horas de llegada/salida, el sistema proyecta un turno estándar de 8 horas.</Text>
+                    )}
 
-          {/* --- MAQUINARIA --- */}
-          <Box>
-            <Group justify="space-between" mb={5}>
-              <Text size="sm" fw={500}>Maquinaria</Text>
-              <TextInput placeholder="Buscar..." size="xs" w={150} leftSection={<IconSearch size={12} />}
-                value={qMaquinaria} onChange={(e) => setQMaquinaria(e.target.value)} />
-            </Group>
-            <ODTSelectableGrid
-              label="Maquinaria"
-              data={activosMapeados
-                .filter(a => a.tipo === "Maquina")
-                .filter(a => a.nombre.toLowerCase().includes(qMaquinaria.toLowerCase()))}
-              onChange={(v) => form.setFieldValue("maquinariaId", v)}
-              value={form.values.maquinariaId} />
-            <Divider my="sm" />
-          </Box>
+                    {calcLoading ? (
+                        <Center my="xl"><Loader /></Center>
+                    ) : estimacion ? (
+                        <>
+                            <Grid gutter="xs">
+                                <Grid.Col span={8}><Text size="sm">Combustible (Movilización + Operación):</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${estimacion.breakdown?.combustible?.toFixed(2)}</Text></Grid.Col>
 
-        </SimpleGrid>
+                                <Grid.Col span={8}><Text size="sm">Mantenimiento (Rodamiento + PTO):</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${estimacion.breakdown?.mantenimiento?.toFixed(2)}</Text></Grid.Col>
 
+                                <Grid.Col span={8}><Text size="sm">Posesión (Depreciación + Seguros):</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${estimacion.breakdown?.posesion?.toFixed(2)}</Text></Grid.Col>
 
+                                <Grid.Col span={8}><Text size="sm">Operativos (Nómina, Peajes):</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${estimacion.breakdown?.operativos?.toFixed(2)}</Text></Grid.Col>
 
-        <Group mt="xl" justify="flex-end" style={{ position: 'sticky', bottom: 0, background: 'white', padding: '10px 0', borderTop: '1px solid #eee', zIndex: 10 }}>
+                                <Grid.Col span={12}><Divider my="xs" /></Grid.Col>
 
-          {/* CASO 1: MODO CREACIÓN */}
+                                <Grid.Col span={7}><Text fw={700}>Costo Operativo Real:</Text></Grid.Col>
+                                <Grid.Col span={5}><Text fw={700} ta="right" c="red.9">${estimacion.costoTotal?.toFixed(2)}</Text></Grid.Col>
+
+                                <Grid.Col span={7}><Text size="xl" fw={900} c="green.9">TARIFA ODT:</Text></Grid.Col>
+                                <Grid.Col span={5}><Text size="xl" fw={900} ta="right" c="green.9">${estimacion.precioSugerido?.toFixed(2)}</Text></Grid.Col>
+                            </Grid>
+
+                            <Alert mt="xl" color="teal" variant="filled" icon={<IconClockHour4 size={20}/>}>
+                                <Group justify="space-between">
+                                    <Text fw={700}>Costo Sugerido por Hora:</Text>
+                                    <Text size="xl" fw={900}>
+                                        ${(estimacion.precioSugerido / (horasOperacionCalculadas > 0 ? horasOperacionCalculadas : 8)).toFixed(2)} / hr
+                                    </Text>
+                                </Group>
+                            </Alert>
+                        </>
+                    ) : (
+                        <Text c="dimmed" ta="center" my="xl">Seleccione un vehículo principal para calcular los costos operativos de esta ODT.</Text>
+                    )}
+                </Paper>
+            </Grid.Col>
+        </Grid>
+
+        {/* BOTONERA INFERIOR (MANTENIDA INTACTA) */}
+        <Group mt="xl" justify="flex-end" style={{ position: 'sticky', bottom: 0, background: 'white', padding: '15px 0', borderTop: '1px solid #eee', zIndex: 10 }}>
           {mode === 'create' && (
-            <Button size="md" type="submit" loading={loadingInit} color="blue" leftSection={<IconTruck size={20} />}>
-              Despachar Unidad (Crear)
+            <Button size="xl" type="submit" loading={loadingInit} color="blue" leftSection={<IconTruck size={24} />}>
+              Despachar Unidad (Crear ODT)
             </Button>
           )}
 
-          {/* CASO 2: MODO EDICIÓN */}
           {mode === 'edit' && (
             <Group>
-                
-              {/* BOTÓN: GUARDAR CAMBIOS (Siempre visible) */}
-              <Button variant="default" onClick={() => handleSubmit(form.values)}>
+              <Button size="lg" variant="default" onClick={() => handleSubmit(form.values)}>
                 Guardar Cambios
               </Button>
 
-              {/* LÓGICA DE ESTADOS */}
               {!isFinalizada ? (
-                  // SI ESTÁ EN CURSO -> MOSTRAR FINALIZAR
                   <Button
+                    size="lg"
                     color="green"
                     leftSection={<IconCheck size={20} />}
                     onClick={() => {
@@ -541,7 +500,6 @@ export default function ODTForm({ mode = "create", odtId }) {
                         notifications.show({ title:"Faltan datos", message: "Ingresa horas de Llegada y Salida para finalizar", color: 'red' });
                         return;
                       }
-                      // CAMBIO MÁGICO DE ESTADO
                       const valuesClosing = { ...form.values, estado: 'Finalizada' };
                       handleSubmit(valuesClosing);
                     }}
@@ -549,15 +507,12 @@ export default function ODTForm({ mode = "create", odtId }) {
                     Finalizar ODT
                   </Button>
               ) : (
-                  // SI ESTÁ FINALIZADA -> MOSTRAR REABRIR
                   <Button
+                    size="lg"
                     color="orange"
                     variant="light"
                     leftSection={<IconLockOpen size={20} />}
                     onClick={() => {
-                        // CAMBIO MÁGICO DE ESTADO INVERSO
-                        // Al reabrir, podrías querer limpiar las horas o dejarlas para edición.
-                        // Aquí las dejamos, pero cambiamos el estado.
                         const valuesReopening = { ...form.values, estado: 'En Curso' };
                         handleSubmit(valuesReopening);
                     }}

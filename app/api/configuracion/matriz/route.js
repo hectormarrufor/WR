@@ -5,7 +5,7 @@ import db from '@/models';
 export async function GET() {
     try {
         const matrices = await db.MatrizCosto.findAll({
-            attributes: ['id', 'nombre', 'tipoActivo', 'totalCostoKm', 'updatedAt'],
+            attributes: ['id', 'nombre', 'tipoActivo', 'totalCostoKm', 'updatedAt', "totalCostoHora", "costoPosesionHora"], // Solo campos necesarios para la lista
             order: [['nombre', 'ASC']]
         });
         return NextResponse.json(matrices);
@@ -27,7 +27,9 @@ export async function POST(req) {
         const nuevaMatriz = await db.MatrizCosto.create({
             nombre: body.nombre,
             tipoActivo: body.tipoActivo,
-            totalCostoKm: 0
+            totalCostoKm,
+            totalCostoHora,
+            costoPosesionHora,
         });
 
         return NextResponse.json(nuevaMatriz);

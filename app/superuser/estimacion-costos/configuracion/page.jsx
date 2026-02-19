@@ -13,6 +13,7 @@ import { notifications } from '@mantine/notifications';
 // Importamos tu componente editor
 import MatrizEditor from './MatrizEditor'; // Asegúrate de la ruta correcta
 import { useRouter } from 'next/navigation';
+import { formatDateShort } from '@/app/helpers/dateUtils';
 
 export default function ConfiguracionCostosPage() {
     const [matrices, setMatrices] = useState([]);
@@ -36,6 +37,7 @@ export default function ConfiguracionCostosPage() {
         try {
             const res = await fetch('/api/configuracion/matriz');
             const data = await res.json();
+            console.log(data)
             setMatrices(data);
         } catch (error) {
             console.error(error);
@@ -153,6 +155,10 @@ export default function ConfiguracionCostosPage() {
                                 >
                                     {matriz.tipoActivo}
                                 </Badge>
+
+                                <Text size="sm" c="dimmed" lineClamp={2}>
+                                    {formatDateShort(new Date(matriz.updatedAt))}
+                                </Text>
                                 <IconSettings size={16} color="gray" />
                             </Group>
 
@@ -160,12 +166,21 @@ export default function ConfiguracionCostosPage() {
                                 {matriz.nombre}
                             </Text>
 
-                            <Group mt="md" align="flex-end" gap={4}>
-                                <Text size="xl" fw={700} c="teal">
-                                    ${matriz.totalCostoKm?.toFixed(3) || '0.000'}
-                                </Text>
-                                <Text size="xs" c="dimmed" mb={4}>/ Km</Text>
+                            <Group mt="md" align="space-between" justify='space-between' gap={4}>
+                                <Group>
+                                    <Text size="xl" fw={700} c="teal">
+                                        ${matriz.totalCostoKm?.toFixed(3) || '0.000'}
+                                    </Text>
+                                    <Text size="xs" c="dimmed" mb={4}>/ Km</Text>
+                                </Group>
+                                <Group>
+                                    <Text size="xl" fw={700} c="teal">
+                                        ${matriz.totalCostoHora?.toFixed(3) || '0.000'}
+                                    </Text>
+                                    <Text size="xs" c="dimmed" mb={4}>/ Hr</Text>
+                                </Group>
                             </Group>
+
                         </Card>
                     ))}
                 </SimpleGrid>

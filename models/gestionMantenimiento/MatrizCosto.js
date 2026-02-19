@@ -14,7 +14,10 @@ const MatrizCosto = sequelize.define('MatrizCosto', {
   totalCostoKm: {
     type: DataTypes.FLOAT,
     defaultValue: 0
-  }
+  },
+  totalCostoHora: { type: DataTypes.FLOAT, defaultValue: 0 },
+  
+  costoPosesionHora: { type: DataTypes.FLOAT, defaultValue: 0 } // Si lo estabas guardando
 });
 
 MatrizCosto.associate = (models) => {

@@ -6,11 +6,10 @@ import {
     TextInput, NumberInput, Button, Group,
     SimpleGrid, Stack, Select, Text, Divider, Alert,
     LoadingOverlay, ThemeIcon, Stepper, Paper, Title,
-    Tooltip, ActionIcon, Accordion, Code,
-    Badge
+    Tooltip, ActionIcon, Accordion, Code, Slider, Badge
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconCheck, IconCoin, IconEdit, IconTool, IconAlertCircle, IconInfoCircle, IconCalculator } from '@tabler/icons-react';
+import { IconCheck, IconCoin, IconEdit, IconTool, IconAlertCircle, IconInfoCircle, IconCalculator, IconSettings } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import ImageDropzone from '../components/ImageDropzone';
@@ -26,11 +25,8 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const [loading, setLoading] = useState(false);
     const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]);
     
-    // CONFIGURACIÓN GLOBAL (DB)
-    const [globalConfig, setGlobalConfig] = useState({
-        horasAnuales: 2000, 
-        tasaInteres: 5.0    
-    });
+    // CONFIGURACIÓN GLOBAL (Tasa de interés Base)
+    const [tasaInteresGlobal, setTasaInteresGlobal] = useState(5.0);
 
     const form = useForm({
         initialValues: {
@@ -38,7 +34,6 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             codigoInterno: initialData?.codigoInterno || '',
             estado: initialData?.estado || 'Operativo',
             ubicacionActual: initialData?.ubicacionActual || 'Base Principal',
-
             placa: initialData?.vehiculoInstancia?.placa || initialData?.remolqueInstancia?.placa || '',
             serialCarroceria: initialData?.vehiculoInstancia?.serialChasis || '',
             serialMotor: initialData?.vehiculoInstancia?.serialMotor || initialData?.maquinaInstancia?.serialMotor || '',
@@ -48,13 +43,17 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             kilometrajeActual: initialData?.vehiculoInstancia?.kilometrajeActual || 0,
             horometroActual: initialData?.vehiculoInstancia?.horometroActual || initialData?.maquinaInstancia?.horometroActual || 0,
 
-            // --- FINANCIEROS (AHORA EN BLANCO POR DEFECTO) ---
+            // --- FINANCIEROS Y OPERATIVOS (NUEVOS CAMPOS) ---
             matrizCostoId: initialData?.matrizCostoId ? String(initialData.matrizCostoId) : '',
             valorReposicion: initialData?.valorReposicion || '',
             vidaUtilAnios: initialData?.vidaUtilAnios || '',
             valorSalvamento: initialData?.valorSalvamento || '',
+            
+            // Perfil Operativo (Control total por activo)
+            horasAnuales: initialData?.horasAnuales || 2000,
+            velocidadPromedio: initialData?.velocidadPromedio || 40,
+            calidadRepuestos: initialData?.calidadRepuestos || 50, // 50% es el promedio
 
-            // --- INSTALACIONES ---
             instalacionesIniciales: []
         },
         validate: {
@@ -62,25 +61,21 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             matrizCostoId: (val) => (!val ? 'Debes asignar una estructura de costos' : null),
             valorReposicion: (val) => (!val || val <= 0 ? 'Ingrese el valor del equipo' : null),
             vidaUtilAnios: (val) => (!val || val <= 0 ? 'Ingrese los años de vida útil' : null),
-            valorSalvamento: (val) => (val === '' || val < 0 ? 'Ingrese un valor de salvamento (puede ser 0)' : null),
+            valorSalvamento: (val) => (val === '' || val < 0 ? 'Ingrese valor de salvamento' : null),
+            horasAnuales: (val) => (!val || val <= 0 ? 'Requerido' : null),
         }
     });
 
-    // 1. CARGAR CONFIGURACIÓN GLOBAL
+    // 1. CARGAR CONFIG GLOBAL
     useEffect(() => {
         const fetchConfig = async () => {
             try {
                 const res = await fetch('/api/configuracion/global');
                 if (res.ok) {
                     const data = await res.json();
-                    setGlobalConfig({
-                        horasAnuales: parseFloat(data.horasAnualesOperativas) || 2000,
-                        tasaInteres: parseFloat(data.tasaInteresAnual) || 5.0
-                    });
+                    setTasaInteresGlobal(parseFloat(data.tasaInteresAnual) || 5.0);
                 }
-            } catch (error) {
-                console.error("Error cargando config global:", error);
-            }
+            } catch (error) { console.error(error); }
         };
         fetchConfig();
     }, []);
@@ -93,76 +88,68 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                 const result = await res.json();
                 const rawItems = result.items || result.data || [];
                 if (rawItems.length > 0) {
-                    const itemsFormateados = rawItems.map(c => ({
+                    setConsumiblesCompatibles(rawItems.map(c => ({
                         value: c.id.toString(),
                         label: `${c.nombre} - Stock: ${parseFloat(c.stockAlmacen || 0)}`,
                         categoria: c.categoria,
                         stockActual: parseFloat(c.stockAlmacen || 0),
                         disabled: parseFloat(c.stockAlmacen || 0) <= 0,
                         raw: c
-                    }));
-                    setConsumiblesCompatibles(itemsFormateados);
+                    })));
                 }
             } catch (err) { console.error(err); }
         };
         fetchInventario();
     }, []);
 
-    // 3. PRE-CARGA DATOS EDICIÓN
-    useEffect(() => {
-        if (isEditing && initialData?.subsistemasInstancia) {
-            const componentesExistentes = [];
-            initialData.subsistemasInstancia.forEach(sub => {
-                if (sub.instalaciones) {
-                    sub.instalaciones.forEach(inst => {
-                        componentesExistentes.push({
-                            subsistemaPlantillaId: sub.subsistemaPlantillaId,
-                            recomendacionId: inst.recomendacionId,
-                            consumibleId: inst.consumibleId,
-                            cantidad: inst.cantidad,
-                            serial: inst.serialActual,
-                            esExistente: true,
-                            idInstalacion: inst.id
-                        });
-                    });
-                }
-            });
-            form.setFieldValue('instalacionesIniciales', componentesExistentes);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isEditing, initialData]);
-
     // --------------------------------------------------------
-    // CÁLCULO
+    // CÁLCULO DINÁMICO AVANZADO
     // --------------------------------------------------------
     const valor = parseFloat(form.values.valorReposicion) || 0;
     const salvamento = parseFloat(form.values.valorSalvamento) || 0;
     const vida = parseInt(form.values.vidaUtilAnios) || 1;
     
-    const horasAnuales = globalConfig.horasAnuales;
-    const tasaInteres = globalConfig.tasaInteres / 100;
+    // Perfil operativo ingresado por el usuario
+    const horasAnuales = parseInt(form.values.horasAnuales) || 2000;
+    const velocidad = parseInt(form.values.velocidadPromedio) || 0;
+    const calidad = parseInt(form.values.calidadRepuestos) || 50; // 0 a 100
+    const factorCalidad = calidad / 100; // 0.0 a 1.0
+    const tasaInteres = tasaInteresGlobal / 100;
 
-    // Depreciación
+    // A. DEPRECIACIÓN E INTERÉS
     const montoADepreciar = valor - salvamento;
     const vidaEnHoras = vida * horasAnuales;
     const depHora = vidaEnHoras > 0 ? (montoADepreciar / vidaEnHoras) : 0;
-    
-    // Interés (Costo Oportunidad)
     const intHora = horasAnuales > 0 ? ((valor * tasaInteres) / horasAnuales) : 0;
-    
     const costoPosesionHora = depHora + intHora;
 
-    // Mantenimiento
+    // B. MANTENIMIENTO (Ajustado por velocidad y calidad)
     let costoMantenimientoHora = 0;
-    let costoKmMatriz = 0;
+    let costoMatrizOriginalKm = 0;
     const matrizIdSeleccionada = form.values.matrizCostoId;
 
     if (matrizIdSeleccionada && matricesData.length > 0) {
         const matriz = matricesData.find(m => String(m.id) === String(matrizIdSeleccionada));
         if (matriz) {
-            costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);
-            const velocidadPromedio = 40; 
-            costoMantenimientoHora = costoKmMatriz * velocidadPromedio;
+            costoMatrizOriginalKm = parseFloat(matriz.totalCostoKm || 0);
+            
+            // LÓGICA DE LICITACIÓN (Slider)
+            // Asumimos de manera simplificada que el Costo Promedio (50%) es el de la BD.
+            // Si baja a 0% (Chino), el costo se reduce un 30% del original.
+            // Si sube a 100% (Premium), el costo aumenta un 30% del original.
+            // (Si usaras los campos costoMinimo/Maximo de la BD, iterarías matriz.detalles aquí).
+            const variacion = -0.30 + (0.60 * factorCalidad); // Rango: -0.30 a +0.30
+            const costoKmAjustado = costoMatrizOriginalKm * (1 + variacion);
+
+            // LÓGICA DE VELOCIDAD / EQUIPO ESTACIONARIO
+            if (velocidad === 0) {
+                // Si la velocidad es 0 (Ej: Equipo Achicando/Estacionario), 
+                // los costos por KM no aplican, pero asumimos un desgaste de motor equivalente.
+                // Regla industrial común: 1 hora de motor en ralentí = 40 km de desgaste de motor.
+                costoMantenimientoHora = costoKmAjustado * 40; // O el factor que estimes en tu empresa
+            } else {
+                costoMantenimientoHora = costoKmAjustado * velocidad;
+            }
         }
     }
 
@@ -179,92 +166,57 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     // --------------------------------------------------------
     const handleNextStep = () => {
         let hasError = false;
-        if (active === 0) {
-            const checkCodigo = form.validateField('codigoInterno');
-            if (checkCodigo.hasError) hasError = true;
-        } else if (active === 1) {
-            const checkMatriz = form.validateField('matrizCostoId');
-            const checkValor = form.validateField('valorReposicion');
-            const checkVida = form.validateField('vidaUtilAnios');
-            const checkSalvamento = form.validateField('valorSalvamento');
-            if (checkMatriz.hasError || checkValor.hasError || checkVida.hasError || checkSalvamento.hasError) {
-                hasError = true;
-            }
+        if (active === 0 && form.validateField('codigoInterno').hasError) hasError = true;
+        else if (active === 1) {
+            const errs = ['matrizCostoId', 'valorReposicion', 'vidaUtilAnios', 'valorSalvamento', 'horasAnuales'].map(f => form.validateField(f).hasError);
+            if (errs.includes(true)) hasError = true;
         }
         if (!hasError) setActive((c) => c + 1);
-        else notifications.show({ title: 'Atención', message: 'Verifique los campos obligatorios en rojo', color: 'orange' });
+        else notifications.show({ title: 'Atención', message: 'Verifique los campos obligatorios', color: 'orange' });
     };
 
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
             let payload = {
-                codigoInterno: values.codigoInterno,
-                estado: values.estado,
-                ubicacionActual: values.ubicacionActual,
-                placa: values.placa,
-                color: values.color,
-                serialChasis: values.serialCarroceria,
-                serialMotor: values.serialMotor,
-                anioFabricacion: values.anioFabricacion,
-                kilometrajeActual: values.kilometrajeActual,
-                horometroActual: values.horometroActual,
-                matrizCostoId: parseInt(values.matrizCostoId),
-                valorReposicion: parseFloat(values.valorReposicion),
-                vidaUtilAnios: parseInt(values.vidaUtilAnios),
-                valorSalvamento: parseFloat(values.valorSalvamento),
+                ...values,
                 costoPosesionHora: costoCalculado.posesion, 
                 usuario: nombre + ' ' + apellido,
-                instalacionesIniciales: values.instalacionesIniciales
             };
 
+            // Manejo de Imagen
             if (values.imagen && typeof values.imagen !== 'string') {
-                const file = values.imagen;
-                const ext = file.name.split('.').pop();
-                const filename = `${values.codigoInterno}-${Date.now()}.${ext}`;
-                const uploadRes = await fetch(`/api/upload?filename=${encodeURIComponent(filename)}`, { method: 'POST', body: file });
-                const blobData = await uploadRes.json();
-                payload.imagen = blobData.url;
-            } else if (typeof values.imagen === 'string') {
-                payload.imagen = values.imagen;
+                const ext = values.imagen.name.split('.').pop();
+                const uploadRes = await fetch(`/api/upload?filename=${values.codigoInterno}-${Date.now()}.${ext}`, { method: 'POST', body: values.imagen });
+                payload.imagen = (await uploadRes.json()).url;
             }
 
             let url = isEditing ? `/api/gestionMantenimiento/activos/${initialData.id}` :
                 (tipoActivo === 'Vehiculo' ? '/api/gestionMantenimiento/activos/vehiculos' :
                     tipoActivo === 'Remolque' ? '/api/gestionMantenimiento/activos/remolques' :
                         '/api/gestionMantenimiento/activos/maquinas');
-            let method = isEditing ? 'PUT' : 'POST';
 
             if (!isEditing) payload.modeloVehiculoId = plantilla.id;
 
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
+            const response = await fetch(url, { method: isEditing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const res = await response.json();
+            
             if (res.success) {
                 notifications.show({ title: 'Éxito', message: 'Guardado correctamente', color: 'green' });
-                if (isEditing) router.push(`/superuser/flota/activos/${initialData.id}`);
-                else router.push('/superuser/flota/activos');
+                router.push(isEditing ? `/superuser/flota/activos/${initialData.id}` : '/superuser/flota/activos');
             } else throw new Error(res.error || 'Error en el servidor');
 
         } catch (error) {
-            console.error(error);
             notifications.show({ title: 'Error', message: error.message, color: 'red' });
         } finally { setLoading(false); }
     };
-
-    const isVehiculo = tipoActivo === 'Vehiculo' || initialData?.tipoActivo === 'Vehiculo';
-    const isMaquina = tipoActivo === 'Maquina' || initialData?.tipoActivo === 'Maquina';
 
     return (
         <Stack gap="xl">
             <LoadingOverlay visible={loading} zIndex={1000} />
 
             <Stepper active={active} onStepClick={setActive} allowNextStepsSelect={isEditing}>
-                {/* PASO 0 */}
+                {/* PASO 0: FÍSICO (Igual que antes) */}
                 <Stepper.Step label="Físico" description="Identificación">
                     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" mt="md">
                         <Stack>
@@ -274,7 +226,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                             <Divider label="Legal" my="sm" />
                             <TextInput label="Placa" {...form.getInputProps('placa')} />
                             <TextInput label="VIN / Serial Carrocería" {...form.getInputProps('serialCarroceria')} />
-                            {(isVehiculo || isMaquina) && <TextInput label="Serial Motor" {...form.getInputProps('serialMotor')} />}
+                            <TextInput label="Serial Motor" {...form.getInputProps('serialMotor')} />
                         </Stack>
                         <Stack>
                             <ImageDropzone form={form} fieldPath="imagen" currentImage={isEditing ? initialData?.imagen : null} />
@@ -282,134 +234,98 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                 <Select label="Color" data={["Blanco", "Amarillo", "Rojo", "Azul"]} {...form.getInputProps('color')} />
                                 <NumberInput label="Año" {...form.getInputProps('anioFabricacion')} />
                             </Group>
-                            {isVehiculo && <NumberInput label="Km Actual" {...form.getInputProps('kilometrajeActual')} disabled={isEditing} />}
-                            {(isVehiculo || isMaquina) && <NumberInput label="Horómetro" {...form.getInputProps('horometroActual')} disabled={isEditing} />}
+                            <NumberInput label="Km Actual" {...form.getInputProps('kilometrajeActual')} disabled={isEditing} />
+                            <NumberInput label="Horómetro" {...form.getInputProps('horometroActual')} disabled={isEditing} />
                         </Stack>
                     </SimpleGrid>
                 </Stepper.Step>
 
-                {/* PASO 1: FINANCIERO CON DETALLE */}
-                <Stepper.Step label="Financiero" description="Costos y Depreciación" icon={<IconCoin size={18} />}>
+                {/* PASO 1: FINANCIERO Y OPERATIVO */}
+                <Stepper.Step label="Financiero" description="Cotización y Costos" icon={<IconCoin size={18} />}>
                     <SimpleGrid cols={{ base: 1, sm: 2 }} mt="md" spacing="xl">
-                        <Stack>
-                            <Alert title="Matriz de Mantenimiento" color="blue" icon={<IconCoin />}>
-                                Costos variables basados en repuestos y servicios ($/Km).
-                            </Alert>
-                            <Select
-                                label="Seleccionar Matriz"
-                                placeholder="Buscar perfil..."
-                                data={matricesCostos}
-                                searchable
-                                nothingFoundMessage="No hay matrices"
-                                required
-                                {...form.getInputProps('matrizCostoId')}
-                            />
-
-                            {costoCalculado.mantenimiento > 0 && (
-                                <Paper withBorder p="md" bg="blue.0" radius="md">
-                                    <Group justify="space-between" mb="xs">
-                                        <Text size="sm" fw={700} c="blue.9">Costo Matriz (BD):</Text>
-                                        <Text fw={700} c="blue.9">${costoKmMatriz.toFixed(4)} / km</Text>
-                                    </Group>
-                                    <Divider color="blue.2" />
-                                    <Group justify="space-between" mt="xs">
-                                        <Text size="sm" c="dimmed">Velocidad Promedio Est.:</Text>
-                                        <Text size="sm">40 km/h</Text>
-                                    </Group>
-                                    <Group justify="space-between">
-                                        <Text size="sm" fw={700} c="blue.8">Costo Hora Mantenimiento:</Text>
-                                        <Text fw={700} size="lg" c="blue.8">${costoCalculado.mantenimiento.toFixed(2)} / hr</Text>
-                                    </Group>
-                                </Paper>
-                            )}
-                        </Stack>
-
+                        
+                        {/* COLUMNA IZQUIERDA: MANTENIMIENTO Y LICITACIÓN */}
                         <Stack>
                             <Paper withBorder p="md" radius="md">
-                                <Group justify="space-between" mb="md">
-                                    <Title order={5}>Parámetros de Posesión</Title>
-                                    <Badge variant="light" color="gray">
-                                        Base: {globalConfig.horasAnuales} hrs/año • Tasa: {globalConfig.tasaInteres}%
-                                    </Badge>
-                                </Group>
-                                
-                                <NumberInput 
-                                    required 
-                                    label="Valor de Adquisición / Reposición ($)" 
-                                    prefix="$" 
-                                    thousandSeparator 
-                                    mb="sm" 
-                                    {...form.getInputProps('valorReposicion')} 
+                                <Title order={5} mb="sm" c="blue.9">1. Matriz y Calidad (Repuestos)</Title>
+                                <Select
+                                    label="Matriz Base"
+                                    placeholder="Seleccione estructura de costos..."
+                                    data={matricesCostos}
+                                    searchable required mb="md"
+                                    {...form.getInputProps('matrizCostoId')}
                                 />
+                                
+                                <Text size="sm" fw={500} mb={4}>Calidad / Presupuesto Repuestos</Text>
+                                <Slider
+                                    color="blue"
+                                    marks={[
+                                        { value: 0, label: 'Económico' },
+                                        { value: 50, label: 'Promedio' },
+                                        { value: 100, label: 'Premium' },
+                                    ]}
+                                    {...form.getInputProps('calidadRepuestos')}
+                                    mb="xl" pb="sm"
+                                />
+                            </Paper>
+
+                            <Paper withBorder p="md" radius="md" mt="sm">
+                                <Group justify="space-between" mb="xs">
+                                    <Title order={5} c="orange.9">2. Perfil Operativo (Contrato)</Title>
+                                    <Tooltip label="Ajusta estos valores según la licitación o trabajo específico. Si está estacionario (Achique), usa 0 km/h."><IconInfoCircle size={16}/></Tooltip>
+                                </Group>
+                                <Group grow>
+                                    <NumberInput required label="Horas Anuales Estimadas" {...form.getInputProps('horasAnuales')} />
+                                    <NumberInput required label="Velocidad Promedio (km/h)" {...form.getInputProps('velocidadPromedio')} />
+                                </Group>
+                            </Paper>
+                        </Stack>
+
+                        {/* COLUMNA DERECHA: POSESIÓN Y RESULTADOS */}
+                        <Stack>
+                            <Paper withBorder p="md" radius="md">
+                                <Title order={5} mb="md" c="teal.9">3. Inversión y Posesión</Title>
+                                <NumberInput required label="Valor de Adquisición ($)" prefix="$" thousandSeparator mb="sm" {...form.getInputProps('valorReposicion')} />
                                 <Group grow align="flex-start">
+                                    <NumberInput required label="Vida Útil (Años)" {...form.getInputProps('vidaUtilAnios')} />
                                     <NumberInput 
                                         required 
-                                        label="Vida Útil (Años)" 
-                                        {...form.getInputProps('vidaUtilAnios')} 
-                                    />
-                                    <NumberInput 
-                                        required 
-                                        label={
-                                            <Group gap={4}>
-                                                Valor Salvamento ($)
-                                                <Tooltip 
-                                                    label="El valor residual o de venta esperado que tendrá el equipo cuando lo vayas a desincorporar/vender en el futuro. Ej: Compras un chuto en $40.000, pero estimas venderlo en $5.000 cuando ya esté muy viejo." 
-                                                    multiline 
-                                                    w={260} 
-                                                    withArrow 
-                                                    position="top"
-                                                >
-                                                    <IconInfoCircle size={14} style={{ cursor: 'help', color: 'var(--mantine-color-blue-6)' }} />
-                                                </Tooltip>
-                                            </Group>
-                                        }
-                                        prefix="$" 
-                                        thousandSeparator 
-                                        {...form.getInputProps('valorSalvamento')} 
+                                        label={<Group gap={4}>Salvamento ($)<Tooltip label="Valor de reventa futuro"><IconInfoCircle size={14} /></Tooltip></Group>}
+                                        prefix="$" thousandSeparator {...form.getInputProps('valorSalvamento')} 
                                     />
                                 </Group>
                             </Paper>
 
-                            {/* --- DESGLOSE DETALLADO CON FÓRMULAS EXPLÍCITAS --- */}
+                            {/* RESULTADOS MATEMÁTICOS */}
                             <Accordion variant="contained" radius="md" defaultValue="calculo">
                                 <Accordion.Item value="calculo" style={{ backgroundColor: 'var(--mantine-color-teal-0)', borderColor: 'var(--mantine-color-teal-3)' }}>
                                     <Accordion.Control icon={<IconCalculator size={20} color="teal"/>}>
-                                        <Text fw={700} c="teal.9" size="lg">COSTO TOTAL: ${costoCalculado.total.toFixed(2)} / hr</Text>
+                                        <Text fw={700} c="teal.9" size="lg">COTIZACIÓN EST.: ${costoCalculado.total.toFixed(2)} / hr</Text>
                                     </Accordion.Control>
                                     <Accordion.Panel>
                                         <Stack gap="xs">
-                                            <Divider label="1. DEPRECIACIÓN" labelPosition="left" color="teal.2" />
-                                            <Text size="xs" c="dimmed">Fórmula Explícita:</Text>
-                                            <Code block color="teal.1" c="teal.9" style={{ fontSize: '11px', lineHeight: 1.4 }}>
-                                                (Valor Activo: ${valor.toLocaleString()} - Salvamento: ${salvamento.toLocaleString()})<br/>
-                                                ──────────────────────────────────────────────────────────<br/>
-                                                (Vida Útil: {vida} años × {globalConfig.horasAnuales.toLocaleString()} hrs/año)
-                                            </Code>
-                                            <Group justify="space-between" mt={4}>
-                                                <Text size="sm" fw={500}>Costo Depreciación:</Text>
-                                                <Text size="sm" fw={700}>${costoCalculado.depreciacion.toFixed(2)} / hr</Text>
+                                            <Divider label="1. MANTENIMIENTO" labelPosition="left" color="blue.2" />
+                                            <Group justify="space-between">
+                                                <Text size="xs" c="dimmed">Perfil Seleccionado:</Text>
+                                                <Badge size="sm" color={form.values.calidadRepuestos < 40 ? 'red' : form.values.calidadRepuestos > 60 ? 'green' : 'blue'}>
+                                                    {form.values.calidadRepuestos}% Calidad
+                                                </Badge>
+                                            </Group>
+                                            {form.values.velocidadPromedio === 0 && (
+                                                <Alert color="orange" p="xs" title="Equipo Estacionario">
+                                                    Se asume desgaste de motor en ralentí (~40km equivalentes/hora).
+                                                </Alert>
+                                            )}
+                                            <Group justify="space-between">
+                                                <Text size="sm" fw={500}>Costo Mantenimiento:</Text>
+                                                <Text size="sm" fw={700}>${costoCalculado.mantenimiento.toFixed(2)} / hr</Text>
                                             </Group>
 
-                                            <Divider label="2. INTERÉS (Costo Financiero)" labelPosition="left" color="teal.2" mt="sm" />
-                                            <Text size="xs" c="dimmed">Fórmula Explícita:</Text>
-                                            <Code block color="teal.1" c="teal.9" style={{ fontSize: '11px', lineHeight: 1.4 }}>
-                                                (Valor Activo: ${valor.toLocaleString()} × Tasa Interés: {globalConfig.tasaInteres}%)<br/>
-                                                ──────────────────────────────────────────────────<br/>
-                                                ({globalConfig.horasAnuales.toLocaleString()} hrs/año)
-                                            </Code>
-                                            <Group justify="space-between" mt={4}>
-                                                <Text size="sm" fw={500}>Costo Financiero:</Text>
-                                                <Text size="sm" fw={700}>${costoCalculado.intereses.toFixed(2)} / hr</Text>
-                                            </Group>
-
-                                            <Divider label="RESUMEN" labelPosition="center" color="teal.3" mt="sm" />
+                                            <Divider label="2. POSESIÓN" labelPosition="left" color="teal.2" mt="sm" />
+                                            <Text size="xs" c="dimmed">Depreciación + Interés (Base {form.values.horasAnuales}h/año):</Text>
                                             <Group justify="space-between">
-                                                <Text size="sm">Mantenimiento (Matriz BD):</Text>
-                                                <Text size="sm">${costoCalculado.mantenimiento.toFixed(2)} / hr</Text>
-                                            </Group>
-                                            <Group justify="space-between">
-                                                <Text size="sm">Posesión (Depreciación + Interés):</Text>
-                                                <Text size="sm">${costoCalculado.posesion.toFixed(2)} / hr</Text>
+                                                <Text size="sm" fw={500}>Costo Posesión:</Text>
+                                                <Text size="sm" fw={700}>${costoCalculado.posesion.toFixed(2)} / hr</Text>
                                             </Group>
                                         </Stack>
                                     </Accordion.Panel>
@@ -421,22 +337,10 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
 
                 {/* PASO 2: COMPONENTES */}
                 <Stepper.Step label="Componentes" description="Inventario" icon={<IconTool size={18} />}>
-                    {isEditing && (
-                        <Alert color="orange" icon={<IconAlertCircle size={16} />} mb="md" title="Modo Edición">
-                            Modificar estos componentes aquí actualizará la configuración base.
-                        </Alert>
-                    )}
                     {plantilla && (
                         <SimpleGrid cols={1} spacing="md">
                             {plantilla.subsistemas?.map((sub) => (
-                                <ComponenteInstaller
-                                    key={sub.id}
-                                    form={form}
-                                    subsistema={sub}
-                                    inventarioGlobal={consumiblesCompatibles}
-                                    instalaciones={form.values.instalacionesIniciales}
-                                    onChange={(newGlobalState) => form.setFieldValue('instalacionesIniciales', newGlobalState)}
-                                />
+                                <ComponenteInstaller key={sub.id} form={form} subsistema={sub} inventarioGlobal={consumiblesCompatibles} instalaciones={form.values.instalacionesIniciales} onChange={(v) => form.setFieldValue('instalacionesIniciales', v)} />
                             ))}
                         </SimpleGrid>
                     )}

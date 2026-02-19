@@ -2,48 +2,31 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-    TextInput,
-    NumberInput,
-    Button,
-    Paper,
-    Title,
-    Center,
-    SimpleGrid,
-    Box,
-    Divider,
-    Grid,
-    Text,
-    Loader,
-    Group,
-    Badge,
-    Select,
+    TextInput, NumberInput, Button, Paper, Title, Center,
+    SimpleGrid, Box, Divider, Grid, Text, Loader, Group, Badge, Select
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconMapPin, IconCalculator, IconCoin, IconTruck } from "@tabler/icons-react";
+import { IconMapPin, IconCalculator, IconCoin, IconTruck, IconRoute } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 
-// Componentes importados
 import GoogleRouteMap from "./GoogleRouteMap";
 import ODTSelectableGrid from "../../odt/ODTSelectableGrid";
 import { SelectClienteConCreacion } from "../../contratos/SelectClienteConCreacion";
 
-// Función de cálculo mejorada (puedes moverla a lib/calcularCostoFlete.js)
-
 export default function FleteCreator() {
     const router = useRouter();
-    const { nombre, apellido, userId } = useAuth();
+    const { userId, nombre, apellido } = useAuth();
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     const [empleados, setEmpleados] = useState([]);
     const [activos, setActivos] = useState([]);
-    const [configPrecios, setConfigPrecios] = useState({ peaje: 5, gasoil: 0.8 }); // defaults realistas
+    const [configPrecios, setConfigPrecios] = useState({ peaje: 5, gasoil: 0.5 });
     const [bcv, setBcv] = useState(null);
     const [rutaData, setRutaData] = useState(null);
 
@@ -52,21 +35,15 @@ export default function FleteCreator() {
             clienteId: "",
             fechaSalida: new Date(),
             nroFlete: "",
-
             choferId: null,
             ayudanteId: null,
             activoPrincipalId: null,
             remolqueId: null,
-
             origen: "Base DADICA - Tía Juana",
-            destino: "",
+            destino: "Circuito Múltiple", // Ahora es un texto genérico o lo reemplazamos por el array de direcciones
             distanciaKm: 0,
-            coordenadasDestino: null,
-
+            waypoints: [], // Guardamos las coordenadas de las paradas
             cantidadPeajes: 0,
-            observaciones: "",
-
-            // Nuevos para cálculo sólido
             tonelaje: 0,
             tipoCarga: "general",
         },
@@ -75,11 +52,11 @@ export default function FleteCreator() {
             fechaSalida: (val) => (val ? null : "Fecha requerida"),
             choferId: (val) => (val ? null : "Debe asignar un chofer"),
             activoPrincipalId: (val) => (val ? null : "Debe asignar un vehículo principal"),
-            distanciaKm: (val) => (val > 0 ? null : "Debe seleccionar un destino en el mapa"),
+            distanciaKm: (val) => (val > 0 ? null : "Debe trazar una ruta en el mapa (Mínimo 1 parada)"),
         },
     });
 
-    // Fetch datos maestros
+    // Carga de maestros
     useEffect(() => {
         const cargarDatos = async () => {
             try {
@@ -97,13 +74,11 @@ export default function FleteCreator() {
                 if (resPrecios) {
                     setConfigPrecios({
                         peaje: parseFloat(resPrecios.peaje5ejes || 5),
-                        gasoil: parseFloat(resPrecios.gasoil || 0.8), // ajusta según subsidio/internacional
+                        gasoil: parseFloat(resPrecios.gasoil || 0.5),
                     });
                 }
-
                 setLoading(false);
             } catch (error) {
-                console.error(error);
                 notifications.show({ title: "Error", message: "No se pudieron cargar los datos", color: "red" });
                 setLoading(false);
             }
@@ -114,77 +89,61 @@ export default function FleteCreator() {
     const activosMapeados = useMemo(() => {
         return activos.map((v) => {
             let nombreDisplay = v.codigoInterno;
-            let placa = "";
-            let tipo = v.tipoActivo;
-            let tarifa = parseFloat(v.tarifaPorKm || 0);
-
-            if (v.vehiculoInstancia) {
-                nombreDisplay = `${v.vehiculoInstancia.plantilla.marca} ${v.vehiculoInstancia.plantilla.modelo}`;
-                placa = v.vehiculoInstancia.placa;
-            } else if (v.remolqueInstancia) {
-                nombreDisplay = `${v.remolqueInstancia.plantilla.marca} ${v.remolqueInstancia.plantilla.modelo}`;
-                placa = v.remolqueInstancia.placa;
-            }
-
+            let placa = v.vehiculoInstancia?.placa || v.remolqueInstancia?.placa || "";
             return {
                 id: v.id,
                 nombre: `${nombreDisplay} (${placa})`,
-                subtitulo: `Tarifa: $${tarifa}/km`,
+                subtitulo: `Tarifa: $${v.tarifaPorKm || 0}/km`,
                 imagen: v.imagen,
-                tipo: tipo,
-                tarifa,
+                tipo: v.tipoActivo,
             };
         });
     }, [activos]);
 
-    // Cálculo automático con React Query
+    // Estimador de Costos (React Query)
     const { data: estimacion, isLoading: calcLoading } = useQuery({
         queryKey: [
-            "calcular-flete",
+            "calcular-flete-puro",
             form.values.activoPrincipalId,
+            form.values.remolqueId,
             rutaData?.distanciaTotal,
             form.values.tonelaje,
             form.values.tipoCarga,
-            form.values.cantidadPeajes,
+            form.values.cantidadPeajes
         ],
         queryFn: async () => {
-            if (!rutaData?.distanciaTotal || !form.values.activoPrincipalId) return null;
+            if (!form.values.activoPrincipalId || !rutaData?.distanciaTotal) return null;
 
             const response = await fetch('/api/fletes/estimar', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    tipoCotizacion: 'flete', // FIJO: Esto es pura logística
                     activoPrincipalId: form.values.activoPrincipalId,
+                    remolqueId: form.values.remolqueId,
                     distanciaKm: rutaData.distanciaTotal,
                     tonelaje: form.values.tonelaje,
                     tipoCarga: form.values.tipoCarga,
                     cantidadPeajes: form.values.cantidadPeajes,
                     precioPeajeUnitario: configPrecios.peaje,
                     precioGasoilUsd: configPrecios.gasoil,
-                    porcentajeGanancia: 0.30,
-                    bcv: bcv || 390, // pasa el BCV actual para cálculos más precisos
-                    // horasEstimadas: lo calculamos en el backend ahora
-                    // bcv: lo puedes pasar si lo necesitas en backend
+                    porcentajeGanancia: 0.30, 
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error('Error en la API de cálculo');
-            }
-
+            if (!response.ok) throw new Error('Error en cálculo');
             return response.json();
         },
-        enabled: !!rutaData?.distanciaTotal && !!form.values.activoPrincipalId,
-        staleTime: 1000 * 60 * 5, // 5 minutos – ajusta según quieras
+        enabled: !!form.values.activoPrincipalId && !!rutaData?.distanciaTotal,
     });
 
     const handleRouteCalculated = useCallback((data) => {
         setRutaData(data);
-        form.setFieldValue("destino", data.direccionDestino || "Ubicación en Mapa");
         form.setFieldValue("distanciaKm", parseFloat(data.distanciaTotal));
-        form.setFieldValue("coordenadasDestino", data.coordenadas);
+        form.setFieldValue("waypoints", data.waypoints); // Guardamos JSON de coordenadas
+        // Si hay varios destinos, los concatenamos o mostramos cantidad
+        const destinosTexto = data.rutasDetalle ? data.rutasDetalle.join(" | ") : "Varias paradas";
+        form.setFieldValue("destino", destinosTexto);
     }, []);
 
     const handleSubmit = async (values) => {
@@ -192,7 +151,8 @@ export default function FleteCreator() {
         try {
             const payload = {
                 ...values,
-                costoPeajesTotal: estimacion?.breakdown.peajes || 0,
+                waypoints: JSON.stringify(values.waypoints), // Guardamos coordenadas en la BD
+                costoPeajesTotal: estimacion?.breakdown?.peajes || 0,
                 montoFleteTotal: estimacion?.precioSugerido || 0,
                 costoEstimado: estimacion?.costoTotal || 0,
                 precioSugerido: estimacion?.precioSugerido || 0,
@@ -208,7 +168,7 @@ export default function FleteCreator() {
 
             if (!response.ok) throw new Error("Error al guardar el flete");
 
-            notifications.show({ title: "Éxito", message: "Flete programado correctamente", color: "green" });
+            notifications.show({ title: "Éxito", message: "Flete logístico programado", color: "green" });
             router.push("/superuser/fletes");
         } catch (error) {
             notifications.show({ title: "Error", message: error.message, color: "red" });
@@ -228,120 +188,40 @@ export default function FleteCreator() {
                         <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" />
 
                         <Group grow>
-                            <DateInput
-                                label="Fecha de Salida"
-                                valueFormat="DD/MM/YYYY"
-                                {...form.getInputProps("fechaSalida")}
-                            />
-                            <TextInput
-                                label="Nro Control (Opcional)"
-                                placeholder="FL-XXXX"
-                                {...form.getInputProps("nroFlete")}
-                            />
+                            <DateInput label="Fecha de Salida" valueFormat="DD/MM/YYYY" {...form.getInputProps("fechaSalida")} />
+                            <TextInput label="Nro Control" placeholder="FL-XXXX" {...form.getInputProps("nroFlete")} />
                         </Group>
 
                         <Divider label="Recursos Humanos" labelPosition="center" />
-
-                        <Box>
-                            <ODTSelectableGrid
-                                label="Chofer Principal"
-                                data={empleados
-                                    .filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer")))
-                                    .map((e) => ({
-                                        id: e.id,
-                                        nombre: `${e.nombre} ${e.apellido}`,
-                                        imagen: e.imagen,
-                                    }))}
-                                onChange={(val) => form.setFieldValue("choferId", val)}
-                                value={form.values.choferId}
-                            />
-                        </Box>
-
-                        <Box>
-                            <ODTSelectableGrid
-                                label="Ayudante (Opcional)"
-                                data={empleados
-                                    .filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante")))
-                                    .map((e) => ({
-                                        id: e.id,
-                                        nombre: `${e.nombre} ${e.apellido}`,
-                                        imagen: e.imagen,
-                                    }))}
-                                onChange={(val) => form.setFieldValue("ayudanteId", val)}
-                                value={form.values.ayudanteId}
-                            />
-                        </Box>
+                        <ODTSelectableGrid label="Chofer Principal" data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen }))} onChange={(val) => form.setFieldValue("choferId", val)} value={form.values.choferId} />
+                        <ODTSelectableGrid label="Ayudante (Opcional)" data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen }))} onChange={(val) => form.setFieldValue("ayudanteId", val)} value={form.values.ayudanteId} />
 
                         <Divider label="Equipos" labelPosition="center" />
+                        <ODTSelectableGrid label="Vehículo Principal (Chuto)" data={activosMapeados.filter((a) => a.tipo === "Vehiculo")} onChange={(val) => form.setFieldValue("activoPrincipalId", val)} value={form.values.activoPrincipalId} />
+                        <ODTSelectableGrid label="Remolque / Batea" data={activosMapeados.filter((a) => a.tipo === "Remolque")} onChange={(val) => form.setFieldValue("remolqueId", val)} value={form.values.remolqueId} />
 
-                        <Box>
-                            <ODTSelectableGrid
-                                label="Vehículo Principal (Chuto)"
-                                data={activosMapeados.filter((a) => a.tipo === "Vehiculo")}
-                                onChange={(val) => form.setFieldValue("activoPrincipalId", val)}
-                                value={form.values.activoPrincipalId}
-                            />
-                        </Box>
-
-                        <Box>
-                            <ODTSelectableGrid
-                                label="Remolque / Batea"
-                                data={activosMapeados.filter((a) => a.tipo === "Remolque")}
-                                onChange={(val) => form.setFieldValue("remolqueId", val)}
-                                value={form.values.remolqueId}
-                            />
-                        </Box>
-
-                        {/* Nuevos campos para cálculo sólido */}
                         <Divider label="Detalles de Carga" labelPosition="center" />
-                        <NumberInput
-                            label="Tonelaje de Carga (ton)"
-                            min={0}
-                            step={0.5}
-                            placeholder="Ej: 25"
-                            {...form.getInputProps("tonelaje")}
-                        />
-                        <Select
-                            label="Tipo de Carga"
-                            data={[
-                                { value: "general", label: "General / No peligrosa" },
-                                { value: "petrolera", label: "Hidrocarburos / Petrolera (PDVSA)" },
-                                { value: "peligrosa", label: "Peligrosa / Químicos" },
-                            ]}
-                            {...form.getInputProps("tipoCarga")}
-                        />
+                        <Group grow>
+                            <NumberInput label="Tonelaje Total (ton)" min={0} step={0.5} {...form.getInputProps("tonelaje")} />
+                            <Select label="Tipo de Carga" data={[{ value: "general", label: "General / No peligrosa" }, { value: "petrolera", label: "Hidrocarburos" }, { value: "peligrosa", label: "Químicos" }]} {...form.getInputProps("tipoCarga")} />
+                        </Group>
                     </SimpleGrid>
                 </Grid.Col>
 
                 {/* COLUMNA DERECHA */}
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper withBorder p="sm" radius="md" mb="md" bg="gray.0">
-                        <Group mb="xs">
-                            <IconMapPin size={20} />
-                            <Text fw={700}>Seleccione el Destino</Text>
+                        <Group mb="xs" justify="space-between">
+                            <Group>
+                                <IconRoute size={20} />
+                                <Text fw={700}>Trazar Ruta (Múltiples Paradas)</Text>
+                            </Group>
+                            <Text size="xs" c="dimmed">Haz clic en el mapa para agregar entregas. El circuito cierra en Base automáticamente.</Text>
                         </Group>
-                        <Box h={{ base: 300, sm: 400 }} style={{ position: "relative", overflow: "hidden", borderRadius: "8px" }}>
+
+                        <Box h={{ base: 350, sm: 400 }} style={{ borderRadius: "8px", overflow: 'hidden' }}>
                             <GoogleRouteMap onRouteCalculated={handleRouteCalculated} />
                         </Box>
-
-                        {rutaData && (
-                            <Box mt="sm">
-                                <Text size="sm" fw={700}>
-                                    Destino: <Text span c="dimmed">{rutaData.direccionDestino}</Text>
-                                </Text>
-                                <Text size="sm" fw={700} pt={10}>
-                                    Ida y Vuelta:
-                                </Text>
-                                <Group grow mt="xs">
-                                    <Badge size="lg" variant="dot" color="blue">
-                                        {rutaData.distanciaTotal} km
-                                    </Badge>
-                                    <Badge size="lg" variant="dot" color="orange">
-                                        {rutaData.tiempoEstimado}
-                                    </Badge>
-                                </Group>
-                            </Box>
-                        )}
                     </Paper>
 
                     <Paper withBorder p="md" mb="md">
@@ -350,92 +230,47 @@ export default function FleteCreator() {
                             <Text fw={700}>Gastos de Ruta</Text>
                         </Group>
                         <SimpleGrid cols={2}>
-                            <NumberInput
-                                label="Cantidad de Peajes"
-                                description="Ingrese total (Ida y Vuelta)"
-                                min={0}
-                                {...form.getInputProps("cantidadPeajes")}
-                            />
-                            <TextInput
-                                label="Precio Unitario"
-                                value={`$${configPrecios.peaje}`}
-                                readOnly
-                                description="Según configuración global"
-                            />
+                            <NumberInput label="Cantidad Total de Peajes (Circuito Completo)" min={0} {...form.getInputProps("cantidadPeajes")} />
+                            <TextInput label="Precio Unitario" value={`$${configPrecios.peaje}`} readOnly />
                         </SimpleGrid>
                     </Paper>
 
-                    {/* RESUMEN MEJORADO */}
+                    {/* RESUMEN FINANCIERO */}
                     <Paper withBorder p="md" bg="blue.0" radius="md">
                         <Group mb="md">
                             <IconCalculator size={24} color="#1c7ed6" />
-                            <Title order={4}>Resumen de Costos Estimados</Title>
+                            <Title order={4}>Presupuesto de Flete</Title>
                         </Group>
 
-                        {calcLoading ? (
-                            <Loader />
-                        ) : estimacion ? (
+                        {calcLoading ? <Center><Loader /></Center> : estimacion ? (
+                            <Grid gutter="xs">
+                                <Grid.Col span={8}><Text size="sm">Combustible (Rendimiento por {form.values.tonelaje} Tons):</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${estimacion.breakdown.combustible.toFixed(2)}</Text></Grid.Col>
 
-                            <>
-                                <Badge
-                                    color={estimacion.metrics.fuente === 'historial_real' ? 'green' : 'orange'}
-                                    variant="light"
-                                    size="lg"
-                                    mt="md"
-                                >
-                                    {estimacion.metrics.detalle}
-                                </Badge>
-                                <Grid>
-                                    <Grid.Col span={8}><Text>Combustible:</Text></Grid.Col>
-                                    <Grid.Col span={4}><Text ta="right">${estimacion.breakdown.combustible}</Text></Grid.Col>
+                                <Grid.Col span={8}><Text size="sm">Nómina (Chofer + Ayudante) y Viáticos:</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${(estimacion.breakdown.nomina + estimacion.breakdown.viaticos).toFixed(2)}</Text></Grid.Col>
 
-                                    <Grid.Col span={8}><Text>Nómina (chofer + ayudante):</Text></Grid.Col>
-                                    <Grid.Col span={4}><Text ta="right">${estimacion.breakdown.nomina}</Text></Grid.Col>
+                                <Grid.Col span={8}><Text size="sm">Peajes:</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${estimacion.breakdown.peajes.toFixed(2)}</Text></Grid.Col>
 
-                                    <Grid.Col span={8}><Text>Viáticos:</Text></Grid.Col>
-                                    <Grid.Col span={4}><Text ta="right">${estimacion.breakdown.viaticos}</Text></Grid.Col>
+                                <Grid.Col span={8}><Text size="sm">Desgaste Activos (Cauchos, Aceite, Seguros):</Text></Grid.Col>
+                                <Grid.Col span={4}><Text size="sm" ta="right">${(estimacion.breakdown.mantenimiento + estimacion.breakdown.posesion).toFixed(2)}</Text></Grid.Col>
 
-                                    <Grid.Col span={8}><Text>Peajes:</Text></Grid.Col>
-                                    <Grid.Col span={4}><Text ta="right">${estimacion.breakdown.peajes}</Text></Grid.Col>
+                                <Grid.Col span={12}><Divider my="xs" /></Grid.Col>
 
-                                    <Grid.Col span={8}><Text>Desgaste cauchos:</Text></Grid.Col>
-                                    <Grid.Col span={4}><Text ta="right">${estimacion.breakdown.desgasteCaucho}</Text></Grid.Col>
+                                <Grid.Col span={6}><Text fw={700}>Costo Operativo Real:</Text></Grid.Col>
+                                <Grid.Col span={6}><Text fw={700} ta="right" c="red.9">${estimacion.costoTotal.toFixed(2)}</Text></Grid.Col>
 
-                                    <Grid.Col span={8}><Text>Fijos prorrateados + activo:</Text></Grid.Col>
-                                    <Grid.Col span={4}><Text ta="right">${estimacion.breakdown.fijosProrrateados}</Text></Grid.Col>
-
-                                    {estimacion.breakdown.sobretasa > 0 && (
-                                        <>
-                                            <Grid.Col span={8}><Text>Sobretasa PDVSA:</Text></Grid.Col>
-                                            <Grid.Col span={4}><Text ta="right">${estimacion.breakdown.sobretasa}</Text></Grid.Col>
-                                        </>
-                                    )}
-
-                                    <Grid.Col span={12}><Divider my="xs" /></Grid.Col>
-
-                                    <Grid.Col span={6}><Text size="lg" fw={900}>Costo Total Estimado:</Text></Grid.Col>
-                                    <Grid.Col span={6}><Text size="lg" fw={900} ta="right">${estimacion.costoTotal}</Text></Grid.Col>
-
-                                    <Grid.Col span={6}><Text size="xl" fw={900} c="green">Precio Sugerido:</Text></Grid.Col>
-                                    <Grid.Col span={6}><Text size="xl" fw={900} ta="right" c="green">${estimacion.precioSugerido}</Text></Grid.Col>
-                                </Grid>
-                            </>
+                                <Grid.Col span={6}><Text size="xl" fw={900} c="green.9">PRECIO DEL FLETE:</Text></Grid.Col>
+                                <Grid.Col span={6}><Text size="xl" fw={900} ta="right" c="green.9">${estimacion.precioSugerido.toFixed(2)}</Text></Grid.Col>
+                            </Grid>
                         ) : (
-                            <Text c="dimmed" ta="center">
-                                Completa ruta, vehículo principal y tonelaje para ver el cálculo automático
-                            </Text>
+                            <Text c="dimmed" ta="center">Seleccione el chuto y trace al menos un punto en el mapa.</Text>
                         )}
                     </Paper>
 
-                    <Button
-                        fullWidth
-                        size="xl"
-                        mt="xl"
-                        type="submit"
-                        loading={submitting}
-                        leftSection={<IconTruck size={24} />}
-                    >
-                        Confirmar Flete
+                    <Button fullWidth size="xl" mt="xl" type="submit" loading={submitting} leftSection={<IconTruck size={24} />}>
+                        Confirmar Flete Logístico
                     </Button>
                 </Grid.Col>
             </Grid>

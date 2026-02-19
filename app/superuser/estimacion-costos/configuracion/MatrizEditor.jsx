@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { 
     Paper, Table, NumberInput, TextInput, Button, Group, Text, Title, 
-    ActionIcon, Stack, Divider, Card, Badge, LoadingOverlay 
+    ActionIcon, Stack, Card, Badge, LoadingOverlay, Select, ScrollArea
 } from '@mantine/core';
 import { IconTrash, IconPlus, IconCalculator, IconDeviceFloppy } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -13,7 +13,9 @@ export default function MatrizEditor({ matrizId }) {
     const [filas, setFilas] = useState([]);
     const [loading, setLoading] = useState(false);
     
-    // Cargar datos del Backend
+    // Asumimos 2000 horas anuales / 12 meses para convertir los gastos mensuales a por Hora.
+    const HORAS_POR_MES = 166.66; 
+
     useEffect(() => {
         if (!matrizId) return;
         setLoading(true);
@@ -26,29 +28,50 @@ export default function MatrizEditor({ matrizId }) {
             });
     }, [matrizId]);
 
-    // Calcular el $/Km de una fila (Lógica del Excel)
+    // Función que devuelve cuánto aporta esta fila al $/Km y cuánto al $/Hr
     const calcularCostoFila = (f) => {
-        if (!f.frecuenciaKm || f.frecuenciaKm === 0) return 0;
-        return (f.cantidad * f.costoUnitario) / f.frecuenciaKm;
+        if (!f.frecuencia || f.frecuencia === 0) return { km: 0, hora: 0 };
+        
+        const costoGasto = f.cantidad * f.costoUnitario;
+        
+        if (f.tipoDesgaste === 'km') {
+            return { km: costoGasto / f.frecuencia, hora: 0 };
+        } 
+        else if (f.tipoDesgaste === 'horas') {
+            return { km: 0, hora: costoGasto / f.frecuencia };
+        } 
+        else if (f.tipoDesgaste === 'meses') {
+            return { km: 0, hora: costoGasto / (f.frecuencia * HORAS_POR_MES) };
+        }
+        
+        return { km: 0, hora: 0 };
     };
 
-    // Calcular Total General
-    const totalKm = filas.reduce((sum, f) => sum + calcularCostoFila(f), 0);
+    const totalKm = filas.reduce((sum, f) => sum + calcularCostoFila(f).km, 0);
+    const totalHora = filas.reduce((sum, f) => sum + calcularCostoFila(f).hora, 0);
 
-    // Handlers
     const updateFila = (index, field, val) => {
         const nuevasFilas = [...filas];
         nuevasFilas[index][field] = val;
+        
+        // Auto-calcular promedio
+        if (field === 'costoMinimo' || field === 'costoMaximo') {
+            const min = field === 'costoMinimo' ? val : nuevasFilas[index].costoMinimo;
+            const max = field === 'costoMaximo' ? val : nuevasFilas[index].costoMaximo;
+            nuevasFilas[index].costoUnitario = (min + max) / 2;
+        }
         setFilas(nuevasFilas);
     };
 
     const addFila = () => {
-        setFilas([...filas, { descripcion: '', unidad: 'Unidad', cantidad: 1, frecuenciaKm: 10000, costoUnitario: 0 }]);
+        setFilas([...filas, { 
+            descripcion: '', unidad: 'Unidad', cantidad: 1, 
+            tipoDesgaste: 'km', frecuencia: 10000, 
+            costoMinimo: 0, costoUnitario: 0, costoMaximo: 0 
+        }]);
     };
 
-    const removeFila = (index) => {
-        setFilas(filas.filter((_, i) => i !== index));
-    };
+    const removeFila = (index) => setFilas(filas.filter((_, i) => i !== index));
 
     const guardarCambios = async () => {
         setLoading(true);
@@ -56,14 +79,16 @@ export default function MatrizEditor({ matrizId }) {
             const res = await fetch(`/api/configuracion/matriz/${matrizId}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ detalles: filas, totalCalculado: totalKm })
+                body: JSON.stringify({ 
+                    detalles: filas, 
+                    totalCostoKm: totalKm,
+                    totalCostoHora: totalHora 
+                })
             });
             if (res.ok) notifications.show({ title: 'Guardado', message: 'Estructura actualizada', color: 'green' });
         } catch (e) {
             notifications.show({ title: 'Error', message: 'No se pudo guardar', color: 'red' });
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     if (!header) return <Text>Seleccione un Perfil de Costos...</Text>;
@@ -75,109 +100,97 @@ export default function MatrizEditor({ matrizId }) {
             <Group justify="space-between" mb="md">
                 <div>
                     <Title order={3}>{header.nombre}</Title>
-                    <Text c="dimmed" size="sm">Estructura de Costos Operativos (Réplica Excel)</Text>
+                    <Text c="dimmed" size="sm">Cálculo Dual de Costos (Rodamiento vs Tiempo)</Text>
                 </div>
-                <Button 
-                    leftSection={<IconDeviceFloppy size={18}/>} 
-                    color="blue" 
-                    onClick={guardarCambios}
-                >
+                <Button leftSection={<IconDeviceFloppy size={18}/>} color="blue" onClick={guardarCambios}>
                     Guardar Cambios
                 </Button>
             </Group>
 
-            <Card withBorder radius="md" mb="lg" bg="gray.0">
-                <Group justify="space-between">
-                    <Group>
-                        <IconCalculator size={32} color="gray" />
-                        <div>
-                            <Text fw={700} size="lg">Costo Variable Total</Text>
-                            <Text size="xs" c="dimmed">Suma de todos los componentes</Text>
-                        </div>
+            {/* AHORA MOSTRAMOS DOS TARJETAS */}
+            <Group grow mb="lg">
+                <Card withBorder radius="md" bg="blue.0">
+                    <Group justify="space-between">
+                        <Group>
+                            <IconCalculator size={24} color="gray" />
+                            <div>
+                                <Text fw={700}>Costo por Rodamiento</Text>
+                                <Text size="xs" c="dimmed">Cauchos, Frenos, Tren Delantero</Text>
+                            </div>
+                        </Group>
+                        <Badge size="xl" variant="filled" color="blue">
+                            ${totalKm.toFixed(4)} / Km
+                        </Badge>
                     </Group>
-                    <Badge size="xl" variant="filled" color="teal" style={{ fontSize: 18 }}>
-                        ${totalKm.toFixed(4)} / Km
-                    </Badge>
-                </Group>
-            </Card>
+                </Card>
+                <Card withBorder radius="md" bg="orange.0">
+                    <Group justify="space-between">
+                        <Group>
+                            <IconCalculator size={24} color="gray" />
+                            <div>
+                                <Text fw={700}>Costo por Tiempo/Motor</Text>
+                                <Text size="xs" c="dimmed">Baterías, Aceites, Seguros</Text>
+                            </div>
+                        </Group>
+                        <Badge size="xl" variant="filled" color="orange">
+                            ${totalHora.toFixed(2)} / Hora
+                        </Badge>
+                    </Group>
+                </Card>
+            </Group>
 
-            <Table striped highlightOnHover withTableBorder>
-                <Table.Thead bg="gray.1">
-                    <Table.Tr>
-                        <Table.Th>Descripción (Insumo)</Table.Th>
-                        <Table.Th style={{ width: 100 }}>Unidad</Table.Th>
-                        <Table.Th style={{ width: 100 }}>Cant.</Table.Th>
-                        <Table.Th style={{ width: 140 }}>Frecuencia (Km)</Table.Th>
-                        <Table.Th style={{ width: 140 }}>Costo Unit. ($)</Table.Th>
-                        <Table.Th style={{ width: 140, textAlign: 'right' }}>Costo ($/Km)</Table.Th>
-                        <Table.Th style={{ width: 50 }}></Table.Th>
-                    </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                    {filas.map((fila, i) => {
-                        const costoKm = calcularCostoFila(fila);
-                        return (
-                            <Table.Tr key={i}>
-                                <Table.Td>
-                                    <TextInput 
-                                        variant="unstyled" 
-                                        value={fila.descripcion} 
-                                        onChange={(e) => updateFila(i, 'descripcion', e.target.value)} 
-                                        placeholder="Nombre del repuesto"
-                                    />
-                                </Table.Td>
-                                <Table.Td>
-                                    <TextInput 
-                                        variant="unstyled" 
-                                        value={fila.unidad} 
-                                        onChange={(e) => updateFila(i, 'unidad', e.target.value)} 
-                                    />
-                                </Table.Td>
-                                <Table.Td>
-                                    <NumberInput 
-                                        variant="unstyled" 
-                                        value={fila.cantidad} 
-                                        onChange={(val) => updateFila(i, 'cantidad', val)} 
-                                        min={0}
-                                        decimalScale={1}
-                                    />
-                                </Table.Td>
-                                <Table.Td>
-                                    <NumberInput 
-                                        variant="unstyled" 
-                                        value={fila.frecuenciaKm} 
-                                        onChange={(val) => updateFila(i, 'frecuenciaKm', val)} 
-                                        min={1}
-                                        step={1000}
-                                    />
-                                </Table.Td>
-                                <Table.Td>
-                                    <NumberInput 
-                                        variant="unstyled" 
-                                        prefix="$"
-                                        value={fila.costoUnitario} 
-                                        onChange={(val) => updateFila(i, 'costoUnitario', val)} 
-                                        min={0}
-                                        decimalScale={2}
-                                    />
-                                </Table.Td>
-                                <Table.Td style={{ textAlign: 'right', fontWeight: 700, color: '#228be6' }}>
-                                    ${costoKm.toFixed(5)}
-                                </Table.Td>
-                                <Table.Td>
-                                    <ActionIcon color="red" variant="subtle" onClick={() => removeFila(i)}>
-                                        <IconTrash size={16}/>
-                                    </ActionIcon>
-                                </Table.Td>
-                            </Table.Tr>
-                        );
-                    })}
-                </Table.Tbody>
-            </Table>
+            <ScrollArea>
+                <Table striped highlightOnHover withTableBorder miw={1000}>
+                    <Table.Thead bg="gray.1">
+                        <Table.Tr>
+                            <Table.Th style={{ width: 200 }}>Descripción</Table.Th>
+                            <Table.Th style={{ width: 90 }}>Und.</Table.Th>
+                            <Table.Th style={{ width: 80 }}>Cant.</Table.Th>
+                            <Table.Th style={{ width: 110 }}>Desgaste por</Table.Th>
+                            <Table.Th style={{ width: 100 }}>Frecuencia</Table.Th>
+                            <Table.Th style={{ width: 90 }}>Min ($)</Table.Th>
+                            <Table.Th style={{ width: 90 }}>Prom ($)</Table.Th>
+                            <Table.Th style={{ width: 90 }}>Max ($)</Table.Th>
+                            <Table.Th style={{ width: 110, textAlign: 'right' }}>Aporte</Table.Th>
+                            <Table.Th style={{ width: 50 }}></Table.Th>
+                        </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {filas.map((fila, i) => {
+                            const desglose = calcularCostoFila(fila);
+                            const esKm = fila.tipoDesgaste === 'km';
+                            
+                            return (
+                                <Table.Tr key={i}>
+                                    <Table.Td><TextInput variant="unstyled" value={fila.descripcion} onChange={(e) => updateFila(i, 'descripcion', e.target.value)} placeholder="Insumo" /></Table.Td>
+                                    <Table.Td><TextInput variant="unstyled" value={fila.unidad} onChange={(e) => updateFila(i, 'unidad', e.target.value)} /></Table.Td>
+                                    <Table.Td><NumberInput variant="unstyled" value={fila.cantidad} onChange={(val) => updateFila(i, 'cantidad', val)} min={0} /></Table.Td>
+                                    <Table.Td>
+                                        <Select 
+                                            variant="unstyled" 
+                                            value={fila.tipoDesgaste} 
+                                            onChange={(val) => updateFila(i, 'tipoDesgaste', val)}
+                                            data={[{value: 'km', label: 'Kilómetros'}, {value: 'horas', label: 'Horas (Motor)'}, {value: 'meses', label: 'Meses (Tiempo)'}]}
+                                        />
+                                    </Table.Td>
+                                    <Table.Td><NumberInput variant="unstyled" value={fila.frecuencia} onChange={(val) => updateFila(i, 'frecuencia', val)} min={1} /></Table.Td>
+                                    
+                                    <Table.Td><NumberInput variant="unstyled" c="green.9" value={fila.costoMinimo} onChange={(val) => updateFila(i, 'costoMinimo', val)} min={0} decimalScale={2} /></Table.Td>
+                                    <Table.Td><NumberInput variant="unstyled" fw={700} value={fila.costoUnitario} onChange={(val) => updateFila(i, 'costoUnitario', val)} min={0} decimalScale={2} /></Table.Td>
+                                    <Table.Td><NumberInput variant="unstyled" c="red.9" value={fila.costoMaximo} onChange={(val) => updateFila(i, 'costoMaximo', val)} min={0} decimalScale={2} /></Table.Td>
+                                    
+                                    <Table.Td style={{ textAlign: 'right', fontWeight: 700, color: esKm ? '#228be6' : '#e8590c' }}>
+                                        {esKm ? `$${desglose.km.toFixed(4)}/km` : `$${desglose.hora.toFixed(2)}/hr`}
+                                    </Table.Td>
+                                    <Table.Td><ActionIcon color="red" variant="subtle" onClick={() => removeFila(i)}><IconTrash size={16}/></ActionIcon></Table.Td>
+                                </Table.Tr>
+                            );
+                        })}
+                    </Table.Tbody>
+                </Table>
+            </ScrollArea>
             
-            <Button variant="subtle" leftSection={<IconPlus size={16}/>} mt="sm" onClick={addFila}>
-                Agregar Insumo
-            </Button>
+            <Button variant="subtle" leftSection={<IconPlus size={16}/>} mt="sm" onClick={addFila}>Agregar Insumo</Button>
         </Paper>
     );
 }
