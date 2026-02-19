@@ -364,7 +364,7 @@ export default function Page({ params }) {
                         <div>
                             <Group justify="space-between" mb="xs">
                                 <Title order={4}>Esta Semana</Title>
-                                {(rol.includes("Presidente") || rol.includes("admin")) &&
+                                {(rol?.includes("Presidente") || rol?.includes("admin")) &&
                                     <Flex align="center" gap="md">
 
                                         <Badge variant="outline" color="gray">{empleado.tasaSueldo === "bcv" ? "BCV" : empleado.tasaSueldo === "euro" ? "Euro" : "USDT"}: {bcvPrecio} Bs</Badge>
@@ -390,7 +390,7 @@ export default function Page({ params }) {
                                     subtext={`de las cuales, ${horasExtraEstaSemana.toFixed(2)}h son extras`}
                                     icon={IconClock} color="blue"
                                 />
-                                {(rol.includes("Presidente") || rol.includes("admin")) && (
+                                {(rol?.includes("Presidente") || rol?.includes("admin")) && (
                                     <>
                                         <StatCard
                                             title="Total Pagar"

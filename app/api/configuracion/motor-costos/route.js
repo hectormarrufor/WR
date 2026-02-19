@@ -1,4 +1,4 @@
-const db = require('../../models');
+const db = require("@/models");
 
 async function recalcularCostosFlota() {
     const t = await db.sequelize.transaction();
