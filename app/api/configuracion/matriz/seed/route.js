@@ -139,44 +139,39 @@ const DATA_VENEZUELA_2026 = [
     },
 
     // ==========================================
-    // 7. CHUTO CON BRAZO ARTICULADO (Pitman / Hiab)
+    // 7. CHUTO IVECO CURSOR 13 2008 CON BRAZO ARTICULADO (Pitman)
     // ==========================================
     {
-        nombre: 'Chuto con Brazo Articulado (Pitman)',
+        nombre: 'Chuto Iveco Cursor 13 (2008) con Brazo Articulado',
         tipoActivo: 'Vehiculo',
-        costoPosesionHora: 16.00, 
+        costoPosesionHora: 14.50, 
         detalles: [
-            { descripcion: 'Mantenimiento Chuto Base', unidad: 'Global', cantidad: 1, tipoDesgaste: 'km', frecuencia: 1, costoMinimo: 0.35, costoMaximo: 0.45, costoUnitario: 0.38 },
+            { descripcion: 'Aceite Motor Sintético (Cursor 13)', unidad: 'Lts', cantidad: 35, tipoDesgaste: 'km', frecuencia: 10000, costoMinimo: 12, costoMaximo: 20, costoUnitario: 16 },
             { descripcion: 'Aceite Hidráulico Brazo ISO 68', unidad: 'Lts', cantidad: 120, tipoDesgaste: 'horas', frecuencia: 2000, costoMinimo: 8, costoMaximo: 14, costoUnitario: 11 },
+            { descripcion: 'Cauchos (10 Ruedas Mixtas)', unidad: 'Und', cantidad: 10, tipoDesgaste: 'km', frecuencia: 40000, costoMinimo: 300, costoMaximo: 600, costoUnitario: 450 },
             { descripcion: 'Mangueras y Sellos Brazo', unidad: 'Kit', cantidad: 1, tipoDesgaste: 'horas', frecuencia: 3000, costoMinimo: 500, costoMaximo: 1200, costoUnitario: 800 },
             { descripcion: 'Gatos Estabilizadores (Mantenimiento)', unidad: 'Par', cantidad: 1, tipoDesgaste: 'horas', frecuencia: 4000, costoMinimo: 300, costoMaximo: 800, costoUnitario: 500 },
             { descripcion: 'Certificación Izamiento (SENCAMER)', unidad: 'Servicio', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 12, costoMinimo: 400, costoMaximo: 600, costoUnitario: 500 },
-            // Legales y Seguros (NUEVO)
-            { descripcion: 'Póliza de Seguro Equipo Especial (Seguros Caracas)', unidad: 'Poliza', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 12, costoMinimo: 1500, costoMaximo: 3000, costoUnitario: 2200 },
-            { descripcion: 'Trámites Especiales Anuales (ROTC, RASDA, Ambiente)', unidad: 'Global', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 12, costoMinimo: 500, costoMaximo: 1000, costoUnitario: 750 }
+            { descripcion: 'Póliza de Seguro Equipo Especial', unidad: 'Poliza', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 12, costoMinimo: 1500, costoMaximo: 3000, costoUnitario: 2200 }
         ]
     },
 
     // ==========================================
-    // 8. VACUUM 3 EJES (Pesado 300 BBL)
+    // 8. TANQUE VACUUM 160 BBL (Remolque Independiente)
     // ==========================================
     {
-        nombre: 'Vacuum 3 Ejes (Camión + Bomba)',
-        tipoActivo: 'Vehiculo',
-        costoPosesionHora: 15.00,
+        nombre: 'Tanque Vacuum 160 BBL',
+        tipoActivo: 'Remolque',
+        costoPosesionHora: 14.00,
         detalles: [
-            { descripcion: 'Mantenimiento Chuto Base (Global)', unidad: 'Global', cantidad: 1, tipoDesgaste: 'km', frecuencia: 1, costoMinimo: 0.35, costoMaximo: 0.50, costoUnitario: 0.40 },
-            { descripcion: 'Aceite Bomba Vacuum (ISO 100/150)', unidad: 'Lts', cantidad: 10, tipoDesgaste: 'horas', frecuencia: 500, costoMinimo: 12, costoMaximo: 25, costoUnitario: 16 },
+            { descripcion: 'Cauchos Batea (8 Ruedas)', unidad: 'Und', cantidad: 8, tipoDesgaste: 'km', frecuencia: 50000, costoMinimo: 280, costoMaximo: 480, costoUnitario: 380 },
+            { descripcion: 'Bandas de Freno', unidad: 'Eje', cantidad: 2, tipoDesgaste: 'km', frecuencia: 30000, costoMinimo: 100, costoMaximo: 200, costoUnitario: 150 },
+            { descripcion: 'Aceite Bomba Vacuum (ISO 100/150)', unidad: 'Lts', cantidad: 12, tipoDesgaste: 'horas', frecuencia: 500, costoMinimo: 12, costoMaximo: 25, costoUnitario: 16 },
             { descripcion: 'Paletas Bomba (Kevlar/Fibra)', unidad: 'Juego', cantidad: 1, tipoDesgaste: 'horas', frecuencia: 1500, costoMinimo: 300, costoMaximo: 700, costoUnitario: 450 },
             { descripcion: 'Mangueras Succión 4" Trópico', unidad: 'Tramos', cantidad: 4, tipoDesgaste: 'meses', frecuencia: 6, costoMinimo: 120, costoMaximo: 280, costoUnitario: 180 },
             { descripcion: 'Válvulas de Carga y Descarga (Bronce/Inox)', unidad: 'Und', cantidad: 2, tipoDesgaste: 'meses', frecuencia: 8, costoMinimo: 150, costoMaximo: 400, costoUnitario: 250 },
-            { descripcion: 'Manómetros y Relojes de Presión', unidad: 'Und', cantidad: 2, tipoDesgaste: 'meses', frecuencia: 6, costoMinimo: 40, costoMaximo: 120, costoUnitario: 80 },
-            { descripcion: 'Toma de Fuerza (PTO) Mantenimiento', unidad: 'Servicio', cantidad: 1, tipoDesgaste: 'horas', frecuencia: 2000, costoMinimo: 200, costoMaximo: 600, costoUnitario: 350 },
-            { descripcion: 'Pintura Epóxica Interna Tanque (Corrosión)', unidad: 'Servicio', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 12, costoMinimo: 1200, costoMaximo: 2800, costoUnitario: 1800 },
-            { descripcion: 'Limpieza Interna Profunda (Lodos)', unidad: 'Servicio', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 3, costoMinimo: 100, costoMaximo: 300, costoUnitario: 180 },
-            // Legales y Seguros (NUEVO)
-            { descripcion: 'Póliza de Seguro Equipo Especial (Seguros Caracas)', unidad: 'Poliza', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 12, costoMinimo: 1500, costoMaximo: 3000, costoUnitario: 2200 },
-            { descripcion: 'Trámites Especiales Anuales (ROTC, RASDA, Ambiente)', unidad: 'Global', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 12, costoMinimo: 500, costoMaximo: 1000, costoUnitario: 750 }
+            { descripcion: 'Toma de Fuerza (PTO) / Cardán', unidad: 'Servicio', cantidad: 1, tipoDesgaste: 'horas', frecuencia: 2000, costoMinimo: 200, costoMaximo: 600, costoUnitario: 350 },
+            { descripcion: 'Pintura Epóxica Interna Tanque 160 BBL', unidad: 'Servicio', cantidad: 1, tipoDesgaste: 'meses', frecuencia: 18, costoMinimo: 1000, costoMaximo: 2200, costoUnitario: 1500 }
         ]
     },
 

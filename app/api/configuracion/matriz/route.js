@@ -5,7 +5,7 @@ import db from '@/models';
 export async function GET() {
     try {
         const matrices = await db.MatrizCosto.findAll({
-            attributes: ['id', 'nombre', 'tipoActivo', 'totalCostoKm', 'updatedAt', "totalCostoHora", "costoPosesionHora"], // Solo campos necesarios para la lista
+            // attributes: ['id', 'nombre', 'tipoActivo', 'totalCostoKm', 'updatedAt', "totalCostoHora", "costoPosesionHora"], // Solo campos necesarios para la lista
             order: [['nombre', 'ASC']]
         });
         return NextResponse.json(matrices);

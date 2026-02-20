@@ -1,4 +1,4 @@
-// app/superuser/flota/activos/[id]/editar/page.jsx (o donde lo tengas)
+// app/superuser/flota/activos/[id]/editar/page.jsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,7 +12,10 @@ export default function EditarActivoPage() {
     
     const [initialData, setInitialData] = useState(null);
     const [plantilla, setPlantilla] = useState(null);
-    const [matrices, setMatrices] = useState([]); // Lista para el select
+    
+    // Estados para las matrices
+    const [matrices, setMatrices] = useState([]); // Lista formateada para el select
+    const [matricesRaw, setMatricesRaw] = useState([]); // <--- NUEVO: Data cruda para la matemática
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -27,21 +30,26 @@ export default function EditarActivoPage() {
                     
                     if (!dataActivo.success) throw new Error('No se encontró el activo');
 
-                    // Extraemos la plantilla del activo para pasarla al form (por si la necesita para validaciones)
+                    // Extraemos la plantilla del activo para pasarla al form
                     const instance = dataActivo.data.vehiculoInstancia || dataActivo.data.remolqueInstancia || dataActivo.data.maquinaInstancia;
                     if(instance?.plantilla) setPlantilla(instance.plantilla);
 
                     setInitialData(dataActivo.data);
 
-                    // 2. Fetch de Matrices de Costo (Para el Select)
+                    // 2. Fetch de Matrices de Costo
                     const resMatrices = await fetch('/api/configuracion/matriz');
                     const dataMatrices = await resMatrices.json();
                     
-                    // Formateamos para el Select de Mantine
-                    const matricesList = Array.isArray(dataMatrices) 
-                        ? dataMatrices.map(m => ({ value: String(m.id), label: `${m.nombre} (${m.tipoActivo})` }))
-                        : [];
-                    setMatrices(matricesList);
+                    if (Array.isArray(dataMatrices)) {
+                        setMatricesRaw(dataMatrices); // <--- GUARDAMOS LA DATA CRUDA
+                        
+                        // Formateamos para el Select de Mantine (incluyendo el tip visual del costo)
+                        const matricesList = dataMatrices.map(m => ({ 
+                            value: String(m.id), 
+                            label: `${m.nombre} (${m.tipoActivo || 'General'}) - $${m.totalCostoKm || 0}/km` 
+                        }));
+                        setMatrices(matricesList);
+                    }
 
                 } catch (err) {
                     setError(err.message);
@@ -66,11 +74,12 @@ export default function EditarActivoPage() {
                 <Button variant="subtle" onClick={() => router.back()}>Cancelar</Button>
             </Group>
    
-            {/* Renderizamos el formulario en modo EDICIÓN pasando initialData */}
+            {/* Renderizamos el formulario en modo EDICIÓN pasando initialData y la DATA CRUDA */}
             <ActivoForm 
                 initialData={initialData}
-                plantilla={plantilla} // Pasamos la plantilla que venía en el activo
-                matricesCostos={matrices} // Pasamos la lista de opciones
+                plantilla={plantilla} 
+                matricesCostos={matrices} 
+                matricesData={matricesRaw} // <--- ¡AQUÍ ESTÁ LA MAGIA QUE FALTABA!
                 tipoActivo={initialData.tipoActivo}
                 onCancel={() => router.back()}
             />

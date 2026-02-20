@@ -72,15 +72,17 @@ export default function CrearActivoPage() {
   // --- 1. CARGAR MATRICES DE COSTO AL INICIAR ---
   useEffect(() => {
     const fetchMatrices = async () => {
-        try {
-            const res = await fetch('/api/configuracion/matriz');
-            const data = await res.json();
+      console.log('Cargando matrices de costos...');
+      try {
+        const res = await fetch('/api/configuracion/matriz');
+        const data = await res.json();
+        console.log('Matrizes de costos fetch:', data);
             if (Array.isArray(data)) {
-                setMatricesRaw(data); // <--- GUARDAMOS LA DATA CRUDA
+              setMatricesRaw(data); // <--- GUARDAMOS LA DATA CRUDA
                 
                 const lista = data.map(m => ({ 
                     value: String(m.id), 
-                    label: `${m.nombre} (${m.tipoActivo || 'General'}) - $${m.costoKm || 0}/km` // Tip visual
+                    label: `${m.nombre} (${m.tipoActivo || 'General'}) - $${m.totalCostoKm || 0}/km` // Tip visual
                 }));
                 setMatricesCostos(lista);
             }
@@ -154,6 +156,7 @@ export default function CrearActivoPage() {
       
       if (result.success) {
         setModeloFullData(result.data);
+        console.log('Modelo completo set:', result.data);
         // Solo avanzamos si tenemos la data
         setActive(2); 
       } else {
