@@ -46,7 +46,7 @@ export default function EditarActivoPage() {
                         // Formateamos para el Select de Mantine (incluyendo el tip visual del costo)
                         const matricesList = dataMatrices.map(m => ({ 
                             value: String(m.id), 
-                            label: `${m.nombre} (${m.tipoActivo || 'General'}) - $${m.totalCostoKm || 0}/km` 
+                            label: `${m.nombre} (${m.tipoActivo || 'General'}) - $${parseFloat(m.totalCostoKm).toFixed(4) || 0}/km` 
                         }));
                         setMatrices(matricesList);
                     }

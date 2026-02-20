@@ -109,10 +109,6 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
     const { id } = await params; 
     
-    // IMPORTANTE: Recalcular costos es una operación pesada, mejor hacerla fuera de la transacción principal
-    // o importarla para usarla despues.
-    // import recalcularCostosFlota from '@/lib/finanzas/motorCostos'; 
-
     const t = await sequelize.transaction();
 
     try {
@@ -125,12 +121,13 @@ export async function PUT(request, { params }) {
 
         const body = await request.json();
 
-        // 1. Extraemos TODOS los campos (Viejos + NUEVOS FINANCIEROS)
+        // 1. Extraemos TODOS los campos (Viejos + NUEVOS FINANCIEROS Y MATRIZ)
         const {
             codigoInterno, estado, ubicacionActual, imagen,
             placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual,
-            // --- NUEVOS ---
-            matrizCostoId, valorReposicion, vidaUtilAnios, valorSalvamento
+            // --- NUEVOS CAMPOS DEL FORMULARIO ---
+            matrizCostoId, valorReposicion, vidaUtilAnios, valorSalvamento, horasAnuales,
+            velocidadPromedioTeorica, costoMantenimientoTeorico, costoPosesionTeorico, costoPosesionHora
         } = body;
 
         // 2. Actualizar Activo Padre (Incluyendo Financieros)
@@ -144,39 +141,39 @@ export async function PUT(request, { params }) {
             matrizCostoId: matrizCostoId ? parseInt(matrizCostoId) : activo.matrizCostoId,
             valorReposicion: valorReposicion !== undefined ? parseFloat(valorReposicion) : activo.valorReposicion,
             vidaUtilAnios: vidaUtilAnios !== undefined ? parseInt(vidaUtilAnios) : activo.vidaUtilAnios,
-            valorSalvamento: valorSalvamento !== undefined ? parseFloat(valorSalvamento) : activo.valorSalvamento
+            valorSalvamento: valorSalvamento !== undefined ? parseFloat(valorSalvamento) : activo.valorSalvamento,
+            horasAnuales: horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales,
+            
+            // --- MÉTRICAS DE CÁLCULO PARA FLETECREATOR ---
+            velocidadPromedioTeorica: velocidadPromedioTeorica !== undefined ? parseInt(velocidadPromedioTeorica) : activo.velocidadPromedioTeorica,
+            costoMantenimientoTeorico: costoMantenimientoTeorico !== undefined ? parseFloat(costoMantenimientoTeorico) : activo.costoMantenimientoTeorico,
+            costoPosesionTeorico: costoPosesionTeorico !== undefined ? parseFloat(costoPosesionTeorico) : activo.costoPosesionTeorico,
+            costoPosesionHora: costoPosesionHora !== undefined ? parseFloat(costoPosesionHora) : activo.costoPosesionHora
 
         }, { transaction: t });
 
-        // 3. Actualizar Instancia Hija según tipo (Lógica intacta)
-        if (activo.tipoActivo === 'Vehiculo') {
-            // Buscamos la instancia ID si no la tenemos a mano, aunque tu código asumía tenerla.
-            // Es mas seguro buscarla por activoId si no estamos seguros.
+        // 3. Actualizar Instancia Hija según tipo
+// 3. Actualizar Instancia Hija según tipo
+        if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
             await VehiculoInstancia.update({
                 placa, serialChasis, serialMotor, color, 
-                // Nota: Kilometraje/Horometro se suelen actualizar via lecturas, pero si quieres permitir corrección manual aquí:
                 kilometrajeActual: kilometrajeActual !== undefined ? parseFloat(kilometrajeActual) : undefined,
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
-            }, { where: { activoId: id }, transaction: t });
+            }, { where: { id: activo.vehiculoInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
         }
-        else if (activo.tipoActivo === 'Remolque') {
+        else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
             await RemolqueInstancia.update({
                 placa, color
-            }, { where: { activoId: id }, transaction: t });
+            }, { where: { id: activo.remolqueInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
         }
-        else if (activo.tipoActivo === 'Maquina') {
+        else if (activo.tipoActivo === 'Maquina' && activo.maquinaInstanciaId) {
             await MaquinaInstancia.update({
                 serialMotor, 
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
-            }, { where: { activoId: id }, transaction: t });
+            }, { where: { id: activo.maquinaInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
         }
 
         await t.commit();
-
-        // 4. (OPCIONAL PERO RECOMENDADO) Disparar el recálculo de costos
-        // Esto actualiza el costoPosesionHora ($/h) basado en el nuevo valorReposicion
-        // Lo hacemos en "background" (sin await) para responder rápido al usuario
-        // recalcularCostosFlota().catch(e => console.error("Error background recalc:", e));
 
         return NextResponse.json({ success: true, message: 'Activo actualizado correctamente', data: activo });
 

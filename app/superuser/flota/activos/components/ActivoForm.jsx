@@ -6,7 +6,8 @@ import {
     TextInput, NumberInput, Button, Group,
     SimpleGrid, Stack, Select, Text, Divider, Alert,
     LoadingOverlay, ThemeIcon, Stepper, Paper, Title,
-    Tooltip, Accordion
+    Tooltip, Accordion,
+    Box
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconCheck, IconCoin, IconTool, IconInfoCircle, IconCalculator } from '@tabler/icons-react';
@@ -64,7 +65,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await fetch('/api/configuracion/global');
+                const res = await fetch('/api/configuracion/general');
                 if (res.ok) {
                     const data = await res.json();
                     setTasaInteresGlobal(parseFloat(data.tasaInteresAnual) || 5.0);
@@ -95,7 +96,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     }, []);
 
     // --------------------------------------------------------
-    // CÁLCULO DINÁMICO AVANZADO
+    // CÁLCULO DINÁMICO AVANZADO (CORREGIDO: CERO DOBLE COBRO)
     // --------------------------------------------------------
     const valor = parseFloat(form.values.valorReposicion) || 0;
     const salvamento = parseFloat(form.values.valorSalvamento) || 0;
@@ -104,17 +105,18 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const velocidad = parseInt(form.values.velocidadPromedio) || 0;
     const tasaInteres = tasaInteresGlobal / 100;
 
-    // A. DEPRECIACIÓN E INTERÉS (Cálculo Financiero Local)
+    // A. POSESIÓN (Cálculo Financiero ÚNICO y exclusivo de este activo)
     const montoADepreciar = valor - salvamento;
     const vidaEnHoras = vida * horasAnuales;
     const depHora = vidaEnHoras > 0 ? (montoADepreciar / vidaEnHoras) : 0;
     const intHora = horasAnuales > 0 ? ((valor * tasaInteres) / horasAnuales) : 0;
-    let costoPosesionHoraFinal = depHora + intHora;
+    
+    // LA POSESIÓN ES SOLO ESTO. Adiós al valor fantasma de la matriz.
+    const costoPosesionHoraFinal = depHora + intHora;
 
-    // B. EXTRACCIÓN SEGURA DE LA MATRIZ DE COSTOS (Con los nombres de tu console.log)
+    // B. EXTRACCIÓN SEGURA DE LA MATRIZ DE COSTOS (Solo extraemos desgaste operativo)
     let costoKmMatriz = 0;
     let costoHoraMatriz = 0;
-    let costoPosesionMatriz = 0;
     let costoMantenimientoHora = 0;
 
     const matrizIdSeleccionada = form.values.matrizCostoId;
@@ -126,13 +128,9 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     }
 
     if (matriz) {
-        // LEEMOS EXACTAMENTE LAS VARIABLES QUE MOSTRÓ TU CONSOLA
         costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);
+        // En totalCostoHora ya vienen incluidos los repuestos por hora, los seguros y los trámites
         costoHoraMatriz = parseFloat(matriz.totalCostoHora || 0);
-        costoPosesionMatriz = parseFloat(matriz.costoPosesionHora || 0);
-
-        // Sumamos la posesión base (4.50 del Canter, por ejemplo) a nuestra depreciación
-        costoPosesionHoraFinal += costoPosesionMatriz; 
 
         if (velocidad === 0) {
             costoMantenimientoHora = costoHoraMatriz > 0 ? costoHoraMatriz : (costoKmMatriz * 40);
@@ -162,9 +160,10 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
         try {
             let payload = {
                 ...values,
+                // Mapeamos las variables del form a los nombres exactos de tu modelo de BD
                 velocidadPromedioTeorica: values.velocidadPromedio,
                 costoMantenimientoTeorico: costoKmMatriz, 
-                costoPosesionTeorico: costoPosesionMatriz, 
+                costoPosesionTeorico: costoPosesionHoraFinal, // <--- ¡AQUÍ ESTABA EL ERROR!
                 costoPosesionHora: costoPosesionHoraFinal, 
                 usuario: nombre + ' ' + apellido,
             };
@@ -182,7 +181,11 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
 
             if (!isEditing) payload.modeloVehiculoId = plantilla.id;
 
-            const response = await fetch(url, { method: isEditing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const response = await fetch(url, { 
+                method: isEditing ? 'PUT' : 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(payload) 
+            });
             const res = await response.json();
             
             if (res.success) {
@@ -230,14 +233,8 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                             <Paper withBorder p="md" radius="md">
                                 <Title order={5} mb="sm" c="blue.9">1. Asociación a Matriz</Title>
                                 <Select
-                                    label={
-                                        <Group gap={4}>
-                                            Matriz de Costos Base
-                                            <Tooltip label="Alimenta este camión con las tarifas de desgaste base (Cauchos, aceite, seguros) predefinidas en tus tablas. FleteCreator usará estos precios mínimos/máximos para negociar." multiline w={300} position="top">
-                                                <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                            </Tooltip>
-                                        </Group>
-                                    }
+                                    label="Matriz de Costos Base"
+                                    description="Hereda las tarifas de repuestos, seguros y trámites de este perfil."
                                     placeholder="Seleccione estructura de costos..."
                                     data={matricesCostos}
                                     searchable required mb="md"
@@ -250,28 +247,8 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                     <Title order={5} c="orange.9">2. Perfil Operativo (Contrato)</Title>
                                 </Group>
                                 <Group grow>
-                                    <NumberInput 
-                                        required 
-                                        label={
-                                            <Group gap={4}>Horas Anuales
-                                                <Tooltip label="Sirve para prorratear la depreciación. Si trabajas 2000 horas al año, el costo del equipo se divide entre 2000. Si trabajas menos horas, la tarifa por hora sube." multiline w={250}>
-                                                    <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                                </Tooltip>
-                                            </Group>
-                                        }
-                                        {...form.getInputProps('horasAnuales')} 
-                                    />
-                                    <NumberInput 
-                                        required 
-                                        label={
-                                            <Group gap={4}>Velocidad (km/h)
-                                                <Tooltip label="Crucial para la estimación. Si es equipo estacionario o de achique, pon 0. Convierte el costo de desgaste por kilómetro a un costo por hora." multiline w={250}>
-                                                    <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                                </Tooltip>
-                                            </Group>
-                                        }
-                                        {...form.getInputProps('velocidadPromedio')} 
-                                    />
+                                    <NumberInput required label="Horas Anuales Estimadas" {...form.getInputProps('horasAnuales')} />
+                                    <NumberInput required label="Velocidad Promedio (km/h)" {...form.getInputProps('velocidadPromedio')} />
                                 </Group>
                             </Paper>
                         </Stack>
@@ -279,104 +256,80 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                         <Stack>
                             <Paper withBorder p="md" radius="md">
                                 <Title order={5} mb="md" c="teal.9">3. Inversión y Depreciación</Title>
-                                <NumberInput 
-                                    required 
-                                    label={
-                                        <Group gap={4}>Valor de Adquisición ($)
-                                            <Tooltip label="¿Cuánto cuesta comprar este equipo hoy? De aquí sale el cálculo para recuperar el dinero que invertiste a medida que el camión trabaja." multiline w={250}>
-                                                <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                            </Tooltip>
-                                        </Group>
-                                    }
-                                    prefix="$" thousandSeparator mb="sm" 
-                                    {...form.getInputProps('valorReposicion')} 
-                                />
+                                <NumberInput required label="Valor de Adquisición ($)" prefix="$" thousandSeparator mb="sm" {...form.getInputProps('valorReposicion')} />
                                 <Group grow align="flex-start">
-                                    <NumberInput 
-                                        required 
-                                        label="Vida Útil (Años)" 
-                                        {...form.getInputProps('vidaUtilAnios')} 
-                                    />
-                                    <NumberInput 
-                                        required 
-                                        label={
-                                            <Group gap={4}>Salvamento ($)
-                                                <Tooltip label="Valor de reventa. Si el camión costó $40k y lo vendes en $10k al final (salvamento), en realidad solo se deprecian $30k." multiline w={250}>
-                                                    <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                                </Tooltip>
-                                            </Group>
-                                        }
-                                        prefix="$" thousandSeparator {...form.getInputProps('valorSalvamento')} 
-                                    />
+                                    <NumberInput required label="Vida Útil (Años)" {...form.getInputProps('vidaUtilAnios')} />
+                                    <NumberInput required label="Salvamento ($)" prefix="$" thousandSeparator {...form.getInputProps('valorSalvamento')} />
                                 </Group>
                             </Paper>
 
+                            {/* LA PIZARRA DE FÓRMULAS (TRANSPARENCIA TOTAL) */}
                             <Accordion variant="contained" radius="md" defaultValue="calculo">
                                 <Accordion.Item value="calculo" style={{ backgroundColor: '#f8f9fa' }}>
                                     <Accordion.Control icon={<IconCalculator size={20} color="gray"/>}>
                                         <Text fw={700} c="dark.9" size="lg">Costo Total Estimado: ${costoTotalEstimado.toFixed(2)} / hr</Text>
                                     </Accordion.Control>
                                     <Accordion.Panel>
-                                        <Stack gap="xs">
-                                            {/* MANTENIMIENTO */}
-                                            <Divider label="1. MANTENIMIENTO (Matriz)" labelPosition="left" color="blue.3" />
-                                            <Group justify="space-between">
-                                                <Group gap={4}>
-                                                    <Text size="sm" c="dimmed">Tarifa de Rodamiento:</Text>
-                                                    <Tooltip label="En FleteCreator, esto se multiplicará exactamente por los kilómetros de ruta trazados en el mapa (Cauchos, Aceite de Motor, Frenos)." multiline w={250} position="right">
-                                                        <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                                    </Tooltip>
+                                        <Stack gap="md">
+                                            {/* SECCIÓN 1: MANTENIMIENTO (LA MATRIZ) */}
+                                            <Box>
+                                                <Divider label="1. MANTENIMIENTO Y OPERACIÓN (Heredado de Matriz Base)" labelPosition="left" color="blue.3" mb="xs" />
+                                                
+                                                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                                                    <Box>
+                                                        <Text size="sm" fw={600}>Desgaste por Rodamiento (Proyectado a horas):</Text>
+                                                        <Text size="xs" c="dimmed" ff="monospace">
+                                                            (${costoKmMatriz.toFixed(3)}/km × {velocidad} km/h)
+                                                        </Text>
+                                                    </Box>
+                                                    <Text size="sm" fw={500}>${(costoKmMatriz * velocidad).toFixed(2)} / hr</Text>
                                                 </Group>
-                                                <Text size="sm" fw={500}>${costoKmMatriz.toFixed(3)} / km</Text>
-                                            </Group>
-                                            <Group justify="space-between">
-                                                <Group gap={4}>
-                                                    <Text size="sm" c="dimmed">Tarifa Fija (PTO/Hora):</Text>
-                                                    <Tooltip label="En FleteCreator, esto se multiplicará por las horas estimadas de viaje (o de trabajo si es equipo estacionario). Cubre desgaste por tiempo." multiline w={250} position="right">
-                                                        <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                                    </Tooltip>
+
+                                                <Group justify="space-between" align="flex-start" wrap="nowrap" mt="xs">
+                                                    <Box>
+                                                        <Text size="sm" fw={600}>Desgaste por tiempo (Baterias...), Seguros, Trámites:</Text>
+                                                        <Text size="xs" c="dimmed" ff="monospace">
+                                                            Tarifa plana de matriz por motor encendido
+                                                        </Text>
+                                                    </Box>
+                                                    <Text size="sm" fw={500}>${costoHoraMatriz.toFixed(2)} / hr</Text>
                                                 </Group>
-                                                <Text size="sm" fw={500}>${costoHoraMatriz.toFixed(3)} / hr</Text>
-                                            </Group>
 
-                                            {form.values.velocidadPromedio === 0 ? (
-                                                <Alert color="orange" p="xs" mt="xs">Equipo estacionario. Se usa tarifa por hora/ralentí.</Alert>
-                                            ) : (
-                                                <Text size="xs" c="dimmed" ta="right">
-                                                    Proyección horaria: (${costoKmMatriz.toFixed(3)} x {velocidad} km/h) + ${costoHoraMatriz.toFixed(3)}
-                                                </Text>
-                                            )}
-
-                                            <Group justify="space-between" mt="xs">
-                                                <Text size="sm" fw={700} c="blue.9">Total Mantenimiento:</Text>
-                                                <Text size="sm" fw={700} c="blue.9">${costoMantenimientoHora.toFixed(2)} / hr</Text>
-                                            </Group>
-
-                                            {/* POSESIÓN */}
-                                            <Divider label="2. POSESIÓN Y DEPRECIACIÓN" labelPosition="left" color="teal.3" mt="md" />
-                                            <Group justify="space-between">
-                                                <Group gap={4}>
-                                                    <Text size="sm" c="dimmed">Depreciación de este equipo:</Text>
-                                                    <Tooltip label="¡Atención! Este valor viaja directo a FleteCreator. Si cotizas un viaje de 10 horas, el cliente pagará 10 horas de esta tarifa para que tú recuperes tu inversión del equipo." multiline w={280} color="teal.9" position="right">
-                                                        <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                                    </Tooltip>
+                                                <Group justify="space-between" mt="sm" p="xs" bg="blue.0" style={{ borderRadius: '4px' }}>
+                                                    <Text size="sm" fw={700} c="blue.9">Subtotal Operativo:</Text>
+                                                    <Text size="sm" fw={700} c="blue.9">${costoMantenimientoHora.toFixed(2)} / hr</Text>
                                                 </Group>
-                                                <Text size="sm" fw={500}>${(depHora + intHora).toFixed(2)} / hr</Text>
-                                            </Group>
-                                            <Group justify="space-between">
-                                                <Group gap={4}>
-                                                    <Text size="sm" c="dimmed">Costo de la Matriz Base:</Text>
-                                                    <Tooltip label="Gastos administrativos, trámites anuales y seguros genéricos heredados de la Matriz de Costos que seleccionaste arriba." multiline w={250} position="right">
-                                                        <IconInfoCircle size={14} color="gray" style={{ cursor: 'help' }} />
-                                                    </Tooltip>
-                                                </Group>
-                                                <Text size="sm" fw={500}>${costoPosesionMatriz.toFixed(2)} / hr</Text>
-                                            </Group>
+                                            </Box>
 
-                                            <Group justify="space-between" mt="xs">
-                                                <Text size="sm" fw={700} c="teal.9">Total Posesión (Fijo):</Text>
-                                                <Text size="sm" fw={700} c="teal.9">${costoPosesionHoraFinal.toFixed(2)} / hr</Text>
-                                            </Group>
+                                            {/* SECCIÓN 2: POSESIÓN (EL FORMULARIO) */}
+                                            <Box>
+                                                <Divider label="2. POSESIÓN Y DEPRECIACIÓN (Calculado para este Activo)" labelPosition="left" color="teal.3" mb="xs" />
+                                                
+                                                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                                                    <Box>
+                                                        <Text size="sm" fw={600}>Depreciación Física:</Text>
+                                                        <Text size="xs" c="dimmed" ff="monospace">
+                                                            (${valor} - ${salvamento}) ÷ ({vida} años × {horasAnuales} hrs)
+                                                        </Text>
+                                                    </Box>
+                                                    <Text size="sm" fw={500}>${depHora.toFixed(2)} / hr</Text>
+                                                </Group>
+
+                                                <Group justify="space-between" align="flex-start" wrap="nowrap" mt="xs">
+                                                    <Box>
+                                                        <Text size="sm" fw={600}>Interés de Capital Invertido ({tasaInteresGlobal}%):</Text>
+                                                        <Text size="xs" c="dimmed" ff="monospace">
+                                                            (${valor} × {tasaInteresGlobal / 100}) ÷ {horasAnuales} hrs
+                                                        </Text>
+                                                    </Box>
+                                                    <Text size="sm" fw={500}>${intHora.toFixed(2)} / hr</Text>
+                                                </Group>
+
+                                                <Group justify="space-between" mt="sm" p="xs" bg="teal.0" style={{ borderRadius: '4px' }}>
+                                                    <Text size="sm" fw={700} c="teal.9">Subtotal Posesión:</Text>
+                                                    <Text size="sm" fw={700} c="teal.9">${costoPosesionHoraFinal.toFixed(2)} / hr</Text>
+                                                </Group>
+                                            </Box>
                                         </Stack>
                                     </Accordion.Panel>
                                 </Accordion.Item>
@@ -410,7 +363,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                 <Button variant="default" onClick={active === 0 ? onCancel : () => setActive(c => c - 1)}>
                     {active === 0 ? 'Cancelar' : 'Atrás'}
                 </Button>
-                {active < 2 && <Button onClick={handleNextStep}>Siguiente</Button>}
+                {active <= 2 && <Button onClick={handleNextStep}>Siguiente</Button>}
             </Group>
         </Stack>
     );
