@@ -351,7 +351,6 @@ export async function POST() {
     try {
         let logs = [];
         const HORAS_POR_MES = 166.66; // 2000 hrs / 12 meses
-        const KM_POR_HORA = 40;       // Velocidad promedio
 
         for (const perfil of DATA_VENEZUELA_2026) {
             // 1. Crear o encontrar la Matriz

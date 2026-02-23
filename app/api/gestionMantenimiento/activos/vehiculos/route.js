@@ -49,7 +49,8 @@ export async function POST(request) {
             fechaAdquisicion: body.fechaAdquisicion || new Date(),
             vehiculoInstanciaId: nuevoVehiculo.id,
             remolqueInstanciaId: null,
-            maquinaInstanciaId: null
+            maquinaInstanciaId: null,
+            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, // <-- NUEVO CAMPO TARa
         }, { transaction: t });
 
         // =====================================================================

@@ -56,7 +56,8 @@ export async function POST(request) {
             fechaAdquisicion: body.fechaAdquisicion || new Date(),
             vehiculoInstanciaId: null,      // Null para remolques
             remolqueInstanciaId: nuevaInstancia.id || null, // Vinculación correcta
-            maquinaInstanciaId: null
+            maquinaInstanciaId: null,
+            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, // <-- NUEVO CAMPO TARaS
         }, { transaction: t });
 
         // =====================================================================

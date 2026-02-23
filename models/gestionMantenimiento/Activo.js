@@ -67,6 +67,10 @@ valorSalvamento: {
     defaultValue: 5000,
     comment: 'Valor de venta al final de su vida útil (Chatarra/Venta)'
 },
+tara: { // Peso del remolque vacío, importante para cálculos de combustible
+    type: DataTypes.FLOAT,
+    allowNull: true,
+},
 
 // --- CAMPOS CALCULADOS (RESULTADOS) ---
 costoPosesionHora: {

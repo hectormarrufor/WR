@@ -41,6 +41,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             anioFabricacion: initialData?.vehiculoInstancia?.anioFabricacion || new Date().getFullYear(),
             kilometrajeActual: initialData?.vehiculoInstancia?.kilometrajeActual || 0,
             horometroActual: initialData?.vehiculoInstancia?.horometroActual || initialData?.maquinaInstancia?.horometroActual || 0,
+            tara: initialData?.tara || '',
 
             matrizCostoId: initialData?.matrizCostoId ? String(initialData.matrizCostoId) : '',
             valorReposicion: initialData?.valorReposicion || '',
@@ -209,6 +210,12 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                             <TextInput label="Código Interno" required {...form.getInputProps('codigoInterno')} />
                             <Select label="Estado" data={['Operativo', 'En Mantenimiento', 'Inactivo']} {...form.getInputProps('estado')} />
                             <TextInput label="Ubicación" {...form.getInputProps('ubicacionActual')} />
+                            <NumberInput 
+                                label="Tara / Peso Real Vacío (Tons)" 
+                                description="Si queda en blanco, usará el peso de fábrica (Plantilla)"
+                                decimalScale={2}
+                                {...form.getInputProps('tara')} 
+                            />
                             <Divider label="Legal" my="sm" />
                             <TextInput label="Placa" {...form.getInputProps('placa')} />
                             <TextInput label="VIN / Serial Carrocería" {...form.getInputProps('serialCarroceria')} />

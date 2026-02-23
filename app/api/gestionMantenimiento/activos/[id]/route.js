@@ -127,7 +127,8 @@ export async function PUT(request, { params }) {
             placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual,
             // --- NUEVOS CAMPOS DEL FORMULARIO ---
             matrizCostoId, valorReposicion, vidaUtilAnios, valorSalvamento, horasAnuales,
-            velocidadPromedioTeorica, costoMantenimientoTeorico, costoPosesionTeorico, costoPosesionHora
+            velocidadPromedioTeorica, costoMantenimientoTeorico, costoPosesionTeorico, costoPosesionHora,
+            tara
         } = body;
 
         // 2. Actualizar Activo Padre (Incluyendo Financieros)
@@ -136,6 +137,7 @@ export async function PUT(request, { params }) {
             estado: estado || activo.estado,
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             imagen: imagen !== undefined ? imagen : activo.imagen,
+            tara: tara !== undefined && tara !== '' ? parseFloat(tara) : null, // <-- NUEVO CAMPO TARa
             
             // --- ACTUALIZACIÓN FINANCIERA ---
             matrizCostoId: matrizCostoId ? parseInt(matrizCostoId) : activo.matrizCostoId,
