@@ -2,14 +2,12 @@ import { NextResponse } from 'next/server';
 import db from '@/models';
 
 // Función mágica que procesa una matriz dinámica en vivo
-// Función mágica que procesa una matriz dinámica en vivo
 const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorcentaje, nombreActivo) => {
-    if (!matriz || !matriz.detalles) return { mtto: 0, posesion: 0, items: [] }; // <--- Agregamos items: []
+    if (!matriz || !matriz.detalles) return { mtto: 0, posesion: 0, items: [] };
 
     let costoMantenimiento = 0;
     let costoPosesion = 0;
-    let desgloseItems = [];     // <--- NUEVO: El carrito donde guardamos el detalle
-
+    let desgloseItems = [];
     const factor = calidadPorcentaje / 100;
 
     matriz.detalles.forEach(detalle => {
@@ -23,14 +21,12 @@ const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorc
             costoEnViaje = costoPorKm * distanciaKm;
             costoMantenimiento += costoEnViaje;
             tipoEtiqueta = 'Rodamiento';
-        }
-        else if (detalle.tipoDesgaste === 'horas') {
+        } else if (detalle.tipoDesgaste === 'horas') {
             const costoPorHora = costoTotalItem / detalle.frecuencia;
             costoEnViaje = costoPorHora * horasTotales;
             costoMantenimiento += costoEnViaje;
             tipoEtiqueta = 'Por Hora';
-        }
-        else if (detalle.tipoDesgaste === 'meses') {
+        } else if (detalle.tipoDesgaste === 'meses') {
             const costoPorMes = costoTotalItem / detalle.frecuencia;
             const costoPorHoraFija = costoPorMes / 730;
             costoEnViaje = costoPorHoraFija * horasTotales;
@@ -38,7 +34,6 @@ const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorc
             tipoEtiqueta = 'Fijo/Tiempo';
         }
 
-        // NUEVO: Guardamos el item para la factura del frontend
         desgloseItems.push({
             descripcion: `[${nombreActivo}] ${detalle.descripcion}`,
             monto: costoEnViaje,
@@ -58,28 +53,23 @@ export async function POST(req) {
             horasOperacion = 0, tonelaje = 0, cantidadPeajes = 0,
             precioPeajeBs = 1900, bcv = 1, precioGasoilUsd = 0.5,
             sueldoChoferMensual = 0, sueldoAyudanteMensual = 0, tieneAyudante = false,
-            calidadRepuestos = 50, porcentajeGanancia = 0.30
+            calidadRepuestos = 50, porcentajeGanancia = 0.30, viaticosManuales = 0
         } = body;
 
+        // ------------------------------------------------------------------
+        // --- 1. EXTRACCIÓN DE DATOS BASE ---
+        // ------------------------------------------------------------------
         const chuto = await db.Activo.findByPk(activoPrincipalId, {
             include: [
                 { model: db.MatrizCosto, as: 'matrizCosto', include: ['detalles'] },
-                {
-                    model: db.VehiculoInstancia,
-                    as: 'vehiculoInstancia',
-                    include: [{ model: db.Vehiculo, as: 'plantilla' }]
-                }
+                { model: db.VehiculoInstancia, as: 'vehiculoInstancia', include: [{ model: db.Vehiculo, as: 'plantilla' }] }
             ]
         });
 
         const batea = remolqueId ? await db.Activo.findByPk(remolqueId, {
             include: [
                 { model: db.MatrizCosto, as: 'matrizCosto', include: ['detalles'] },
-                {
-                    model: db.RemolqueInstancia,
-                    as: 'remolqueInstancia',
-                    include: [{ model: db.Remolque, as: 'plantilla' }] // <--- CLAVE PARA OBTENER EL PESO
-                }
+                { model: db.RemolqueInstancia, as: 'remolqueInstancia', include: [{ model: db.Remolque, as: 'plantilla' }] }
             ]
         }) : null;
 
@@ -87,180 +77,279 @@ export async function POST(req) {
             return NextResponse.json({ error: "Vehículo principal no tiene Matriz de Costos asociada" }, { status: 400 });
         }
 
-        // 2. TIEMPOS
-        const velocidad = chuto.velocidadPromedioTeorica || 50;
-        const horasViaje = distanciaKm / velocidad;
-        const horasTotales = tipoCotizacion === 'servicio' ? (horasViaje + horasOperacion) : horasViaje;
+        const fichaTecnicaChuto = chuto.vehiculoInstancia?.plantilla;
+        const fichaTecnicaBatea = batea?.remolqueInstancia?.plantilla;
 
-        // 3. MANTENIMIENTO DINÁMICO
-        // Agregamos 'Chuto' y 'Batea' para que la lista diga de quién es el caucho
+        // ------------------------------------------------------------------
+        // --- 2. TELEMETRÍA Y PESOS (Necesario para calcular Tiempos) ---
+        // ------------------------------------------------------------------
+        let capacidadMax = chuto.capacidadTonelajeMax || fichaTecnicaChuto?.capacidadArrastre || fichaTecnicaChuto?.pesoMaximoCombinado || 30;
+        let fuenteCapacidad = chuto.capacidadTonelajeMax ? 'Real (Perfil del Activo)' : 'Teórico (Manual/Plantilla)';
+
+        let pesoRemolque = 0;
+        let fuenteRemolque = 'Sin Remolque';
+        if (batea) {
+            pesoRemolque = batea.tara || fichaTecnicaBatea?.peso || 6;
+            fuenteRemolque = batea.tara ? 'Real (Balanza)' : (fichaTecnicaBatea?.peso ? 'Teórico' : 'Por Defecto (6t)');
+        }
+
+        const pesoFabricaChuto = fichaTecnicaChuto?.peso || 0;
+        const pesoRealChuto = chuto.tara || pesoFabricaChuto || 0;
+        const fuenteChuto = chuto.tara ? 'Real (Balanza)' : 'Teórico/Defecto';
+        const sobrepesoChuto = (pesoRealChuto > pesoFabricaChuto && pesoFabricaChuto > 0) ? (pesoRealChuto - pesoFabricaChuto) : 0;
+
+        let consumoLleno = chuto.consumoCombustibleLPorKm || fichaTecnicaChuto?.consumoTeoricoLleno || 0.35;
+        let consumoVacio = chuto.consumoBaseLPorKm || fichaTecnicaChuto?.consumoTeoricoVacio || 0.25;
+        let fuenteRendimiento = chuto.consumoCombustibleLPorKm ? 'Real (Medido en Flota)' : 'Teórico/Defecto';
+
+        // ------------------------------------------------------------------
+        // --- 3. CÁLCULO FÍSICO DE TIEMPO (AHORA SE HACE PRIMERO) ---
+        // ------------------------------------------------------------------
+        let horasTotales = 0;
+        let horasEsperaTotales = 0; // <--- NUEVA VARIABLE PARA RASTREAR ESPERAS
+        
+        if (tipoCotizacion === 'flete' && body.tramos && body.tramos.length > 0) {
+            let tiempoFinalSegundos = 0;
+            body.tramos.forEach(tramo => {
+                const tiempoBaseRealista = (tramo.tiempoBaseSegundos || 0) * 1.4; // Factor Venezuela
+                let segundosTramo = tiempoBaseRealista;
+
+                const pesoBrutoTramo = tramo.tonelaje + pesoRemolque + sobrepesoChuto;
+                const factorCarga = Math.min(pesoBrutoTramo / capacidadMax, 1);
+
+                const demoraHorizontal = 0.10 + (0.30 * factorCarga);
+                segundosTramo += (tiempoBaseRealista * demoraHorizontal);
+
+                if (tramo.desnivelMetros > 0) {
+                    const penalidadMontaña = (tramo.desnivelMetros / 100) * (90 + (120 * factorCarga));
+                    segundosTramo += penalidadMontaña;
+                }
+
+                // Extraemos la espera y la sumamos al contador global
+                const esperaTramoHoras = parseFloat(tramo.tiempoEspera || 0);
+                horasEsperaTotales += esperaTramoHoras; 
+                segundosTramo += (esperaTramoHoras * 3600);
+
+                tiempoFinalSegundos += segundosTramo;
+            });
+            horasTotales = tiempoFinalSegundos / 3600;
+        } else {
+            const velocidad = chuto.velocidadPromedioTeorica || 50;
+            const horasViaje = distanciaKm / velocidad;
+            horasTotales = tipoCotizacion === 'servicio' ? (horasViaje + horasOperacion) : horasViaje;
+        }
+
+        // CÁLCULO DE VELOCIDAD NORMALIZADA
+        const horasConduccionPura = horasTotales - horasEsperaTotales;
+        const velocidadPromedioReal = horasConduccionPura > 0 ? (distanciaKm / horasConduccionPura) : 0;
+
+        // ------------------------------------------------------------------
+        // --- 4. MANTENIMIENTO DINÁMICO (Con las horas calculadas) ---
+        // ------------------------------------------------------------------
         const calculoChuto = calcularDesgasteDinamico(chuto.matrizCosto, distanciaKm, horasTotales, calidadRepuestos, 'Chuto');
         const calculoBatea = batea ? calcularDesgasteDinamico(batea.matrizCosto, distanciaKm, horasTotales, calidadRepuestos, 'Batea') : { mtto: 0, posesion: 0, items: [] };
 
         const totalMantenimiento = calculoChuto.mtto + calculoBatea.mtto;
-
-        // ¡OJO AQUÍ! CORRECCIÓN DE LA POSESIÓN (Lo que vimos hace un rato)
-        // Ya no sumamos la posesion de la matriz. Sumamos los seguros/trámites (calculoChuto.posesion) 
-        // MÁS la depreciación específica de ESE camión (chuto.costoPosesionHora)
-        let totalPosesion = calculoChuto.posesion + calculoBatea.posesion;
-        totalPosesion += (chuto.costoPosesionHora || 0) * horasTotales;
-        if (batea) totalPosesion += (batea.costoPosesionHora || 0) * horasTotales;
-
-        // NUEVO: Unimos la lista del chuto y la batea, y las ordenamos de la más cara a la más barata
         const listaCompletaRepuestos = [...calculoChuto.items, ...calculoBatea.items].sort((a, b) => b.monto - a.monto);
 
-       // 4. COMBUSTIBLE: Interpolación Lineal con Rastreo de Fuentes (Auditoría), LTL y Topografía
-        let totalCombustible = 0;
-        const fichaTecnicaChuto = chuto.vehiculoInstancia?.plantilla;
-        const fichaTecnicaBatea = batea?.remolqueInstancia?.plantilla;
+        // ------------------------------------------------------------------
+        // --- 5. COMBUSTIBLE ---
+        // ------------------------------------------------------------------
+        let litrosBaseDistancia = 0;
+        let litrosExtraPeso = 0;
+        let litrosExtraElevacion = 0;
 
-        // --- INICIO DE RASTREO DE FUENTES (TELEMETRÍA) ---
+        if (tipoCotizacion === 'flete' && body.tramos && body.tramos.length > 0) {
+            body.tramos.forEach(tramo => {
+                const pesoBrutoTramo = tramo.tonelaje + pesoRemolque + sobrepesoChuto;
+                const factorCarga = Math.min(pesoBrutoTramo / capacidadMax, 1);
 
-        // A. RASTREO DE CAPACIDAD DE ARRASTRE
-        let capacidadMax = 30;
-        let fuenteCapacidad = 'Por Defecto (30t)';
-        if (chuto.capacidadTonelajeMax) {
-            capacidadMax = chuto.capacidadTonelajeMax;
-            fuenteCapacidad = 'Real (Perfil del Activo)';
-        } else if (fichaTecnicaChuto?.capacidadArrastre || fichaTecnicaChuto?.pesoMaximoCombinado) {
-            capacidadMax = fichaTecnicaChuto.capacidadArrastre || fichaTecnicaChuto.pesoMaximoCombinado;
-            fuenteCapacidad = 'Teórico (Manual/Plantilla)';
-        }
-
-        // B. RASTREO DE TARA DEL REMOLQUE
-        let pesoRemolque = 0;
-        let fuenteRemolque = 'Sin Remolque';
-        if (batea) {
-            if (batea.tara) {
-                pesoRemolque = batea.tara;
-                fuenteRemolque = 'Real (Balanza/Activo)';
-            } else if (fichaTecnicaBatea?.peso) {
-                pesoRemolque = fichaTecnicaBatea.peso;
-                fuenteRemolque = 'Teórico (Manual/Plantilla)';
-            } else {
-                pesoRemolque = 6; // Valor por defecto si no hay datos
-                fuenteRemolque = 'Por Defecto (6t - Faltan Datos)';
-            }
-        }
-
-        // C. RASTREO DE TARA DEL CHUTO Y SOBREPESO
-        const pesoFabricaChuto = fichaTecnicaChuto?.peso || 0;
-        let pesoRealChuto = 0;
-        let fuenteChuto = 'Por Defecto (0t)';
-        
-        if (chuto.tara) {
-            pesoRealChuto = chuto.tara;
-            fuenteChuto = 'Real (Balanza/Activo)';
-        } else if (pesoFabricaChuto > 0) {
-            pesoRealChuto = pesoFabricaChuto;
-            fuenteChuto = 'Teórico (Manual/Plantilla)';
-        }
-        
-        // Si el chuto físico pesa más que el de fábrica, es esfuerzo extra
-        const sobrepesoChuto = (pesoRealChuto > pesoFabricaChuto && pesoFabricaChuto > 0) 
-            ? (pesoRealChuto - pesoFabricaChuto) 
-            : 0;
-
-        // D. RASTREO DE RENDIMIENTO (L/Km)
-        let consumoLleno = 0.35;
-        let consumoVacio = 0.25;
-        let fuenteRendimiento = 'Por Defecto (0.35 / 0.25)';
-        
-        if (chuto.consumoCombustibleLPorKm && chuto.consumoBaseLPorKm) {
-            consumoLleno = chuto.consumoCombustibleLPorKm;
-            consumoVacio = chuto.consumoBaseLPorKm;
-            fuenteRendimiento = 'Real (Medido en Flota)';
-        } else if (fichaTecnicaChuto?.consumoTeoricoLleno && fichaTecnicaChuto?.consumoTeoricoVacio) {
-            consumoLleno = fichaTecnicaChuto.consumoTeoricoLleno;
-            consumoVacio = fichaTecnicaChuto.consumoTeoricoVacio;
-            fuenteRendimiento = 'Teórico (Manual/Plantilla)';
-        }
-
-        // --- FIN DE RASTREO DE FUENTES ---
-
-
-        // --- INICIO DE CÁLCULO FÍSICO (TRAMOS Y TOPOGRAFÍA) ---
-        let litrosConsumidos = 0;
-        let penalidadTopograficaTotal = 0;
-
-        if (tipoCotizacion === 'flete') {
-            const tramos = body.tramos || [];
-            
-            // Fallback: Si no hay tramos detallados (por alguna razón el front falló), usamos el cálculo clásico
-            if (tramos.length === 0) {
-                const pesoIda = tonelaje + pesoRemolque + sobrepesoChuto;
-                const pesoVuelta = pesoRemolque + sobrepesoChuto;
-
-                const factorIda = Math.min(pesoIda / capacidadMax, 1);
-                const factorVuelta = Math.min(pesoVuelta / capacidadMax, 1);
+                litrosBaseDistancia += tramo.distanciaKm * consumoVacio;
+                litrosExtraPeso += tramo.distanciaKm * (factorCarga * (consumoLleno - consumoVacio));
                 
-                const consumoIda = consumoVacio + (factorIda * (consumoLleno - consumoVacio));
-                const consumoVuelta = consumoVacio + (factorVuelta * (consumoLleno - consumoVacio));
-                
-                litrosConsumidos = ((distanciaKm / 2) * consumoIda) + ((distanciaKm / 2) * consumoVuelta);
-            } else {
-                 // Cálculo moderno: Iteramos por cada segmento real trazado en el mapa
-                 tramos.forEach(tramo => {
-                     // 1. Calculamos el Peso Bruto Combinado de este tramo específico
-                     const pesoBrutoTramo = tramo.tonelaje + pesoRemolque + sobrepesoChuto;
-                     
-                     // 2. Factor de Carga y Consumo Lineal (Horizontal)
-                     const factorCarga = Math.min(pesoBrutoTramo / capacidadMax, 1);
-                     const consumoHorizontalTramo = consumoVacio + (factorCarga * (consumoLleno - consumoVacio));
-                     
-                     const litrosPlanoTramo = tramo.distanciaKm * consumoHorizontalTramo;
-
-                     // 3. LA MAGIA: Penalidad por Topografía (Desnivel)
-                     // ~0.68 litros extra por cada 1000m subidos, por cada Tonelada de peso bruto.
-                     const factorGasoilPorMetroTon = 0.68 / 1000; 
-                     const litrosSubidaTramo = pesoBrutoTramo * (tramo.desnivelMetros || 0) * factorGasoilPorMetroTon;
-
-                     // Acumulamos
-                     litrosConsumidos += (litrosPlanoTramo + litrosSubidaTramo);
-                     penalidadTopograficaTotal += litrosSubidaTramo;
-                 });
-            }
+                const factorGasoilPorMetroTon = 0.68 / 1000;
+                litrosExtraElevacion += pesoBrutoTramo * (tramo.desnivelMetros || 0) * factorGasoilPorMetroTon;
+            });
         } else {
-            // Cotización por horas/servicio
-            litrosConsumidos = (distanciaKm * consumoVacio) + (horasOperacion * 5.0);
+            litrosBaseDistancia = (distanciaKm * consumoVacio) + (horasOperacion * 5.0);
         }
 
-        totalCombustible = litrosConsumidos * precioGasoilUsd;
+        const litrosConsumidos = litrosBaseDistancia + litrosExtraPeso + litrosExtraElevacion;
+        const totalCombustible = litrosConsumidos * precioGasoilUsd;
 
-        // --- FIN DE CÁLCULO FÍSICO ---
+        // ------------------------------------------------------------------
+        // --- 6. NÓMINA, CRONOGRAMA Y VIÁTICOS (Basado en Horas Reales) ---
+        // ------------------------------------------------------------------
+        const jornadaMax = body.jornadaMaxima || 10;
+        const horaSalidaSt = body.horaSalida || "06:00";
+        const comidaPrimerDia = body.comidaPrimerDia || false;
+        
+        // FÓRMULA DE NÓMINA (Pago exacto por fracción de hora trabajada: /4/7/24)
+        const valorHoraChofer = sueldoChoferMensual / 4 / 7 / 24;
+        const nominaChofer = valorHoraChofer * horasTotales;
+        
+        let nominaAyudante = 0;
+        if (tieneAyudante && sueldoAyudanteMensual) {
+            const valorHoraAyudante = sueldoAyudanteMensual / 4 / 7 / 24;
+            nominaAyudante = valorHoraAyudante * horasTotales;
+        }
+        const nominaTotal = nominaChofer + nominaAyudante;
 
-        // 5. NÓMINA Y PEAJES (Quedan intactos)
-        const tarifaHoraChofer = sueldoChoferMensual > 0 ? (sueldoChoferMensual / 4 / 7 / 24) : 1.50;
-        const tarifaHoraAyudante = sueldoAyudanteMensual > 0 ? (sueldoAyudanteMensual / 4 / 7 / 24) : 0.80;
-        const totalNomina = (horasTotales * tarifaHoraChofer) + (tieneAyudante ? (horasTotales * tarifaHoraAyudante) : 0);
-        const totalViaticos = Math.ceil(horasTotales / 12) * 25 * (tieneAyudante ? 2 : 1);
+        // --- GENERADOR DEL CRONOGRAMA ---
+        let tiempoRestante = horasTotales;
+        let diaActual = 1;
+        let itinerario = [];
+        let [horaReloj, minReloj] = horaSalidaSt.split(':').map(Number);
+        
+        // Contadores de logística real
+        let diasConComida = 0;
+        let nochesHotel = 0;
+        const costoComidaDia = 15;
+        const costoHotelNoche = 15;
+        const factorPersonal = tieneAyudante ? 2 : 1;
+
+        // Si el usuario marcó que SÍ se paga comida el día que arranca:
+        if (comidaPrimerDia) diasConComida++;
+
+        while (tiempoRestante > 0) {
+            // ¿Cuánto conduce hoy? Lo que falte, o el límite de la jornada máxima
+            let horasTramoHoy = Math.min(tiempoRestante, jornadaMax);
+            
+            // Calcular la hora a la que termina de manejar hoy
+            let horasRealesInt = Math.floor(horasTramoHoy);
+            let minutosReales = Math.round((horasTramoHoy - horasRealesInt) * 60);
+            
+            let horaFin = horaReloj + horasRealesInt;
+            let minFin = minReloj + minutosReales;
+            if (minFin >= 60) { horaFin++; minFin -= 60; }
+            if (horaFin >= 24) { horaFin -= 24; } // Formato 24h
+
+            const inicioStr = `${String(horaReloj).padStart(2, '0')}:${String(minReloj).padStart(2, '0')}`;
+            const finStr = `${String(horaFin).padStart(2, '0')}:${String(minFin).padStart(2, '0')}`;
+
+            let detalleV = diaActual === 1 && comidaPrimerDia ? `+ Comida ($${costoComidaDia * factorPersonal})` : null;
+            if (diaActual > 1) detalleV = `+ Comida ($${costoComidaDia * factorPersonal})`;
+
+            itinerario.push({
+                dia: diaActual,
+                tipo: 'trabajo',
+                accion: `Ruta en progreso (${horasTramoHoy.toFixed(1)} Hrs)`,
+                inicio: inicioStr,
+                fin: finStr,
+                detalleViatico: detalleV
+            });
+
+            tiempoRestante -= horasTramoHoy;
+
+            // Si aún queda viaje para mañana, toca dormir
+            if (tiempoRestante > 0) {
+                nochesHotel++;
+                diasConComida++; // El día de mañana automáticamente lleva comida
+                
+                // Las horas de descanso son 24 menos las horas trabajadas en la jornada
+                const horasDescanso = 24 - horasTramoHoy;
+                
+                itinerario.push({
+                    dia: diaActual,
+                    tipo: 'descanso',
+                    accion: `Pernocta Obligatoria (${horasDescanso.toFixed(1)} Hrs de parada)`,
+                    inicio: finStr,
+                    fin: inicioStr, // Al día siguiente arranca a la misma hora base
+                    detalleViatico: `+ Hotel ($${costoHotelNoche * factorPersonal})`
+                });
+                
+                diaActual++;
+                // Para el día siguiente, la hora de reloj vuelve a ser la hora de salida estándar
+                horaReloj = parseInt(horaSalidaSt.split(':')[0]);
+                minReloj = parseInt(horaSalidaSt.split(':')[1]);
+            }
+        }
+
+        // --- CÁLCULO FINAL DE VIÁTICOS ---
+        const totalComida = diasConComida * costoComidaDia * factorPersonal;
+        const totalHotel = nochesHotel * costoHotelNoche * factorPersonal;
+        const viaticosManual = parseFloat(viaticosManuales || 0);
+        const viaticosTotal = totalComida + totalHotel + viaticosManual;
+
+        // ------------------------------------------------------------------
+        // --- 7. DEPRECIACIÓN Y COSTO DE POSESIÓN ---
+        // ------------------------------------------------------------------
+        const valorReposicion = chuto.valorReposicion || 40000;
+        const valorSalvamento = chuto.valorSalvamento || 5000;
+        const vidaUtilAnios = chuto.vidaUtilAnios || 10;
+
+        const horasVidaUtil = vidaUtilAnios * 2400;
+        const depreciacionPorHora = (valorReposicion - valorSalvamento) / horasVidaUtil;
+        const interesAnual = 0.05;
+        const costoCapitalHora = (valorReposicion * interesAnual) / 2400;
+
+        const totalDepreciacion = depreciacionPorHora * horasTotales;
+        const totalCapital = costoCapitalHora * horasTotales;
+        
+        // Sumamos Depreciación Financiera + Gastos Fijos de Matriz (Seguros/Trámites)
+        const costoPosesionTotal = totalDepreciacion + totalCapital + calculoChuto.posesion + calculoBatea.posesion;
+
+        // ------------------------------------------------------------------
+        // --- 8. PEAJES Y CIERRE ---
+        // ------------------------------------------------------------------
         const totalPeajes = cantidadPeajes * (precioPeajeBs / bcv);
 
-        const totalOperativos = totalPeajes + totalNomina + totalViaticos;
-        const costoTotal = totalCombustible + totalMantenimiento + totalPosesion + totalOperativos;
-        const precioSugerido = costoTotal / (1 - porcentajeGanancia);
+        const costoTotal = totalCombustible + nominaTotal + viaticosTotal + totalPeajes + totalMantenimiento + costoPosesionTotal;
+        const margen = body.porcentajeGanancia || 0.30;
+        const precioSugerido = costoTotal / (1 - margen);
 
         return NextResponse.json({
             success: true,
-            costoTotal: parseFloat(costoTotal.toFixed(2)),
-            precioSugerido: parseFloat(precioSugerido.toFixed(2)),
+            costoTotal,
+            precioSugerido,
             breakdown: {
                 litros: parseFloat(litrosConsumidos.toFixed(2)),
-                combustible: parseFloat(totalCombustible.toFixed(2)),
-                mantenimiento: parseFloat(totalMantenimiento.toFixed(2)),
-                posesion: parseFloat(totalPosesion.toFixed(2)),
-                peajes: parseFloat(totalPeajes.toFixed(2)),
-                nomina: parseFloat(totalNomina.toFixed(2)),
-                viaticos: parseFloat(totalViaticos.toFixed(2)),
-                operativos: parseFloat(totalOperativos.toFixed(2)),
-                pesoRemolque: parseFloat(pesoRemolque.toFixed(2)),
+                combustible: totalCombustible,
+                combustibleDetalle: {
+                    baseDistancia: litrosBaseDistancia,
+                    extraPeso: litrosExtraPeso,
+                    extraElevacion: litrosExtraElevacion
+                },
+                nomina: nominaTotal,
+                nominaDetalle: {
+                    sueldoBaseChofer: sueldoChoferMensual,
+                    sueldoBaseAyudante: sueldoAyudanteMensual || 0,
+                    pagoChoferRuta: nominaChofer,
+                    pagoAyudanteRuta: nominaAyudante
+                },
+                viaticos: viaticosTotal,
+                viaticosDetalle: {
+                    alimentacion: totalComida,
+                    pernocta: totalHotel,
+                    diasComidaFacturados: diasConComida,
+                    nochesHotelFacturadas: nochesHotel
+                },
+                itinerario: itinerario, // <--- ESTO ES VITAL PARA PINTAR EL CRONOGRAMA
+                posesion: costoPosesionTotal,
+                posesionDetalle: {
+                    valorActivo: valorReposicion,
+                    vidaUtilAnios: vidaUtilAnios,
+                    depreciacion: totalDepreciacion,
+                    oportunidad: totalCapital
+                },
+                rutinaViaje: {
+                    horasConduccion: horasTotales.toFixed(1),
+                    horasConduccionPura: horasConduccionPura.toFixed(1), // <--- NUEVO
+                    velocidadPromedioReal: velocidadPromedioReal.toFixed(1), // <--- NUEVO
+                    jornadas: diaActual,
+                    pernoctas: nochesHotel,
+                    horasDescanso: nochesHotel * (24 - jornadaMax)
+                },
+                peajes: totalPeajes,
+                mantenimiento: totalMantenimiento,
+                itemsDetallados: listaCompletaRepuestos,
+                pesoRemolque: pesoRemolque,
                 auditoriaPesos: {
                     capacidad: { valor: capacidadMax, fuente: fuenteCapacidad },
                     chuto: { valor: pesoRealChuto, fuente: fuenteChuto, sobrepeso: sobrepesoChuto },
                     remolque: { valor: pesoRemolque, fuente: fuenteRemolque },
                     rendimiento: { lleno: consumoLleno, vacio: consumoVacio, fuente: fuenteRendimiento }
-                },
-                itemsDetallados: listaCompletaRepuestos
+                }
             }
         });
 
