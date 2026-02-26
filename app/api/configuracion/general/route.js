@@ -3,16 +3,11 @@ import db from '@/models';
 import { Op } from 'sequelize';
 
 export async function GET() {
-    // Busca la config o crea una por defecto
-    const [config] = await db.ConfiguracionGlobal.findOrCreate({ where: { id: 1 } });
-    if (!config) {
-        // Valores por defecto de seguridad si no hay DB inicializada
-        return NextResponse.json({
-            horasAnualesOperativas: 2000,
-            tasaInteresAnual: 5.0,
-            factorOverheadHora: 0 // Si lo usas
-        });
-    }
+    const [config] = await db.ConfiguracionGlobal.findOrCreate({ 
+        where: { id: 1 },
+        include: [{ model: db.GastoFijoGlobal, as: 'gastosFijos' }]
+    });
+    if (!config.gastosFijos) config.gastosFijos = [];
     return NextResponse.json(config);
 }
 
@@ -21,29 +16,54 @@ export async function POST(req) {
     try {
         const body = await req.json();
 
-        // 1. Guardar Configuración Global
-        await db.ConfiguracionGlobal.update(body, { where: { id: 1 }, transaction: t });
+        // =================================================================
+        // 1. CÁLCULO DE OVERHEAD (ADMINISTRATIVO)
+        // =================================================================
+        
+        // A. Gastos Mensuales Fijos (Llevados a anuales)
+        const mensualEstatico = (parseFloat(body.gastosOficinaMensual) || 0) + 
+                                (parseFloat(body.pagosGestoriaPermisos) || 0) + 
+                                (parseFloat(body.nominaAdministrativaTotal) || 0) + 
+                                (parseFloat(body.nominaOperativaFijaTotal) || 0);
+        const anualEstatico = mensualEstatico * 12;
+
+        // B. Gastos Anuales Dinámicos (La tabla de Permisos, Seguros, etc)
+        const gastosFijos = body.gastosFijos || [];
+        const anualDinamico = gastosFijos.reduce((sum, g) => sum + (parseFloat(g.montoAnual) || 0), 0);
+        
+        const granTotalAnual = anualEstatico + anualDinamico;
+
+        // C. Prorrateo por flota operativa
+        const totalEquipos = parseInt(body.cantidadMaquinariaPesada || 0) + parseInt(body.cantidadTransportePesado || 0);
+        const horasAnualesOperativas = parseInt(body.horasAnualesOperativas || 2000);
+        const horasTotalesFlotaAnual = totalEquipos > 0 ? (totalEquipos * horasAnualesOperativas) : 1;
+
+        // ESTE ES EL OVERHEAD OFICIAL QUE SE LE COBRARÁ A CADA FLETE POR HORA
+        const costoAdministrativoPorHora = granTotalAnual / horasTotalesFlotaAnual;
 
         // =================================================================
-        // 2. EJECUTAR LÓGICA MANUAL DADICA (CÁLCULOS)
+        // 2. GUARDAR CONFIGURACIÓN Y TABLA DINÁMICA EN DB
         // =================================================================
 
-        // --- A. CÁLCULO DE RESGUARDO ($/Hr) ---
-        // Fórmula del Manual: Costo Total Vigilancia / Horas Operativas Flota
-        const costoNominaVigilancia = body.cantidadVigilantes * body.sueldoMensualVigilante;
-        const costoTotalSeguridadMes = costoNominaVigilancia + parseFloat(body.costoSistemaSeguridad || 0);
+        await db.ConfiguracionGlobal.update({
+            ...body,
+            costoAdministrativoPorHora: costoAdministrativoPorHora
+        }, { where: { id: 1 }, transaction: t });
 
-        const totalEquipos = parseInt(body.cantidadMaquinariaPesada) + parseInt(body.cantidadTransportePesado);
+        // Limpiar y recrear gastos fijos extra
+        await db.GastoFijoGlobal.destroy({ where: { configuracionId: 1 }, transaction: t });
+        if (gastosFijos.length > 0) {
+            const nuevosGastos = gastosFijos.map(g => ({
+                descripcion: g.descripcion,
+                montoAnual: g.montoAnual,
+                configuracionId: 1
+            }));
+            await db.GastoFijoGlobal.bulkCreate(nuevosGastos, { transaction: t });
+        }
 
-        // Asumiendo 176 horas operativas al mes promedio por equipo (8h * 22dias)
-        const horasTotalesFlota = totalEquipos * 176;
-
-        // FACTOR RESGUARDO ($/Hora)
-        const costoResguardoHora = horasTotalesFlota > 0 ? (costoTotalSeguridadMes / horasTotalesFlota) : 0;
-
-
-        // --- B. ACTUALIZAR PRECIOS EN MATRICES (INSUMOS) ---
-        // Buscamos en los detalles de las matrices y actualizamos precios según lo que configuraste
+        // =================================================================
+        // 3. ACTUALIZACIÓN EN LOTE DE LAS MATRICES (INSUMOS)
+        // =================================================================
 
         // Actualizar Aceite Motor
         await db.DetalleMatrizCosto.update(
@@ -51,53 +71,61 @@ export async function POST(req) {
             { where: { descripcion: { [Op.iLike]: '%Aceite Motor%' } }, transaction: t }
         );
 
-        // Actualizar Cauchos Chuto (Direccional/Tracción)
+        // Actualizar Cauchos Chuto (Solo para Vehículos)
         await db.DetalleMatrizCosto.update(
             { costoUnitario: body.precioCauchoChuto },
             {
                 where: {
                     [Op.and]: [
-                        { descripcion: { [Op.iLike]: '%Neum%' } }, // Contiene Neumático
+                        { descripcion: { [Op.or]: [{ [Op.iLike]: '%Neum%' }, { [Op.iLike]: '%Cauch%' }] } },
                         { matrizId: { [Op.in]: db.sequelize.literal(`(SELECT id FROM "MatrizCostos" WHERE "tipoActivo" = 'Vehiculo')`) } }
                     ]
                 }, transaction: t
             }
         );
 
-        // Actualizar Cauchos Batea
+        // Actualizar Cauchos Batea (Solo para Remolques)
         await db.DetalleMatrizCosto.update(
             { costoUnitario: body.precioCauchoBatea },
             {
                 where: {
                     [Op.and]: [
-                        { descripcion: { [Op.iLike]: '%Neum%' } },
+                        { descripcion: { [Op.or]: [{ [Op.iLike]: '%Neum%' }, { [Op.iLike]: '%Cauch%' }] } },
                         { matrizId: { [Op.in]: db.sequelize.literal(`(SELECT id FROM "MatrizCostos" WHERE "tipoActivo" = 'Remolque')`) } }
                     ]
                 }, transaction: t
             }
         );
 
-        // --- C. RECALCULAR TOTALES DE MATRICES ---
-        // Como cambiamos precios unitarios, hay que sumar todo de nuevo
+        // RECALCULAR LOS TOTALES ($/Km y $/Hr) DE CADA MATRIZ
         const matrices = await db.MatrizCosto.findAll({ include: ['detalles'], transaction: t });
-
+        
         for (const m of matrices) {
             let nuevoTotalKm = 0;
+            let nuevoTotalHora = 0;
+            
             for (const d of m.detalles) {
-                if (d.frecuenciaKm > 0) {
-                    nuevoTotalKm += (d.cantidad * d.costoUnitario) / d.frecuenciaKm;
+                if (d.frecuencia > 0) {
+                    const costoFila = d.cantidad * d.costoUnitario;
+                    if (d.tipoDesgaste === 'km') {
+                        nuevoTotalKm += (costoFila / d.frecuencia);
+                    } else if (d.tipoDesgaste === 'horas') {
+                        nuevoTotalHora += (costoFila / d.frecuencia);
+                    } else if (d.tipoDesgaste === 'meses') {
+                        // 166.66 hrs es el estandar laboral de un mes (2000hrs / 12)
+                        nuevoTotalHora += (costoFila / (d.frecuencia * 166.66)); 
+                    }
                 }
             }
-            // Actualizamos el total y el costo de posesión base (Resguardo no va aquí, va en el flete)
-            await m.update({ totalCostoKm: nuevoTotalKm }, { transaction: t });
+            await m.update({ totalCostoKm: nuevoTotalKm, totalCostoHora: nuevoTotalHora }, { transaction: t });
         }
 
         await t.commit();
 
         return NextResponse.json({
             success: true,
-            resguardoCalculado: costoResguardoHora.toFixed(2),
-            mensaje: "Costos globales y precios de mercado actualizados."
+            overheadCalculado: costoAdministrativoPorHora.toFixed(2),
+            mensaje: "Configuración global guardada y Matrices re-calculadas exitosamente."
         });
 
     } catch (error) {
