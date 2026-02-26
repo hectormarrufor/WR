@@ -178,15 +178,15 @@ export async function POST(req) {
         const totalCombustible = litrosConsumidos * precioGasoilUsd;
 
         // ------------------------------------------------------------------
-        // --- 6. NÓMINA, CRONOGRAMA Y VIÁTICOS (Basado en Horas Reales) ---
+        // --- 6. NÓMINA, CRONOGRAMA Y FECHA DE LLEGADA ---
         // ------------------------------------------------------------------
         const jornadaMax = body.jornadaMaxima || 10;
         const horaSalidaSt = body.horaSalida || "06:00";
         const comidaPrimerDia = body.comidaPrimerDia || false;
         
-        // FÓRMULA DE NÓMINA (Pago exacto por fracción de hora trabajada: /4/7/24)
+        // FÓRMULA DE NÓMINA (/4/7/24)
         const valorHoraChofer = sueldoChoferMensual / 4 / 7 / 24;
-        const nominaChofer = valorHoraChofer * horasTotales;
+        const nominaChofer = valorHoraChofer * horasTotales; // horasTotales ya incluye las esperas
         
         let nominaAyudante = 0;
         if (tieneAyudante && sueldoAyudanteMensual) {
@@ -196,33 +196,30 @@ export async function POST(req) {
         const nominaTotal = nominaChofer + nominaAyudante;
 
         // --- GENERADOR DEL CRONOGRAMA ---
-        let tiempoRestante = horasTotales;
+        let tiempoRestante = horasTotales; 
         let diaActual = 1;
         let itinerario = [];
         let [horaReloj, minReloj] = horaSalidaSt.split(':').map(Number);
         
-        // Contadores de logística real
         let diasConComida = 0;
         let nochesHotel = 0;
+        let horasDescansoAcumuladas = 0; // <--- NUEVO: Para saber cuánto tiempo pasa durmiendo
         const costoComidaDia = 15;
         const costoHotelNoche = 15;
         const factorPersonal = tieneAyudante ? 2 : 1;
 
-        // Si el usuario marcó que SÍ se paga comida el día que arranca:
         if (comidaPrimerDia) diasConComida++;
 
         while (tiempoRestante > 0) {
-            // ¿Cuánto conduce hoy? Lo que falte, o el límite de la jornada máxima
             let horasTramoHoy = Math.min(tiempoRestante, jornadaMax);
             
-            // Calcular la hora a la que termina de manejar hoy
             let horasRealesInt = Math.floor(horasTramoHoy);
             let minutosReales = Math.round((horasTramoHoy - horasRealesInt) * 60);
             
             let horaFin = horaReloj + horasRealesInt;
             let minFin = minReloj + minutosReales;
             if (minFin >= 60) { horaFin++; minFin -= 60; }
-            if (horaFin >= 24) { horaFin -= 24; } // Formato 24h
+            if (horaFin >= 24) { horaFin -= 24; }
 
             const inicioStr = `${String(horaReloj).padStart(2, '0')}:${String(minReloj).padStart(2, '0')}`;
             const finStr = `${String(horaFin).padStart(2, '0')}:${String(minFin).padStart(2, '0')}`;
@@ -241,35 +238,42 @@ export async function POST(req) {
 
             tiempoRestante -= horasTramoHoy;
 
-            // Si aún queda viaje para mañana, toca dormir
             if (tiempoRestante > 0) {
                 nochesHotel++;
-                diasConComida++; // El día de mañana automáticamente lleva comida
+                diasConComida++; 
                 
-                // Las horas de descanso son 24 menos las horas trabajadas en la jornada
                 const horasDescanso = 24 - horasTramoHoy;
+                horasDescansoAcumuladas += horasDescanso; // Sumamos a la misión
                 
                 itinerario.push({
                     dia: diaActual,
                     tipo: 'descanso',
                     accion: `Pernocta Obligatoria (${horasDescanso.toFixed(1)} Hrs de parada)`,
                     inicio: finStr,
-                    fin: inicioStr, // Al día siguiente arranca a la misma hora base
+                    fin: inicioStr,
                     detalleViatico: `+ Hotel ($${costoHotelNoche * factorPersonal})`
                 });
                 
                 diaActual++;
-                // Para el día siguiente, la hora de reloj vuelve a ser la hora de salida estándar
                 horaReloj = parseInt(horaSalidaSt.split(':')[0]);
                 minReloj = parseInt(horaSalidaSt.split(':')[1]);
             }
         }
 
-        // --- CÁLCULO FINAL DE VIÁTICOS ---
         const totalComida = diasConComida * costoComidaDia * factorPersonal;
         const totalHotel = nochesHotel * costoHotelNoche * factorPersonal;
         const viaticosManual = parseFloat(viaticosManuales || 0);
         const viaticosTotal = totalComida + totalHotel + viaticosManual;
+
+        // --- CÁLCULO DE FECHA DE LLEGADA ---
+        const duracionTotalMision = horasTotales + horasDescansoAcumuladas; 
+        
+        // Armamos la fecha exacta de salida uniendo el DatePicker y el Input de Hora
+        const fechaSalidaObj = new Date(body.fechaSalida || new Date());
+        fechaSalidaObj.setHours(parseInt(horaSalidaSt.split(':')[0]), parseInt(horaSalidaSt.split(':')[1]), 0, 0);
+        
+        // Le sumamos las horas totales de la misión (en milisegundos)
+        const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
 
         // ------------------------------------------------------------------
         // --- 7. DEPRECIACIÓN Y COSTO DE POSESIÓN ---
@@ -333,12 +337,15 @@ export async function POST(req) {
                     oportunidad: totalCapital
                 },
                 rutinaViaje: {
-                    horasConduccion: horasTotales.toFixed(1),
-                    horasConduccionPura: horasConduccionPura.toFixed(1), // <--- NUEVO
-                    velocidadPromedioReal: velocidadPromedioReal.toFixed(1), // <--- NUEVO
+                    horasConduccion: horasConduccionPura.toFixed(1), // Rodando sin esperas
+                    horasEsperaTotales: horasEsperaTotales.toFixed(1), // Parado en la ruta
+                    horasDescanso: horasDescansoAcumuladas.toFixed(1), // Durmiendo
+                    tiempoMisionTotal: duracionTotalMision.toFixed(1), // Total de la operación
+                    fechaSalidaISO: fechaSalidaObj.toISOString(),
+                    fechaLlegadaISO: fechaLlegadaObj.toISOString(),
+                    velocidadPromedioReal: velocidadPromedioReal.toFixed(1),
                     jornadas: diaActual,
-                    pernoctas: nochesHotel,
-                    horasDescanso: nochesHotel * (24 - jornadaMax)
+                    pernoctas: nochesHotel
                 },
                 peajes: totalPeajes,
                 mantenimiento: totalMantenimiento,

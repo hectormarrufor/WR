@@ -119,6 +119,7 @@ export default function FleteCreator() {
             form.values.choferId,
             form.values.ayudanteId,
             form.values.calidadRepuestos,
+            form.values.fechaSalida,
             // --- GATILLOS NUEVOS ---
             form.values.jornadaMaxima,
             form.values.horaSalida,
@@ -146,6 +147,7 @@ export default function FleteCreator() {
                     activoPrincipalId: form.values.activoPrincipalId,
                     remolqueId: form.values.remolqueId,
                     distanciaKm: rutaData.distanciaTotal,
+                    fechaSalida: form.values.fechaSalida,
                     jornadaMaxima: parseInt(form.values.jornadaMaxima),
                     tonelaje: tonelajePromedio,
                     horaSalida: form.values.horaSalida,
@@ -422,6 +424,30 @@ export default function FleteCreator() {
                         />
 
                     </Paper>
+
+                    {estimacion?.breakdown?.rutinaViaje && (
+                        <SimpleGrid cols={3} mt="md">
+                            <Paper withBorder p="xs" radius="md" ta="center">
+                                <Text size="xs" c="dimmed" fw={600}>Tiempo en Movimiento</Text>
+                                <Text fw={800} size="lg" c="blue.7">{estimacion.breakdown.rutinaViaje.horasConduccion} hrs</Text>
+                                <Text size="xs" c="dimmed">+{estimacion.breakdown.rutinaViaje.horasEsperaTotales} hrs (Espera)</Text>
+                            </Paper>
+                            <Paper withBorder p="xs" radius="md" ta="center">
+                                <Text size="xs" c="dimmed" fw={600}>Duración Total (Misión)</Text>
+                                <Text fw={800} size="lg" c="orange.7">{estimacion.breakdown.rutinaViaje.tiempoMisionTotal} hrs</Text>
+                                <Text size="xs" c="dimmed">Rodando + Descansos</Text>
+                            </Paper>
+                            <Paper withBorder p="xs" radius="md" ta="center" bg="teal.0">
+                                <Text size="xs" c="teal.9" fw={700}>Llegada Estimada</Text>
+                                <Text fw={800} size="sm" c="teal.9" mt={4}>
+                                    {new Date(estimacion.breakdown.rutinaViaje.fechaLlegadaISO).toLocaleDateString('es-VE', { weekday: 'short', day: '2-digit', month: 'short' })}
+                                </Text>
+                                <Text fw={700} size="sm" c="teal.9">
+                                    {new Date(estimacion.breakdown.rutinaViaje.fechaLlegadaISO).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                            </Paper>
+                        </SimpleGrid>
+                    )}
 
                     <Paper withBorder p="md" mb="md">
                         <Group mb="xs">
