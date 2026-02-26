@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { 
     Paper, Table, NumberInput, TextInput, Button, Group, Text, Title, 
-    ActionIcon, Stack, Card, Badge, LoadingOverlay, Select, ScrollArea
+    ActionIcon, Card, Badge, LoadingOverlay, Select, ScrollArea, Alert,
+    SimpleGrid
 } from '@mantine/core';
-import { IconTrash, IconPlus, IconCalculator, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconCalculator, IconDeviceFloppy, IconInfoCircle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
 export default function MatrizEditor({ matrizId }) {
@@ -13,19 +14,34 @@ export default function MatrizEditor({ matrizId }) {
     const [filas, setFilas] = useState([]);
     const [loading, setLoading] = useState(false);
     
-    // Asumimos 2000 horas anuales / 12 meses para convertir los gastos mensuales a por Hora.
-    const HORAS_POR_MES = 166.66; 
+    // Estados para las variables globales
+    const [horasAnuales, setHorasAnuales] = useState(2000);
+    const [horasPorMes, setHorasPorMes] = useState(166.66);
 
     useEffect(() => {
         if (!matrizId) return;
         setLoading(true);
-        fetch(`/api/configuracion/matriz/${matrizId}`)
-            .then(r => r.json())
-            .then(data => {
-                setHeader(data.header);
-                setFilas(data.detalles || []);
-                setLoading(false);
-            });
+
+        // Cargamos la Matriz y la Configuración Global al mismo tiempo
+        Promise.all([
+            fetch(`/api/configuracion/matriz/${matrizId}`).then(r => r.json()),
+            fetch('/api/configuracion/general').then(r => r.json())
+        ])
+        .then(([matrizData, configData]) => {
+            setHeader(matrizData.header);
+            setFilas(matrizData.detalles || []);
+            
+            if (configData && configData.horasAnualesOperativas) {
+                setHorasAnuales(configData.horasAnualesOperativas);
+                setHorasPorMes(configData.horasAnualesOperativas / 12);
+            }
+        })
+        .catch(err => {
+            notifications.show({ title: 'Error', message: 'Fallo al cargar los datos', color: 'red' });
+        })
+        .finally(() => {
+            setLoading(false);
+        });
     }, [matrizId]);
 
     // Función que devuelve cuánto aporta esta fila al $/Km y cuánto al $/Hr
@@ -41,7 +57,8 @@ export default function MatrizEditor({ matrizId }) {
             return { km: 0, hora: costoGasto / f.frecuencia };
         } 
         else if (f.tipoDesgaste === 'meses') {
-            return { km: 0, hora: costoGasto / (f.frecuencia * HORAS_POR_MES) };
+            // AHORA USA EL VALOR DINÁMICO DE LA BD
+            return { km: 0, hora: costoGasto / (f.frecuencia * horasPorMes) };
         }
         
         return { km: 0, hora: 0 };
@@ -73,6 +90,26 @@ export default function MatrizEditor({ matrizId }) {
 
     const removeFila = (index) => setFilas(filas.filter((_, i) => i !== index));
 
+    const borrarMatriz = async () => {
+        const confirmar = window.confirm("⚠️ ¿Estás seguro de eliminar esta Matriz? Se borrarán todos sus insumos y no se puede deshacer.");
+        if (!confirmar) return;
+
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/configuracion/matriz/${matrizId}`, { method: 'DELETE' });
+            if (res.ok) {
+                notifications.show({ title: 'Eliminada', message: 'Matriz borrada con éxito', color: 'green' });
+                // window.location.reload(); o router.push() según tu navegación
+            } else {
+                throw new Error('Error al borrar');
+            }
+        } catch (e) {
+            notifications.show({ title: 'Error', message: 'No se pudo eliminar la matriz', color: 'red' });
+        } finally { 
+            setLoading(false); 
+        }
+    };
+
     const guardarCambios = async () => {
         setLoading(true);
         try {
@@ -85,38 +122,13 @@ export default function MatrizEditor({ matrizId }) {
                     totalCostoHora: totalHora 
                 })
             });
-           if (res.ok) {
+            if (res.ok) {
                 notifications.show({ title: 'Guardado', message: 'Estructura actualizada', color: 'green' });
             } else {
-                // 👇 ESTO OBLIGA A SALTAR AL CATCH SI HAY ERROR 500 👇
                 throw new Error('El servidor rechazó los datos'); 
             }
         } catch (e) {
             notifications.show({ title: 'Error', message: 'No se pudo guardar la estructura', color: 'red' });
-        } finally { 
-            setLoading(false); 
-        }
-    };
-
-    const borrarMatriz = async () => {
-        // Confirmación de seguridad nativa del navegador
-        const confirmar = window.confirm("⚠️ ¿Estás seguro de eliminar esta Matriz? Se borrarán todos sus insumos y no se puede deshacer.");
-        if (!confirmar) return;
-
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/configuracion/matriz/${matrizId}`, {
-                method: 'DELETE'
-            });
-            if (res.ok) {
-                notifications.show({ title: 'Eliminada', message: 'Matriz borrada con éxito', color: 'green' });
-                // Aquí podrías redirigir al usuario o limpiar la pantalla
-                // router.push('/alguna-ruta'); 
-            } else {
-                throw new Error('Error al borrar');
-            }
-        } catch (e) {
-            notifications.show({ title: 'Error', message: 'No se pudo eliminar la matriz', color: 'red' });
         } finally { 
             setLoading(false); 
         }
@@ -134,27 +146,39 @@ export default function MatrizEditor({ matrizId }) {
                     <Text c="dimmed" size="sm">Cálculo Dual de Costos (Rodamiento vs Tiempo)</Text>
                 </div>
                 <Group>
-                    <Button 
-                        leftSection={<IconTrash size={18}/>} 
-                        color="red" 
-                        variant="light" 
-                        onClick={borrarMatriz}
-                    >
+                    <Button leftSection={<IconTrash size={18}/>} color="red" variant="light" onClick={borrarMatriz}>
                         Borrar Matriz
                     </Button>
-                    <Button 
-                        leftSection={<IconDeviceFloppy size={18}/>} 
-                        color="blue" 
-                        onClick={guardarCambios}
-                    >
+                    <Button leftSection={<IconDeviceFloppy size={18}/>} color="blue" onClick={guardarCambios}>
                         Guardar Cambios
                     </Button>
                 </Group>
             </Group>
 
-            {/* AHORA MOSTRAMOS DOS TARJETAS */}
+            {/* PANEL DE INFORMACIÓN Y FÓRMULAS */}
+            <Alert icon={<IconInfoCircle size={20} />} title="Parámetros Dinámicos y Fórmulas de Cálculo" color="cyan" variant="light" mb="lg">
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                    <div>
+                        <Text size="sm" fw={700} c="cyan.9">Horas Operativas (Config. Global)</Text>
+                        <Text size="xs" c="dimmed"><b>Anuales:</b> {horasAnuales.toLocaleString()} hrs</Text>
+                        <Text size="xs" c="dimmed"><b>Mensuales:</b> {horasPorMes.toFixed(2)} hrs/mes</Text>
+                    </div>
+                    <div>
+                        <Text size="sm" fw={700} c="cyan.9">Cálculo por Rodamiento ($/Km)</Text>
+                        <Text size="xs" ff="monospace" c="dimmed">(Cant. × Promedio) ÷ Frecuencia</Text>
+                        <Text size="xs" c="gray.6"><i>Aplica a cauchos, frenos, filtros, etc.</i></Text>
+                    </div>
+                    <div>
+                        <Text size="sm" fw={700} c="cyan.9">Cálculo por Tiempo ($/Hr)</Text>
+                        <Text size="xs" ff="monospace" c="dimmed"><b>Horas:</b> (Cant. × Prom.) ÷ Frecuencia</Text>
+                        <Text size="xs" ff="monospace" c="dimmed"><b>Meses:</b> (Cant. × Prom.) ÷ (Frec. × {horasPorMes.toFixed(2)})</Text>
+                    </div>
+                </SimpleGrid>
+            </Alert>
+
+            {/* TARJETAS DE TOTALES */}
             <Group grow mb="lg">
-                <Card withBorder radius="md" bg="blue.0">
+                <Card withBorder radius="md" style={{ backgroundColor: 'var(--mantine-color-blue-0)' }}>
                     <Group justify="space-between">
                         <Group>
                             <IconCalculator size={24} color="gray" />
@@ -168,7 +192,7 @@ export default function MatrizEditor({ matrizId }) {
                         </Badge>
                     </Group>
                 </Card>
-                <Card withBorder radius="md" bg="orange.0">
+                <Card withBorder radius="md" style={{ backgroundColor: 'var(--mantine-color-orange-0)' }}>
                     <Group justify="space-between">
                         <Group>
                             <IconCalculator size={24} color="gray" />
@@ -186,7 +210,7 @@ export default function MatrizEditor({ matrizId }) {
 
             <ScrollArea>
                 <Table striped highlightOnHover withTableBorder miw={1000}>
-                    <Table.Thead bg="gray.1">
+                    <Table.Thead style={{ backgroundColor: 'var(--mantine-color-gray-1)' }}>
                         <Table.Tr>
                             <Table.Th style={{ width: 200 }}>Descripción</Table.Th>
                             <Table.Th style={{ width: 90 }}>Und.</Table.Th>

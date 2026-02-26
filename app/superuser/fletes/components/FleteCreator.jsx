@@ -32,6 +32,7 @@ export default function FleteCreator() {
     const [activos, setActivos] = useState([]);
     const [configPrecios, setConfigPrecios] = useState({ peaje: 1900, gasoil: 0.5 });
     const [bcv, setBcv] = useState(null);
+    const [configGlobal, setConfigGlobal] = useState(null);
     const [rutaData, setRutaData] = useState(null);
 
     const form = useForm({
@@ -68,21 +69,25 @@ export default function FleteCreator() {
     useEffect(() => {
         const cargarDatos = async () => {
             try {
-                const [resEmp, resAct, resPrecios, resBcv] = await Promise.all([
+                const [resEmp, resAct, resPrecios, resBcv, resConfig] = await Promise.all([
                     fetch(`/api/rrhh/empleados`).then((r) => r.json()),
                     fetch(`/api/gestionMantenimiento/activos`).then((r) => r.json()),
                     fetch(`/api/configuracion/precios`).then((r) => r.json()),
                     fetch(`/api/bcv`).then((r) => r.json()),
+                    // 🔥 NUESTRA NUEVA API GLOBAL 🔥
+                    fetch(`/api/configuracion/general`).then((r) => r.json()), 
                 ]);
 
                 setEmpleados(resEmp || []);
                 setActivos(resAct.success ? resAct.data : []);
                 setBcv(parseFloat(resBcv?.precio || 1));
+                setConfigGlobal(resConfig); // Guardamos toda la configuración
 
-                if (resPrecios) {
+                if (resConfig) {
+                    // Ahora tomamos los precios directamente de la Configuración Global
                     setConfigPrecios({
-                        peaje: parseFloat(resPrecios.peaje5ejes || 1900),
-                        gasoil: parseFloat(resPrecios.gasoil || 0.5),
+                        peaje: parseFloat(resConfig.precioPeajePromedio || 20),
+                        gasoil: parseFloat(resConfig.precioGasoil || 0.5),
                     });
                 }
                 setLoading(false);
@@ -108,6 +113,9 @@ export default function FleteCreator() {
         });
     }, [activos]);
 
+    
+
+
     const { data: estimacion, isLoading: calcLoading } = useQuery({
         queryKey: [
             "calcular-flete-puro",
@@ -127,14 +135,18 @@ export default function FleteCreator() {
             form.values.viaticosManuales
         ],
         queryFn: async () => {
-            if (!form.values.activoPrincipalId || !rutaData?.distanciaTotal) return null;
+            if (!form.values.activoPrincipalId || !rutaData?.distanciaTotal || !configGlobal) return null;
+
+            console.log("DATA DE CONFIG GLOBAL LLEGANDO AL FLETE:", configGlobal);
+            console.log("OVERHEAD A ENVIAR:", configGlobal.costoAdministrativoPorHora);
 
             const choferObj = empleados.find(e => e.id === form.values.choferId);
             const ayudanteObj = empleados.find(e => e.id === form.values.ayudanteId);
-            const sueldoChofer = parseFloat(choferObj?.sueldo || 400);
-            const sueldoAyudante = parseFloat(ayudanteObj?.sueldo || 300);
+            
+            // Usamos los sueldos base de la config global si el empleado no tiene uno específico
+            const sueldoChofer = parseFloat(choferObj?.sueldo || configGlobal.sueldoChoferBase);
+            const sueldoAyudante = parseFloat(ayudanteObj?.sueldo || configGlobal.sueldoAyudanteBase);
 
-            // Calculamos un tonelaje promedio para enviarlo por si tu API antigua lo requiere como fallback
             const tonelajePromedio = form.values.tramos.length > 0
                 ? form.values.tramos.reduce((acc, t) => acc + t.tonelaje, 0) / form.values.tramos.length
                 : 0;
@@ -153,7 +165,7 @@ export default function FleteCreator() {
                     horaSalida: form.values.horaSalida,
                     comidaPrimerDia: form.values.comidaPrimerDia,
                     viaticosManuales: form.values.viaticosManuales,
-                    tramos: form.values.tramos, // El nuevo arreglo detallado
+                    tramos: form.values.tramos,
                     cantidadPeajes: form.values.cantidadPeajes,
                     precioPeajeBs: configPrecios.peaje,
                     bcv: bcv || 1,
@@ -163,6 +175,12 @@ export default function FleteCreator() {
                     tieneAyudante: !!form.values.ayudanteId,
                     calidadRepuestos: form.values.calidadRepuestos,
                     porcentajeGanancia: 0.30,
+                    
+                    // 🔥 AÑADIMOS EL OVERHEAD ADMINISTRATIVO 🔥
+                    costoAdministrativoPorHora: parseFloat(configGlobal.costoAdministrativoPorHora || 0),
+                    // Y si quieres enviar también los viáticos automáticos de la config:
+                    viaticoAlimentacionDia: parseFloat(configGlobal.viaticoAlimentacionDia || 15),
+                    viaticoHotelNoche: parseFloat(configGlobal.viaticoHotelNoche || 20),
                 }),
             });
 
@@ -171,6 +189,10 @@ export default function FleteCreator() {
         },
         enabled: !!form.values.activoPrincipalId && !!rutaData?.distanciaTotal,
     });
+
+    useEffect(() => {
+        console.log(estimacion);
+    }, [estimacion]);
 
     const handleRouteCalculated = useCallback((data) => {
         setRutaData(data);
@@ -592,12 +614,42 @@ export default function FleteCreator() {
                                                             </>
                                                         )}
 
-                                                        {/* PEAJES */}
+                                                       {/* PEAJES */}
                                                         <Table.Tr>
                                                             <Table.Td>🚧 Peajes y Tasas de Tránsito</Table.Td>
                                                             <Table.Td><Badge color="blue" size="xs">Vialidad</Badge></Table.Td>
                                                             <Table.Td fw={500} ta="right">${estimacion.breakdown.peajes.toFixed(2)}</Table.Td>
                                                         </Table.Tr>
+
+                                                        {/* 🔥 OVERHEAD INTEGRADO VISUALMENTE 🔥 */}
+                                                        {estimacion?.breakdown?.overhead > 0 && configGlobal && (
+                                                            <>
+                                                                <Table.Tr>
+                                                                    <Table.Td>🏢 Gastos Administrativos</Table.Td>
+                                                                    <Table.Td><Badge color="violet" size="xs">Estructura</Badge></Table.Td>
+                                                                    <Table.Td fw={500} ta="right">${estimacion.breakdown.overhead.toFixed(2)}</Table.Td>
+                                                                </Table.Tr>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
+                                                                        ↳ 📊 Flota Física: {(Number(configGlobal.cantidadTransportePesado) || 0) + (Number(configGlobal.cantidadMaquinariaPesada) || 0)} equipos
+                                                                    </Table.Td>
+                                                                    <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
+                                                                    <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">Utilización: {configGlobal.utilizacionFlotaPorcentaje}%</Table.Td>
+                                                                </Table.Tr>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
+                                                                        ↳ ⏱️ Tarifa de Overhead (Costo Fijo)
+                                                                    </Table.Td>
+                                                                    <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
+                                                                    <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">${Number(configGlobal.costoAdministrativoPorHora).toFixed(2)} / hr</Table.Td>
+                                                                </Table.Tr>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.75rem', fontStyle: 'italic' }} colSpan={3}>
+                                                                        *Nota: Prorrateado por las {estimacion.breakdown.rutinaViaje.tiempoMisionTotal} horas totales de la misión (incluyendo paradas y pernoctas).
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                            </>
+                                                        )}
 
 
                                                         {/* --- SECCIÓN 2: MANTENIMIENTO --- */}

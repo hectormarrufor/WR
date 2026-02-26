@@ -35,7 +35,7 @@ const ConfiguracionGlobal = sequelize.define('ConfiguracionGlobal', {
   tasaInteresAnual: { type: DataTypes.FLOAT, defaultValue: 5.0 }, 
   horasAnualesOperativas: { type: DataTypes.INTEGER, defaultValue: 2000 }, 
 
-  // ==========================================================
+ // ==========================================================
   // --- 4. NUEVOS: PARÁMETROS DE MERCADO Y OPERACIONES ---
   // ==========================================================
   precioGasoil: { type: DataTypes.FLOAT, defaultValue: 0.50 },
@@ -43,13 +43,20 @@ const ConfiguracionGlobal = sequelize.define('ConfiguracionGlobal', {
   viaticoAlimentacionDia: { type: DataTypes.FLOAT, defaultValue: 15.00 },
   viaticoHotelNoche: { type: DataTypes.FLOAT, defaultValue: 20.00 },
 
-  // Referencias para Batch Update de Matrices
-  precioAceiteMotor: { type: DataTypes.FLOAT, defaultValue: 8.50 },
-  precioAceiteCaja: { type: DataTypes.FLOAT, defaultValue: 11.00 },
-  precioCauchoChuto: { type: DataTypes.FLOAT, defaultValue: 450.00 },
-  precioCauchoBatea: { type: DataTypes.FLOAT, defaultValue: 380.00 },
-  precioBateria: { type: DataTypes.FLOAT, defaultValue: 180.00 },
+  // Referencias para Batch Update de Matrices (Mínimos y Máximos)
+  precioAceiteMotorMin: { type: DataTypes.FLOAT, defaultValue: 7.50 },
+  precioAceiteMotorMax: { type: DataTypes.FLOAT, defaultValue: 9.50 },
+  
+  precioAceiteCajaMin: { type: DataTypes.FLOAT, defaultValue: 10.00 },
+  precioAceiteCajaMax: { type: DataTypes.FLOAT, defaultValue: 12.00 },
+  
+  precioCauchoMin: { type: DataTypes.FLOAT, defaultValue: 350.00 },
+  precioCauchoMax: { type: DataTypes.FLOAT, defaultValue: 450.00 },
+  
+  precioBateriaMin: { type: DataTypes.FLOAT, defaultValue: 150.00 },
+  precioBateriaMax: { type: DataTypes.FLOAT, defaultValue: 210.00 },
 
+  utilizacionFlotaPorcentaje: { type: DataTypes.FLOAT, defaultValue: 30.0 },
   // --- 5. RESULTADO DEL PRORRATEO DINÁMICO ---
   costoAdministrativoPorHora: { 
     type: DataTypes.FLOAT, 

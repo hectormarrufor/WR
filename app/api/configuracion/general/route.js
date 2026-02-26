@@ -3,7 +3,7 @@ import db from '@/models';
 import { Op } from 'sequelize';
 
 export async function GET() {
-    const [config] = await db.ConfiguracionGlobal.findOrCreate({ 
+    const [config] = await db.ConfiguracionGlobal.findOrCreate({
         where: { id: 1 },
         include: [{ model: db.GastoFijoGlobal, as: 'gastosFijos' }]
     });
@@ -16,29 +16,35 @@ export async function POST(req) {
     try {
         const body = await req.json();
 
-        // =================================================================
+       // =================================================================
         // 1. CÁLCULO DE OVERHEAD (ADMINISTRATIVO)
         // =================================================================
-        
-        // A. Gastos Mensuales Fijos (Llevados a anuales)
+
+        // A. Sumar los gastos estáticos (Mensuales x 12)
         const mensualEstatico = (parseFloat(body.gastosOficinaMensual) || 0) + 
                                 (parseFloat(body.pagosGestoriaPermisos) || 0) + 
                                 (parseFloat(body.nominaAdministrativaTotal) || 0) + 
                                 (parseFloat(body.nominaOperativaFijaTotal) || 0);
         const anualEstatico = mensualEstatico * 12;
 
-        // B. Gastos Anuales Dinámicos (La tabla de Permisos, Seguros, etc)
+        // B. Sumar los gastos dinámicos (La tabla de Permisos, Seguros, etc)
         const gastosFijos = body.gastosFijos || [];
         const anualDinamico = gastosFijos.reduce((sum, g) => sum + (parseFloat(g.montoAnual) || 0), 0);
         
+        // C. El Verdadero Gran Total
         const granTotalAnual = anualEstatico + anualDinamico;
 
-        // C. Prorrateo por flota operativa
+        // D. Prorrateo por flota operativa (Corregido por Capacidad Ociosa)
         const totalEquipos = parseInt(body.cantidadMaquinariaPesada || 0) + parseInt(body.cantidadTransportePesado || 0);
-        const horasAnualesOperativas = parseInt(body.horasAnualesOperativas || 2000);
-        const horasTotalesFlotaAnual = totalEquipos > 0 ? (totalEquipos * horasAnualesOperativas) : 1;
+        const porcentajeUtilizacion = (parseFloat(body.utilizacionFlotaPorcentaje) || 100) / 100;
+        const flotaActiva = totalEquipos * porcentajeUtilizacion;
 
-        // ESTE ES EL OVERHEAD OFICIAL QUE SE LE COBRARÁ A CADA FLETE POR HORA
+        const horasAnualesOperativas = parseInt(body.horasAnualesOperativas || 2000);
+
+        // Horas reales que la empresa va a cobrar este año
+        const horasTotalesFlotaAnual = flotaActiva > 0 ? (flotaActiva * horasAnualesOperativas) : 1;
+
+        // ESTE ES EL OVERHEAD OFICIAL PROTEGIDO CONTRA QUIEBRA
         const costoAdministrativoPorHora = granTotalAnual / horasTotalesFlotaAnual;
 
         // =================================================================
@@ -52,8 +58,8 @@ export async function POST(req) {
 
         // Limpiar y recrear gastos fijos extra
         await db.GastoFijoGlobal.destroy({ where: { configuracionId: 1 }, transaction: t });
-        if (gastosFijos.length > 0) {
-            const nuevosGastos = gastosFijos.map(g => ({
+        if (body.gastosFijos && body.gastosFijos.length > 0) {
+            const nuevosGastos = body.gastosFijos.map(g => ({
                 descripcion: g.descripcion,
                 montoAnual: g.montoAnual,
                 configuracionId: 1
@@ -62,48 +68,74 @@ export async function POST(req) {
         }
 
         // =================================================================
-        // 3. ACTUALIZACIÓN EN LOTE DE LAS MATRICES (INSUMOS)
+        // 3. ACTUALIZACIÓN EN LOTE DE LAS MATRICES (INSUMOS Y RANGOS)
         // =================================================================
 
-        // Actualizar Aceite Motor
-        await db.DetalleMatrizCosto.update(
-            { costoUnitario: body.precioAceiteMotor },
-            { where: { descripcion: { [Op.iLike]: '%Aceite Motor%' } }, transaction: t }
-        );
+        // Función auxiliar que arma el paquete de costos (Min, Max, Promedio)
+        const prepararCostos = (min, max) => {
+            const costoMin = parseFloat(min) || 0;
+            const costoMax = parseFloat(max) || 0;
+            return {
+                costoMinimo: costoMin,
+                costoMaximo: costoMax,
+                costoUnitario: (costoMin + costoMax) / 2
+            };
+        };
 
-        // Actualizar Cauchos Chuto (Solo para Vehículos)
-        await db.DetalleMatrizCosto.update(
-            { costoUnitario: body.precioCauchoChuto },
-            {
-                where: {
-                    [Op.and]: [
-                        { descripcion: { [Op.or]: [{ [Op.iLike]: '%Neum%' }, { [Op.iLike]: '%Cauch%' }] } },
-                        { matrizId: { [Op.in]: db.sequelize.literal(`(SELECT id FROM "MatrizCostos" WHERE "tipoActivo" = 'Vehiculo')`) } }
-                    ]
-                }, transaction: t
-            }
-        );
+        // --- Actualizar Cauchos (Universal para toda la flota) ---
+        if (body.precioCauchoMin > 0 && body.precioCauchoMax > 0) {
+            await db.DetalleMatrizCosto.update(
+                prepararCostos(body.precioCauchoMin, body.precioCauchoMax),
+                {
+                    where: {
+                        descripcion: {
+                            [Op.or]: [
+                                { [Op.iLike]: '%Neum%' },
+                                { [Op.iLike]: '%Cauch%' }
+                            ]
+                        }
+                    },
+                    transaction: t
+                }
+            );
+        }
 
-        // Actualizar Cauchos Batea (Solo para Remolques)
-        await db.DetalleMatrizCosto.update(
-            { costoUnitario: body.precioCauchoBatea },
-            {
-                where: {
-                    [Op.and]: [
-                        { descripcion: { [Op.or]: [{ [Op.iLike]: '%Neum%' }, { [Op.iLike]: '%Cauch%' }] } },
-                        { matrizId: { [Op.in]: db.sequelize.literal(`(SELECT id FROM "MatrizCostos" WHERE "tipoActivo" = 'Remolque')`) } }
-                    ]
-                }, transaction: t
-            }
-        );
+        // --- Actualizar Aceite Motor ---
+        if (body.precioAceiteMotorMin > 0 && body.precioAceiteMotorMax > 0) {
+            await db.DetalleMatrizCosto.update(
+                prepararCostos(body.precioAceiteMotorMin, body.precioAceiteMotorMax),
+                { where: { descripcion: { [Op.iLike]: '%Aceite Motor%' } }, transaction: t }
+            );
+        }
 
-        // RECALCULAR LOS TOTALES ($/Km y $/Hr) DE CADA MATRIZ
+        // --- Actualizar Aceite Caja ---
+        if (body.precioAceiteCajaMin > 0 && body.precioAceiteCajaMax > 0) {
+            await db.DetalleMatrizCosto.update(
+                prepararCostos(body.precioAceiteCajaMin, body.precioAceiteCajaMax),
+                { where: { descripcion: { [Op.iLike]: '%Aceite Caja%' } }, transaction: t }
+            );
+        }
+
+        // --- Actualizar Baterías ---
+        if (body.precioBateriaMin > 0 && body.precioBateriaMax > 0) {
+            await db.DetalleMatrizCosto.update(
+                prepararCostos(body.precioBateriaMin, body.precioBateriaMax),
+                { where: { descripcion: { [Op.iLike]: '%Bater%' } }, transaction: t }
+            );
+        }
+
+        // =================================================================
+        // 4. RECALCULAR LOS TOTALES ($/Km y $/Hr) DE CADA MATRIZ
+        // =================================================================
         const matrices = await db.MatrizCosto.findAll({ include: ['detalles'], transaction: t });
-        
+
+        // 🔥 CONVERTIMOS LAS HORAS ANUALES (DINÁMICAS) A MENSUALES PARA EL DESGASTE 🔥
+        const horasOperativasMensuales = horasAnualesOperativas / 12;
+
         for (const m of matrices) {
             let nuevoTotalKm = 0;
             let nuevoTotalHora = 0;
-            
+
             for (const d of m.detalles) {
                 if (d.frecuencia > 0) {
                     const costoFila = d.cantidad * d.costoUnitario;
@@ -112,14 +144,13 @@ export async function POST(req) {
                     } else if (d.tipoDesgaste === 'horas') {
                         nuevoTotalHora += (costoFila / d.frecuencia);
                     } else if (d.tipoDesgaste === 'meses') {
-                        // 166.66 hrs es el estandar laboral de un mes (2000hrs / 12)
-                        nuevoTotalHora += (costoFila / (d.frecuencia * 166.66)); 
+                        // AQUÍ ENTRA EN ACCIÓN LA VARIABLE DINÁMICA:
+                        nuevoTotalHora += (costoFila / (d.frecuencia * horasOperativasMensuales));
                     }
                 }
             }
             await m.update({ totalCostoKm: nuevoTotalKm, totalCostoHora: nuevoTotalHora }, { transaction: t });
         }
-
         await t.commit();
 
         return NextResponse.json({

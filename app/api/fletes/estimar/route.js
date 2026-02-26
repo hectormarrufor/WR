@@ -53,7 +53,12 @@ export async function POST(req) {
             horasOperacion = 0, tonelaje = 0, cantidadPeajes = 0,
             precioPeajeBs = 1900, bcv = 1, precioGasoilUsd = 0.5,
             sueldoChoferMensual = 0, sueldoAyudanteMensual = 0, tieneAyudante = false,
-            calidadRepuestos = 50, porcentajeGanancia = 0.30, viaticosManuales = 0
+            calidadRepuestos = 50, porcentajeGanancia = 0.30, viaticosManuales = 0,
+
+            // 🔥 NUEVAS VARIABLES INYECTADAS DESDE CONFIG. GLOBAL 🔥
+            costoAdministrativoPorHora = 0,
+            viaticoAlimentacionDia = 15,
+            viaticoHotelNoche = 20
         } = body;
 
         // ------------------------------------------------------------------
@@ -107,7 +112,7 @@ export async function POST(req) {
         // ------------------------------------------------------------------
         let horasTotales = 0;
         let horasEsperaTotales = 0; // <--- NUEVA VARIABLE PARA RASTREAR ESPERAS
-        
+
         if (tipoCotizacion === 'flete' && body.tramos && body.tramos.length > 0) {
             let tiempoFinalSegundos = 0;
             body.tramos.forEach(tramo => {
@@ -127,7 +132,7 @@ export async function POST(req) {
 
                 // Extraemos la espera y la sumamos al contador global
                 const esperaTramoHoras = parseFloat(tramo.tiempoEspera || 0);
-                horasEsperaTotales += esperaTramoHoras; 
+                horasEsperaTotales += esperaTramoHoras;
                 segundosTramo += (esperaTramoHoras * 3600);
 
                 tiempoFinalSegundos += segundosTramo;
@@ -166,7 +171,7 @@ export async function POST(req) {
 
                 litrosBaseDistancia += tramo.distanciaKm * consumoVacio;
                 litrosExtraPeso += tramo.distanciaKm * (factorCarga * (consumoLleno - consumoVacio));
-                
+
                 const factorGasoilPorMetroTon = 0.68 / 1000;
                 litrosExtraElevacion += pesoBrutoTramo * (tramo.desnivelMetros || 0) * factorGasoilPorMetroTon;
             });
@@ -183,11 +188,11 @@ export async function POST(req) {
         const jornadaMax = body.jornadaMaxima || 10;
         const horaSalidaSt = body.horaSalida || "06:00";
         const comidaPrimerDia = body.comidaPrimerDia || false;
-        
+
         // FÓRMULA DE NÓMINA (/4/7/24)
         const valorHoraChofer = sueldoChoferMensual / 4 / 7 / 24;
         const nominaChofer = valorHoraChofer * horasTotales; // horasTotales ya incluye las esperas
-        
+
         let nominaAyudante = 0;
         if (tieneAyudante && sueldoAyudanteMensual) {
             const valorHoraAyudante = sueldoAyudanteMensual / 4 / 7 / 24;
@@ -196,26 +201,28 @@ export async function POST(req) {
         const nominaTotal = nominaChofer + nominaAyudante;
 
         // --- GENERADOR DEL CRONOGRAMA ---
-        let tiempoRestante = horasTotales; 
+        let tiempoRestante = horasTotales;
         let diaActual = 1;
         let itinerario = [];
         let [horaReloj, minReloj] = horaSalidaSt.split(':').map(Number);
-        
+
         let diasConComida = 0;
         let nochesHotel = 0;
-        let horasDescansoAcumuladas = 0; // <--- NUEVO: Para saber cuánto tiempo pasa durmiendo
-        const costoComidaDia = 15;
-        const costoHotelNoche = 15;
+        let horasDescansoAcumuladas = 0;
+
+        // 🔄 AHORA USAN LAS VARIABLES DE LA CONFIG. GLOBAL 🔄
+        const costoComidaDia = parseFloat(viaticoAlimentacionDia);
+        const costoHotelNoche = parseFloat(viaticoHotelNoche);
         const factorPersonal = tieneAyudante ? 2 : 1;
 
         if (comidaPrimerDia) diasConComida++;
 
         while (tiempoRestante > 0) {
             let horasTramoHoy = Math.min(tiempoRestante, jornadaMax);
-            
+
             let horasRealesInt = Math.floor(horasTramoHoy);
             let minutosReales = Math.round((horasTramoHoy - horasRealesInt) * 60);
-            
+
             let horaFin = horaReloj + horasRealesInt;
             let minFin = minReloj + minutosReales;
             if (minFin >= 60) { horaFin++; minFin -= 60; }
@@ -240,11 +247,11 @@ export async function POST(req) {
 
             if (tiempoRestante > 0) {
                 nochesHotel++;
-                diasConComida++; 
-                
+                diasConComida++;
+
                 const horasDescanso = 24 - horasTramoHoy;
                 horasDescansoAcumuladas += horasDescanso; // Sumamos a la misión
-                
+
                 itinerario.push({
                     dia: diaActual,
                     tipo: 'descanso',
@@ -253,7 +260,7 @@ export async function POST(req) {
                     fin: inicioStr,
                     detalleViatico: `+ Hotel ($${costoHotelNoche * factorPersonal})`
                 });
-                
+
                 diaActual++;
                 horaReloj = parseInt(horaSalidaSt.split(':')[0]);
                 minReloj = parseInt(horaSalidaSt.split(':')[1]);
@@ -265,15 +272,17 @@ export async function POST(req) {
         const viaticosManual = parseFloat(viaticosManuales || 0);
         const viaticosTotal = totalComida + totalHotel + viaticosManual;
 
-        // --- CÁLCULO DE FECHA DE LLEGADA ---
+       // --- CÁLCULO DE FECHA DE LLEGADA Y OVERHEAD ---
         const duracionTotalMision = horasTotales + horasDescansoAcumuladas; 
         
-        // Armamos la fecha exacta de salida uniendo el DatePicker y el Input de Hora
         const fechaSalidaObj = new Date(body.fechaSalida || new Date());
         fechaSalidaObj.setHours(parseInt(horaSalidaSt.split(':')[0]), parseInt(horaSalidaSt.split(':')[1]), 0, 0);
         
-        // Le sumamos las horas totales de la misión (en milisegundos)
         const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
+
+        // 🔥 NUEVO: CÁLCULO DEL APORTE ADMINISTRATIVO (OVERHEAD) 🔥
+        // Se multiplica el costo por hora por la duración COMPLETA de la misión (incluyendo descansos)
+        const totalOverhead = parseFloat(costoAdministrativoPorHora) * duracionTotalMision;
 
         // ------------------------------------------------------------------
         // --- 7. DEPRECIACIÓN Y COSTO DE POSESIÓN ---
@@ -289,7 +298,7 @@ export async function POST(req) {
 
         const totalDepreciacion = depreciacionPorHora * horasTotales;
         const totalCapital = costoCapitalHora * horasTotales;
-        
+
         // Sumamos Depreciación Financiera + Gastos Fijos de Matriz (Seguros/Trámites)
         const costoPosesionTotal = totalDepreciacion + totalCapital + calculoChuto.posesion + calculoBatea.posesion;
 
@@ -328,6 +337,7 @@ export async function POST(req) {
                     diasComidaFacturados: diasConComida,
                     nochesHotelFacturadas: nochesHotel
                 },
+                overhead: totalOverhead,
                 itinerario: itinerario, // <--- ESTO ES VITAL PARA PINTAR EL CRONOGRAMA
                 posesion: costoPosesionTotal,
                 posesionDetalle: {

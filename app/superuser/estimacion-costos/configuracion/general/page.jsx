@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-    Container, Title, Text, Button, Group, Paper, SimpleGrid, 
+import {
+    Container, Title, Text, Button, Group, Paper, SimpleGrid,
     NumberInput, Divider, ThemeIcon, Grid, LoadingOverlay, Tabs, Alert,
     Table, ActionIcon, TextInput, Badge, ScrollArea
 } from '@mantine/core';
@@ -21,22 +21,23 @@ export default function ConfiguracionGlobalPage() {
             precioPeajePromedio: 20.00,
             viaticoAlimentacionDia: 15.00,
             viaticoHotelNoche: 20.00,
-            precioAceiteMotor: 8.50,
-            precioAceiteCaja: 11.00,
-            precioCauchoChuto: 450.00,
-            precioCauchoBatea: 380.00,
-            precioBateria: 180.00,
+            precioAceiteMotorMin: 7.50, precioAceiteMotorMax: 9.50,
+            precioAceiteCajaMin: 10.00, precioAceiteCajaMax: 12.00,
+            precioCauchoMin: 350.00,
+            precioCauchoMax: 450.00,
+            precioBateriaMin: 150.00, precioBateriaMax: 210.00,
 
             // Módulo Fijos Mensuales (Tu modelo original)
             gastosOficinaMensual: 500,
             pagosGestoriaPermisos: 200,
             nominaAdministrativaTotal: 1500,
             nominaOperativaFijaTotal: 2000,
-            
+
             // Módulo Flota (Para prorratear)
             cantidadMaquinariaPesada: 18,
             cantidadTransportePesado: 15,
             horasAnualesOperativas: 2000, // Por equipo
+            utilizacionFlotaPorcentaje: 30,
 
             // Módulo Resguardo
             cantidadVigilantes: 4,
@@ -73,32 +74,42 @@ export default function ConfiguracionGlobalPage() {
 
     // --- CÁLCULOS EN TIEMPO REAL PARA EL FRONTEND ---
     // 1. Gastos Estáticos Mensuales (multiplicados x12 para el año)
-    const mensualEstatico = (form.values.gastosOficinaMensual || 0) + 
-                            (form.values.pagosGestoriaPermisos || 0) + 
-                            (form.values.nominaAdministrativaTotal || 0) + 
-                            (form.values.nominaOperativaFijaTotal || 0);
+    const mensualEstatico = (form.values.gastosOficinaMensual || 0) +
+        (form.values.pagosGestoriaPermisos || 0) +
+        (form.values.nominaAdministrativaTotal || 0) +
+        (form.values.nominaOperativaFijaTotal || 0);
     const anualEstatico = mensualEstatico * 12;
 
     // 2. Gastos Dinámicos Anuales (Tabla)
     const anualDinamico = gastosFijos.reduce((sum, g) => sum + (Number(g.montoAnual) || 0), 0);
 
-    // 3. Prorrateo Overhead
+   // 3. Prorrateo Overhead con CAPACIDAD OCIOSA
     const granTotalAnual = anualEstatico + anualDinamico;
-    const flotaTotal = (Number(form.values.cantidadMaquinariaPesada) || 0) + (Number(form.values.cantidadTransportePesado) || 0);
-    const horasTotalesFlotaAnual = flotaTotal * (Number(form.values.horasAnualesOperativas) || 2000);
     
-    const overheadPorHora = horasTotalesFlotaAnual > 0 ? (granTotalAnual / horasTotalesFlotaAnual) : 0;
+    // Flota física en el patio
+    const flotaTotal = (Number(form.values.cantidadMaquinariaPesada) || 0) + (Number(form.values.cantidadTransportePesado) || 0);
+    
+    // Flota real facturando (La que carga con el peso de la empresa)
+    const porcentajeUtilizacion = (Number(form.values.utilizacionFlotaPorcentaje) || 100) / 100;
+    const flotaActiva = flotaTotal * porcentajeUtilizacion;
+    
+    const horasAnuales = Number(form.values.horasAnualesOperativas) || 2000;
+    
+    // Las horas que REALMENTE se van a facturar en el año
+    const horasTotalesFlotaAnual = flotaActiva > 0 ? (flotaActiva * horasAnuales) : 1;
+    
+    const overheadPorHora = granTotalAnual / horasTotalesFlotaAnual;
 
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
             const res = await fetch('/api/configuracion/general', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...values, gastosFijos })
             });
             const data = await res.json();
-            
+
             if (res.ok) {
                 notifications.show({ title: 'Éxito', message: 'Configuración guardada y matrices actualizadas', color: 'green' });
             } else {
@@ -122,33 +133,59 @@ export default function ConfiguracionGlobalPage() {
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Paper withBorder radius="md" p="md" pos="relative">
                     <LoadingOverlay visible={loading} />
-                    
+
                     <Tabs defaultValue="mercado" keepMounted={false}>
                         <Tabs.List mb="md">
-                            <Tabs.Tab value="mercado" leftSection={<IconGasStation size={18}/>}>Mercado / Operativos</Tabs.Tab>
-                            <Tabs.Tab value="fijos" leftSection={<IconBriefcase size={18}/>}>Gastos Mensuales (Fijos)</Tabs.Tab>
-                            <Tabs.Tab value="dinamicos" leftSection={<IconBuildingBank size={18}/>}>Gastos Anuales (Extra)</Tabs.Tab>
-                            <Tabs.Tab value="resguardo" leftSection={<IconShieldLock size={18}/>}>Resguardo (Seguridad)</Tabs.Tab>
+                            <Tabs.Tab value="mercado" leftSection={<IconGasStation size={18} />}>Mercado / Operativos</Tabs.Tab>
+                            <Tabs.Tab value="fijos" leftSection={<IconBriefcase size={18} />}>Gastos Mensuales (Fijos)</Tabs.Tab>
+                            <Tabs.Tab value="dinamicos" leftSection={<IconBuildingBank size={18} />}>Gastos Anuales (Extra)</Tabs.Tab>
+                            <Tabs.Tab value="resguardo" leftSection={<IconShieldLock size={18} />}>Resguardo (Seguridad)</Tabs.Tab>
                         </Tabs.List>
 
                         {/* TAB 1: MERCADO */}
                         <Tabs.Panel value="mercado">
-                            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+                            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" mb="xl">
                                 <NumberInput label="Precio Gasoil (Litro)" prefix="$" decimalScale={3} {...form.getInputProps('precioGasoil')} />
                                 <NumberInput label="Peaje Promedio" prefix="$" decimalScale={2} {...form.getInputProps('precioPeajePromedio')} />
-                                <NumberInput label="Viático Alimentación (Día)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoAlimentacionDia')} />
-                                <NumberInput label="Viático Pernocta (Hotel)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoHotelNoche')} />
-                                <Divider my="xs" label="Repuestos (Actualiza Matrices)" labelPosition="center" style={{gridColumn: '1/-1'}} />
-                                <NumberInput label="Caucho Chuto (295/80 R22.5)" prefix="$" decimalScale={2} {...form.getInputProps('precioCauchoChuto')} />
-                                <NumberInput label="Caucho Batea (12R 22.5)" prefix="$" decimalScale={2} {...form.getInputProps('precioCauchoBatea')} />
-                                <NumberInput label="Aceite Motor (Litro)" prefix="$" decimalScale={2} {...form.getInputProps('precioAceiteMotor')} />
-                                <NumberInput label="Batería 1100 Amp" prefix="$" decimalScale={2} {...form.getInputProps('precioBateria')} />
+                                <NumberInput label="Viático Comida (Día)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoAlimentacionDia')} />
+                                <NumberInput label="Viático Hotel (Noche)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoHotelNoche')} />
                             </SimpleGrid>
+
+                            <Divider my="xs" label="Rango de Repuestos (Actualiza todas las Matrices)" labelPosition="center" />
+
+                            <Table striped highlightOnHover verticalSpacing="sm">
+                                <Table.Thead bg="gray.1">
+                                    <Table.Tr>
+                                        <Table.Th>Insumo / Repuesto</Table.Th>
+                                        <Table.Th style={{ width: 180 }}>Costo Mínimo ($)</Table.Th>
+                                        <Table.Th style={{ width: 180 }}>Costo Máximo ($)</Table.Th>
+                                        <Table.Th style={{ width: 150, textAlign: 'right' }}>Promedio (Unitario)</Table.Th>
+                                    </Table.Tr>
+                                </Table.Thead>
+                                <Table.Tbody>
+                                    {[
+                                        { label: 'Cauchos Flota (Chutos, Bateas, Vacuums)', min: 'precioCauchoMin', max: 'precioCauchoMax' },
+                                        { label: 'Aceite Motor (Litro)', min: 'precioAceiteMotorMin', max: 'precioAceiteMotorMax' },
+                                        { label: 'Aceite Caja (Litro)', min: 'precioAceiteCajaMin', max: 'precioAceiteCajaMax' },
+                                        { label: 'Batería 1100 Amp', min: 'precioBateriaMin', max: 'precioBateriaMax' },
+                                    ].map((item, idx) => {
+                                        const prom = ((Number(form.values[item.min]) || 0) + (Number(form.values[item.max]) || 0)) / 2;
+                                        return (
+                                            <Table.Tr key={idx}>
+                                                <Table.Td fw={600}>{item.label}</Table.Td>
+                                                <Table.Td><NumberInput variant="unstyled" prefix="$" decimalScale={2} c="green.9" {...form.getInputProps(item.min)} /></Table.Td>
+                                                <Table.Td><NumberInput variant="unstyled" prefix="$" decimalScale={2} c="red.9" {...form.getInputProps(item.max)} /></Table.Td>
+                                                <Table.Td ta="right" fw={800} c="blue.8">${prom.toFixed(2)}</Table.Td>
+                                            </Table.Tr>
+                                        );
+                                    })}
+                                </Table.Tbody>
+                            </Table>
                         </Tabs.Panel>
 
                         {/* TAB 2: GASTOS FIJOS MENSUALES */}
                         <Tabs.Panel value="fijos">
-                            <Alert icon={<IconInfoCircle size={16}/>} color="blue" mb="md">Estos son los gastos rutinarios base. Se multiplicarán por 12 para el cálculo anual.</Alert>
+                            <Alert icon={<IconInfoCircle size={16} />} color="blue" mb="md">Estos son los gastos rutinarios base. Se multiplicarán por 12 para el cálculo anual.</Alert>
                             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
                                 <NumberInput label="Gastos Oficina Mensual" description="Alquiler, Luz, Internet" prefix="$" {...form.getInputProps('gastosOficinaMensual')} />
                                 <NumberInput label="Gestoría y Permisos Base" description="Gestor, Trámites regulares" prefix="$" {...form.getInputProps('pagosGestoriaPermisos')} />
@@ -159,7 +196,7 @@ export default function ConfiguracionGlobalPage() {
 
                         {/* TAB 3: GASTOS DINÁMICOS ANUALES */}
                         <Tabs.Panel value="dinamicos">
-                            <Alert icon={<IconBuildingBank size={16}/>} color="violet" mb="md">Agrega aquí pagos anuales esporádicos (RACDA, Póliza RCV Flota, Timbres Fiscales).</Alert>
+                            <Alert icon={<IconBuildingBank size={16} />} color="violet" mb="md">Agrega aquí pagos anuales esporádicos (RACDA, Póliza RCV Flota, Timbres Fiscales).</Alert>
                             <ScrollArea h={250}>
                                 <Table striped highlightOnHover withTableBorder>
                                     <Table.Thead bg="gray.1">
@@ -183,14 +220,14 @@ export default function ConfiguracionGlobalPage() {
                                                     }} styles={{ input: { textAlign: 'right', fontWeight: 600 } }} />
                                                 </Table.Td>
                                                 <Table.Td ta="center">
-                                                    <ActionIcon color="red" variant="subtle" onClick={() => setGastosFijos(gastosFijos.filter((_, idx) => idx !== i))}><IconTrash size={16}/></ActionIcon>
+                                                    <ActionIcon color="red" variant="subtle" onClick={() => setGastosFijos(gastosFijos.filter((_, idx) => idx !== i))}><IconTrash size={16} /></ActionIcon>
                                                 </Table.Td>
                                             </Table.Tr>
                                         ))}
                                     </Table.Tbody>
                                 </Table>
                             </ScrollArea>
-                            <Button mt="sm" variant="light" leftSection={<IconPlus size={16}/>} onClick={() => setGastosFijos([...gastosFijos, { descripcion: '', montoAnual: 0 }])} color="violet">Añadir Gasto Anual</Button>
+                            <Button mt="sm" variant="light" leftSection={<IconPlus size={16} />} onClick={() => setGastosFijos([...gastosFijos, { descripcion: '', montoAnual: 0 }])} color="violet">Añadir Gasto Anual</Button>
                         </Tabs.Panel>
 
                         {/* TAB 4: RESGUARDO (Mantenido fiel a tu modelo) */}
@@ -207,18 +244,41 @@ export default function ConfiguracionGlobalPage() {
 
                     <Divider my="xl" />
 
-                    {/* PANEL INFORMATIVO DE OVERHEAD */}
+                   {/* PANEL INFORMATIVO DE OVERHEAD Y CAPACIDAD OCIOSA */}
                     <Paper bg="gray.0" p="md" radius="md" withBorder mb="lg">
                         <Grid align="center">
-                            <Grid.Col span={{ base: 12, md: 4 }}>
-                                <NumberInput label="Cant. Chutos / Camiones" {...form.getInputProps('cantidadTransportePesado')} />
-                                <NumberInput label="Cant. Maquinaria Pesada" mt="sm" {...form.getInputProps('cantidadMaquinariaPesada')} />
+                            <Grid.Col span={{ base: 12, md: 5 }}>
+                                <Group grow>
+                                    <NumberInput label="Total Chutos" {...form.getInputProps('cantidadTransportePesado')} />
+                                    <NumberInput label="Total Maquinaria" {...form.getInputProps('cantidadMaquinariaPesada')} />
+                                </Group>
+                                
+                                <NumberInput 
+                                    label="Tasa de Utilización de la Flota (%)" 
+                                    description="¿Qué porcentaje sale a trabajar simultáneamente?"
+                                    mt="sm" 
+                                    c="orange.9"
+                                    fw={700}
+                                    suffix="%"
+                                    min={1} max={100}
+                                    {...form.getInputProps('utilizacionFlotaPorcentaje')} 
+                                />
+                                
+                                <NumberInput 
+                                    label="Horas Operativas Anuales (Por Equipo Activo)" 
+                                    mt="sm" 
+                                    {...form.getInputProps('horasAnualesOperativas')} 
+                                />
                             </Grid.Col>
-                            <Grid.Col span={{ base: 12, md: 8 }}>
+                            <Grid.Col span={{ base: 12, md: 7 }}>
                                 <Group justify="flex-end" gap="xl">
                                     <div style={{ textAlign: 'right' }}>
-                                        <Text size="xs" c="dimmed" fw={700}>Total Gastos Administrativos (Año):</Text>
-                                        <Text size="xl" fw={800}>${granTotalAnual.toLocaleString('en-US')}</Text>
+                                        <Text size="xs" c="dimmed" fw={700}>Equipos Activos (Facturando):</Text>
+                                        <Text size="lg" fw={800} c="orange.9">~{flotaActiva.toFixed(1)} unidades</Text>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <Text size="xs" c="dimmed" fw={700}>Total Gastos Administrativos:</Text>
+                                        <Text size="lg" fw={800}>${granTotalAnual.toLocaleString('en-US')}</Text>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         <Text size="xs" c="dimmed" fw={700}>Overhead cobrado al Flete:</Text>
@@ -230,9 +290,8 @@ export default function ConfiguracionGlobalPage() {
                             </Grid.Col>
                         </Grid>
                     </Paper>
-
                     <Group justify="flex-end">
-                        <Button size="lg" type="submit" color="teal" leftSection={<IconSettings size={20}/>}>
+                        <Button size="lg" type="submit" color="teal" leftSection={<IconSettings size={20} />}>
                             Guardar y Aplicar Batch a Flota
                         </Button>
                     </Group>

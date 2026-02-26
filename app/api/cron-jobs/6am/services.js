@@ -163,13 +163,6 @@ export async function syncExchangeRates() {
             operacion = 'creado_nuevo';
         }
 
-        // Notificar Admin
-        await notificarCabezas( {
-            title: 'Tasas de Cambio Actualizadas',
-            body: `USD: ${precioDolarBCV}\nEUR: ${precioEuroBCV}\nUSDT: ${datosAGuardar.montoUsdt}`,
-            url: '/superuser/bcv',
-            tag: 'bcv_update'
-        });
 
 
         return { type: 'FINANZAS', status: 'OK', msg: `BCV: ${resultRecord.monto}, EUR: ${resultRecord.montoEur}, USDT: ${resultRecord.montoUsdt}` };

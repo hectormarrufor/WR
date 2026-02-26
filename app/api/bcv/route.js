@@ -153,13 +153,6 @@ export async function GET(request) {
             operacion = 'creado_nuevo';
         }
 
-        // Notificar Admin
-        await notificarUsuario(1 ,{
-            title: 'Tasas de Cambio Actualizadas',
-            body: `USD: ${precioDolarBCV}\nEUR: ${precioEuroBCV}\nUSDT: ${datosAGuardar.montoUsdt}`,
-            url: '/superuser/bcv',
-            tag: 'bcv_update'
-        });
 
         return NextResponse.json({
             message: 'Tasas procesadas exitosamente',
