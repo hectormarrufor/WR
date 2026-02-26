@@ -85,10 +85,41 @@ export default function MatrizEditor({ matrizId }) {
                     totalCostoHora: totalHora 
                 })
             });
-            if (res.ok) notifications.show({ title: 'Guardado', message: 'Estructura actualizada', color: 'green' });
+           if (res.ok) {
+                notifications.show({ title: 'Guardado', message: 'Estructura actualizada', color: 'green' });
+            } else {
+                // 👇 ESTO OBLIGA A SALTAR AL CATCH SI HAY ERROR 500 👇
+                throw new Error('El servidor rechazó los datos'); 
+            }
         } catch (e) {
-            notifications.show({ title: 'Error', message: 'No se pudo guardar', color: 'red' });
-        } finally { setLoading(false); }
+            notifications.show({ title: 'Error', message: 'No se pudo guardar la estructura', color: 'red' });
+        } finally { 
+            setLoading(false); 
+        }
+    };
+
+    const borrarMatriz = async () => {
+        // Confirmación de seguridad nativa del navegador
+        const confirmar = window.confirm("⚠️ ¿Estás seguro de eliminar esta Matriz? Se borrarán todos sus insumos y no se puede deshacer.");
+        if (!confirmar) return;
+
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/configuracion/matriz/${matrizId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                notifications.show({ title: 'Eliminada', message: 'Matriz borrada con éxito', color: 'green' });
+                // Aquí podrías redirigir al usuario o limpiar la pantalla
+                // router.push('/alguna-ruta'); 
+            } else {
+                throw new Error('Error al borrar');
+            }
+        } catch (e) {
+            notifications.show({ title: 'Error', message: 'No se pudo eliminar la matriz', color: 'red' });
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     if (!header) return <Text>Seleccione un Perfil de Costos...</Text>;
@@ -102,9 +133,23 @@ export default function MatrizEditor({ matrizId }) {
                     <Title order={3}>{header.nombre}</Title>
                     <Text c="dimmed" size="sm">Cálculo Dual de Costos (Rodamiento vs Tiempo)</Text>
                 </div>
-                <Button leftSection={<IconDeviceFloppy size={18}/>} color="blue" onClick={guardarCambios}>
-                    Guardar Cambios
-                </Button>
+                <Group>
+                    <Button 
+                        leftSection={<IconTrash size={18}/>} 
+                        color="red" 
+                        variant="light" 
+                        onClick={borrarMatriz}
+                    >
+                        Borrar Matriz
+                    </Button>
+                    <Button 
+                        leftSection={<IconDeviceFloppy size={18}/>} 
+                        color="blue" 
+                        onClick={guardarCambios}
+                    >
+                        Guardar Cambios
+                    </Button>
+                </Group>
             </Group>
 
             {/* AHORA MOSTRAMOS DOS TARJETAS */}

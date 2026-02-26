@@ -71,7 +71,7 @@ export default function ImageDropzone({ label, form, fieldPath }) {
             setPreview(initialValue);
         }
         else if (typeof initialValue === "string") {
-            setPreview(`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${initialValue}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`);
+            setPreview(`${initialValue}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`);
         }
     }, [initialValue]);
 
@@ -269,7 +269,7 @@ export default function ImageDropzone({ label, form, fieldPath }) {
                         <Dropzone.Idle>
                              <Stack align="center" gap="xs">
                                 <IconPhoto size="3.2rem" stroke={1.5} color="gray" />
-                                <Text size="sm" c="dimmed">Sube el documento del empleado</Text>
+                                <Text size="sm" c="dimmed">Sube una imagen</Text>
                              </Stack>
                         </Dropzone.Idle>
                     </Group>

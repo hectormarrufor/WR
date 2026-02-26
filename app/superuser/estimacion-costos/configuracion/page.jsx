@@ -117,8 +117,9 @@ export default function ConfiguracionCostosPage() {
                             color="red"
                             leftSection={<IconDatabaseImport size={18} />}
                             onClick={cargarValoresVenezuela}
+                            disabled
                         >
-                            Restaurar Valores Vzla 2026
+                            Generar Valores Vzla 2026
                         </Button>
                         <Button
                             color="teal"

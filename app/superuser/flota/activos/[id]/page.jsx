@@ -158,8 +158,9 @@ export default function DetalleActivoPage({ params }) {
                 <Grid.Col span={{ base: 12, md: 3 }}>
                     <Stack>
                         <Card withBorder radius="md" p={0}>
+                            {console.log(activo.imagen)}
                             <Image 
-                                src={activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null} 
+                                src={activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}?v=${process.env.NEXT_PUBLIC_APP_VERSION}` : null} 
                                 h={200} 
                                 fallbackSrc="https://placehold.co/400x300?text=Sin+Foto" 
                             />
