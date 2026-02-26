@@ -75,7 +75,7 @@ export default function FleteCreator() {
                     fetch(`/api/configuracion/precios`).then((r) => r.json()),
                     fetch(`/api/bcv`).then((r) => r.json()),
                     // 🔥 NUESTRA NUEVA API GLOBAL 🔥
-                    fetch(`/api/configuracion/general`).then((r) => r.json()), 
+                    fetch(`/api/configuracion/general`).then((r) => r.json()),
                 ]);
 
                 setEmpleados(resEmp || []);
@@ -113,7 +113,7 @@ export default function FleteCreator() {
         });
     }, [activos]);
 
-    
+
 
 
     const { data: estimacion, isLoading: calcLoading } = useQuery({
@@ -142,7 +142,7 @@ export default function FleteCreator() {
 
             const choferObj = empleados.find(e => e.id === form.values.choferId);
             const ayudanteObj = empleados.find(e => e.id === form.values.ayudanteId);
-            
+
             // Usamos los sueldos base de la config global si el empleado no tiene uno específico
             const sueldoChofer = parseFloat(choferObj?.sueldo || configGlobal.sueldoChoferBase);
             const sueldoAyudante = parseFloat(ayudanteObj?.sueldo || configGlobal.sueldoAyudanteBase);
@@ -175,7 +175,7 @@ export default function FleteCreator() {
                     tieneAyudante: !!form.values.ayudanteId,
                     calidadRepuestos: form.values.calidadRepuestos,
                     porcentajeGanancia: 0.30,
-                    
+
                     // 🔥 AÑADIMOS EL OVERHEAD ADMINISTRATIVO 🔥
                     costoAdministrativoPorHora: parseFloat(configGlobal.costoAdministrativoPorHora || 0),
                     // Y si quieres enviar también los viáticos automáticos de la config:
@@ -614,43 +614,74 @@ export default function FleteCreator() {
                                                             </>
                                                         )}
 
-                                                       {/* PEAJES */}
+                                                        {/* PEAJES */}
                                                         <Table.Tr>
                                                             <Table.Td>🚧 Peajes y Tasas de Tránsito</Table.Td>
                                                             <Table.Td><Badge color="blue" size="xs">Vialidad</Badge></Table.Td>
                                                             <Table.Td fw={500} ta="right">${estimacion.breakdown.peajes.toFixed(2)}</Table.Td>
                                                         </Table.Tr>
 
-                                                        {/* 🔥 OVERHEAD INTEGRADO VISUALMENTE 🔥 */}
+                                                        {/* 🔥 OVERHEAD GERENCIAL DETALLADO 🔥 */}
                                                         {estimacion?.breakdown?.overhead > 0 && configGlobal && (
                                                             <>
-                                                                <Table.Tr>
-                                                                    <Table.Td>🏢 Gastos Administrativos</Table.Td>
-                                                                    <Table.Td><Badge color="violet" size="xs">Estructura</Badge></Table.Td>
-                                                                    <Table.Td fw={500} ta="right">${estimacion.breakdown.overhead.toFixed(2)}</Table.Td>
+                                                                <Table.Tr bg="violet.0">
+                                                                    <Table.Td fw={700} colSpan={2}>🏢 ESTRUCTURA Y GASTOS ADMINISTRATIVOS</Table.Td>
+                                                                    <Table.Td fw={700} ta="right">${estimacion.breakdown.overhead.toFixed(2)}</Table.Td>
                                                                 </Table.Tr>
-                                                                <Table.Tr>
-                                                                    <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
-                                                                        ↳ 📊 Flota Física: {(Number(configGlobal.cantidadTransportePesado) || 0) + (Number(configGlobal.cantidadMaquinariaPesada) || 0)} equipos
-                                                                    </Table.Td>
-                                                                    <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
-                                                                    <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">Utilización: {configGlobal.utilizacionFlotaPorcentaje}%</Table.Td>
-                                                                </Table.Tr>
+
+                                                                {/* 1. Desglose de Nómina de Planta */}
                                                                 <Table.Tr>
                                                                     <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
-                                                                        ↳ ⏱️ Tarifa de Overhead (Costo Fijo)
+                                                                        ↳ 👥 Nómina Fija (Admin/Mecánicos/Vigilancia)
                                                                     </Table.Td>
                                                                     <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
-                                                                    <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">${Number(configGlobal.costoAdministrativoPorHora).toFixed(2)} / hr</Table.Td>
+                                                                    <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">
+                                                                        ${((Number(configGlobal.nominaAdministrativaTotal) || 0) + (Number(configGlobal.nominaOperativaFijaTotal) || 0) + ((Number(configGlobal.sueldoMensualVigilante) || 0) * (Number(configGlobal.cantidadVigilantes) || 0))).toLocaleString()} / mes
+                                                                    </Table.Td>
                                                                 </Table.Tr>
+
+                                                                {/* 2. Gastos de Base y Tecnología */}
+                                                                <Table.Tr>
+                                                                    <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
+                                                                        ↳ 📡 Servicios (Oficina, CCTV, Monitoreo Satelital)
+                                                                    </Table.Td>
+                                                                    <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
+                                                                    <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">
+                                                                        ${((Number(configGlobal.gastosOficinaMensual) || 0) + (Number(configGlobal.costoMonitoreoSatelital) || 0)).toLocaleString()} / mes
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+
+                                                                {/* 3. Gastos Anuales (Dinámicos de la tabla) */}
+                                                                {configGlobal.gastosFijos?.length > 0 && (
+                                                                    <Table.Tr>
+                                                                        <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
+                                                                            ↳ 📄 Gastos Anuales (ROTC, RCV, Permisos)
+                                                                        </Table.Td>
+                                                                        <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
+                                                                        <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">
+                                                                            ${configGlobal.gastosFijos.reduce((acc, g) => acc + g.montoAnual, 0).toLocaleString()} / año
+                                                                        </Table.Td>
+                                                                    </Table.Tr>
+                                                                )}
+
+                                                                {/* 4. Factor de Capacidad Ociosa (La explicación del porqué es alto) */}
+                                                                <Table.Tr>
+                                                                    <Table.Td pl="xl" color="red.7" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                                                        ↳ ⚠️ Factor Capacidad Ociosa ({configGlobal.utilizacionFlotaPorcentaje}% de Flota Activa)
+                                                                    </Table.Td>
+                                                                    <Table.Td></Table.Td>
+                                                                    <Table.Td ta="right" style={{ fontSize: '0.8rem' }} fw={700} c="violet.9">
+                                                                        ${Number(configGlobal.costoAdministrativoPorHora).toFixed(2)} / hr
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+
                                                                 <Table.Tr>
                                                                     <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.75rem', fontStyle: 'italic' }} colSpan={3}>
-                                                                        *Nota: Prorrateado por las {estimacion.breakdown.rutinaViaje.tiempoMisionTotal} horas totales de la misión (incluyendo paradas y pernoctas).
+                                                                        *Nota: Al estar operativa solo el {configGlobal.utilizacionFlotaPorcentaje}% de la flota, el costo de estructura se concentra en los equipos activos para garantizar la sostenibilidad.
                                                                     </Table.Td>
                                                                 </Table.Tr>
                                                             </>
                                                         )}
-
 
                                                         {/* --- SECCIÓN 2: MANTENIMIENTO --- */}
                                                         <Table.Tr bg="orange.0">
