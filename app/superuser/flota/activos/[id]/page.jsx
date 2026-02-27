@@ -123,7 +123,7 @@ export default function DetalleActivoPage({ params }) {
                 </Stack>
                 
                 <Group>
-                    <Button variant="subtle" color="gray" onClick={() => router.push("/superuser/flota/activo")}>Volver</Button>
+                    <Button variant="subtle" color="gray" onClick={() => router.push("/superuser/flota/activos")}>Volver</Button>
                     
                     <Group gap="xs">
                         <Button
