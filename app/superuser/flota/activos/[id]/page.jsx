@@ -16,7 +16,7 @@ import {
     IconShoppingCart, IconAlertOctagon,
     IconTool,
     IconGauge, IconX, IconEdit,
-    IconFileText, IconRoute, IconCash // <--- Nuevos iconos importados
+    IconFileText, IconRoute, IconCash 
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -51,7 +51,6 @@ export default function DetalleActivoPage({ params }) {
             const result = await response.json();
             
             if (result.success) {
-                // Parche para asegurar que tenemos el último KM aunque la tabla maestra no se haya actualizado
                 const dataMejorada = {
                     ...result.data,
                     kilometrajeActual: result.data.registrosKilometraje?.length
@@ -71,13 +70,11 @@ export default function DetalleActivoPage({ params }) {
 
     if (loading || !activo) return <LoadingOverlay visible={true} zIndex={1000} />;
 
-    // --- DESTRUCTURING SEGURO ---
     const instance = activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinaInstancia || {};
     const plantilla = instance?.plantilla || {};
     const subsistemas = activo.subsistemasInstancia || [];
     const hallazgosPendientes = activo.inspecciones?.flatMap(i => i.hallazgos || []).filter(h => h.estado !== 'Cerrado') || [];
 
-    // --- DATOS PARA GRÁFICOS ---
     const dataKilometraje = (activo.registrosKilometraje || []).map(r => ({
         fecha: new Date(r.fecha_registro).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }),
         valor: parseFloat(r.valor)
@@ -99,14 +96,12 @@ export default function DetalleActivoPage({ params }) {
         }
     };
 
-    // --- VARIABLES NUEVAS DE REFACTORIZACIÓN ---
     const totalMatrizKm = activo.matrizCosto?.totalCostoKm || 0;
     const totalMatrizHr = activo.matrizCosto?.totalCostoHora || 0;
     const fletesHistoricos = activo.tipoActivo === 'Vehiculo' ? activo.fletesComoVehiculo : activo.fletesComoRemolque;
 
     return (
         <Container size="xl" py="xl">
-            {/* --- HEADER CRÍTICO --- */}
             {activo.estado === 'No Operativo' && (
                 <Alert variant="filled" color="red" title="EQUIPO INOPERATIVO" icon={<IconAlertOctagon />} mb="lg">
                     Este activo se encuentra detenido por hallazgos críticos. Revise la pestaña de "Salud y Alertas".
@@ -128,7 +123,7 @@ export default function DetalleActivoPage({ params }) {
                 </Stack>
                 
                 <Group>
-                    <Button variant="subtle" color="gray" onClick={() => router.back()}>Volver</Button>
+                    <Button variant="subtle" color="gray" onClick={() => router.push("/superuser/flota/activo")}>Volver</Button>
                     
                     <Group gap="xs">
                         <Button
@@ -183,19 +178,27 @@ export default function DetalleActivoPage({ params }) {
                             </Stack>
                         </Card>
 
+                        {/* 🔥 FICHA TÉCNICA RÁPIDA ACTUALIZADA 🔥 */}
                         <Paper withBorder radius="md" p="md" bg="gray.0">
                             <Text fw={700} size="xs" mb="sm" c="dimmed">FICHA TÉCNICA RÁPIDA</Text>
                             <Stack gap={8}>
+                                {/* Datos Físicos */}
                                 <InfoLine label="S/N Motor" value={instance.serialMotor} />
                                 <InfoLine label="S/N Chasis" value={instance.serialChasis} />
                                 <InfoLine label="Combustible" value={plantilla.tipoCombustible} />
                                 <InfoLine label="Capacidad" value={activo.capacidadTonelajeMax ? `${activo.capacidadTonelajeMax} Ton` : 'N/D'} />
                                 <InfoLine label="Tara" value={activo.tara ? `${activo.tara} Kg` : 'N/D'} />
+                                
+                                <Divider my="xs" variant="dashed" />
+                                
+                                {/* Datos de Capital / Depreciación */}
+                                <InfoLine label="Valor Vehículo" value={activo.valorReposicion ? `$${activo.valorReposicion.toLocaleString()}` : 'N/D'} />
+                                <InfoLine label="Valor Salvamento" value={activo.valorSalvamento ? `$${activo.valorSalvamento.toLocaleString()}` : 'N/D'} />
+                                <InfoLine label="Vida Útil" value={activo.vidaUtilAnios ? `${activo.vidaUtilAnios} Años` : 'N/D'} />
                                 <InfoLine label="Costo Posesión" value={activo.costoPosesionHora ? `$${activo.costoPosesionHora.toFixed(2)}/hr` : 'N/D'} />
                             </Stack>
                         </Paper>
 
-                        {/* NUEVO: WIDGET DE DOCUMENTACIÓN */}
                         <Paper withBorder p="md" radius="md">
                             <Group justify="space-between" mb="sm">
                                 <Text fw={700} size="xs" c="dimmed">DOCUMENTACIÓN LEGAL</Text>
@@ -230,11 +233,9 @@ export default function DetalleActivoPage({ params }) {
                                 <Tabs.Tab value="mantenimiento" leftSection={<IconTool size={16} />}>
                                     Taller (ODT)
                                 </Tabs.Tab>
-                                {/* NUEVO TAB: FLETES Y OPERACIONES */}
                                 <Tabs.Tab value="operaciones" leftSection={<IconRoute size={16} />}>
                                     Operaciones (Rutas)
                                 </Tabs.Tab>
-                                {/* NUEVO TAB: ESTRUCTURA DE COSTOS */}
                                 <Tabs.Tab value="costos" leftSection={<IconCash size={16} />}>
                                     Matriz de Costos
                                 </Tabs.Tab>
@@ -333,7 +334,7 @@ export default function DetalleActivoPage({ params }) {
                                 </Grid>
                             </Tabs.Panel>
 
-                            {/* 3. NUEVO TAB: OPERACIONES (RUTAS/FLETES) */}
+                            {/* 3. TAB: OPERACIONES (RUTAS/FLETES) */}
                             <Tabs.Panel value="operaciones">
                                 <Title order={5} mb="md">Historial de Rutas y Viajes</Title>
                                 {fletesHistoricos?.length > 0 ? (
@@ -364,7 +365,7 @@ export default function DetalleActivoPage({ params }) {
                                 )}
                             </Tabs.Panel>
 
-                            {/* 4. NUEVO TAB: MATRIZ DE COSTOS */}
+                            {/* 4. TAB: MATRIZ DE COSTOS */}
                             <Tabs.Panel value="costos">
                                 <Alert color="violet" icon={<IconCash />} mb="md" title="Estructura Financiera del Equipo">
                                     Los costos presentados derivan de la <b>Matriz: {activo.matrizCosto?.nombre || 'Genérica no asignada'}</b>.
@@ -533,5 +534,5 @@ export default function DetalleActivoPage({ params }) {
 }
 
 const InfoLine = ({ label, value }) => (
-    <Group justify="space-between"><Text size="xs" c="dimmed">{label}:</Text><Text size="xs" fw={700}>{value || '---'}</Text></Group>
+    <Group justify="space-between"><Text size="xs" c="dimmed" fw={500}>{label}:</Text><Text size="xs" fw={700}>{value || '---'}</Text></Group>
 );
