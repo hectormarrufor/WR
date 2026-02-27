@@ -49,6 +49,9 @@ export default function ModeloActivoForm({
             capacidadLevante: '',
             capacidadCucharon: '',
             alcanceMaximo: '',
+
+            consumoTeoricoLleno: '',
+            consumoTeoricoVacio: '',
             
             // Campos Equipos
             especificacion: '',
@@ -333,7 +336,12 @@ export default function ModeloActivoForm({
                                 {...form.getInputProps('tipoVehiculo')}
                             />
                             <ImageDropzone label="Imagen del Vehículo" form={form} fieldPath="imagen" />
+                            <NumberInput label="Tara (tons)" {...form.getInputProps('peso')} />
+                            <NumberInput label="Capacidad de Arrastre (tons)" {...form.getInputProps('capacidadArrastre')} />
                             <NumberInput label="Peso Maximo Combinado (tons)" {...form.getInputProps('pesoMaximoCombinado')} />
+                            <NumberInput label="Consumo Teórico Lleno (L/km)" {...form.getInputProps('consumoTeoricoLleno')} />
+                            <NumberInput label="Consumo Teórico Vacío (L/km)" {...form.getInputProps('consumoTeoricoVacio')} />
+                            <Select label="Tipo de Combustible" placeholder="Seleccione..." data={['Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"]} {...form.getInputProps('tipoCombustible')} />
                         </>
                     )}
 
