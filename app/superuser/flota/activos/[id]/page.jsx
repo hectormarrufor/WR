@@ -118,7 +118,7 @@ export default function DetalleActivoPage({ params }) {
                         </Badge>
                     </Group>
                     <Text c="dimmed" size="sm" fw={500}>
-                        {plantilla.marca} {plantilla.modelo} • {instance.placa || 'N/A'} • {activo.ubicacionActual}
+                        {plantilla.marca} {plantilla.modelo} • {activo.anio} • {instance.placa || 'N/A'} • {activo.ubicacionActual}
                     </Text>
                 </Stack>
                 
@@ -164,6 +164,7 @@ export default function DetalleActivoPage({ params }) {
                                 fallbackSrc="https://placehold.co/400x300?text=Sin+Foto" 
                             />
                             <Stack p="md" gap="xs">
+                                
                                 <Text size="xs" fw={700} c="dimmed">ESTADÍSTICAS VITALES</Text>
                                 <Group justify="space-between">
                                     <Text size="sm">Odómetro:</Text>
@@ -183,6 +184,7 @@ export default function DetalleActivoPage({ params }) {
                             <Text fw={700} size="xs" mb="sm" c="dimmed">FICHA TÉCNICA RÁPIDA</Text>
                             <Stack gap={8}>
                                 {/* Datos Físicos */}
+                                
                                 <InfoLine label="S/N Motor" value={instance.serialMotor} />
                                 <InfoLine label="S/N Chasis" value={instance.serialChasis} />
                                 <InfoLine label="Combustible" value={plantilla.tipoCombustible} />
