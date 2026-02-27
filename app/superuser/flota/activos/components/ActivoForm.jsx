@@ -38,7 +38,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             serialMotor: initialData?.vehiculoInstancia?.serialMotor || initialData?.maquinaInstancia?.serialMotor || '',
             color: initialData?.vehiculoInstancia?.color || initialData?.remolqueInstancia?.color || 'Blanco',
             imagen: initialData?.imagen || "",
-            anioFabricacion: initialData?.vehiculoInstancia?.anioFabricacion || new Date().getFullYear(),
+            anioFabricacion: initialData?.anio || new Date().getFullYear(),
             kilometrajeActual: initialData?.vehiculoInstancia?.kilometrajeActual || 0,
             horometroActual: initialData?.vehiculoInstancia?.horometroActual || initialData?.maquinaInstancia?.horometroActual || 0,
             tara: initialData?.tara || '',

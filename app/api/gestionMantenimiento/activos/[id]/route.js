@@ -147,7 +147,7 @@ export async function PUT(request, { params }) {
             // --- NUEVOS CAMPOS DEL FORMULARIO ---
             matrizCostoId, valorReposicion, vidaUtilAnios, valorSalvamento, horasAnuales,
             velocidadPromedioTeorica, costoMantenimientoTeorico, costoPosesionTeorico, costoPosesionHora,
-            tara
+            tara, anioFabricacion
         } = body;
 
         // 2. Actualizar Activo Padre (Incluyendo Financieros)
@@ -156,6 +156,7 @@ export async function PUT(request, { params }) {
             estado: estado || activo.estado,
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             imagen: imagen !== undefined ? imagen : activo.imagen,
+            anio: anioFabricacion !== undefined ? parseInt(anioFabricacion) : activo.anio,
             tara: tara !== undefined && tara !== '' ? parseFloat(tara) : null, // <-- NUEVO CAMPO TARa
             capacidadTonelajeMax: body.capacidadCarga !== undefined && body.capacidadCarga !== '' ? parseFloat(body.capacidadCarga) : activo.capacidadTonelajeMax, // <-- NUEVO CAMPO CAPACIDAD DE CARGA
 
