@@ -89,7 +89,11 @@ export async function PUT(request, { params }) {
             tipoCombustible: body.tipoCombustible,
             imagen: body.imagen,
             capacidadArrastre: body.capacidadArrastre,
-            pesoMaximoCombinado: body.pesoMaximoCombinado
+            pesoMaximoCombinado: body.pesoMaximoCombinado,
+            capacidadTanque: body.capacidadTanque,
+            potenciaMotor: body.potenciaMotor,
+            consumoTeoricoLleno: body.consumoTeoricoLleno,
+            consumoTeoricoVacio: body.consumoTeoricoVacio,
         }, { transaction: t });
 
         // =========================================================

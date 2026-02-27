@@ -177,7 +177,11 @@ export default function ModeloActivoForm({
                     peso: values.peso, 
                     tipoCombustible: values.tipoCombustible, 
                     capacidadArrastre: values.capacidadArrastre, 
-                    pesoMaximoCombinado: values.pesoMaximoCombinado 
+                    pesoMaximoCombinado: values.pesoMaximoCombinado,
+                    potenciaMotor: values.potenciaMotor,
+                    capacidadTanque: values.capacidadTanque,
+                    consumoTeoricoLleno: values.consumoTeoricoLleno,
+                    consumoTeoricoVacio: values.consumoTeoricoVacio,
                 });
             }
             // 2. LÓGICA DE REMOLQUE

@@ -17,6 +17,11 @@ export function adaptarModeloParaFormulario(dataAPI) {
         imagen: dataAPI.imagen,
         capacidadArrastre: dataAPI.capacidadArrastre,
         pesoMaximoCombinado: dataAPI.pesoMaximoCombinado,
+        potenciaMotor: dataAPI.potenciaMotor,
+        capacidadTanque: dataAPI.capacidadTanque,
+        consumoTeoricoLleno: dataAPI.consumoTeoricoLleno,
+        consumoTeoricoVacio: dataAPI.consumoTeoricoVacio,
+        
         // Agrega aquí otros campos específicos si existen en dataAPI
     };
 
