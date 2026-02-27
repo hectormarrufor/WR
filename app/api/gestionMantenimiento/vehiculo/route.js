@@ -161,6 +161,7 @@ export async function POST(request) {
             capacidadArrastre: body.capacidadArrastre,
             pesoMaximoCombinado: body.pesoMaximoCombinado,
             imagen: body.imagen || null,
+            potenciaMotor: body.potenciaMotor,
             numeroEjes: body.numeroEjes,
             tipoCombustible: body.tipoCombustible,
         }, { transaction: t });

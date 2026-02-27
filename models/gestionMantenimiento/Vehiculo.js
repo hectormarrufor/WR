@@ -11,6 +11,7 @@ const Vehiculo = sequelize.define('Vehiculo', {
   peso: { type: DataTypes.FLOAT, allowNull: true },
   imagen: { type: DataTypes.STRING, allowNull: true },
   capacidadArrastre: { type: DataTypes.FLOAT, allowNull: true },
+  potenciaMotor: { type: DataTypes.FLOAT, allowNull: true },
   capacidadTanque: { type: DataTypes.FLOAT, allowNull: true },
   pesoMaximoCombinado: { type: DataTypes.FLOAT, allowNull: true },
   tipoCombustible: { type: DataTypes.ENUM('Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"), allowNull: true },
