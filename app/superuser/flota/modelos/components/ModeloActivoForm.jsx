@@ -49,6 +49,7 @@ export default function ModeloActivoForm({
             capacidadLevante: '',
             capacidadCucharon: '',
             alcanceMaximo: '',
+            capacidadTanque: '',
 
             consumoTeoricoLleno: '',
             consumoTeoricoVacio: '',
@@ -341,6 +342,7 @@ export default function ModeloActivoForm({
                             <NumberInput label="Peso Maximo Combinado (tons)" {...form.getInputProps('pesoMaximoCombinado')} />
                             <NumberInput label="Consumo Teórico Lleno (L/km)" {...form.getInputProps('consumoTeoricoLleno')} />
                             <NumberInput label="Consumo Teórico Vacío (L/km)" {...form.getInputProps('consumoTeoricoVacio')} />
+                            <NumberInput label="Capacidad del Tanque (L)" {...form.getInputProps('capacidadTanque')} />
                             <Select label="Tipo de Combustible" placeholder="Seleccione..." data={['Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"]} {...form.getInputProps('tipoCombustible')} />
                         </>
                     )}
