@@ -34,7 +34,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             estado: initialData?.estado || 'Operativo',
             ubicacionActual: initialData?.ubicacionActual || 'Base Principal',
             placa: initialData?.vehiculoInstancia?.placa || initialData?.remolqueInstancia?.placa || '',
-            serialCarroceria: initialData?.vehiculoInstancia?.serialChasis || '',
+            serialCarroceria: initialData?.vehiculoInstancia?.serialChasis ||  initialData?.remolqueInstancia?.serialChasis || initialData?.maquinaInstancia?.serialChasis || '',
             serialMotor: initialData?.vehiculoInstancia?.serialMotor || initialData?.maquinaInstancia?.serialMotor || '',
             color: initialData?.vehiculoInstancia?.color || initialData?.remolqueInstancia?.color || 'Blanco',
             imagen: initialData?.imagen || "",
@@ -42,6 +42,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             kilometrajeActual: initialData?.vehiculoInstancia?.kilometrajeActual || 0,
             horometroActual: initialData?.vehiculoInstancia?.horometroActual || initialData?.maquinaInstancia?.horometroActual || 0,
             tara: initialData?.tara || '',
+            capacidadCarga: initialData?.capacidadTonelajeMax || '',
 
             matrizCostoId: initialData?.matrizCostoId ? String(initialData.matrizCostoId) : '',
             valorReposicion: initialData?.valorReposicion || '',
@@ -215,6 +216,12 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                 description="Si queda en blanco, usará el peso de fábrica (Plantilla)"
                                 decimalScale={2}
                                 {...form.getInputProps('tara')} 
+                            />
+                                <NumberInput
+                                label="Capacidad de Carga (Tons)"
+                                description="Solo para vehículos y remolques. Si queda en blanco, usará la capacidad de fábrica (Plantilla)"
+                                decimalScale={2}
+                                {...form.getInputProps('capacidadCarga')}
                             />
                             <Divider label="Legal" my="sm" />
                             <TextInput label="Placa" {...form.getInputProps('placa')} />

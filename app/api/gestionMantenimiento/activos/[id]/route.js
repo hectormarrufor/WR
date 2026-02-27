@@ -11,7 +11,11 @@ import {
     Consumible,
     Kilometraje,
     Horometro,
-    CargaCombustible
+    CargaCombustible,
+    MatrizCosto,
+    Flete,
+    DetalleMatrizCosto,
+    ODT
 } from '@/models';
 
 
@@ -88,6 +92,21 @@ export async function GET(request, { params }) {
                     order: [['fecha', 'DESC']],
                     required: false
                 },
+                {
+                    model: MatrizCosto,
+                    as: 'matrizCosto',
+                    include: [{model: DetalleMatrizCosto, as: 'detalles'}]
+                },
+                {
+                    model: Flete,
+                    as: 'fletesComoVehiculo',
+
+                },
+                { model: Flete, as: 'fletesComoRemolque' },
+                { model: ODT, as: 'odtsComoPrincipal' },
+                { model: ODT, as: 'odtsComoRemolque' },
+                { model: ODT, as: 'odtsComoMaquinaria' },
+
             ],
         });
 
@@ -107,8 +126,8 @@ export async function GET(request, { params }) {
 // PUT: Actualizar (Lógica original respetada + Transacciones)
 // ----------------------------------------------------------------------
 export async function PUT(request, { params }) {
-    const { id } = await params; 
-    
+    const { id } = await params;
+
     const t = await sequelize.transaction();
 
     try {
@@ -138,14 +157,15 @@ export async function PUT(request, { params }) {
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             imagen: imagen !== undefined ? imagen : activo.imagen,
             tara: tara !== undefined && tara !== '' ? parseFloat(tara) : null, // <-- NUEVO CAMPO TARa
-            
+            capacidadTonelajeMax: body.capacidadCarga !== undefined && body.capacidadCarga !== '' ? parseFloat(body.capacidadCarga) : activo.capacidadTonelajeMax, // <-- NUEVO CAMPO CAPACIDAD DE CARGA
+
             // --- ACTUALIZACIÓN FINANCIERA ---
             matrizCostoId: matrizCostoId ? parseInt(matrizCostoId) : activo.matrizCostoId,
             valorReposicion: valorReposicion !== undefined ? parseFloat(valorReposicion) : activo.valorReposicion,
             vidaUtilAnios: vidaUtilAnios !== undefined ? parseInt(vidaUtilAnios) : activo.vidaUtilAnios,
             valorSalvamento: valorSalvamento !== undefined ? parseFloat(valorSalvamento) : activo.valorSalvamento,
             horasAnuales: horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales,
-            
+
             // --- MÉTRICAS DE CÁLCULO PARA FLETECREATOR ---
             velocidadPromedioTeorica: velocidadPromedioTeorica !== undefined ? parseInt(velocidadPromedioTeorica) : activo.velocidadPromedioTeorica,
             costoMantenimientoTeorico: costoMantenimientoTeorico !== undefined ? parseFloat(costoMantenimientoTeorico) : activo.costoMantenimientoTeorico,
@@ -155,22 +175,22 @@ export async function PUT(request, { params }) {
         }, { transaction: t });
 
         // 3. Actualizar Instancia Hija según tipo
-// 3. Actualizar Instancia Hija según tipo
+        // 3. Actualizar Instancia Hija según tipo
         if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
             await VehiculoInstancia.update({
-                placa, serialChasis, serialMotor, color, 
+                placa, serialChasis, serialMotor, color,
                 kilometrajeActual: kilometrajeActual !== undefined ? parseFloat(kilometrajeActual) : undefined,
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
             }, { where: { id: activo.vehiculoInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
         }
         else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
             await RemolqueInstancia.update({
-                placa, color
+                placa, color, serialChasis, serialMotor,
             }, { where: { id: activo.remolqueInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
         }
         else if (activo.tipoActivo === 'Maquina' && activo.maquinaInstanciaId) {
             await MaquinaInstancia.update({
-                serialMotor, 
+                serialMotor,
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
             }, { where: { id: activo.maquinaInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
         }

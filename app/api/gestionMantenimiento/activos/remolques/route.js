@@ -41,9 +41,7 @@ export async function POST(request) {
             color: body.color,
             anioFabricacion: body.anioFabricacion || modelo.anio, // Puede ser específico o heredar del modelo
             remolqueId: body.modeloVehiculoId, // FK a la tabla Remolques
-            serialChasis: body.serialChasis || null,
-            // Otros campos específicos si existen en tu modelo RemolqueInstancia (ej: serialCarroceria)
-            serialCarroceria: body.serialCarroceria || null
+            serialChasis: body.serialChasis || body.serialCarroceria,
         }, { transaction: t });
 
         // --- 4. CREAR ACTIVO ---
@@ -57,6 +55,7 @@ export async function POST(request) {
             vehiculoInstanciaId: null,      // Null para remolques
             remolqueInstanciaId: nuevaInstancia.id || null, // Vinculación correcta
             maquinaInstanciaId: null,
+            capacidadTonelajeMax: body.capacidadCarga || null, // Campo específico para remolques
             tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, // <-- NUEVO CAMPO TARaS
         }, { transaction: t });
 

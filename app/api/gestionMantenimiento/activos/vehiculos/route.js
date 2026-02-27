@@ -46,6 +46,7 @@ export async function POST(request) {
             estado: body.estado || 'Operativo',
             ubicacionActual: body.ubicacionActual,
             imagen: body.imagen,
+            capacidadTonelajeMax: body.capacidadCarga || null,
             fechaAdquisicion: body.fechaAdquisicion || new Date(),
             vehiculoInstanciaId: nuevoVehiculo.id,
             remolqueInstanciaId: null,

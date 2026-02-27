@@ -35,7 +35,6 @@ const Activo = sequelize.define('Activo', {
   },
   valorAdquisicion: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0 }, // Para depreciación
   consumoCombustibleLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.35 }, // Ej: 0.35 L/km para chuto
-  consumoCombustibleLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.35 }, // ej. 0.35 L/km chuto cargado
   consumoBaseLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.25 }, // sin carga
   desgasteNeumaticoPorKm: { type: DataTypes.DECIMAL(10, 4), defaultValue: 0.015 }, // $/km
   capacidadTonelajeMax: { type: DataTypes.FLOAT },
@@ -50,7 +49,7 @@ costoPosesionTeorico: {
 },
 velocidadPromedioTeorica: {
     type: DataTypes.INTEGER, //Velocidad para calcular las horas de posesión en una ruta
-    defaultValue: 50, // Km/h para estimar tiempos si no hay data
+    defaultValue: 45, // Km/h para estimar tiempos si no hay data
 },
 valorReposicion: {
     type: DataTypes.FLOAT,

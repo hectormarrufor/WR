@@ -15,10 +15,12 @@ import {
     IconChartLine, IconClipboardCheck,
     IconShoppingCart, IconAlertOctagon,
     IconTool,
-    IconGauge, IconX, IconEdit // <--- IMPORTADO ICONO EDITAR
+    IconGauge, IconX, IconEdit,
+    IconFileText, IconRoute, IconCash // <--- Nuevos iconos importados
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
+
 import ModalReportarFalla from './inspecciones/ModalReportarFalla';
 import ModalActualizarLectura from './inspecciones/ModalActualizarLecturas';
 import ModalInstallComponente from '../components/ModalInstallComponente';
@@ -29,7 +31,6 @@ export default function DetalleActivoPage({ params }) {
     const { userId } = useAuth();
     const { id } = use(params);
     const router = useRouter();
-    // const { isAdmin } = useAuth(); // Puedes usar esto si quieres restringir el botón de editar
 
     const [activo, setActivo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -98,6 +99,11 @@ export default function DetalleActivoPage({ params }) {
         }
     };
 
+    // --- VARIABLES NUEVAS DE REFACTORIZACIÓN ---
+    const totalMatrizKm = activo.matrizCosto?.totalCostoKm || 0;
+    const totalMatrizHr = activo.matrizCosto?.totalCostoHora || 0;
+    const fletesHistoricos = activo.tipoActivo === 'Vehiculo' ? activo.fletesComoVehiculo : activo.fletesComoRemolque;
+
     return (
         <Container size="xl" py="xl">
             {/* --- HEADER CRÍTICO --- */}
@@ -125,7 +131,6 @@ export default function DetalleActivoPage({ params }) {
                     <Button variant="subtle" color="gray" onClick={() => router.back()}>Volver</Button>
                     
                     <Group gap="xs">
-                        {/* --- BOTÓN EDITAR AGREGADO AQUÍ --- */}
                         <Button
                             variant="default"
                             leftSection={<IconEdit size={18} />}
@@ -154,11 +159,10 @@ export default function DetalleActivoPage({ params }) {
             </Group>
 
             <Grid gutter="md">
-                {/* --- LATERAL: RESUMEN --- */}
+                {/* --- LATERAL: RESUMEN Y DOCUMENTOS --- */}
                 <Grid.Col span={{ base: 12, md: 3 }}>
                     <Stack>
                         <Card withBorder radius="md" p={0}>
-                            {console.log(activo.imagen)}
                             <Image 
                                 src={activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}?v=${process.env.NEXT_PUBLIC_APP_VERSION}` : null} 
                                 h={200} 
@@ -185,7 +189,31 @@ export default function DetalleActivoPage({ params }) {
                                 <InfoLine label="S/N Motor" value={instance.serialMotor} />
                                 <InfoLine label="S/N Chasis" value={instance.serialChasis} />
                                 <InfoLine label="Combustible" value={plantilla.tipoCombustible} />
+                                <InfoLine label="Capacidad" value={activo.capacidadTonelajeMax ? `${activo.capacidadTonelajeMax} Ton` : 'N/D'} />
+                                <InfoLine label="Tara" value={activo.tara ? `${activo.tara} Kg` : 'N/D'} />
                                 <InfoLine label="Costo Posesión" value={activo.costoPosesionHora ? `$${activo.costoPosesionHora.toFixed(2)}/hr` : 'N/D'} />
+                            </Stack>
+                        </Paper>
+
+                        {/* NUEVO: WIDGET DE DOCUMENTACIÓN */}
+                        <Paper withBorder p="md" radius="md">
+                            <Group justify="space-between" mb="sm">
+                                <Text fw={700} size="xs" c="dimmed">DOCUMENTACIÓN LEGAL</Text>
+                                <IconFileText size={16} color="gray" />
+                            </Group>
+                            <Stack gap="xs">
+                                {activo.documentos?.map(doc => {
+                                    const vencido = new Date(doc.fechaVencimiento) < new Date();
+                                    return (
+                                        <Group key={doc.id} justify="space-between" wrap="nowrap">
+                                            <Text size="xs" fw={500} truncate>{doc.tipo}</Text>
+                                            <Badge size="xs" color={vencido ? 'red' : 'green'} variant={vencido ? "filled" : "light"}>
+                                                {new Date(doc.fechaVencimiento).toLocaleDateString('es-VE')}
+                                            </Badge>
+                                        </Group>
+                                    );
+                                })}
+                                {(!activo.documentos?.length) && <Text size="xs" c="dimmed">No hay documentos registrados.</Text>}
                             </Stack>
                         </Paper>
                     </Stack>
@@ -201,6 +229,14 @@ export default function DetalleActivoPage({ params }) {
                                 </Tabs.Tab>
                                 <Tabs.Tab value="mantenimiento" leftSection={<IconTool size={16} />}>
                                     Taller (ODT)
+                                </Tabs.Tab>
+                                {/* NUEVO TAB: FLETES Y OPERACIONES */}
+                                <Tabs.Tab value="operaciones" leftSection={<IconRoute size={16} />}>
+                                    Operaciones (Rutas)
+                                </Tabs.Tab>
+                                {/* NUEVO TAB: ESTRUCTURA DE COSTOS */}
+                                <Tabs.Tab value="costos" leftSection={<IconCash size={16} />}>
+                                    Matriz de Costos
                                 </Tabs.Tab>
                                 <Tabs.Tab value="componentes" leftSection={<IconSettings size={16} />}>
                                     Inventario
@@ -253,7 +289,7 @@ export default function DetalleActivoPage({ params }) {
                                         </Table>
                                     )}
 
-                                    <Divider label="Historial Reciente" labelPosition="center" my="md" />
+                                    <Divider label="Historial Reciente de Inspecciones" labelPosition="center" my="md" />
                                     <Timeline active={0} bulletSize={24} lineWidth={2}>
                                         {activo.inspecciones?.slice(0, 3).map(ins => (
                                             <Timeline.Item key={ins.id} bullet={<IconClipboardCheck size={12} />} title={`Inspección ${ins.origen}`}>
@@ -292,12 +328,95 @@ export default function DetalleActivoPage({ params }) {
                                         </Grid.Col>
                                     ))}
                                     {(!activo.ordenesMantenimiento?.length) && (
-                                        <Grid.Col span={12}><Text c="dimmed" ta="center" py="xl">No hay órdenes activas.</Text></Grid.Col>
+                                        <Grid.Col span={12}><Text c="dimmed" ta="center" py="xl">No hay órdenes de mantenimiento activas.</Text></Grid.Col>
                                     )}
                                 </Grid>
                             </Tabs.Panel>
 
-                            {/* 3. TAB: COMPONENTES */}
+                            {/* 3. NUEVO TAB: OPERACIONES (RUTAS/FLETES) */}
+                            <Tabs.Panel value="operaciones">
+                                <Title order={5} mb="md">Historial de Rutas y Viajes</Title>
+                                {fletesHistoricos?.length > 0 ? (
+                                    <Table striped highlightOnHover withTableBorder>
+                                        <Table.Thead bg="gray.1">
+                                            <Table.Tr>
+                                                <Table.Th>Nro Flete</Table.Th>
+                                                <Table.Th>Fecha de Carga</Table.Th>
+                                                <Table.Th>Ruta</Table.Th>
+                                                <Table.Th>Estado</Table.Th>
+                                            </Table.Tr>
+                                        </Table.Thead>
+                                        <Table.Tbody>
+                                            {fletesHistoricos.map(f => (
+                                                <Table.Tr key={f.id}>
+                                                    <Table.Td fw={600}>#{f.nroFlete || f.id}</Table.Td>
+                                                    <Table.Td>{new Date(f.fechaCarga).toLocaleDateString() || 'N/D'}</Table.Td>
+                                                    <Table.Td>{f.origen || 'N/D'} ➝ {f.destino || 'N/D'}</Table.Td>
+                                                    <Table.Td><Badge size="xs">{f.estado}</Badge></Table.Td>
+                                                </Table.Tr>
+                                            ))}
+                                        </Table.Tbody>
+                                    </Table>
+                                ) : (
+                                    <Alert color="gray" icon={<IconInfoCircle />}>
+                                        Este activo no tiene fletes o rutas registradas en el sistema.
+                                    </Alert>
+                                )}
+                            </Tabs.Panel>
+
+                            {/* 4. NUEVO TAB: MATRIZ DE COSTOS */}
+                            <Tabs.Panel value="costos">
+                                <Alert color="violet" icon={<IconCash />} mb="md" title="Estructura Financiera del Equipo">
+                                    Los costos presentados derivan de la <b>Matriz: {activo.matrizCosto?.nombre || 'Genérica no asignada'}</b>.
+                                </Alert>
+                                
+                                <SimpleGrid cols={{ base: 1, md: 3 }} mb="xl">
+                                    <Card withBorder radius="md">
+                                        <Text size="xs" c="dimmed" fw={700}>COSTO VARIABLE (POR KM)</Text>
+                                        <Title order={3} c="blue.7">${totalMatrizKm.toFixed(2)}</Title>
+                                        <Text size="xs" c="dimmed">Repuestos, Neumáticos, Lubricantes</Text>
+                                    </Card>
+                                    <Card withBorder radius="md">
+                                        <Text size="xs" c="dimmed" fw={700}>COSTO FIJO (POR HORA)</Text>
+                                        <Title order={3} c="orange.7">${totalMatrizHr.toFixed(2)}</Title>
+                                        <Text size="xs" c="dimmed">Seguros, Rastreo, Nómina Fija</Text>
+                                    </Card>
+                                    <Card withBorder radius="md" bg="teal.0">
+                                        <Text size="xs" c="dimmed" fw={700}>COSTO DE POSESIÓN (POR HORA)</Text>
+                                        <Title order={3} c="teal.9">${activo.costoPosesionHora?.toFixed(2) || '0.00'}</Title>
+                                        <Text size="xs" c="dimmed">Depreciación e Interés del Capital</Text>
+                                    </Card>
+                                </SimpleGrid>
+
+                                <Title order={6} mb="sm" c="dimmed">DESGLOSE DE MANTENIMIENTO TEÓRICO</Title>
+                                <Table withTableBorder striped highlightOnHover>
+                                    <Table.Thead bg="gray.1">
+                                        <Table.Tr>
+                                            <Table.Th>Concepto</Table.Th>
+                                            <Table.Th>Frecuencia de Desgaste</Table.Th>
+                                            <Table.Th ta="right">Costo Estimado ($)</Table.Th>
+                                        </Table.Tr>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                        {activo.matrizCosto?.detalles?.map(det => (
+                                            <Table.Tr key={det.id}>
+                                                <Table.Td fw={500}>{det.descripcion}</Table.Td>
+                                                <Table.Td>{det.frecuencia} {det.tipoDesgaste}</Table.Td>
+                                                <Table.Td ta="right">${det.costoUnitario?.toFixed(2)}</Table.Td>
+                                            </Table.Tr>
+                                        ))}
+                                        {(!activo.matrizCosto?.detalles?.length) && (
+                                            <Table.Tr>
+                                                <Table.Td colSpan={3} ta="center" c="dimmed" py="xl">
+                                                    No hay detalles de costos vinculados a este activo.
+                                                </Table.Td>
+                                            </Table.Tr>
+                                        )}
+                                    </Table.Tbody>
+                                </Table>
+                            </Tabs.Panel>
+
+                            {/* 5. TAB: COMPONENTES E INVENTARIO */}
                             <Tabs.Panel value="componentes">
                                 <Stack gap="md">
                                     {subsistemas.map((sub) => {
@@ -333,7 +452,7 @@ export default function DetalleActivoPage({ params }) {
                                                                         <Table.Tr key={rec.id}>
                                                                             <Table.Td>
                                                                                 <Text size="sm" fw={600}>{rec.label || rec.categoria}</Text>
-                                                                                <Group gap="xs">
+                                                                                <Group gap="xs" mt={4}>
                                                                                     {matches.map(inst => (
                                                                                         <Badge 
                                                                                             key={inst.id} 
@@ -377,14 +496,16 @@ export default function DetalleActivoPage({ params }) {
                                 </Stack>
                             </Tabs.Panel>
 
-                            {/* 4. TAB: USO */}
+                            {/* 6. TAB: USO Y EFICIENCIA */}
                             <Tabs.Panel value="uso">
                                 <SimpleGrid cols={{ base: 1, md: 2 }}>
-                                    <Paper withBorder p="md"><Title order={5} mb="md">Kilometraje</Title>
-                                        <AreaChart h={200} data={dataKilometraje} dataKey="fecha" series={[{ name: 'valor', color: 'blue.6' }]} curveType="monotone" />
+                                    <Paper withBorder p="md">
+                                        <Title order={5} mb="md">Kilometraje a través del tiempo</Title>
+                                        <AreaChart h={250} data={dataKilometraje} dataKey="fecha" series={[{ name: 'valor', color: 'blue.6' }]} curveType="monotone" />
                                     </Paper>
-                                    <Paper withBorder p="md"><Title order={5} mb="md">Rendimiento</Title>
-                                        <BarChart h={200} data={dataEficiencia} dataKey="fecha" series={[{ name: 'rendimiento', color: 'teal.6' }]} />
+                                    <Paper withBorder p="md">
+                                        <Title order={5} mb="md">Rendimiento (Km por Litro)</Title>
+                                        <BarChart h={250} data={dataEficiencia} dataKey="fecha" series={[{ name: 'rendimiento', color: 'teal.6' }]} />
                                     </Paper>
                                 </SimpleGrid>
                             </Tabs.Panel>
@@ -393,7 +514,7 @@ export default function DetalleActivoPage({ params }) {
                 </Grid.Col>
             </Grid>
 
-            {/* MODALES */}
+            {/* MODALES INTACTOS */}
             <Modal opened={modalOrdenOpened} onClose={() => setModalOrdenOpened(false)} title="Generar ODT" centered>
                  {selectedHallazgo && (
                     <Stack>
