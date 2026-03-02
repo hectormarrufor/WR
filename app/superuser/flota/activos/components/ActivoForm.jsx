@@ -173,7 +173,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             if (values.imagen && typeof values.imagen !== 'string') {
                 const ext = values.imagen.name.split('.').pop();
                 const uploadRes = await fetch(`/api/upload?filename=${values.codigoInterno}.${ext}`, { method: 'POST', body: values.imagen });
-                payload.imagen = (await uploadRes.json()).url;
+                payload.imagen = `${values.codigoInterno}.${ext}`;
             }
 
             let url = isEditing ? `/api/gestionMantenimiento/activos/${initialData.id}` :

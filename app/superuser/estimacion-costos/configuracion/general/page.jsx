@@ -27,16 +27,16 @@ export default function ConfiguracionGlobalPage() {
             precioCauchoMax: 450.00,
             precioBateriaMin: 150.00, precioBateriaMax: 210.00,
 
-            // Módulo Fijos Mensuales (Tu modelo original)
+            // Módulo Fijos Mensuales
             gastosOficinaMensual: 500,
             pagosGestoriaPermisos: 200,
             nominaAdministrativaTotal: 1500,
             nominaOperativaFijaTotal: 2000,
 
-            // Módulo Flota (Para prorratear)
+            // Módulo Flota
             cantidadMaquinariaPesada: 18,
             cantidadTransportePesado: 15,
-            horasAnualesOperativas: 2000, // Por equipo
+            horasAnualesOperativas: 2000,
             utilizacionFlotaPorcentaje: 30,
 
             // Módulo Resguardo
@@ -72,33 +72,49 @@ export default function ConfiguracionGlobalPage() {
         load();
     }, []);
 
-    // --- CÁLCULOS EN TIEMPO REAL PARA EL FRONTEND ---
-    // 1. Gastos Estáticos Mensuales (multiplicados x12 para el año)
-    const mensualEstatico = (form.values.gastosOficinaMensual || 0) +
-        (form.values.pagosGestoriaPermisos || 0) +
-        (form.values.nominaAdministrativaTotal || 0) +
-        (form.values.nominaOperativaFijaTotal || 0);
+    // =========================================================================
+    // 🔥 CÁLCULOS EN TIEMPO REAL (EXTRACCIÓN LIMPIA DE VARIABLES) 🔥
+    // =========================================================================
+    
+    // 1. Extraemos los valores garantizando que sean números (evita strings de los inputs)
+    const oficina = Number(form.values.gastosOficinaMensual) || 0;
+    const gestoria = Number(form.values.pagosGestoriaPermisos) || 0;
+    const nominaAdmin = Number(form.values.nominaAdministrativaTotal) || 0;
+    const nominaOpe = Number(form.values.nominaOperativaFijaTotal) || 0;
+    
+    // Variables de Resguardo extraídas
+    const cantVigilantes = Number(form.values.cantidadVigilantes) || 0;
+    const sueldoVigilante = Number(form.values.sueldoMensualVigilante) || 0;
+    const costoCCTV = Number(form.values.costoSistemaCCTV) || 0;
+    const costoSatelital = Number(form.values.costoMonitoreoSatelital) || 0;
+
+    // 2. Cálculo Mensual y Anual Estático (Ahora sí suma vigilancia y monitoreo)
+    const costoVigilancia = cantVigilantes * sueldoVigilante;
+    const mensualResguardo = costoVigilancia + costoCCTV + costoSatelital;
+    
+    const mensualEstatico = oficina + gestoria + nominaAdmin + nominaOpe + mensualResguardo;
     const anualEstatico = mensualEstatico * 12;
 
-    // 2. Gastos Dinámicos Anuales (Tabla)
+    // 3. Gastos Dinámicos Anuales (Tabla extra)
     const anualDinamico = gastosFijos.reduce((sum, g) => sum + (Number(g.montoAnual) || 0), 0);
 
-   // 3. Prorrateo Overhead con CAPACIDAD OCIOSA
+    // 4. GRAN TOTAL
     const granTotalAnual = anualEstatico + anualDinamico;
     
-    // Flota física en el patio
-    const flotaTotal = (Number(form.values.cantidadMaquinariaPesada) || 0) + (Number(form.values.cantidadTransportePesado) || 0);
+    // 5. Prorrateo Overhead con Capacidad Ociosa
+    const maqPesada = Number(form.values.cantidadMaquinariaPesada) || 0;
+    const transPesado = Number(form.values.cantidadTransportePesado) || 0;
+    const flotaTotal = maqPesada + transPesado;
     
-    // Flota real facturando (La que carga con el peso de la empresa)
     const porcentajeUtilizacion = (Number(form.values.utilizacionFlotaPorcentaje) || 100) / 100;
     const flotaActiva = flotaTotal * porcentajeUtilizacion;
     
     const horasAnuales = Number(form.values.horasAnualesOperativas) || 2000;
-    
-    // Las horas que REALMENTE se van a facturar en el año
     const horasTotalesFlotaAnual = flotaActiva > 0 ? (flotaActiva * horasAnuales) : 1;
     
     const overheadPorHora = granTotalAnual / horasTotalesFlotaAnual;
+
+    // =========================================================================
 
     const handleSubmit = async (values) => {
         setLoading(true);
@@ -230,7 +246,7 @@ export default function ConfiguracionGlobalPage() {
                             <Button mt="sm" variant="light" leftSection={<IconPlus size={16} />} onClick={() => setGastosFijos([...gastosFijos, { descripcion: '', montoAnual: 0 }])} color="violet">Añadir Gasto Anual</Button>
                         </Tabs.Panel>
 
-                        {/* TAB 4: RESGUARDO (Mantenido fiel a tu modelo) */}
+                        {/* TAB 4: RESGUARDO */}
                         <Tabs.Panel value="resguardo">
                             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
                                 <NumberInput label="Cantidad Vigilantes" {...form.getInputProps('cantidadVigilantes')} />
@@ -244,7 +260,7 @@ export default function ConfiguracionGlobalPage() {
 
                     <Divider my="xl" />
 
-                   {/* PANEL INFORMATIVO DE OVERHEAD Y CAPACIDAD OCIOSA */}
+                    {/* PANEL INFORMATIVO DE OVERHEAD Y CAPACIDAD OCIOSA */}
                     <Paper bg="gray.0" p="md" radius="md" withBorder mb="lg">
                         <Grid align="center">
                             <Grid.Col span={{ base: 12, md: 5 }}>
