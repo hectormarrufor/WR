@@ -126,6 +126,8 @@ export async function GET(request, { params }) {
 // PUT: Actualizar (Lógica original respetada + Transacciones)
 // ----------------------------------------------------------------------
 export async function PUT(request, { params }) {
+
+    console.log("Iniciando proceso de actualización de activo desde la put general (no vehiculo o remolque)...");
     const { id } = await params;
 
     const t = await sequelize.transaction();

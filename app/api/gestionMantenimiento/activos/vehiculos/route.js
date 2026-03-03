@@ -46,14 +46,27 @@ export async function POST(request) {
             estado: body.estado || 'Operativo',
             ubicacionActual: body.ubicacionActual,
             imagen: body.imagen,
-            capacidadTonelajeMax: body.capacidadCarga || null,
+            capacidadTonelajeMax: body.capacidadTonelajeMax || body.capacidadCarga || null,
             fechaAdquisicion: body.fechaAdquisicion || new Date(),
             vehiculoInstanciaId: nuevoVehiculo.id,
             remolqueInstanciaId: null,
             maquinaInstanciaId: null,
-            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, // <-- NUEVO CAMPO TARa
+            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null,
+            
+            // 🔥 NUEVOS CAMPOS AGREGADOS AQUÍ 🔥
+            anio: body.anio ? parseInt(body.anio) : (body.anioFabricacion ? parseInt(body.anioFabricacion) : new Date().getFullYear()),
+            matrizCostoId: body.matrizCostoId ? parseInt(body.matrizCostoId) : null,
+            valorReposicion: body.valorReposicion ? parseFloat(body.valorReposicion) : null,
+            vidaUtilAnios: body.vidaUtilAnios ? parseInt(body.vidaUtilAnios) : null,
+            valorSalvamento: body.valorSalvamento !== undefined ? parseFloat(body.valorSalvamento) : null,
+            horasAnuales: body.horasAnuales ? parseInt(body.horasAnuales) : 2000,
+            
+            // --- MÉTRICAS CALCULADAS ---
+            velocidadPromedioTeorica: body.velocidadPromedioTeorica !== undefined ? parseInt(body.velocidadPromedioTeorica) : null,
+            costoMantenimientoTeorico: body.costoMantenimientoTeorico !== undefined ? parseFloat(body.costoMantenimientoTeorico) : 0,
+            costoPosesionTeorico: body.costoPosesionTeorico !== undefined ? parseFloat(body.costoPosesionTeorico) : 0,
+            costoPosesionHora: body.costoPosesionHora !== undefined ? parseFloat(body.costoPosesionHora) : 0,
         }, { transaction: t });
-
         // =====================================================================
         // 4.1. REGISTRAR HISTORIAL CERO (PUNTO DE PARTIDA)
         // =====================================================================

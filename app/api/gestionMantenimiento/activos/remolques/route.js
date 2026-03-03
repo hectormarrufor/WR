@@ -50,13 +50,27 @@ export async function POST(request) {
             tipoActivo: 'Remolque', // <--- TIPO ESPECÍFICO
             estado: body.estado || 'Operativo',
             ubicacionActual: body.ubicacionActual,
-            imagen: body.imagen, // Puede venir la URL de la imagen específica
+            imagen: body.imagen, 
             fechaAdquisicion: body.fechaAdquisicion || new Date(),
-            vehiculoInstanciaId: null,      // Null para remolques
-            remolqueInstanciaId: nuevaInstancia.id || null, // Vinculación correcta
+            vehiculoInstanciaId: null,      
+            remolqueInstanciaId: nuevaInstancia.id || null, 
             maquinaInstanciaId: null,
-            capacidadTonelajeMax: body.capacidadCarga || null, // Campo específico para remolques
-            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, // <-- NUEVO CAMPO TARaS
+            capacidadTonelajeMax: body.capacidadTonelajeMax || body.capacidadCarga || null, 
+            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, 
+            
+            // 🔥 NUEVOS CAMPOS AGREGADOS AQUÍ 🔥
+            anio: body.anio ? parseInt(body.anio) : (body.anioFabricacion ? parseInt(body.anioFabricacion) : new Date().getFullYear()),
+            matrizCostoId: body.matrizCostoId ? parseInt(body.matrizCostoId) : null,
+            valorReposicion: body.valorReposicion ? parseFloat(body.valorReposicion) : null,
+            vidaUtilAnios: body.vidaUtilAnios ? parseInt(body.vidaUtilAnios) : null,
+            valorSalvamento: body.valorSalvamento !== undefined ? parseFloat(body.valorSalvamento) : null,
+            horasAnuales: body.horasAnuales ? parseInt(body.horasAnuales) : 2000,
+            
+            // --- MÉTRICAS CALCULADAS ---
+            velocidadPromedioTeorica: body.velocidadPromedioTeorica !== undefined ? parseInt(body.velocidadPromedioTeorica) : null,
+            costoMantenimientoTeorico: body.costoMantenimientoTeorico !== undefined ? parseFloat(body.costoMantenimientoTeorico) : 0,
+            costoPosesionTeorico: body.costoPosesionTeorico !== undefined ? parseFloat(body.costoPosesionTeorico) : 0,
+            costoPosesionHora: body.costoPosesionHora !== undefined ? parseFloat(body.costoPosesionHora) : 0,
         }, { transaction: t });
 
         // =====================================================================

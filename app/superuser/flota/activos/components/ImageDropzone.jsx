@@ -67,11 +67,30 @@ export default function ImageDropzone({ label, form, fieldPath }) {
     const initialValue = form.getInputProps(fieldPath).value;
 
     useEffect(() => {
+        if (!initialValue) {
+            setPreview(null);
+            return;
+        }
+
+        // Si es un File o un Blob (lo acabamos de recortar localmente)
+        if (typeof initialValue === 'object' && initialValue instanceof File) {
+             const objectUrl = URL.createObjectURL(initialValue);
+             setPreview(objectUrl);
+             // Liberar memoria (opcional pero recomendado en useEffect return)
+             return () => URL.revokeObjectURL(objectUrl);
+        }
+        
+        // Si es un String y ya es una URL completa
         if (typeof initialValue === 'string' && initialValue.startsWith('http')) {
             setPreview(initialValue);
         }
+        // Si es un String pero es solo el nombre del archivo en la BD (ej: "activo-1.jpg")
         else if (typeof initialValue === "string") {
-            setPreview(`${initialValue}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`);
+            const baseUrl = process.env.NEXT_PUBLIC_BLOB_BASE_URL || '';
+            const version = process.env.NEXT_PUBLIC_APP_VERSION || Date.now();
+            
+            // Construimos la URL completa usando la variable de entorno
+            setPreview(`${baseUrl}/${initialValue}?v=${version}`);
         }
     }, [initialValue]);
 
@@ -123,8 +142,8 @@ export default function ImageDropzone({ label, form, fieldPath }) {
 
             const finalFile = await imageCompression(croppedFile, options);
             
-            const previewUrl = URL.createObjectURL(finalFile);
-            setPreview(previewUrl);
+            // Ya no seteamos el preview aquí manualmente, 
+            // dejamos que el useEffect reaccione al cambio en form.values
             form.setFieldValue(fieldPath, finalFile);
 
             notifications.update({
@@ -242,11 +261,16 @@ export default function ImageDropzone({ label, form, fieldPath }) {
             {preview && !compressing && (
                 <Paper p="sm" mt="xs" radius="md">
                     <Stack align="center">
-                        <Image src={preview} maw={250} radius="md" />
+                        <Image 
+                            src={preview} 
+                            maw={250} 
+                            radius="md" 
+                            fallbackSrc="https://placehold.co/400x300?text=Error+Cargando+Imagen" 
+                        />
                         <Button 
                             variant="light" 
                             leftSection={<IconReload size={16} />}
-                            onClick={() => setPreview(null)} 
+                            onClick={() => form.setFieldValue(fieldPath, null)} 
                         >
                             Cambiar imagen
                         </Button>

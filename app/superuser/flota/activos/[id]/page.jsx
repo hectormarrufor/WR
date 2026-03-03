@@ -100,6 +100,19 @@ export default function DetalleActivoPage({ params }) {
     const totalMatrizHr = activo.matrizCosto?.totalCostoHora || 0;
     const fletesHistoricos = activo.tipoActivo === 'Vehiculo' ? activo.fletesComoVehiculo : activo.fletesComoRemolque;
 
+    // --- LÓGICA DE PRIORIDAD PARA PESOS Y CAPACIDADES ---
+    const getCapacidadCarga = () => {
+        if (activo.capacidadTonelajeMax) return `${activo.capacidadTonelajeMax} Tons`;
+        if (plantilla.capacidadArrastre || plantilla.capacidadCarga) return `${plantilla.capacidadArrastre || plantilla.capacidadCarga} Tons (Fábrica)`;
+        return 'N/D';
+    };
+
+    const getTara = () => {
+        if (activo.tara) return `${activo.tara} Tons`;
+        if (plantilla.peso) return `${plantilla.peso} Tons (Fábrica)`;
+        return 'N/D';
+    };
+
     return (
         <Container size="xl" py="xl">
             {activo.estado === 'No Operativo' && (
@@ -188,8 +201,8 @@ export default function DetalleActivoPage({ params }) {
                                 <InfoLine label="S/N Motor" value={instance.serialMotor} />
                                 <InfoLine label="S/N Chasis" value={instance.serialChasis} />
                                 <InfoLine label="Combustible" value={plantilla.tipoCombustible} />
-                                <InfoLine label="Capacidad" value={activo.capacidadTonelajeMax ? `${activo.capacidadTonelajeMax} Ton` : 'N/D'} />
-                                <InfoLine label="Tara" value={activo.tara ? `${activo.tara} Kg` : 'N/D'} />
+                                <InfoLine label="Capacidad" value={getCapacidadCarga()} />
+                                <InfoLine label="Tara" value={getTara()} />
                                 
                                 <Divider my="xs" variant="dashed" />
                                 

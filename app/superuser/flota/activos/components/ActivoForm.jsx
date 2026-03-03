@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     TextInput, NumberInput, Button, Group,
     SimpleGrid, Stack, Select, Text, Divider, Alert,
     LoadingOverlay, ThemeIcon, Stepper, Paper, Title,
-    Tooltip, Accordion,
-    Box
+    Tooltip, Accordion, Box
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconCheck, IconCoin, IconTool, IconInfoCircle, IconCalculator } from '@tabler/icons-react';
@@ -38,7 +37,9 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             serialMotor: initialData?.vehiculoInstancia?.serialMotor || initialData?.maquinaInstancia?.serialMotor || '',
             color: initialData?.vehiculoInstancia?.color || initialData?.remolqueInstancia?.color || 'Blanco',
             imagen: initialData?.imagen || "",
-            anioFabricacion: initialData?.anio || new Date().getFullYear(),
+            
+            // Valores con fallback (se reforzarán en el useEffect)
+            anioFabricacion: initialData?.anio || initialData?.anioFabricacion || new Date().getFullYear(),
             kilometrajeActual: initialData?.vehiculoInstancia?.kilometrajeActual || 0,
             horometroActual: initialData?.vehiculoInstancia?.horometroActual || initialData?.maquinaInstancia?.horometroActual || 0,
             tara: initialData?.tara || '',
@@ -63,6 +64,37 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             horasAnuales: (val) => (!val || val <= 0 ? 'Requerido' : null),
         }
     });
+
+    // =====================================================================
+    // 🔥 SOLUCIÓN 1: HYDRATACIÓN ASÍNCRONA (Asegura que los datos carguen)
+    // =====================================================================
+    useEffect(() => {
+        if (isEditing && initialData) {
+            form.setValues({
+                ...form.values,
+                anioFabricacion: initialData.anio || initialData.anioFabricacion || new Date().getFullYear(),
+                valorReposicion: initialData.valorReposicion || '',
+                vidaUtilAnios: initialData.vidaUtilAnios || '',
+                valorSalvamento: initialData.valorSalvamento || '',
+                horasAnuales: initialData.horasAnuales || 2000,
+                velocidadPromedio: initialData.velocidadPromedioTeorica || initialData.velocidadPromedio || 40,
+                tara: initialData.tara || '',
+                capacidadCarga: initialData.capacidadTonelajeMax || '',
+                matrizCostoId: initialData.matrizCostoId ? String(initialData.matrizCostoId) : '',
+            });
+        } else if (!isEditing && plantilla) {
+            // Si está creando nuevo, heredamos del modelo (plantilla) si existe
+            form.setValues({
+                ...form.values,
+                anioFabricacion: plantilla.anio || plantilla.anioFabricacion || new Date().getFullYear(),
+                tara: plantilla.pesoVacioKg || '',
+                capacidadCarga: plantilla.capacidadCargaTons || '',
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialData, plantilla]);
+
+
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -97,8 +129,10 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
         fetchInventario();
     }, []);
 
+    
+
     // --------------------------------------------------------
-    // CÁLCULO DINÁMICO AVANZADO (CORREGIDO: CERO DOBLE COBRO)
+    // CÁLCULO DINÁMICO AVANZADO 
     // --------------------------------------------------------
     const valor = parseFloat(form.values.valorReposicion) || 0;
     const salvamento = parseFloat(form.values.valorSalvamento) || 0;
@@ -107,16 +141,14 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const velocidad = parseInt(form.values.velocidadPromedio) || 0;
     const tasaInteres = tasaInteresGlobal / 100;
 
-    // A. POSESIÓN (Cálculo Financiero ÚNICO y exclusivo de este activo)
+    // A. POSESIÓN 
     const montoADepreciar = valor - salvamento;
     const vidaEnHoras = vida * horasAnuales;
     const depHora = vidaEnHoras > 0 ? (montoADepreciar / vidaEnHoras) : 0;
     const intHora = horasAnuales > 0 ? ((valor * tasaInteres) / horasAnuales) : 0;
-    
-    // LA POSESIÓN ES SOLO ESTO. Adiós al valor fantasma de la matriz.
     const costoPosesionHoraFinal = depHora + intHora;
 
-    // B. EXTRACCIÓN SEGURA DE LA MATRIZ DE COSTOS (Solo extraemos desgaste operativo)
+    // B. EXTRACCIÓN DE MATRIZ 
     let costoKmMatriz = 0;
     let costoHoraMatriz = 0;
     let costoMantenimientoHora = 0;
@@ -131,7 +163,6 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
 
     if (matriz) {
         costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);
-        // En totalCostoHora ya vienen incluidos los repuestos por hora, los seguros y los trámites
         costoHoraMatriz = parseFloat(matriz.totalCostoHora || 0);
 
         if (velocidad === 0) {
@@ -160,12 +191,16 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
+            // =====================================================================
+            // 🔥 SOLUCIÓN 2: MAPEO CORRECTO HACIA LA BASE DE DATOS
+            // =====================================================================
             let payload = {
                 ...values,
-                // Mapeamos las variables del form a los nombres exactos de tu modelo de BD
+                anio: values.anioFabricacion,                  // Obligamos a guardar como "anio"
+                capacidadTonelajeMax: values.capacidadCarga,   // Obligamos a guardar como "capacidadTonelajeMax"
                 velocidadPromedioTeorica: values.velocidadPromedio,
                 costoMantenimientoTeorico: costoKmMatriz, 
-                costoPosesionTeorico: costoPosesionHoraFinal, // <--- ¡AQUÍ ESTABA EL ERROR!
+                costoPosesionTeorico: costoPosesionHoraFinal, 
                 costoPosesionHora: costoPosesionHoraFinal, 
                 usuario: nombre + ' ' + apellido,
             };
@@ -277,7 +312,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                 </Group>
                             </Paper>
 
-                            {/* LA PIZARRA DE FÓRMULAS (TRANSPARENCIA TOTAL) */}
+                            {/* LA PIZARRA DE FÓRMULAS */}
                             <Accordion variant="contained" radius="md" defaultValue="calculo">
                                 <Accordion.Item value="calculo" style={{ backgroundColor: '#f8f9fa' }}>
                                     <Accordion.Control icon={<IconCalculator size={20} color="gray"/>}>
@@ -285,7 +320,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                     </Accordion.Control>
                                     <Accordion.Panel>
                                         <Stack gap="md">
-                                            {/* SECCIÓN 1: MANTENIMIENTO (LA MATRIZ) */}
+                                            {/* SECCIÓN 1: MANTENIMIENTO */}
                                             <Box>
                                                 <Divider label="1. MANTENIMIENTO Y OPERACIÓN (Heredado de Matriz Base)" labelPosition="left" color="blue.3" mb="xs" />
                                                 
@@ -315,7 +350,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                                 </Group>
                                             </Box>
 
-                                            {/* SECCIÓN 2: POSESIÓN (EL FORMULARIO) */}
+                                            {/* SECCIÓN 2: POSESIÓN */}
                                             <Box>
                                                 <Divider label="2. POSESIÓN Y DEPRECIACIÓN (Calculado para este Activo)" labelPosition="left" color="teal.3" mb="xs" />
                                                 

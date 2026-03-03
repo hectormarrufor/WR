@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Table, Button, Group, ActionIcon, Text, Modal, LoadingOverlay, 
-    Paper, Title, Loader, Avatar, TextInput, Select, Badge, Stack, Tooltip 
+    Paper, Title, Avatar, TextInput, Select, Badge, Stack, Tooltip 
 } from '@mantine/core';
-import { IconPencil, IconTrash, IconPlus, IconSearch, IconFilter } from '@tabler/icons-react';
+import { IconPencil, IconTrash, IconPlus, IconSearch, IconFilter, IconCash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { useMediaQuery } from '@mantine/hooks';
@@ -34,7 +34,6 @@ export default function ListarActivosPage() {
             const response = await fetch('/api/gestionMantenimiento/activos');
             if (!response.ok) throw new Error('No se pudieron cargar los activos');
             const data = await response.json();
-            // Aseguramos que data.data es el array, según tu estructura JSON
             setActivos(data.data || []);
         } catch (error) {
             notifications.show({ title: 'Error', message: error.message, color: 'red' });
@@ -63,6 +62,22 @@ export default function ListarActivosPage() {
             }
         }
         return detalles;
+    };
+
+    // Helper para Extraer Pesos y Capacidades (con Prioridad Activo -> Plantilla)
+    const getPesosYCapacidades = (activo) => {
+        const instancia = activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinaInstancia || {};
+        const plantilla = instancia.plantilla || {};
+
+        const capacidad = activo.capacidadTonelajeMax 
+            ? `${activo.capacidadTonelajeMax} Tons` 
+            : (plantilla.capacidadCarga || plantilla.capacidadArrastre ? `${plantilla.capacidadCarga || plantilla.capacidadArrastre} Tons (Fáb.)` : 'N/D');
+
+        const tara = activo.tara 
+            ? `${activo.tara} Tons` 
+            : (plantilla.peso ? `${plantilla.peso} Tons (Fáb.)` : 'N/D');
+
+        return { capacidad, tara };
     };
 
     // Lógica de filtrado
@@ -118,9 +133,15 @@ export default function ListarActivosPage() {
     // Generador de filas para tabla
     const rows = filteredActivos.map((activo) => {
         const details = getAssetDetails(activo);
+        const { capacidad, tara } = getPesosYCapacidades(activo);
+        
         const imageUrl = activo.imagen 
             ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` 
             : null;
+
+        // --- DATOS FINANCIEROS ---
+        const valor = activo.valorReposicion ? `$${activo.valorReposicion.toLocaleString()}` : 'N/D';
+        const posesion = activo.costoPosesionHora ? `$${parseFloat(activo.costoPosesionHora).toFixed(2)}/hr` : 'N/D';
 
         return (
             <Table.Tr 
@@ -144,9 +165,23 @@ export default function ListarActivosPage() {
                     <Text fz="sm">{details.marca} {details.modelo}</Text>
                     {details.placa && <Badge variant="filled" size="lg" color="black">{details.placa}</Badge>}
                 </Table.Td>
+                
+                {/* --- NUEVAS COLUMNAS: CAPACIDAD Y TARA --- */}
                 <Table.Td>
-                    <Text fz="sm">{activo.ubicacionActual || 'No definida'}</Text>
+                    <Text fz="sm" fw={500} c="dark.3">{capacidad}</Text>
                 </Table.Td>
+                <Table.Td>
+                    <Text fz="sm" fw={500} c="dark.3">{tara}</Text>
+                </Table.Td>
+
+                {/* --- DATOS FINANCIEROS --- */}
+                <Table.Td>
+                    <Text fz="sm" fw={600} c="dark.3">{valor}</Text>
+                </Table.Td>
+                <Table.Td>
+                    <Text fz="sm" fw={700} c="teal.7">{posesion}</Text>
+                </Table.Td>
+
                 <Table.Td>
                     <Badge 
                         color={activo.estado === 'Operativo' ? 'teal' : activo.estado === 'Mantenimiento' ? 'orange' : 'red'}
@@ -218,7 +253,12 @@ export default function ListarActivosPage() {
                     ) : (
                         filteredActivos.map((activo) => {
                             const details = getAssetDetails(activo);
+                            const { capacidad, tara } = getPesosYCapacidades(activo);
                             const imageUrl = activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null;
+                            
+                            // Datos Financieros para Mobile
+                            const valor = activo.valorReposicion ? `$${activo.valorReposicion.toLocaleString()}` : 'N/D';
+                            const posesion = activo.costoPosesionHora ? `$${parseFloat(activo.costoPosesionHora).toFixed(2)}/hr` : 'N/D';
                             
                             return (
                                 <Paper 
@@ -242,10 +282,14 @@ export default function ListarActivosPage() {
                                     </Group>
 
                                     <Group justify="space-between" mt="md">
-                                        <div>
-                                            <Text size="xs" c="dimmed">Ubicación</Text>
-                                            <Text size="sm" fw={500}>{activo.ubicacionActual}</Text>
-                                        </div>
+                                        <Stack gap={2}>
+                                            <Text size="xs" c="dimmed">
+                                                Capacidad: <Text span fw={600} c="dark.3">{capacidad}</Text> | Tara: <Text span fw={600} c="dark.3">{tara}</Text>
+                                            </Text>
+                                            <Text size="xs" c="dimmed">
+                                                Valor: <Text span fw={600} c="dark.3">{valor}</Text> | Posesión: <Text span fw={700} c="teal.7">{posesion}</Text>
+                                            </Text>
+                                        </Stack>
                                         {details.placa && (
                                             <div>
                                                 <Text size="xs" c="dimmed" ta="right">Placa</Text>
@@ -270,13 +314,16 @@ export default function ListarActivosPage() {
                     )}
                 </Stack>
             ) : (
-                <Table.ScrollContainer minWidth={800}>
+                <Table.ScrollContainer minWidth={1000}>
                     <Table verticalSpacing="sm" highlightOnHover>
                         <Table.Thead>
                             <Table.Tr>
                                 <Table.Th>Activo</Table.Th>
                                 <Table.Th>Detalles</Table.Th>
-                                <Table.Th>Ubicación</Table.Th>
+                                <Table.Th>Capacidad</Table.Th>
+                                <Table.Th>Tara</Table.Th>
+                                <Table.Th>Valor ($)</Table.Th>
+                                <Table.Th>Posesión/Hr</Table.Th>
                                 <Table.Th>Estado</Table.Th>
                                 <Table.Th>Acciones</Table.Th>
                             </Table.Tr>
@@ -284,7 +331,7 @@ export default function ListarActivosPage() {
                         <Table.Tbody>
                             {filteredActivos.length > 0 ? rows : (
                                 <Table.Tr>
-                                    <Table.Td colSpan={5} py="xl">
+                                    <Table.Td colSpan={8} py="xl">
                                         <Text ta="center" c="dimmed">No se encontraron activos que coincidan con la búsqueda.</Text>
                                     </Table.Td>
                                 </Table.Tr>

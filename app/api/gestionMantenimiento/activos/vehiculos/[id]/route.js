@@ -17,6 +17,8 @@ export async function PUT(request, { params }) {
         if (!modelo) throw new Error("Modelo no encontrado");
 
         // 2. ACTUALIZAR DATOS BÁSICOS DEL MODELO
+
+        console.log("Datos recibidos para actualización:", body);
         await modelo.update({
             marca: body.marca,
             modelo: body.modelo,

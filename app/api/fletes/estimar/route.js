@@ -79,6 +79,7 @@ export async function POST(req) {
         }) : null;
 
         if (!chuto || !chuto.matrizCosto) {
+            console.error("Falta información del vehículo principal o su matriz de costos");
             return NextResponse.json({ error: "Vehículo principal no tiene Matriz de Costos asociada" }, { status: 400 });
         }
 
