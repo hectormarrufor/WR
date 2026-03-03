@@ -267,7 +267,7 @@ export default function ModeloActivoForm({
                                 form={form}
                                 fieldKey="marca"
                                 catalogo="marcas"
-                                tipo={tipoPreseleccionado.toLowerCase()}
+                                tipo="vehiculo"
                             />
                             <AsyncCatalogComboBox
                                 label="Modelo"
@@ -275,7 +275,7 @@ export default function ModeloActivoForm({
                                 form={form}
                                 fieldKey="modelo"
                                 catalogo="modelos"
-                                tipo={tipoPreseleccionado.toLowerCase()}
+                                tipo="vehiculo"
                             />
                         </>
                     )}
@@ -289,7 +289,7 @@ export default function ModeloActivoForm({
                                 form={form}
                                 fieldKey="marca"
                                 catalogo="marcas"
-                                tipo="equipo"
+                                tipo="vehiculo"
                             />
                             <TextInput
                                 label="Modelo / Nombre del Equipo"
