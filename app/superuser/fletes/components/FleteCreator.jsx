@@ -103,12 +103,17 @@ export default function FleteCreator() {
         return activos.map((v) => {
             let nombreDisplay = v.codigoInterno;
             let placa = v.vehiculoInstancia?.placa || v.remolqueInstancia?.placa || "";
+
             return {
                 id: v.id,
                 nombre: `${nombreDisplay} (${placa})`,
                 subtitulo: `Rendimiento BD: ${v.consumoCombustibleLPorKm || 0.35} L/Km`,
                 imagen: v.imagen,
                 tipo: v.tipoActivo,
+                tara: v.tara || v.remolqueInstancia?.plantilla?.peso || v.vehiculoInstancia?.plantilla?.peso || null,
+                capacidad: v.capacidadTonelajeMax || v.remolqueInstancia?.plantilla?.capacidadCarga || v.vehiculoInstancia?.plantilla?.capacidadArrastre || null,
+                tarifaPorHora: v.tarifaPorHora,
+                tarifaPorKm: v.tarifaPorKm,
             };
         });
     }, [activos]);
@@ -301,12 +306,14 @@ export default function FleteCreator() {
                             data={activosMapeados.filter((a) => a.tipo === "Vehiculo")}
                             onChange={(val) => form.setFieldValue("activoPrincipalId", val)}
                             value={form.values.activoPrincipalId}
+                            showMetrics
                         />
                         <ODTSelectableGrid
                             label="Remolque / Batea"
                             data={activosMapeados.filter((a) => a.tipo === "Remolque")}
                             onChange={(val) => form.setFieldValue("remolqueId", val)}
                             value={form.values.remolqueId}
+                            showMetrics
                         />
 
                         {/* PANEL DE TELEMETRÍA */}
@@ -330,10 +337,16 @@ export default function FleteCreator() {
                                     <Group justify="space-between">
                                         <Text size="xs" fw={600}>Tara del Equipo (Vacío):</Text>
                                         <Box ta="right">
-                                            <Text size="xs" c="dimmed">Chuto: {taraChutoCalc.toFixed(1)}t | Batea: {taraRemolqueCalc.toFixed(1)}t</Text>
+                                            <Text size="xs" c="dimmed">
+                                                Chuto: {(Number(taraChutoCalc) || 0).toFixed(1)}t | Batea: {(Number(taraRemolqueCalc) || 0).toFixed(1)}t
+                                            </Text>
                                             <Group gap={5} justify="flex-end">
-                                                <Text size="sm" fw={800} c="blue.9">Total: {taraBase.toFixed(1)}t</Text>
-                                                <Badge color="blue" variant="light" size="xs">Puro Hierro</Badge>
+                                                <Text size="sm" fw={800} c="blue.9">
+                                                    Total: {(Number(taraBase) || 0).toFixed(1)}t
+                                                </Text>
+                                                <Badge color={taraBase > 0 ? 'green' : 'gray'} variant="light" size="xs" style={{ textTransform: 'none' }}>
+                                                    {taraBase > 0 ? 'Calculada' : 'N/D'}
+                                                </Badge>
                                             </Group>
                                         </Box>
                                     </Group>
@@ -381,7 +394,7 @@ export default function FleteCreator() {
                                                         </Badge>
                                                     </Group>
                                                     <Text size="xs" fw={500} component="div">
-                                                        Peso Bruto a mover: <Text span c="blue.9" fw={800}>{(taraBase + tramo.tonelaje).toFixed(1)}t</Text>
+                                                        Peso Bruto a mover: <Text span c="blue.9" fw={800}>{((Number(taraBase) || 0) + (Number(tramo.tonelaje) || 0)).toFixed(1)}t</Text>
                                                     </Text>
                                                 </Group>
 

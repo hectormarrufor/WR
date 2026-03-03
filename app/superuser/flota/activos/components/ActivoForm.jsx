@@ -131,8 +131,8 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
 
     
 
-    // --------------------------------------------------------
-    // CÁLCULO DINÁMICO AVANZADO 
+   // --------------------------------------------------------
+    // CÁLCULO DINÁMICO AVANZADO (SEPARACIÓN HORA VS KM)
     // --------------------------------------------------------
     const valor = parseFloat(form.values.valorReposicion) || 0;
     const salvamento = parseFloat(form.values.valorSalvamento) || 0;
@@ -141,17 +141,16 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const velocidad = parseInt(form.values.velocidadPromedio) || 0;
     const tasaInteres = tasaInteresGlobal / 100;
 
-    // A. POSESIÓN 
+    // A. COSTOS FIJOS DEL EQUIPO (Por Hora)
     const montoADepreciar = valor - salvamento;
     const vidaEnHoras = vida * horasAnuales;
     const depHora = vidaEnHoras > 0 ? (montoADepreciar / vidaEnHoras) : 0;
     const intHora = horasAnuales > 0 ? ((valor * tasaInteres) / horasAnuales) : 0;
-    const costoPosesionHoraFinal = depHora + intHora;
+    const costoPosesionEquipoHora = depHora + intHora;
 
-    // B. EXTRACCIÓN DE MATRIZ 
+    // B. EXTRACCIÓN DE MATRIZ (Respetando su naturaleza)
     let costoKmMatriz = 0;
     let costoHoraMatriz = 0;
-    let costoMantenimientoHora = 0;
 
     const matrizIdSeleccionada = form.values.matrizCostoId;
 
@@ -162,17 +161,13 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     }
 
     if (matriz) {
-        costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);
-        costoHoraMatriz = parseFloat(matriz.totalCostoHora || 0);
-
-        if (velocidad === 0) {
-            costoMantenimientoHora = costoHoraMatriz > 0 ? costoHoraMatriz : (costoKmMatriz * 40);
-        } else {
-            costoMantenimientoHora = (costoKmMatriz * velocidad) + costoHoraMatriz;
-        }
+        costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);     // Costo Variable (Rodamiento)
+        costoHoraMatriz = parseFloat(matriz.totalCostoHora || 0); // Costo Fijo (Seguros, Trámites)
     }
 
-    const costoTotalEstimado = costoPosesionHoraFinal + costoMantenimientoHora;
+    // C. TOTALES SEPARADOS PARA EL FLETE
+    const totalCostoFijoHora = costoPosesionEquipoHora + costoHoraMatriz; 
+    const totalCostoVariableKm = costoKmMatriz;
 
     // --------------------------------------------------------
     // HANDLERS
@@ -191,17 +186,16 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
-            // =====================================================================
-            // 🔥 SOLUCIÓN 2: MAPEO CORRECTO HACIA LA BASE DE DATOS
-            // =====================================================================
             let payload = {
                 ...values,
-                anio: values.anioFabricacion,                  // Obligamos a guardar como "anio"
-                capacidadTonelajeMax: values.capacidadCarga,   // Obligamos a guardar como "capacidadTonelajeMax"
+                anio: values.anioFabricacion,
+                capacidadTonelajeMax: values.capacidadCarga,
                 velocidadPromedioTeorica: values.velocidadPromedio,
-                costoMantenimientoTeorico: costoKmMatriz, 
-                costoPosesionTeorico: costoPosesionHoraFinal, 
-                costoPosesionHora: costoPosesionHoraFinal, 
+                
+                // 🔥 GUARDAMOS LOS COSTOS EN SU NATURALEZA REAL
+                costoMantenimientoTeorico: totalCostoVariableKm, // Puro rodamiento ($/Km)
+                costoPosesionTeorico: totalCostoFijoHora,        // Pura Posesión + Seguros ($/Hora)
+                costoPosesionHora: totalCostoFijoHora, 
                 usuario: nombre + ' ' + apellido,
             };
 
@@ -316,47 +310,21 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                             <Accordion variant="contained" radius="md" defaultValue="calculo">
                                 <Accordion.Item value="calculo" style={{ backgroundColor: '#f8f9fa' }}>
                                     <Accordion.Control icon={<IconCalculator size={20} color="gray"/>}>
-                                        <Text fw={700} c="dark.9" size="lg">Costo Total Estimado: ${costoTotalEstimado.toFixed(2)} / hr</Text>
+                                        <Group gap="lg">
+                                            <Text fw={700} c="teal.9" size="md">Fijo: ${totalCostoFijoHora.toFixed(2)}/hr</Text>
+                                            <Text fw={700} c="orange.9" size="md">Variable: ${totalCostoVariableKm.toFixed(2)}/km</Text>
+                                        </Group>
                                     </Accordion.Control>
                                     <Accordion.Panel>
                                         <Stack gap="md">
-                                            {/* SECCIÓN 1: MANTENIMIENTO */}
+                                            
+                                            {/* SECCIÓN 1: COSTOS FIJOS (POR HORA) */}
                                             <Box>
-                                                <Divider label="1. MANTENIMIENTO Y OPERACIÓN (Heredado de Matriz Base)" labelPosition="left" color="blue.3" mb="xs" />
+                                                <Divider label="1. COSTOS FIJOS (Por Hora de Trabajo)" labelPosition="left" color="teal.3" mb="xs" />
                                                 
                                                 <Group justify="space-between" align="flex-start" wrap="nowrap">
                                                     <Box>
-                                                        <Text size="sm" fw={600}>Desgaste por Rodamiento (Proyectado a horas):</Text>
-                                                        <Text size="xs" c="dimmed" ff="monospace">
-                                                            (${costoKmMatriz.toFixed(3)}/km × {velocidad} km/h)
-                                                        </Text>
-                                                    </Box>
-                                                    <Text size="sm" fw={500}>${(costoKmMatriz * velocidad).toFixed(2)} / hr</Text>
-                                                </Group>
-
-                                                <Group justify="space-between" align="flex-start" wrap="nowrap" mt="xs">
-                                                    <Box>
-                                                        <Text size="sm" fw={600}>Desgaste por tiempo (Baterias...), Seguros, Trámites:</Text>
-                                                        <Text size="xs" c="dimmed" ff="monospace">
-                                                            Tarifa plana de matriz por motor encendido
-                                                        </Text>
-                                                    </Box>
-                                                    <Text size="sm" fw={500}>${costoHoraMatriz.toFixed(2)} / hr</Text>
-                                                </Group>
-
-                                                <Group justify="space-between" mt="sm" p="xs" bg="blue.0" style={{ borderRadius: '4px' }}>
-                                                    <Text size="sm" fw={700} c="blue.9">Subtotal Operativo:</Text>
-                                                    <Text size="sm" fw={700} c="blue.9">${costoMantenimientoHora.toFixed(2)} / hr</Text>
-                                                </Group>
-                                            </Box>
-
-                                            {/* SECCIÓN 2: POSESIÓN */}
-                                            <Box>
-                                                <Divider label="2. POSESIÓN Y DEPRECIACIÓN (Calculado para este Activo)" labelPosition="left" color="teal.3" mb="xs" />
-                                                
-                                                <Group justify="space-between" align="flex-start" wrap="nowrap">
-                                                    <Box>
-                                                        <Text size="sm" fw={600}>Depreciación Física:</Text>
+                                                        <Text size="sm" fw={600}>Depreciación del Equipo:</Text>
                                                         <Text size="xs" c="dimmed" ff="monospace">
                                                             (${valor} - ${salvamento}) ÷ ({vida} años × {horasAnuales} hrs)
                                                         </Text>
@@ -366,7 +334,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
 
                                                 <Group justify="space-between" align="flex-start" wrap="nowrap" mt="xs">
                                                     <Box>
-                                                        <Text size="sm" fw={600}>Interés de Capital Invertido ({tasaInteresGlobal}%):</Text>
+                                                        <Text size="sm" fw={600}>Interés Invertido ({tasaInteresGlobal}%):</Text>
                                                         <Text size="xs" c="dimmed" ff="monospace">
                                                             (${valor} × {tasaInteresGlobal / 100}) ÷ {horasAnuales} hrs
                                                         </Text>
@@ -374,11 +342,38 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                                     <Text size="sm" fw={500}>${intHora.toFixed(2)} / hr</Text>
                                                 </Group>
 
+                                                <Group justify="space-between" align="flex-start" wrap="nowrap" mt="xs">
+                                                    <Box>
+                                                        <Text size="sm" fw={600}>Seguros, Trámites y Administrativos:</Text>
+                                                        <Text size="xs" c="dimmed" ff="monospace">Tarifa por hora heredada de la Matriz Base</Text>
+                                                    </Box>
+                                                    <Text size="sm" fw={500}>${costoHoraMatriz.toFixed(2)} / hr</Text>
+                                                </Group>
+
                                                 <Group justify="space-between" mt="sm" p="xs" bg="teal.0" style={{ borderRadius: '4px' }}>
-                                                    <Text size="sm" fw={700} c="teal.9">Subtotal Posesión:</Text>
-                                                    <Text size="sm" fw={700} c="teal.9">${costoPosesionHoraFinal.toFixed(2)} / hr</Text>
+                                                    <Text size="sm" fw={700} c="teal.9">Total Costo Fijo (Tiempo):</Text>
+                                                    <Text size="sm" fw={700} c="teal.9">${totalCostoFijoHora.toFixed(2)} / hr</Text>
                                                 </Group>
                                             </Box>
+
+                                            {/* SECCIÓN 2: COSTOS VARIABLES (POR KILÓMETRO) */}
+                                            <Box>
+                                                <Divider label="2. COSTOS VARIABLES (Por Rodamiento)" labelPosition="left" color="orange.3" mb="xs" />
+                                                
+                                                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                                                    <Box>
+                                                        <Text size="sm" fw={600}>Desgaste y Mantenimiento (Llantas, Aceites, Repuestos):</Text>
+                                                        <Text size="xs" c="dimmed" ff="monospace">Tarifa por Km heredada de la Matriz Base</Text>
+                                                    </Box>
+                                                    <Text size="sm" fw={500}>${costoKmMatriz.toFixed(3)} / km</Text>
+                                                </Group>
+
+                                                <Group justify="space-between" mt="sm" p="xs" bg="orange.0" style={{ borderRadius: '4px' }}>
+                                                    <Text size="sm" fw={700} c="orange.9">Total Costo Variable (Uso):</Text>
+                                                    <Text size="sm" fw={700} c="orange.9">${totalCostoVariableKm.toFixed(3)} / km</Text>
+                                                </Group>
+                                            </Box>
+                                            
                                         </Stack>
                                     </Accordion.Panel>
                                 </Accordion.Item>
