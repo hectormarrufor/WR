@@ -7,7 +7,7 @@ import {
     Table, ActionIcon, TextInput, Badge, ScrollArea
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconShieldLock, IconCoin, IconGasStation, IconSettings, IconInfoCircle, IconTrash, IconPlus, IconBuildingBank, IconBriefcase } from '@tabler/icons-react';
+import { IconShieldLock, IconGasStation, IconSettings, IconInfoCircle, IconTrash, IconPlus, IconBuildingBank, IconBriefcase, IconTruck } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
 export default function ConfiguracionGlobalPage() {
@@ -16,11 +16,16 @@ export default function ConfiguracionGlobalPage() {
 
     const form = useForm({
         initialValues: {
-            // Módulo Mercado
+            // Módulo Mercado y Operativos
             precioGasoil: 0.50,
             precioPeajePromedio: 20.00,
             viaticoAlimentacionDia: 15.00,
             viaticoHotelNoche: 20.00,
+            
+            // 🔥 NUEVOS: Sueldos Diarios Operativos 🔥
+            sueldoDiarioChofer: 25.00,
+            sueldoDiarioAyudante: 15.00,
+
             precioAceiteMotorMin: 7.50, precioAceiteMotorMax: 9.50,
             precioAceiteCajaMin: 10.00, precioAceiteCajaMax: 12.00,
             precioCauchoMin: 350.00,
@@ -33,11 +38,15 @@ export default function ConfiguracionGlobalPage() {
             nominaAdministrativaTotal: 1500,
             nominaOperativaFijaTotal: 2000,
 
-            // Módulo Flota
+            // Módulo Flota (Manuales y Automáticos)
             cantidadMaquinariaPesada: 18,
             cantidadTransportePesado: 15,
             horasAnualesOperativas: 2000,
             utilizacionFlotaPorcentaje: 30,
+            
+            // 🔥 NUEVOS: Variables de solo lectura calculadas por el backend 🔥
+            valorFlotaTotal: 0,
+            cantidadTotalUnidades: 0,
 
             // Módulo Resguardo
             cantidadVigilantes: 4,
@@ -76,35 +85,33 @@ export default function ConfiguracionGlobalPage() {
     // 🔥 CÁLCULOS EN TIEMPO REAL (EXTRACCIÓN LIMPIA DE VARIABLES) 🔥
     // =========================================================================
     
-    // 1. Extraemos los valores garantizando que sean números (evita strings de los inputs)
+    // 1. Extraemos los valores garantizando que sean números
     const oficina = Number(form.values.gastosOficinaMensual) || 0;
     const gestoria = Number(form.values.pagosGestoriaPermisos) || 0;
     const nominaAdmin = Number(form.values.nominaAdministrativaTotal) || 0;
     const nominaOpe = Number(form.values.nominaOperativaFijaTotal) || 0;
     
-    // Variables de Resguardo extraídas
     const cantVigilantes = Number(form.values.cantidadVigilantes) || 0;
     const sueldoVigilante = Number(form.values.sueldoMensualVigilante) || 0;
     const costoCCTV = Number(form.values.costoSistemaCCTV) || 0;
     const costoSatelital = Number(form.values.costoMonitoreoSatelital) || 0;
 
-    // 2. Cálculo Mensual y Anual Estático (Ahora sí suma vigilancia y monitoreo)
+    // 2. Cálculo Mensual y Anual Estático
     const costoVigilancia = cantVigilantes * sueldoVigilante;
     const mensualResguardo = costoVigilancia + costoCCTV + costoSatelital;
     
     const mensualEstatico = oficina + gestoria + nominaAdmin + nominaOpe + mensualResguardo;
     const anualEstatico = mensualEstatico * 12;
 
-    // 3. Gastos Dinámicos Anuales (Tabla extra)
+    // 3. Gastos Dinámicos Anuales
     const anualDinamico = gastosFijos.reduce((sum, g) => sum + (Number(g.montoAnual) || 0), 0);
 
-    // 4. GRAN TOTAL
+    // 4. GRAN TOTAL ADMINISTRATIVO
     const granTotalAnual = anualEstatico + anualDinamico;
     
-    // 5. Prorrateo Overhead con Capacidad Ociosa
-    const maqPesada = Number(form.values.cantidadMaquinariaPesada) || 0;
-    const transPesado = Number(form.values.cantidadTransportePesado) || 0;
-    const flotaTotal = maqPesada + transPesado;
+    // 5. Prorrateo Overhead Global (Referencia rápida)
+    // Ahora le damos prioridad a las unidades reales de la base de datos
+    const flotaTotal = Number(form.values.cantidadTotalUnidades) || (Number(form.values.cantidadMaquinariaPesada) + Number(form.values.cantidadTransportePesado));
     
     const porcentajeUtilizacion = (Number(form.values.utilizacionFlotaPorcentaje) || 100) / 100;
     const flotaActiva = flotaTotal * porcentajeUtilizacion;
@@ -112,7 +119,7 @@ export default function ConfiguracionGlobalPage() {
     const horasAnuales = Number(form.values.horasAnualesOperativas) || 2000;
     const horasTotalesFlotaAnual = flotaActiva > 0 ? (flotaActiva * horasAnuales) : 1;
     
-    const overheadPorHora = granTotalAnual / horasTotalesFlotaAnual;
+    const overheadPorHoraReferencia = granTotalAnual / horasTotalesFlotaAnual;
 
     // =========================================================================
 
@@ -158,11 +165,16 @@ export default function ConfiguracionGlobalPage() {
                             <Tabs.Tab value="resguardo" leftSection={<IconShieldLock size={18} />}>Resguardo (Seguridad)</Tabs.Tab>
                         </Tabs.List>
 
-                        {/* TAB 1: MERCADO */}
+                        {/* TAB 1: MERCADO Y OPERATIVOS */}
                         <Tabs.Panel value="mercado">
-                            <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="lg" mb="xl">
+                            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mb="xl">
                                 <NumberInput label="Precio Gasoil (Litro)" prefix="$" decimalScale={3} {...form.getInputProps('precioGasoil')} />
                                 <NumberInput label="Peaje Promedio" prefix="$" decimalScale={2} {...form.getInputProps('precioPeajePromedio')} />
+                                
+                                {/* 🔥 SECCIÓN NÓMINA DINÁMICA DE RUTA 🔥 */}
+                                <NumberInput label="Sueldo Diario Chofer" description="Tarifa plana por día de viaje" prefix="$" decimalScale={2} {...form.getInputProps('sueldoDiarioChofer')} />
+                                <NumberInput label="Sueldo Diario Ayudante" description="Tarifa plana por día de viaje" prefix="$" decimalScale={2} {...form.getInputProps('sueldoDiarioAyudante')} />
+                                
                                 <NumberInput label="Viático Comida (Día)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoAlimentacionDia')} />
                                 <NumberInput label="Viático Hotel (Noche)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoHotelNoche')} />
                             </SimpleGrid>
@@ -260,52 +272,55 @@ export default function ConfiguracionGlobalPage() {
 
                     <Divider my="xl" />
 
-                    {/* PANEL INFORMATIVO DE OVERHEAD Y CAPACIDAD OCIOSA */}
+                    {/* 🔥 PANEL INFORMATIVO DE OVERHEAD, CAPACIDAD OCIOSA Y VALOR DE FLOTA 🔥 */}
                     <Paper bg="gray.0" p="md" radius="md" withBorder mb="lg">
                         <Grid align="center">
                             <Grid.Col span={{ base: 12, md: 5 }}>
                                 <Group grow>
-                                    <NumberInput label="Total Chutos" {...form.getInputProps('cantidadTransportePesado')} />
-                                    <NumberInput label="Total Maquinaria" {...form.getInputProps('cantidadMaquinariaPesada')} />
+                                    <NumberInput label="Tasa de Utilización de la Flota (%)" 
+                                        description="¿Qué porcentaje de la flota sale a trabajar?"
+                                        c="orange.9" fw={700} suffix="%" min={1} max={100}
+                                        {...form.getInputProps('utilizacionFlotaPorcentaje')} 
+                                    />
+                                    <NumberInput label="Horas Operativas Anuales" 
+                                        description="Por equipo activo al año"
+                                        {...form.getInputProps('horasAnualesOperativas')} 
+                                    />
                                 </Group>
                                 
-                                <NumberInput 
-                                    label="Tasa de Utilización de la Flota (%)" 
-                                    description="¿Qué porcentaje sale a trabajar simultáneamente?"
-                                    mt="sm" 
-                                    c="orange.9"
-                                    fw={700}
-                                    suffix="%"
-                                    min={1} max={100}
-                                    {...form.getInputProps('utilizacionFlotaPorcentaje')} 
-                                />
-                                
-                                <NumberInput 
-                                    label="Horas Operativas Anuales (Por Equipo Activo)" 
-                                    mt="sm" 
-                                    {...form.getInputProps('horasAnualesOperativas')} 
-                                />
+                                <Alert icon={<IconTruck size={16} />} color="blue" mt="md" variant="light" p="xs">
+                                    <Text size="xs">
+                                        Ahora usamos <b>Costeo Basado en Actividades (ABC)</b>. Cada camión absorbe gastos fijos según su peso sobre el <b>Valor Total de la Flota</b>.
+                                    </Text>
+                                </Alert>
                             </Grid.Col>
+                            
                             <Grid.Col span={{ base: 12, md: 7 }}>
                                 <Group justify="flex-end" gap="xl">
-                                    <div style={{ textAlign: 'right' }}>
-                                        <Text size="xs" c="dimmed" fw={700}>Equipos Activos (Facturando):</Text>
-                                        <Text size="lg" fw={800} c="orange.9">~{flotaActiva.toFixed(1)} unidades</Text>
+                                    {/* SECCIÓN DEL VALOR DE LA FLOTA AUTOMÁTICA */}
+                                    <div style={{ textAlign: 'right', paddingRight: '15px', borderRight: '1px solid #dee2e6' }}>
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Unidades Detectadas</Text>
+                                        <Text size="lg" fw={800} c="blue.9">{form.values.cantidadTotalUnidades || 0}</Text>
+                                        
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="sm">Valor Total Flota (USD)</Text>
+                                        <Text size="xl" fw={900} c="blue.9">${Number(form.values.valorFlotaTotal || 0).toLocaleString('en-US')}</Text>
                                     </div>
+
+                                    {/* SECCIÓN DE GASTOS ADMINISTRATIVOS Y OVERHEAD */}
                                     <div style={{ textAlign: 'right' }}>
-                                        <Text size="xs" c="dimmed" fw={700}>Total Gastos Administrativos:</Text>
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Gastos Admin. Anuales</Text>
                                         <Text size="lg" fw={800}>${granTotalAnual.toLocaleString('en-US')}</Text>
-                                    </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <Text size="xs" c="dimmed" fw={700}>Overhead cobrado al Flete:</Text>
+
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="sm">Ref. Overhead Global Promedio</Text>
                                         <Badge size="xl" color="violet" variant="filled">
-                                            + ${overheadPorHora.toFixed(2)} / Hora
+                                            + ${overheadPorHoraReferencia.toFixed(2)} / Hora
                                         </Badge>
                                     </div>
                                 </Group>
                             </Grid.Col>
                         </Grid>
                     </Paper>
+                    
                     <Group justify="flex-end">
                         <Button size="lg" type="submit" color="teal" leftSection={<IconSettings size={20} />}>
                             Guardar y Aplicar Batch a Flota
