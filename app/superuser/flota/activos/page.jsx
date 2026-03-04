@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Table, Button, Group, ActionIcon, Text, Modal, LoadingOverlay, 
-    Paper, Title, Avatar, TextInput, Select, Badge, Stack, Tooltip 
+    Paper, Title, Avatar, TextInput, Select, Badge, Stack, Tooltip, SimpleGrid, ThemeIcon 
 } from '@mantine/core';
-import { IconPencil, IconTrash, IconPlus, IconSearch, IconFilter, IconCash } from '@tabler/icons-react';
+import { IconPencil, IconTrash, IconPlus, IconSearch, IconFilter, IconCash, IconClock } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { useMediaQuery } from '@mantine/hooks';
@@ -64,21 +64,33 @@ export default function ListarActivosPage() {
         return detalles;
     };
 
-    // Helper para Extraer Pesos y Capacidades (con Prioridad Activo -> Plantilla)
+    // Helper para Extraer Pesos y Capacidades
     const getPesosYCapacidades = (activo) => {
         const instancia = activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinaInstancia || {};
         const plantilla = instancia.plantilla || {};
 
         const capacidad = activo.capacidadTonelajeMax 
-            ? `${activo.capacidadTonelajeMax} Tons` 
-            : (plantilla.capacidadCarga || plantilla.capacidadArrastre ? `${plantilla.capacidadCarga || plantilla.capacidadArrastre} Tons (Fáb.)` : 'N/D');
+            ? `${activo.capacidadTonelajeMax} T` 
+            : (plantilla.capacidadCarga || plantilla.capacidadArrastre ? `${plantilla.capacidadCarga || plantilla.capacidadArrastre} T` : 'N/D');
 
         const tara = activo.tara 
-            ? `${activo.tara} Tons` 
-            : (plantilla.peso ? `${plantilla.peso} Tons (Fáb.)` : 'N/D');
+            ? `${activo.tara} T` 
+            : (plantilla.peso ? `${plantilla.peso} T` : 'N/D');
 
         return { capacidad, tara };
     };
+
+    // ====================================================================
+    // 🔥 CÁLCULO DE TOTALES GLOBALES DE LA FLOTA 🔥
+    // ====================================================================
+    const { totalValorFlota, totalHorasFlota } = useMemo(() => {
+        return activos.reduce((acc, activo) => {
+            acc.totalValorFlota += parseFloat(activo.valorReposicion) || 0;
+            acc.totalHorasFlota += parseInt(activo.horasAnuales) || 0;
+            return acc;
+        }, { totalValorFlota: 0, totalHorasFlota: 0 });
+    }, [activos]);
+
 
     // Lógica de filtrado
     const filteredActivos = useMemo(() => {
@@ -86,7 +98,6 @@ export default function ListarActivosPage() {
             const details = getAssetDetails(activo);
             const query = search.toLowerCase();
             
-            // Filtro de Texto (Busca en código, placa, marca, modelo)
             const matchesSearch = 
                 activo.codigoInterno?.toLowerCase().includes(query) ||
                 details.placa.toLowerCase().includes(query) ||
@@ -94,7 +105,6 @@ export default function ListarActivosPage() {
                 details.modelo.toLowerCase().includes(query) ||
                 activo.ubicacionActual?.toLowerCase().includes(query);
 
-            // Filtro de Tipo (Select)
             const matchesType = typeFilter === 'Todos' || activo.tipoActivo === typeFilter;
 
             return matchesSearch && matchesType;
@@ -110,9 +120,7 @@ export default function ListarActivosPage() {
         if (!activoToDelete) return;
         setLoading(true);
         try {
-            const response = await fetch(`/api/gestionMantenimiento/activos/${activoToDelete.id}`, {
-                method: 'DELETE',
-            });
+            const response = await fetch(`/api/gestionMantenimiento/activos/${activoToDelete.id}`, { method: 'DELETE' });
             if (response.status === 409) {
                 const errorData = await response.json();
                 throw new Error(errorData.message);
@@ -135,13 +143,13 @@ export default function ListarActivosPage() {
         const details = getAssetDetails(activo);
         const { capacidad, tara } = getPesosYCapacidades(activo);
         
-        const imageUrl = activo.imagen 
-            ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` 
-            : null;
+        const imageUrl = activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null;
 
-        // --- DATOS FINANCIEROS ---
+        // Datos nuevos y financieros
+        const anio = activo.anio || 'N/D';
+        const horasAnuales = activo.horasAnuales ? `${activo.horasAnuales.toLocaleString()} hr` : 'N/D';
         const valor = activo.valorReposicion ? `$${activo.valorReposicion.toLocaleString()}` : 'N/D';
-        const posesion = activo.costoPosesionHora ? `$${parseFloat(activo.costoPosesionHora).toFixed(2)}/hr` : 'N/D';
+        const posesion = activo.costoPosesionHora ? `$${parseFloat(activo.costoPosesionHora).toFixed(2)}` : 'N/D';
 
         return (
             <Table.Tr 
@@ -152,41 +160,31 @@ export default function ListarActivosPage() {
             >
                 <Table.Td>
                     <Group gap="sm">
-                        <Avatar src={imageUrl} size={60} radius="xl" color="blue" alt={activo.codigoInterno}>
+                        <Avatar src={imageUrl} size={40} radius="xl" color="blue" alt={activo.codigoInterno}>
                             {activo.codigoInterno.substring(0, 2)}
                         </Avatar>
                         <div>
-                            <Text fz="sm" fw={500}>{activo.codigoInterno}</Text>
+                            <Text fz="sm" fw={700}>{activo.codigoInterno}</Text>
                             <Text fz="xs" c="dimmed">{activo.tipoActivo}</Text>
                         </div>
                     </Group>
                 </Table.Td>
                 <Table.Td>
                     <Text fz="sm">{details.marca} {details.modelo}</Text>
-                    {details.placa && <Badge variant="filled" size="lg" color="black">{details.placa}</Badge>}
+                    {details.placa && <Badge variant="light" color="gray">{details.placa}</Badge>}
                 </Table.Td>
+                <Table.Td><Text fz="sm" fw={500}>{capacidad}</Text></Table.Td>
+                <Table.Td><Text fz="sm" fw={500}>{tara}</Text></Table.Td>
                 
-                {/* --- NUEVAS COLUMNAS: CAPACIDAD Y TARA --- */}
-                <Table.Td>
-                    <Text fz="sm" fw={500} c="dark.3">{capacidad}</Text>
-                </Table.Td>
-                <Table.Td>
-                    <Text fz="sm" fw={500} c="dark.3">{tara}</Text>
-                </Table.Td>
+                {/* --- NUEVAS COLUMNAS --- */}
+                <Table.Td><Text fz="sm" fw={500} c="dimmed">{anio}</Text></Table.Td>
+                <Table.Td><Text fz="sm" fw={700} c="indigo.7">{horasAnuales}</Text></Table.Td>
 
-                {/* --- DATOS FINANCIEROS --- */}
-                <Table.Td>
-                    <Text fz="sm" fw={600} c="dark.3">{valor}</Text>
-                </Table.Td>
-                <Table.Td>
-                    <Text fz="sm" fw={700} c="teal.7">{posesion}</Text>
-                </Table.Td>
+                <Table.Td><Text fz="sm" fw={600} c="dark.3">{valor}</Text></Table.Td>
+                <Table.Td><Text fz="sm" fw={700} c="teal.7">{posesion}</Text></Table.Td>
 
                 <Table.Td>
-                    <Badge 
-                        color={activo.estado === 'Operativo' ? 'teal' : activo.estado === 'Mantenimiento' ? 'orange' : 'red'}
-                        variant="light"
-                    >
+                    <Badge color={activo.estado === 'Operativo' ? 'teal' : activo.estado === 'Mantenimiento' ? 'orange' : 'red'} variant="light">
                         {activo.estado}
                     </Badge>
                 </Table.Td>
@@ -216,7 +214,6 @@ export default function ListarActivosPage() {
         <Paper shadow="md" p="xl" radius="md" mt={30} pos="relative">
             <LoadingOverlay visible={loading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />
             
-            {/* Header: Título + Buscadores + Botón Crear */}
             <Stack mb="xl">
                 <Group justify="space-between" align="center">
                     <Title order={2}>Gestión de Activos</Title>
@@ -227,7 +224,29 @@ export default function ListarActivosPage() {
                     )}
                 </Group>
 
-                <Group grow>
+                {/* 🔥 TARJETAS DE SUMATORIAS GLOBALES 🔥 */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="sm">
+                    <Paper withBorder p="md" radius="md" bg="gray.0">
+                        <Group>
+                            <ThemeIcon size="xl" radius="md" color="blue" variant="light"><IconCash size={26} /></ThemeIcon>
+                            <div>
+                                <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Valor Total de la Flota</Text>
+                                <Text fw={900} size="xl" c="blue.9">${totalValorFlota.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                            </div>
+                        </Group>
+                    </Paper>
+                    <Paper withBorder p="md" radius="md" bg="indigo.0">
+                        <Group>
+                            <ThemeIcon size="xl" radius="md" color="indigo" variant="light"><IconClock size={26} /></ThemeIcon>
+                            <div>
+                                <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Horas Totales Estimadas (Anual)</Text>
+                                <Text fw={900} size="xl" c="indigo.9">{totalHorasFlota.toLocaleString('en-US')} hrs</Text>
+                            </div>
+                        </Group>
+                    </Paper>
+                </SimpleGrid>
+
+                <Group grow mt="sm">
                     <TextInput
                         placeholder="Buscar por código, placa, marca..."
                         leftSection={<IconSearch size={16} />}
@@ -245,7 +264,6 @@ export default function ListarActivosPage() {
                 </Group>
             </Stack>
 
-            {/* Renderizado Condicional: Mobile vs Desktop */}
             {isMobile ? (
                 <Stack>
                     {filteredActivos.length === 0 ? (
@@ -253,21 +271,14 @@ export default function ListarActivosPage() {
                     ) : (
                         filteredActivos.map((activo) => {
                             const details = getAssetDetails(activo);
-                            const { capacidad, tara } = getPesosYCapacidades(activo);
                             const imageUrl = activo.imagen ? `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}` : null;
-                            
-                            // Datos Financieros para Mobile
+                            const anio = activo.anio || 'N/D';
+                            const horas = activo.horasAnuales ? `${activo.horasAnuales.toLocaleString()} hr` : 'N/D';
                             const valor = activo.valorReposicion ? `$${activo.valorReposicion.toLocaleString()}` : 'N/D';
-                            const posesion = activo.costoPosesionHora ? `$${parseFloat(activo.costoPosesionHora).toFixed(2)}/hr` : 'N/D';
+                            const posesion = activo.costoPosesionHora ? `$${parseFloat(activo.costoPosesionHora).toFixed(2)}` : 'N/D';
                             
                             return (
-                                <Paper 
-                                    key={activo.id} 
-                                    withBorder 
-                                    p="md" 
-                                    onClick={() => router.push(`/superuser/flota/activos/${activo.id}`)}
-                                    style={{ cursor: 'pointer' }}
-                                >
+                                <Paper key={activo.id} withBorder p="md" onClick={() => router.push(`/superuser/flota/activos/${activo.id}`)}>
                                     <Group justify="space-between" align="flex-start" mb="xs">
                                         <Group>
                                             <Avatar src={imageUrl} size="lg" radius="md" color="blue">
@@ -280,11 +291,10 @@ export default function ListarActivosPage() {
                                         </Group>
                                         <Badge color={activo.estado === 'Operativo' ? 'teal' : 'red'}>{activo.estado}</Badge>
                                     </Group>
-
                                     <Group justify="space-between" mt="md">
                                         <Stack gap={2}>
                                             <Text size="xs" c="dimmed">
-                                                Capacidad: <Text span fw={600} c="dark.3">{capacidad}</Text> | Tara: <Text span fw={600} c="dark.3">{tara}</Text>
+                                                Año: <Text span fw={600} c="dark.3">{anio}</Text> | Uso: <Text span fw={700} c="indigo.7">{horas}</Text>
                                             </Text>
                                             <Text size="xs" c="dimmed">
                                                 Valor: <Text span fw={600} c="dark.3">{valor}</Text> | Posesión: <Text span fw={700} c="teal.7">{posesion}</Text>
@@ -297,24 +307,13 @@ export default function ListarActivosPage() {
                                             </div>
                                         )}
                                     </Group>
-
-                                    {isAdmin && (
-                                        <Group mt="md" justify="flex-end" pt="sm" style={{ borderTop: '1px solid #eee' }}>
-                                            <Button variant="light" size="xs" onClick={(e) => { e.stopPropagation(); router.push(`/superuser/flota/activos/${activo.id}/editar`); }}>
-                                                Editar
-                                            </Button>
-                                            <Button variant="light" color="red" size="xs" onClick={(e) => { e.stopPropagation(); openDeleteModal(activo); }}>
-                                                Eliminar
-                                            </Button>
-                                        </Group>
-                                    )}
                                 </Paper>
                             );
                         })
                     )}
                 </Stack>
             ) : (
-                <Table.ScrollContainer minWidth={1000}>
+                <Table.ScrollContainer minWidth={1100}>
                     <Table verticalSpacing="sm" highlightOnHover>
                         <Table.Thead>
                             <Table.Tr>
@@ -322,6 +321,8 @@ export default function ListarActivosPage() {
                                 <Table.Th>Detalles</Table.Th>
                                 <Table.Th>Capacidad</Table.Th>
                                 <Table.Th>Tara</Table.Th>
+                                <Table.Th>Año</Table.Th>
+                                <Table.Th>Horas/Año</Table.Th>
                                 <Table.Th>Valor ($)</Table.Th>
                                 <Table.Th>Posesión/Hr</Table.Th>
                                 <Table.Th>Estado</Table.Th>
@@ -331,8 +332,8 @@ export default function ListarActivosPage() {
                         <Table.Tbody>
                             {filteredActivos.length > 0 ? rows : (
                                 <Table.Tr>
-                                    <Table.Td colSpan={8} py="xl">
-                                        <Text ta="center" c="dimmed">No se encontraron activos que coincidan con la búsqueda.</Text>
+                                    <Table.Td colSpan={10} py="xl">
+                                        <Text ta="center" c="dimmed">No se encontraron activos.</Text>
                                     </Table.Td>
                                 </Table.Tr>
                             )}
@@ -341,11 +342,9 @@ export default function ListarActivosPage() {
                 </Table.ScrollContainer>
             )}
 
-            {/* Modal de Eliminación */}
             <Modal opened={modalOpened} centered onClose={() => setModalOpened(false)} title="Confirmar Eliminación">
                 <Text>
-                    ¿Estás seguro de que deseas eliminar el activo <Text span fw={700}>{activoToDelete?.codigoInterno}</Text>? 
-                    Esta acción eliminará la trazabilidad asociada y no se puede deshacer.
+                    ¿Estás seguro de que deseas eliminar el activo <Text span fw={700}>{activoToDelete?.codigoInterno}</Text>?
                 </Text>
                 <Group justify="flex-end" mt="lg">
                     <Button variant="default" onClick={() => setModalOpened(false)}>Cancelar</Button>

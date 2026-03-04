@@ -89,6 +89,10 @@ const ConfiguracionGlobal = sequelize.define('ConfiguracionGlobal', {
     defaultValue: 15.00,
     comment: 'Pago diario del ayudante por estar en ruta'
   },
+  horasTotalesFlota: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+}
 
 }, { tableName: 'ConfiguracionGlobal' });
 

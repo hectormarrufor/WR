@@ -140,21 +140,18 @@ Activo.afterDestroy(async (activo, options) => {
 });
 
 async function actualizarTotalesFlota(transaction) {
-  // 1. Requerimos la instancia general de la base de datos dentro de la función,
-  // garantizando que todos los modelos ya están inicializados para este momento.
-  const db = require('..');
-  // Si tu archivo principal de modelos está en la misma carpeta, usa: require('./index')
-  // Si está en la carpeta superior, usa: require('../index') o require('../../models/index')
+  const db = require('..'); 
 
   if (!db || !db.Activo || !db.ConfiguracionGlobal) {
     console.warn("No se pudo actualizar la flota, los modelos no están listos.");
     return;
   }
 
-  // 2. Usamos el modelo extraído dinámicamente
+  // 1. Ahora también sumamos las horasAnuales
   const resultado = await db.Activo.findAll({
     attributes: [
       [db.sequelize.fn('SUM', db.sequelize.col('valorReposicion')), 'valorTotal'],
+      [db.sequelize.fn('SUM', db.sequelize.col('horasAnuales')), 'horasTotales'], // <-- NUEVO
       [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'totalUnidades']
     ],
     raw: true,
@@ -162,13 +159,15 @@ async function actualizarTotalesFlota(transaction) {
   });
 
   const valorFlota = resultado[0].valorTotal || 0;
+  const horasTotales = resultado[0].horasTotales || 0; // <-- NUEVO
   const conteoUnidades = resultado[0].totalUnidades || 0;
 
-  // 3. Actualizamos la configuración global usando el modelo dinámico
+  // 2. Actualizamos la configuración global mandando las horas
   await db.ConfiguracionGlobal.update(
     {
       valorFlotaTotal: parseFloat(valorFlota),
-      cantidadTotalUnidades: parseInt(conteoUnidades)
+      cantidadTotalUnidades: parseInt(conteoUnidades),
+      horasTotalesFlota: parseInt(horasTotales) // <-- SE GUARDA AQUÍ
     },
     { where: { id: 1 }, transaction }
   );
