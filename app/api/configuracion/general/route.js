@@ -15,37 +15,31 @@ export async function POST(req) {
     const t = await db.sequelize.transaction();
     try {
         const body = await req.json();
-
-       // =================================================================
+        // =================================================================
         // 1. CÁLCULO DE OVERHEAD (ADMINISTRATIVO)
         // =================================================================
 
         // A. Sumar los gastos estáticos (Mensuales x 12)
-        const mensualEstatico = (parseFloat(body.gastosOficinaMensual) || 0) + 
-                                (parseFloat(body.pagosGestoriaPermisos) || 0) + 
-                                (parseFloat(body.nominaAdministrativaTotal) || 0) + 
-                                (parseFloat(body.nominaOperativaFijaTotal) || 0);
+        const mensualEstatico = (parseFloat(body.gastosOficinaMensual) || 0) +
+            (parseFloat(body.pagosGestoriaPermisos) || 0) +
+            (parseFloat(body.nominaAdministrativaTotal) || 0) +
+            (parseFloat(body.nominaOperativaFijaTotal) || 0);
         const anualEstatico = mensualEstatico * 12;
 
-        // B. Sumar los gastos dinámicos (La tabla de Permisos, Seguros, etc)
+        // B. Sumar los gastos dinámicos
         const gastosFijos = body.gastosFijos || [];
         const anualDinamico = gastosFijos.reduce((sum, g) => sum + (parseFloat(g.montoAnual) || 0), 0);
-        
-        // C. El Verdadero Gran Total
+
+        // C. El Verdadero Gran Total Anual
         const granTotalAnual = anualEstatico + anualDinamico;
 
-        // D. Prorrateo por flota operativa (Corregido por Capacidad Ociosa)
-        const totalEquipos = parseInt(body.cantidadMaquinariaPesada || 0) + parseInt(body.cantidadTransportePesado || 0);
+        // D. Prorrateo Global (Solo como referencia, la estimación real será ponderada por activo)
+        const totalEquipos = body.cantidadTotalUnidades || 1;
         const porcentajeUtilizacion = (parseFloat(body.utilizacionFlotaPorcentaje) || 100) / 100;
         const flotaActiva = totalEquipos * porcentajeUtilizacion;
-
         const horasAnualesOperativas = parseInt(body.horasAnualesOperativas || 2000);
-
-        // Horas reales que la empresa va a cobrar este año
         const horasTotalesFlotaAnual = flotaActiva > 0 ? (flotaActiva * horasAnualesOperativas) : 1;
-
-        // ESTE ES EL OVERHEAD OFICIAL PROTEGIDO CONTRA QUIEBRA
-        const costoAdministrativoPorHora = granTotalAnual / horasTotalesFlotaAnual;
+        const costoAdministrativoPorHoraReferencia = granTotalAnual / horasTotalesFlotaAnual;
 
         // =================================================================
         // 2. GUARDAR CONFIGURACIÓN Y TABLA DINÁMICA EN DB
@@ -53,8 +47,10 @@ export async function POST(req) {
 
         await db.ConfiguracionGlobal.update({
             ...body,
-            costoAdministrativoPorHora: costoAdministrativoPorHora
+            gastosFijosAnualesTotales: granTotalAnual, // Guardamos el gran total aquí
+            costoAdministrativoPorHora: costoAdministrativoPorHoraReferencia
         }, { where: { id: 1 }, transaction: t });
+
 
         // Limpiar y recrear gastos fijos extra
         await db.GastoFijoGlobal.destroy({ where: { configuracionId: 1 }, transaction: t });

@@ -53,12 +53,20 @@ export async function POST(req) {
             horasOperacion = 0, tonelaje = 0, cantidadPeajes = 0,
             precioPeajeBs = 1900, bcv = 1, precioGasoilUsd = 0.5,
             sueldoChoferMensual = 0, sueldoAyudanteMensual = 0, tieneAyudante = false,
-            calidadRepuestos = 50, porcentajeGanancia = 0.30, viaticosManuales = 0, // <-- porcentajeGanancia llega aquí
+            calidadRepuestos = 50, porcentajeGanancia = 0.30, viaticosManuales = 0,
 
             // 🔥 NUEVAS VARIABLES INYECTADAS DESDE CONFIG. GLOBAL 🔥
-            costoAdministrativoPorHora = 0,
             viaticoAlimentacionDia = 15,
-            viaticoHotelNoche = 20
+            viaticoHotelNoche = 20,
+            
+            // Variables para Prorrateo Ponderado ABC (Activity-Based Costing)
+            valorFlotaTotal = 1, // Se previene división por cero
+            gastosFijosAnualesTotales = 0,
+            utilizacionFlotaPorcentaje = 100,
+            cantidadTotalUnidades = 1,
+            horasAnualesOperativas = 2000,
+            sueldoDiarioChofer = 25,     // <--- RECIBIMOS EL SUELDO DEL CHOFER
+            sueldoDiarioAyudante = 15,
         } = body;
 
         // ------------------------------------------------------------------
@@ -112,12 +120,12 @@ export async function POST(req) {
         // --- 3. CÁLCULO FÍSICO DE TIEMPO (AHORA SE HACE PRIMERO) ---
         // ------------------------------------------------------------------
         let horasTotales = 0;
-        let horasEsperaTotales = 0; 
+        let horasEsperaTotales = 0;
 
         if (tipoCotizacion === 'flete' && body.tramos && body.tramos.length > 0) {
             let tiempoFinalSegundos = 0;
             body.tramos.forEach(tramo => {
-                const tiempoBaseRealista = (tramo.tiempoBaseSegundos || 0) * 1.4; 
+                const tiempoBaseRealista = (tramo.tiempoBaseSegundos || 0) * 1.4;
                 let segundosTramo = tiempoBaseRealista;
 
                 const pesoBrutoTramo = tramo.tonelaje + pesoRemolque + sobrepesoChuto;
@@ -140,7 +148,7 @@ export async function POST(req) {
             horasTotales = tiempoFinalSegundos / 3600;
         } else {
             // Velocidad normal para cuando no hay mapa
-            const velocidad = 50; 
+            const velocidad = 50;
             const horasViaje = distanciaKm / velocidad;
             horasTotales = tipoCotizacion === 'servicio' ? (horasViaje + horasOperacion) : horasViaje;
         }
@@ -166,14 +174,20 @@ export async function POST(req) {
 
         if (tipoCotizacion === 'flete' && body.tramos && body.tramos.length > 0) {
             body.tramos.forEach(tramo => {
-                const pesoBrutoTramo = tramo.tonelaje + pesoRemolque + sobrepesoChuto;
+                const tonelajeTramo = parseFloat(tramo.tonelaje || 0);
+                const pesoRemolqueNum = parseFloat(pesoRemolque || 0);
+                const sobrepesoChutoNum = parseFloat(sobrepesoChuto || 0);
+
+                const pesoBrutoTramo = tonelajeTramo + pesoRemolqueNum + sobrepesoChutoNum;
+
                 const factorCarga = Math.min(pesoBrutoTramo / capacidadMax, 1);
 
                 litrosBaseDistancia += tramo.distanciaKm * consumoVacio;
                 litrosExtraPeso += tramo.distanciaKm * (factorCarga * (consumoLleno - consumoVacio));
 
+                // Cálculo de Montaña
                 const factorGasoilPorMetroTon = 0.68 / 1000;
-                litrosExtraElevacion += pesoBrutoTramo * (tramo.desnivelMetros || 0) * factorGasoilPorMetroTon;
+                litrosExtraElevacion += pesoBrutoTramo * (parseFloat(tramo.desnivelMetros) || 0) * factorGasoilPorMetroTon;
             });
         } else {
             litrosBaseDistancia = (distanciaKm * consumoVacio) + (horasOperacion * 5.0);
@@ -182,7 +196,7 @@ export async function POST(req) {
         const litrosConsumidos = litrosBaseDistancia + litrosExtraPeso + litrosExtraElevacion;
         const totalCombustible = litrosConsumidos * precioGasoilUsd;
 
-       // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
         // --- 6. CRONOGRAMA, VIÁTICOS Y NÓMINA (INTEGRACIÓN FINAL) ---
         // ------------------------------------------------------------------
         const jornadaMax = body.jornadaMaxima || 10;
@@ -238,7 +252,7 @@ export async function POST(req) {
                 diasConComida++;
 
                 const horasDescanso = 24 - horasTramoHoy;
-                horasDescansoAcumuladas += horasDescanso; 
+                horasDescansoAcumuladas += horasDescanso;
 
                 itinerario.push({
                     dia: diaActual,
@@ -261,59 +275,139 @@ export async function POST(req) {
         const viaticosManual = parseFloat(viaticosManuales || 0);
         const viaticosTotal = totalComida + totalHotel + viaticosManual;
 
-        // --- CÁLCULO DE NÓMINA (NORMA: TASA FIJA POR DÍA) ---
-        const TASA_DIA_CHOFER = 25.00;
-        const TASA_DIA_AYUDANTE = 15.00;
-
-        const diasTotalesNomina = diaActual; // Tomamos el valor final del bucle
-        const nominaChofer = diasTotalesNomina * TASA_DIA_CHOFER;
-        let nominaAyudante = tieneAyudante ? (diasTotalesNomina * TASA_DIA_AYUDANTE) : 0;
+       // --- CÁLCULO DE NÓMINA DINÁMICA (NORMA: TASA FIJA POR DÍA) ---
+        const diasTotalesNomina = diaActual; // Tomamos el valor final del bucle del cronograma
         
+        // Multiplicamos los días reales de viaje por la tarifa dinámica que viene de la BD
+        const nominaChofer = diasTotalesNomina * parseFloat(sueldoDiarioChofer);
+        let nominaAyudante = tieneAyudante ? (diasTotalesNomina * parseFloat(sueldoDiarioAyudante)) : 0;
+
         const nominaTotal = nominaChofer + nominaAyudante;
 
         // --- TIEMPOS FINALES Y FECHAS ---
-        const duracionTotalMision = horasTotales + horasDescansoAcumuladas; 
-        
+        const duracionTotalMision = horasTotales + horasDescansoAcumuladas;
+
         const fechaSalidaObj = new Date(body.fechaSalida || new Date());
         fechaSalidaObj.setHours(parseInt(horaSalidaSt.split(':')[0]), parseInt(horaSalidaSt.split(':')[1]), 0, 0);
-        
-        const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
 
-        const totalOverhead = parseFloat(costoAdministrativoPorHora) * duracionTotalMision;
+        const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
 
         // ------------------------------------------------------------------
         // --- 7. DEPRECIACIÓN Y COSTO DE POSESIÓN ---
         // ------------------------------------------------------------------
-        const valorReposicion = chuto.valorReposicion || 40000;
-        const valorSalvamento = chuto.valorSalvamento || 5000;
-        const vidaUtilAnios = chuto.vidaUtilAnios || 10;
+        const valorReposicionChuto = chuto.valorReposicion || 40000;
+        const valorSalvamentoChuto = chuto.valorSalvamento || 5000;
+        const vidaUtilAniosChuto = chuto.vidaUtilAnios || 10;
+        const horasVidaUtilChuto = vidaUtilAniosChuto * 2400;
+        const depreciacionPorHoraChuto = (valorReposicionChuto - valorSalvamentoChuto) / horasVidaUtilChuto;
+        
+        let depreciacionPorHoraBatea = 0;
+        let costoCapitalHoraBatea = 0;
+        let valorReposicionBatea = 0;
 
-        const horasVidaUtil = vidaUtilAnios * 2400;
-        const depreciacionPorHora = (valorReposicion - valorSalvamento) / horasVidaUtil;
+        if (batea) {
+             valorReposicionBatea = batea.valorReposicion || 15000;
+             const valorSalvamentoBatea = batea.valorSalvamento || 2000;
+             const vidaUtilAniosBatea = batea.vidaUtilAnios || 10;
+             const horasVidaUtilBatea = vidaUtilAniosBatea * 2400;
+             depreciacionPorHoraBatea = (valorReposicionBatea - valorSalvamentoBatea) / horasVidaUtilBatea;
+             costoCapitalHoraBatea = (valorReposicionBatea * 0.05) / 2400;
+        }
+
         const interesAnual = 0.05;
-        const costoCapitalHora = (valorReposicion * interesAnual) / 2400;
+        const costoCapitalHoraChuto = (valorReposicionChuto * interesAnual) / 2400;
 
-        const totalDepreciacion = depreciacionPorHora * horasTotales;
-        const totalCapital = costoCapitalHora * horasTotales;
+        const totalDepreciacion = (depreciacionPorHoraChuto + depreciacionPorHoraBatea) * horasTotales;
+        const totalCapital = (costoCapitalHoraChuto + costoCapitalHoraBatea) * horasTotales;
 
         const costoPosesionTotal = totalDepreciacion + totalCapital + calculoChuto.posesion + calculoBatea.posesion;
 
         // ------------------------------------------------------------------
-        // --- 8. PEAJES Y CIERRE (APLICANDO MARGEN CORRECTO) ---
+        // --- 8. CÁLCULO PONDERADO DE OVERHEAD (NUEVO ABC) ---
+        // ------------------------------------------------------------------
+        const utilizacionDecimal = utilizacionFlotaPorcentaje / 100;
+
+        // 1. Pesos de los activos respecto a la flota total
+        const pesoChuto = valorReposicionChuto / valorFlotaTotal;
+        const pesoBatea = batea ? (valorReposicionBatea / valorFlotaTotal) : 0;
+
+        // 2. Gasto anual que debe cubrir cada activo (ajustado por inactividad)
+        const gastoAnualChutoAsignado = (gastosFijosAnualesTotales * pesoChuto) / utilizacionDecimal;
+        const gastoAnualBateaAsignado = batea ? ((gastosFijosAnualesTotales * pesoBatea) / utilizacionDecimal) : 0;
+
+        // 3. Costo por hora
+        const overheadHoraChuto = gastoAnualChutoAsignado / horasAnualesOperativas;
+        const overheadHoraBatea = batea ? (gastoAnualBateaAsignado / horasAnualesOperativas) : 0;
+        const costoEstructuraHoraPonderado = overheadHoraChuto + overheadHoraBatea;
+
+        // 4. Overhead total de la misión
+        const totalOverhead = costoEstructuraHoraPonderado * duracionTotalMision;
+
+        const overheadDetalle = {
+            totalViaje: totalOverhead,
+            costoHoraCombinado: costoEstructuraHoraPonderado,
+            horasAplicadas: duracionTotalMision,
+            chuto: {
+                valor: valorReposicionChuto,
+                pesoPorcentaje: pesoChuto * 100,
+                costoHora: overheadHoraChuto
+            },
+            batea: batea ? {
+                valor: valorReposicionBatea,
+                pesoPorcentaje: pesoBatea * 100,
+                costoHora: overheadHoraBatea
+            } : null,
+            flotaGlobal: {
+                valorTotal: valorFlotaTotal,
+                unidades: cantidadTotalUnidades,
+                utilizacion: utilizacionFlotaPorcentaje
+            }
+        };
+
+        // ------------------------------------------------------------------
+        // --- 9. CIERRE: TARIFAS FIJAS VS COSTO + MARKUP ---
         // ------------------------------------------------------------------
         const totalPeajes = cantidadPeajes * (precioPeajeBs / bcv);
 
+        // 1. Costo Operativo Real (Break-even)
         const costoTotal = totalCombustible + nominaTotal + viaticosTotal + totalPeajes + totalMantenimiento + costoPosesionTotal + totalOverhead;
-        
-        // 🔥 AQUÍ ESTÁ LA MAGIA DEL MARGEN 🔥
-        // Validamos que el margen no sea 100% para evitar división por cero (Infinity)
-        const margenSeguro = porcentajeGanancia >= 1 ? 0.99 : porcentajeGanancia; 
-        const precioSugerido = costoTotal / (1 - margenSeguro);
+
+        // 2. Calculamos la ganancia comercial pura (el % que pidió el usuario)
+        const gananciaBase = costoTotal * porcentajeGanancia;
+        let precioCalculado = costoTotal + gananciaBase;
+
+        // 3. Lógica de Tarifas Mínimas y Ajuste
+        let ajusteTarifaMinima = 0;
+        let esTarifaMinima = false;
+        let tarifaAplicada = "Margen sobre Costo";
+        let precioSugerido = precioCalculado;
+
+        if (distanciaKm > 0 && distanciaKm <= 50) {
+            if (precioCalculado < 254) {
+                precioSugerido = 254;
+                ajusteTarifaMinima = 254 - precioCalculado;
+                esTarifaMinima = true;
+                tarifaAplicada = "Tarifa Plana (0-50km)";
+            }
+        } else if (distanciaKm > 50 && distanciaKm <= 100) {
+            if (precioCalculado < 528) {
+                precioSugerido = 528;
+                ajusteTarifaMinima = 528 - precioCalculado;
+                esTarifaMinima = true;
+                tarifaAplicada = "Tarifa Plana (50-100km)";
+            }
+        }
 
         return NextResponse.json({
             success: true,
             costoTotal,
             precioSugerido,
+            gananciaBase,          
+            ajusteTarifaMinima,
+            infoTarifa: {
+                aplicada: tarifaAplicada,
+                esMinima: esTarifaMinima
+            },
             breakdown: {
                 litros: parseFloat(litrosConsumidos.toFixed(2)),
                 combustible: totalCombustible,
@@ -337,19 +431,20 @@ export async function POST(req) {
                     nochesHotelFacturadas: nochesHotel
                 },
                 overhead: totalOverhead,
-                itinerario: itinerario, 
+                overheadDetalle: overheadDetalle, // <--- Aquí va el nuevo objeto detallado
+                itinerario: itinerario,
                 posesion: costoPosesionTotal,
                 posesionDetalle: {
-                    valorActivo: valorReposicion,
-                    vidaUtilAnios: vidaUtilAnios,
+                    valorActivo: valorReposicionChuto + valorReposicionBatea,
+                    vidaUtilAnios: vidaUtilAniosChuto, 
                     depreciacion: totalDepreciacion,
                     oportunidad: totalCapital
                 },
                 rutinaViaje: {
                     horasConduccion: horasConduccionPura.toFixed(1),
-                    horasEsperaTotales: horasEsperaTotales.toFixed(1), 
-                    horasDescanso: horasDescansoAcumuladas.toFixed(1), 
-                    tiempoMisionTotal: duracionTotalMision.toFixed(1), 
+                    horasEsperaTotales: horasEsperaTotales.toFixed(1),
+                    horasDescanso: horasDescansoAcumuladas.toFixed(1),
+                    tiempoMisionTotal: duracionTotalMision.toFixed(1),
                     fechaSalidaISO: fechaSalidaObj.toISOString(),
                     fechaLlegadaISO: fechaLlegadaObj.toISOString(),
                     velocidadPromedioReal: velocidadPromedioReal.toFixed(1),

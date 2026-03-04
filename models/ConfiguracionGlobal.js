@@ -58,11 +58,37 @@ const ConfiguracionGlobal = sequelize.define('ConfiguracionGlobal', {
 
   utilizacionFlotaPorcentaje: { type: DataTypes.FLOAT, defaultValue: 30.0 },
   // --- 5. RESULTADO DEL PRORRATEO DINÁMICO ---
+  valorFlotaTotal: { 
+    type: DataTypes.FLOAT, 
+    defaultValue: 0,
+    comment: 'Suma automática del valor de reposición de todos los activos'
+  },
+  cantidadTotalUnidades: { 
+    type: DataTypes.INTEGER, 
+    defaultValue: 0,
+    comment: 'Conteo automático de vehículos, remolques y maquinaria'
+  },
+  gastosFijosAnualesTotales: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0,
+    comment: 'La suma real de todos los gastos fijos de la empresa al año'
+  },
   costoAdministrativoPorHora: { 
     type: DataTypes.FLOAT, 
     defaultValue: 0,
     comment: 'Suma de gastos de la tabla dinámica anual dividida entre la flota'
-  }
+  },
+  // 🔥 AGREGA ESTOS DOS NUEVOS CAMPOS 🔥
+  sueldoDiarioChofer: { 
+    type: DataTypes.FLOAT, 
+    defaultValue: 25.00,
+    comment: 'Pago diario del chofer por estar en ruta'
+  },
+  sueldoDiarioAyudante: { 
+    type: DataTypes.FLOAT, 
+    defaultValue: 15.00,
+    comment: 'Pago diario del ayudante por estar en ruta'
+  },
 
 }, { tableName: 'ConfiguracionGlobal' });
 

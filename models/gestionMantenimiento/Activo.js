@@ -1,8 +1,9 @@
 const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../../sequelize');
+// ELIMINADA LA IMPORTACIÓN CIRCULAR DE ConfiguracionGlobal AQUÍ ARRIBA
 
 const Activo = sequelize.define('Activo', {
-  codigoInterno: { // Tu identificador único de empresa (Ej: V-01, M-04)
+  codigoInterno: {
     type: DataTypes.STRING,
     unique: true,
     allowNull: false
@@ -25,72 +26,66 @@ const Activo = sequelize.define('Activo', {
   },
   latitudActual: { type: DataTypes.DECIMAL(10, 8), allowNull: true },
   longitudActual: { type: DataTypes.DECIMAL(11, 8), allowNull: true },
-  tarifaPorKm: {  // Costo por kilómetro para vehículos y remolques
+  tarifaPorKm: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0.00,
   },
-  tarifaPorHora: {  // Costo por hora para maquinaria y equipos
+  tarifaPorHora: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0.00,
   },
   anio: { type: DataTypes.INTEGER, allowNull: true },
-  valorAdquisicion: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0 }, // Para depreciación
-  consumoCombustibleLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.35 }, // Ej: 0.35 L/km para chuto
-  consumoBaseLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.25 }, // sin carga
-  desgasteNeumaticoPorKm: { type: DataTypes.DECIMAL(10, 4), defaultValue: 0.015 }, // $/km
+  valorAdquisicion: { type: DataTypes.DECIMAL(12, 2), defaultValue: 0 },
+  consumoCombustibleLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.35 },
+  consumoBaseLPorKm: { type: DataTypes.FLOAT, defaultValue: 0.25 },
+  desgasteNeumaticoPorKm: { type: DataTypes.DECIMAL(10, 4), defaultValue: 0.015 },
   capacidadTonelajeMax: { type: DataTypes.FLOAT },
-  depreciacionAnualPorc: { type: DataTypes.FLOAT, defaultValue: 15 }, // % anual
+  depreciacionAnualPorc: { type: DataTypes.FLOAT, defaultValue: 15 },
   costoMantenimientoTeorico: {
-    type: DataTypes.FLOAT, // Costo variable por Km (Aceite, cauchos, filtros) segun matriz Excel
-    defaultValue: 0.46, // Valor promedio de tus Excels ($/Km)
-},
-costoPosesionTeorico: {
-    type: DataTypes.FLOAT, //Costo fijo por Hora (Depreciación + Interés de inversión)
-    defaultValue: 3.00, // Valor promedio de tus Excels ($/Hr)
-},
-velocidadPromedioTeorica: {
-    type: DataTypes.INTEGER, //Velocidad para calcular las horas de posesión en una ruta
-    defaultValue: 45, // Km/h para estimar tiempos si no hay data
-},
-valorReposicion: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0.46,
+  },
+  costoPosesionTeorico: {
+    type: DataTypes.FLOAT,
+    defaultValue: 3.00,
+  },
+  velocidadPromedioTeorica: {
+    type: DataTypes.INTEGER,
+    defaultValue: 45,
+  },
+  valorReposicion: {
     type: DataTypes.FLOAT,
     defaultValue: 40000,
     comment: 'Valor de mercado actual del activo (para depreciación)'
-},
-vidaUtilAnios: {
+  },
+  vidaUtilAnios: {
     type: DataTypes.INTEGER,
     defaultValue: 10,
     comment: 'Años estimados de vida útil restante'
-},
-valorSalvamento: {
+  },
+  valorSalvamento: {
     type: DataTypes.FLOAT,
     defaultValue: 5000,
     comment: 'Valor de venta al final de su vida útil (Chatarra/Venta)'
-},
-tara: { // Peso del remolque vacío, importante para cálculos de combustible
+  },
+  tara: {
     type: DataTypes.FLOAT,
     allowNull: true,
-},
-
-// --- CAMPOS CALCULADOS (RESULTADOS) ---
-costoPosesionHora: {
+  },
+  costoPosesionHora: {
     type: DataTypes.FLOAT,
     defaultValue: 0,
     comment: 'Depreciación + Interés (Calculado automáticamente)'
-},
-costoResguardoHora: {
+  },
+  costoResguardoHora: {
     type: DataTypes.FLOAT,
     defaultValue: 0,
     comment: 'Cuota parte de vigilancia y gastos admin (Calculado desde ConfigGlobal)'
-},
-
-// --- RELACIÓN CON MATRIZ DE MANTENIMIENTO ---
-matrizCostoId: {
+  },
+  matrizCostoId: {
     type: DataTypes.INTEGER,
     references: { model: 'MatrizCostos', key: 'id' }
-},
-
-
+  },
 }, {
   tableName: 'Activos',
   timestamps: true,
@@ -122,10 +117,56 @@ Activo.associate = (models) => {
   Activo.hasMany(models.Flete, { foreignKey: 'remolqueId', as: 'fletesComoRemolque' });
   Activo.belongsTo(models.Activo, { as: 'ActivoPadre', foreignKey: 'padreId' });
   Activo.hasMany(models.Activo, { as: 'ActivosHijos', foreignKey: 'padreId' });
-  Activo.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId' }); // "Oficina Presidencia"
+  Activo.belongsTo(models.SubsistemaInstancia, { foreignKey: 'subsistemaInstanciaId' });
   Activo.hasMany(models.DocumentoActivo, { foreignKey: 'activoId', as: 'documentos' });
   Activo.hasMany(models.GastoVariable, { foreignKey: 'activoId', as: 'gastosVariables' });
   Activo.belongsTo(models.MatrizCosto, { foreignKey: 'matrizCostoId', as: 'matrizCosto' });
+}
+
+// ==========================================
+// 🔥 HOOKS CORREGIDOS: EVITANDO REFERENCIAS CIRCULARES 🔥
+// ==========================================
+Activo.afterSave(async (activo, options) => {
+  await actualizarTotalesFlota(options.transaction);
+});
+
+Activo.afterDestroy(async (activo, options) => {
+  await actualizarTotalesFlota(options.transaction);
+});
+
+async function actualizarTotalesFlota(transaction) {
+  // 1. Requerimos la instancia general de la base de datos dentro de la función,
+  // garantizando que todos los modelos ya están inicializados para este momento.
+  const db = require('..');
+  // Si tu archivo principal de modelos está en la misma carpeta, usa: require('./index')
+  // Si está en la carpeta superior, usa: require('../index') o require('../../models/index')
+
+  if (!db || !db.Activo || !db.ConfiguracionGlobal) {
+    console.warn("No se pudo actualizar la flota, los modelos no están listos.");
+    return;
+  }
+
+  // 2. Usamos el modelo extraído dinámicamente
+  const resultado = await db.Activo.findAll({
+    attributes: [
+      [db.sequelize.fn('SUM', db.sequelize.col('valorReposicion')), 'valorTotal'],
+      [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'totalUnidades']
+    ],
+    raw: true,
+    transaction
+  });
+
+  const valorFlota = resultado[0].valorTotal || 0;
+  const conteoUnidades = resultado[0].totalUnidades || 0;
+
+  // 3. Actualizamos la configuración global usando el modelo dinámico
+  await db.ConfiguracionGlobal.update(
+    {
+      valorFlotaTotal: parseFloat(valorFlota),
+      cantidadTotalUnidades: parseInt(conteoUnidades)
+    },
+    { where: { id: 1 }, transaction }
+  );
 }
 
 module.exports = Activo;
