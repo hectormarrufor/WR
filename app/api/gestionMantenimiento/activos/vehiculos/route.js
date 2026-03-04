@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import {
     sequelize, Activo, VehiculoInstancia, Vehiculo, Subsistema,
     SubsistemaInstancia, ConsumibleInstalado, ConsumibleSerializado,
-    EntradaInventario, Kilometraje, Horometro, SalidaInventario, Consumible, Recauchado // <--- IMPORTANTE: Importar Recauchado
+    EntradaInventario, Kilometraje, Horometro, SalidaInventario, Consumible, Recauchado 
 } from '@/models';
 import { notificarAdmins } from '@/app/api/notificar/route';
 
@@ -12,16 +12,12 @@ export async function POST(request) {
     try {
         const body = await request.json();
 
-        console.log("Datos recibidos para crear activo:", body);
-
-        // --- 1. VALIDACIONES PREVIAS ---
         const existePlaca = await VehiculoInstancia.findOne({ where: { placa: body.placa }, transaction: t });
         if (existePlaca) throw new Error(`La placa ${body.placa} ya está registrada.`);
 
         const existeCodigo = await Activo.findOne({ where: { codigoInterno: body.codigoInterno }, transaction: t });
         if (existeCodigo) throw new Error(`El código ${body.codigoInterno} ya existe.`);
 
-        // --- 2. RECUPERAR LA PLANTILLA ---
         const modelo = await Vehiculo.findByPk(body.modeloVehiculoId, {
             include: [{ model: Subsistema, as: 'subsistemas' }],
             transaction: t
@@ -29,7 +25,6 @@ export async function POST(request) {
 
         if (!modelo) throw new Error("El modelo de vehículo seleccionado no existe.");
 
-        // --- 3. CREAR INSTANCIA VEHÍCULO ---
         const nuevoVehiculo = await VehiculoInstancia.create({
             placa: body.placa,
             color: body.color,
@@ -39,7 +34,7 @@ export async function POST(request) {
             vehiculoId: body.modeloVehiculoId
         }, { transaction: t });
 
-        // --- 4. CREAR ACTIVO ---
+        // 🔥 ACTIVO PADRE (ESTRICTAMENTE COSTOS) 🔥
         const nuevoActivo = await Activo.create({
             codigoInterno: body.codigoInterno,
             tipoActivo: 'Vehiculo',
@@ -53,7 +48,6 @@ export async function POST(request) {
             maquinaInstanciaId: null,
             tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null,
             
-            // 🔥 NUEVOS CAMPOS AGREGADOS AQUÍ 🔥
             anio: body.anio ? parseInt(body.anio) : (body.anioFabricacion ? parseInt(body.anioFabricacion) : new Date().getFullYear()),
             matrizCostoId: body.matrizCostoId ? parseInt(body.matrizCostoId) : null,
             valorReposicion: body.valorReposicion ? parseFloat(body.valorReposicion) : null,
@@ -61,29 +55,22 @@ export async function POST(request) {
             valorSalvamento: body.valorSalvamento !== undefined ? parseFloat(body.valorSalvamento) : null,
             horasAnuales: body.horasAnuales ? parseInt(body.horasAnuales) : 2000,
             
-            // --- MÉTRICAS CALCULADAS ---
-            velocidadPromedioTeorica: body.velocidadPromedioTeorica !== undefined ? parseInt(body.velocidadPromedioTeorica) : null,
             costoMantenimientoTeorico: body.costoMantenimientoTeorico !== undefined ? parseFloat(body.costoMantenimientoTeorico) : 0,
             costoPosesionTeorico: body.costoPosesionTeorico !== undefined ? parseFloat(body.costoPosesionTeorico) : 0,
             costoPosesionHora: body.costoPosesionHora !== undefined ? parseFloat(body.costoPosesionHora) : 0,
         }, { transaction: t });
-        // =====================================================================
-        // 4.1. REGISTRAR HISTORIAL CERO (PUNTO DE PARTIDA)
-        // =====================================================================
 
-        // Registrar Kilometraje Inicial
         if (body.kilometrajeActual !== undefined && body.kilometrajeActual !== null) {
             await Kilometraje.create({
                 activoId: nuevoActivo.id,
                 valor: parseFloat(body.kilometrajeActual),
                 fecha: body.fechaAdquisicion || new Date(),
-                origen: 'creacion_activo', // Para saber que fue el valor inicial
+                origen: 'creacion_activo', 
                 observacion: 'Kilometraje base al registrar el activo',
-                usuarioId: 1 // TODO: Usar usuario real
+                usuarioId: 1 
             }, { transaction: t });
         }
 
-        // Registrar Horómetro Inicial (si aplica)
         if (body.horometroActual !== undefined && body.horometroActual !== null) {
             await Horometro.create({
                 activoId: nuevoActivo.id,
@@ -95,7 +82,6 @@ export async function POST(request) {
             }, { transaction: t });
         }
 
-        // --- 5. INSTANCIAR SUBSISTEMAS ---
         const mapaSubsistemas = {};
         if (modelo.subsistemas && modelo.subsistemas.length > 0) {
             for (const subPlantilla of modelo.subsistemas) {
@@ -111,45 +97,31 @@ export async function POST(request) {
             }
         }
 
-        // --- 6. PROCESAR INSTALACIONES ---
         if (body.instalacionesIniciales && body.instalacionesIniciales.length > 0) {
-
             for (const item of body.instalacionesIniciales) {
                 const subsistemaInstanciaId = mapaSubsistemas[item.subsistemaId];
                 if (!subsistemaInstanciaId) continue;
 
                 let serialIdFinal = null;
 
-                // =========================================================
-                // CASO A: SERIALIZADO (Cauchos, Baterías)
-                // =========================================================
                 if (item.serial) {
-
                     let serialExistente = await ConsumibleSerializado.findOne({
                         where: { serial: item.serial, consumibleId: item.consumibleId },
                         transaction: t
                     });
 
                     if (serialExistente) {
-                        // -------------------------------------------------------------
-                        // CORRECCIÓN 1: SI YA EXISTE (Viene de Almacén)
-                        // Cambiamos estado a 'asignado' y marcamos la fecha
-                        // -------------------------------------------------------------
                         serialIdFinal = serialExistente.id;
                         await serialExistente.update({
-                            estado: 'asignado',     // <--- ANTES DECÍA 'instalado' (ERROR)
+                            estado: 'asignado',     
                             fechaAsignacion: new Date()
                         }, { transaction: t });
 
                     } else {
-                        // -------------------------------------------------------------
-                        // CORRECCIÓN 2: SI ES NUEVO (Carga Inicial)
-                        // Nace directamente como 'asignado'
-                        // -------------------------------------------------------------
                         const nuevoSerial = await ConsumibleSerializado.create({
                             consumibleId: item.consumibleId,
                             serial: item.serial,
-                            estado: 'asignado',      // <--- ANTES DECÍA 'instalado' (ERROR)
+                            estado: 'asignado',      
                             fechaCompra: item.fechaCompra || new Date(),
                             fechaVencimientoGarantia: item.fechaVencimientoGarantia || null,
                             fechaAsignacion: new Date(),
@@ -158,7 +130,6 @@ export async function POST(request) {
 
                         serialIdFinal = nuevoSerial.id;
 
-                        // --- GUARDAR HISTORIAL RECAUCHADO (Si aplica) ---
                         if (item.historialRecauchado && item.historialRecauchado.length > 0) {
                             const recauchadosParaGuardar = item.historialRecauchado.map(rec => ({
                                 consumibleSerializadoId: nuevoSerial.id,
@@ -166,13 +137,11 @@ export async function POST(request) {
                                 costo: parseFloat(rec.costo || 0),
                                 tallerId: rec.tallerId || null,
                                 observacion: 'Carga Inicial Histórica'
-                                // Si tienes campo tallerNombre en BD, agrégalo aquí: tallerNombre: rec.tallerNombre
                             }));
 
                             await Recauchado.bulkCreate(recauchadosParaGuardar, { transaction: t });
                         }
 
-                        // REGISTRO DE ENTRADA CONTABLE (Hallazgo/Dotación)
                         await EntradaInventario.create({
                             consumibleId: item.consumibleId,
                             cantidad: 1,
@@ -180,19 +149,13 @@ export async function POST(request) {
                             tipo: 'carga_inicial',
                             observacion: `Dotación inicial Activo ${body.codigoInterno}`,
                             fecha: item.fechaCompra || new Date(),
-                            usuarioId: 1 // TODO: Usar ID real del usuario
+                            usuarioId: 1 
                         }, { transaction: t });
                     }
-                }
-
-                // =========================================================
-                // CASO B: FUNGIBLE (Aceite, Filtros)
-                // =========================================================
-                else {
+                } else {
                     const esOrigenExterno = item.origen === 'externo';
 
                     if (esOrigenExterno) {
-                        // DOTACIÓN INICIAL (No resta stock)
                         await EntradaInventario.create({
                             consumibleId: item.consumibleId,
                             cantidad: item.cantidad,
@@ -202,7 +165,6 @@ export async function POST(request) {
                             usuarioId: 1
                         }, { transaction: t });
                     } else {
-                        // SALIDA DE ALMACÉN (Resta stock)
                         await SalidaInventario.create({
                             consumibleId: item.consumibleId,
                             cantidad: item.cantidad,
@@ -219,9 +181,6 @@ export async function POST(request) {
                     }
                 }
 
-                // =========================================================
-                // VINCULACIÓN FINAL (INSTALACIÓN)
-                // =========================================================
                 await ConsumibleInstalado.create({
                     subsistemaInstanciaId: subsistemaInstanciaId,
                     consumibleId: item.consumibleId,

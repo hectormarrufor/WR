@@ -53,7 +53,7 @@ export async function POST(req) {
             horasOperacion = 0, tonelaje = 0, cantidadPeajes = 0,
             precioPeajeBs = 1900, bcv = 1, precioGasoilUsd = 0.5,
             sueldoChoferMensual = 0, sueldoAyudanteMensual = 0, tieneAyudante = false,
-            calidadRepuestos = 50, porcentajeGanancia = 0.30, viaticosManuales = 0,
+            calidadRepuestos = 50, porcentajeGanancia = 0.30, viaticosManuales = 0, // <-- porcentajeGanancia llega aquí
 
             // 🔥 NUEVAS VARIABLES INYECTADAS DESDE CONFIG. GLOBAL 🔥
             costoAdministrativoPorHora = 0,
@@ -112,12 +112,12 @@ export async function POST(req) {
         // --- 3. CÁLCULO FÍSICO DE TIEMPO (AHORA SE HACE PRIMERO) ---
         // ------------------------------------------------------------------
         let horasTotales = 0;
-        let horasEsperaTotales = 0; // <--- NUEVA VARIABLE PARA RASTREAR ESPERAS
+        let horasEsperaTotales = 0; 
 
         if (tipoCotizacion === 'flete' && body.tramos && body.tramos.length > 0) {
             let tiempoFinalSegundos = 0;
             body.tramos.forEach(tramo => {
-                const tiempoBaseRealista = (tramo.tiempoBaseSegundos || 0) * 1.4; // Factor Venezuela
+                const tiempoBaseRealista = (tramo.tiempoBaseSegundos || 0) * 1.4; 
                 let segundosTramo = tiempoBaseRealista;
 
                 const pesoBrutoTramo = tramo.tonelaje + pesoRemolque + sobrepesoChuto;
@@ -131,7 +131,6 @@ export async function POST(req) {
                     segundosTramo += penalidadMontaña;
                 }
 
-                // Extraemos la espera y la sumamos al contador global
                 const esperaTramoHoras = parseFloat(tramo.tiempoEspera || 0);
                 horasEsperaTotales += esperaTramoHoras;
                 segundosTramo += (esperaTramoHoras * 3600);
@@ -140,12 +139,12 @@ export async function POST(req) {
             });
             horasTotales = tiempoFinalSegundos / 3600;
         } else {
-            const velocidad = chuto.velocidadPromedioTeorica || 50;
+            // Velocidad normal para cuando no hay mapa
+            const velocidad = 50; 
             const horasViaje = distanciaKm / velocidad;
             horasTotales = tipoCotizacion === 'servicio' ? (horasViaje + horasOperacion) : horasViaje;
         }
 
-        // CÁLCULO DE VELOCIDAD NORMALIZADA
         const horasConduccionPura = horasTotales - horasEsperaTotales;
         const velocidadPromedioReal = horasConduccionPura > 0 ? (distanciaKm / horasConduccionPura) : 0;
 
@@ -183,27 +182,15 @@ export async function POST(req) {
         const litrosConsumidos = litrosBaseDistancia + litrosExtraPeso + litrosExtraElevacion;
         const totalCombustible = litrosConsumidos * precioGasoilUsd;
 
-        // ------------------------------------------------------------------
-        // --- 6. NÓMINA, CRONOGRAMA Y FECHA DE LLEGADA ---
+       // ------------------------------------------------------------------
+        // --- 6. CRONOGRAMA, VIÁTICOS Y NÓMINA (INTEGRACIÓN FINAL) ---
         // ------------------------------------------------------------------
         const jornadaMax = body.jornadaMaxima || 10;
         const horaSalidaSt = body.horaSalida || "06:00";
         const comidaPrimerDia = body.comidaPrimerDia || false;
 
-        // FÓRMULA DE NÓMINA (/4/7/24)
-        const valorHoraChofer = sueldoChoferMensual / 4 / 7 / 24;
-        const nominaChofer = valorHoraChofer * horasTotales; // horasTotales ya incluye las esperas
-
-        let nominaAyudante = 0;
-        if (tieneAyudante && sueldoAyudanteMensual) {
-            const valorHoraAyudante = sueldoAyudanteMensual / 4 / 7 / 24;
-            nominaAyudante = valorHoraAyudante * horasTotales;
-        }
-        const nominaTotal = nominaChofer + nominaAyudante;
-
-        // --- GENERADOR DEL CRONOGRAMA ---
         let tiempoRestante = horasTotales;
-        let diaActual = 1;
+        let diaActual = 1; // Esta variable determinará los días de nómina al final
         let itinerario = [];
         let [horaReloj, minReloj] = horaSalidaSt.split(':').map(Number);
 
@@ -211,13 +198,13 @@ export async function POST(req) {
         let nochesHotel = 0;
         let horasDescansoAcumuladas = 0;
 
-        // 🔄 AHORA USAN LAS VARIABLES DE LA CONFIG. GLOBAL 🔄
         const costoComidaDia = parseFloat(viaticoAlimentacionDia);
         const costoHotelNoche = parseFloat(viaticoHotelNoche);
         const factorPersonal = tieneAyudante ? 2 : 1;
 
         if (comidaPrimerDia) diasConComida++;
 
+        // --- BUCLE DE CRONOGRAMA (Calcula itinerario y días reales de viaje) ---
         while (tiempoRestante > 0) {
             let horasTramoHoy = Math.min(tiempoRestante, jornadaMax);
 
@@ -251,7 +238,7 @@ export async function POST(req) {
                 diasConComida++;
 
                 const horasDescanso = 24 - horasTramoHoy;
-                horasDescansoAcumuladas += horasDescanso; // Sumamos a la misión
+                horasDescansoAcumuladas += horasDescanso; 
 
                 itinerario.push({
                     dia: diaActual,
@@ -262,18 +249,29 @@ export async function POST(req) {
                     detalleViatico: `+ Hotel ($${costoHotelNoche * factorPersonal})`
                 });
 
-                diaActual++;
+                diaActual++; // Incrementamos el día para la siguiente jornada
                 horaReloj = parseInt(horaSalidaSt.split(':')[0]);
                 minReloj = parseInt(horaSalidaSt.split(':')[1]);
             }
         }
 
+        // --- CÁLCULO DE VIÁTICOS TOTALES ---
         const totalComida = diasConComida * costoComidaDia * factorPersonal;
         const totalHotel = nochesHotel * costoHotelNoche * factorPersonal;
         const viaticosManual = parseFloat(viaticosManuales || 0);
         const viaticosTotal = totalComida + totalHotel + viaticosManual;
 
-       // --- CÁLCULO DE FECHA DE LLEGADA Y OVERHEAD ---
+        // --- CÁLCULO DE NÓMINA (NORMA: TASA FIJA POR DÍA) ---
+        const TASA_DIA_CHOFER = 25.00;
+        const TASA_DIA_AYUDANTE = 15.00;
+
+        const diasTotalesNomina = diaActual; // Tomamos el valor final del bucle
+        const nominaChofer = diasTotalesNomina * TASA_DIA_CHOFER;
+        let nominaAyudante = tieneAyudante ? (diasTotalesNomina * TASA_DIA_AYUDANTE) : 0;
+        
+        const nominaTotal = nominaChofer + nominaAyudante;
+
+        // --- TIEMPOS FINALES Y FECHAS ---
         const duracionTotalMision = horasTotales + horasDescansoAcumuladas; 
         
         const fechaSalidaObj = new Date(body.fechaSalida || new Date());
@@ -281,8 +279,6 @@ export async function POST(req) {
         
         const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
 
-        // 🔥 NUEVO: CÁLCULO DEL APORTE ADMINISTRATIVO (OVERHEAD) 🔥
-        // Se multiplica el costo por hora por la duración COMPLETA de la misión (incluyendo descansos)
         const totalOverhead = parseFloat(costoAdministrativoPorHora) * duracionTotalMision;
 
         // ------------------------------------------------------------------
@@ -300,17 +296,19 @@ export async function POST(req) {
         const totalDepreciacion = depreciacionPorHora * horasTotales;
         const totalCapital = costoCapitalHora * horasTotales;
 
-        // Sumamos Depreciación Financiera + Gastos Fijos de Matriz (Seguros/Trámites)
         const costoPosesionTotal = totalDepreciacion + totalCapital + calculoChuto.posesion + calculoBatea.posesion;
 
         // ------------------------------------------------------------------
-        // --- 8. PEAJES Y CIERRE ---
+        // --- 8. PEAJES Y CIERRE (APLICANDO MARGEN CORRECTO) ---
         // ------------------------------------------------------------------
         const totalPeajes = cantidadPeajes * (precioPeajeBs / bcv);
 
-        const costoTotal = totalCombustible + nominaTotal + viaticosTotal + totalPeajes + totalMantenimiento + costoPosesionTotal;
-        const margen = body.porcentajeGanancia || 0.30;
-        const precioSugerido = costoTotal / (1 - margen);
+        const costoTotal = totalCombustible + nominaTotal + viaticosTotal + totalPeajes + totalMantenimiento + costoPosesionTotal + totalOverhead;
+        
+        // 🔥 AQUÍ ESTÁ LA MAGIA DEL MARGEN 🔥
+        // Validamos que el margen no sea 100% para evitar división por cero (Infinity)
+        const margenSeguro = porcentajeGanancia >= 1 ? 0.99 : porcentajeGanancia; 
+        const precioSugerido = costoTotal / (1 - margenSeguro);
 
         return NextResponse.json({
             success: true,
@@ -339,7 +337,7 @@ export async function POST(req) {
                     nochesHotelFacturadas: nochesHotel
                 },
                 overhead: totalOverhead,
-                itinerario: itinerario, // <--- ESTO ES VITAL PARA PINTAR EL CRONOGRAMA
+                itinerario: itinerario, 
                 posesion: costoPosesionTotal,
                 posesionDetalle: {
                     valorActivo: valorReposicion,
@@ -348,10 +346,10 @@ export async function POST(req) {
                     oportunidad: totalCapital
                 },
                 rutinaViaje: {
-                    horasConduccion: horasConduccionPura.toFixed(1), // Rodando sin esperas
-                    horasEsperaTotales: horasEsperaTotales.toFixed(1), // Parado en la ruta
-                    horasDescanso: horasDescansoAcumuladas.toFixed(1), // Durmiendo
-                    tiempoMisionTotal: duracionTotalMision.toFixed(1), // Total de la operación
+                    horasConduccion: horasConduccionPura.toFixed(1),
+                    horasEsperaTotales: horasEsperaTotales.toFixed(1), 
+                    horasDescanso: horasDescansoAcumuladas.toFixed(1), 
+                    tiempoMisionTotal: duracionTotalMision.toFixed(1), 
                     fechaSalidaISO: fechaSalidaObj.toISOString(),
                     fechaLlegadaISO: fechaLlegadaObj.toISOString(),
                     velocidadPromedioReal: velocidadPromedioReal.toFixed(1),
@@ -372,6 +370,7 @@ export async function POST(req) {
         });
 
     } catch (error) {
+        console.error("Error en cálculo de flete:", error.message);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

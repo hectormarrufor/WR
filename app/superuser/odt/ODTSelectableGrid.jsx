@@ -7,7 +7,6 @@ import {
 import { IconCheck, IconPlus, IconSearch, IconX, IconWeight, IconCoin, IconRoad } from "@tabler/icons-react";
 import { TextInput } from "@mantine/core";
 
-// Agregamos el prop "showMetrics" (por defecto false)
 export default function ODTSelectableGrid({ label, data = [], onChange, value, showMetrics = false }) {
   console.log("Renderizando ODTSelectableGrid con data:", data);
   const [opened, setOpened] = useState(false);
@@ -40,10 +39,12 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value, s
     const plantilla = instancia.plantilla || {};
 
     return {
-      tara: rawData.tara || plantilla.peso,
-      capacidad: rawData.capacidad,
-      costoHora: rawData.tarifaPorHora,
-      costoKm: rawData.tarifaPorKm
+      tara: rawData.tara || plantilla.pesoVacioKg || plantilla.peso,
+      capacidad: rawData.capacidadTonelajeMax || rawData.capacidadCarga || plantilla.capacidadCargaTons || plantilla.capacidadCarga,
+      
+      // 🔥 LEEMOS DIRECTAMENTE DE LOS COSTOS 🔥
+      costoHora: rawData.costoPosesionHora,
+      costoKm: rawData.costoMantenimientoTeorico
     };
   };
 
@@ -85,7 +86,6 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value, s
             const nombrePrincipal = tieneDetalle ? item.nombre.split("(")[0].trim() : item.nombre;
             const detalleExtra = tieneDetalle ? item.nombre.match(/\(([^)]+)\)/)[1] : null;
 
-            // Extraemos las métricas de forma profunda
             const metrics = extractMetrics(item);
 
             return (
@@ -136,7 +136,6 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value, s
                           )
                         )}
 
-                        {/* RENDERIZADO CONDICIONAL DE MÉTRICAS */}
                         {showMetrics && (
                           <>
                             <Divider my="xs" variant="dotted" />
@@ -171,7 +170,6 @@ export default function ODTSelectableGrid({ label, data = [], onChange, value, s
         </SimpleGrid>
       </Modal>
 
-      {/* Vista Compacta (Cuando ya está seleccionado) */}
       {selectedItem ? (
         <Card p="xs" radius="md" withBorder>
           <Group gap="sm" wrap="nowrap" align="flex-start">

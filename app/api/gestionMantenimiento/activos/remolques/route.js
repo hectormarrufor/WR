@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { 
-
-// filepath: c:\Users\Hector Marrufo\Documents\App Web DADICA hector marrufo\WR\app\api\gestionMantenimiento\activos\remolques\route.js
     sequelize, Activo, RemolqueInstancia, Remolque, Subsistema, 
     SubsistemaInstancia, ConsumibleInstalado, ConsumibleSerializado, 
     EntradaInventario, Kilometraje, SalidaInventario, Consumible, Recauchado 
@@ -13,17 +11,12 @@ export async function POST(request) {
     try {
         const body = await request.json();
         
-        console.log("Datos recibidos para crear remolque:", body);
-        
-        // --- 1. VALIDACIONES PREVIAS ---
         const existePlaca = await RemolqueInstancia.findOne({ where: { placa: body.placa }, transaction: t });
         if (existePlaca) throw new Error(`La placa ${body.placa} ya está registrada en otro remolque.`);
         
         const existeCodigo = await Activo.findOne({ where: { codigoInterno: body.codigoInterno }, transaction: t });
         if (existeCodigo) throw new Error(`El código ${body.codigoInterno} ya existe.`);
 
-        // --- 2. RECUPERAR LA PLANTILLA (MODELO DE REMOLQUE) ---
-        // Se asume que en el body viene 'modeloVehiculoId' seleccionando el ID de la tabla Remolques (definida en Remolque.js)
         const modelo = await Remolque.findByPk(body.modeloVehiculoId, {
             include: [{ model: Subsistema, as: 'subsistemas' }],
             transaction: t
@@ -31,23 +24,21 @@ export async function POST(request) {
 
         if (!modelo) throw new Error("El modelo de remolque seleccionado no existe.");
 
-        // --- 3. CREAR INSTANCIA DE REMOLQUE ---
-        // Creamos la instancia física basada en el modelo
         const nuevaInstancia = await RemolqueInstancia.create({
             placa: body.placa,
             marca: modelo.marca,
             modelo: modelo.modelo,
             serialMotor: body.serialMotor || null,
             color: body.color,
-            anioFabricacion: body.anioFabricacion || modelo.anio, // Puede ser específico o heredar del modelo
-            remolqueId: body.modeloVehiculoId, // FK a la tabla Remolques
+            anioFabricacion: body.anioFabricacion || modelo.anio, 
+            remolqueId: body.modeloVehiculoId, 
             serialChasis: body.serialChasis || body.serialCarroceria,
         }, { transaction: t });
 
-        // --- 4. CREAR ACTIVO ---
+        // 🔥 ACTIVO PADRE (ESTRICTAMENTE COSTOS) 🔥
         const nuevoActivo = await Activo.create({
             codigoInterno: body.codigoInterno,
-            tipoActivo: 'Remolque', // <--- TIPO ESPECÍFICO
+            tipoActivo: 'Remolque', 
             estado: body.estado || 'Operativo',
             ubicacionActual: body.ubicacionActual,
             imagen: body.imagen, 
@@ -58,7 +49,6 @@ export async function POST(request) {
             capacidadTonelajeMax: body.capacidadTonelajeMax || body.capacidadCarga || null, 
             tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, 
             
-            // 🔥 NUEVOS CAMPOS AGREGADOS AQUÍ 🔥
             anio: body.anio ? parseInt(body.anio) : (body.anioFabricacion ? parseInt(body.anioFabricacion) : new Date().getFullYear()),
             matrizCostoId: body.matrizCostoId ? parseInt(body.matrizCostoId) : null,
             valorReposicion: body.valorReposicion ? parseFloat(body.valorReposicion) : null,
@@ -66,18 +56,11 @@ export async function POST(request) {
             valorSalvamento: body.valorSalvamento !== undefined ? parseFloat(body.valorSalvamento) : null,
             horasAnuales: body.horasAnuales ? parseInt(body.horasAnuales) : 2000,
             
-            // --- MÉTRICAS CALCULADAS ---
-            velocidadPromedioTeorica: body.velocidadPromedioTeorica !== undefined ? parseInt(body.velocidadPromedioTeorica) : null,
             costoMantenimientoTeorico: body.costoMantenimientoTeorico !== undefined ? parseFloat(body.costoMantenimientoTeorico) : 0,
             costoPosesionTeorico: body.costoPosesionTeorico !== undefined ? parseFloat(body.costoPosesionTeorico) : 0,
             costoPosesionHora: body.costoPosesionHora !== undefined ? parseFloat(body.costoPosesionHora) : 0,
         }, { transaction: t });
-
-        // =====================================================================
-        // 4.1. REGISTRAR HISTORIAL CERO 
-        // =====================================================================
         
-        // Registrar Kilometraje Inicial (Hubodómetro)
         if (body.kilometrajeActual !== undefined && body.kilometrajeActual !== null) {
             await Kilometraje.create({
                 activoId: nuevoActivo.id,
@@ -85,14 +68,10 @@ export async function POST(request) {
                 fecha: body.fechaAdquisicion || new Date(),
                 origen: 'creacion_activo',
                 observacion: 'Kilometraje base (Hubodómetro) al registrar el remolque',
-                usuarioId: 1 // TODO: Usar usuario real
+                usuarioId: 1 
             }, { transaction: t });
         }
 
-        // Nota: Los remolques generalmente no llevan Horómetro de motor, se omite esa parte.
-
-        // --- 5. INSTANCIAR SUBSISTEMAS ---
-        // (Ejes, Suspensión, Frenos, Sistema Eléctrico, etc.)
         const mapaSubsistemas = {}; 
         if (modelo.subsistemas && modelo.subsistemas.length > 0) {
             for (const subPlantilla of modelo.subsistemas) {
@@ -108,21 +87,14 @@ export async function POST(request) {
             }
         }
 
-        // --- 6. PROCESAR INSTALACIONES INICIALES (NEUMÁTICOS, ETC.) ---
-        // La lógica es idéntica a Vehículos, ya que los remolques usan los mismos consumibles (Cauchos, grasas, etc.)
         if (body.instalacionesIniciales && body.instalacionesIniciales.length > 0) {
-            
             for (const item of body.instalacionesIniciales) {
                 const subsistemaInstanciaId = mapaSubsistemas[item.subsistemaId];
                 if (!subsistemaInstanciaId) continue;
 
                 let serialIdFinal = null;
 
-               // =========================================================
-                // CASO A: SERIALIZADO (Principalmente Cauchos en remolques)
-                // =========================================================
                 if (item.serial) { 
-                    
                     let serialExistente = await ConsumibleSerializado.findOne({
                         where: { serial: item.serial, consumibleId: item.consumibleId },
                         transaction: t
@@ -134,7 +106,6 @@ export async function POST(request) {
                             estado: 'asignado',
                             fechaAsignacion: new Date() 
                         }, { transaction: t });
-
                     } else {
                         const nuevoSerial = await ConsumibleSerializado.create({
                             consumibleId: item.consumibleId,
@@ -148,7 +119,6 @@ export async function POST(request) {
 
                         serialIdFinal = nuevoSerial.id;
 
-                        // Historial de Recauchado
                         if (item.historialRecauchado && item.historialRecauchado.length > 0) {
                             const recauchadosParaGuardar = item.historialRecauchado.map(rec => ({
                                 consumibleSerializadoId: nuevoSerial.id,
@@ -157,11 +127,9 @@ export async function POST(request) {
                                 tallerId: rec.tallerId || null,
                                 observacion: 'Carga Inicial Histórica en Remolque'
                             }));
-                            
                             await Recauchado.bulkCreate(recauchadosParaGuardar, { transaction: t });
                         }
 
-                        // Entrada Contable
                         await EntradaInventario.create({
                             consumibleId: item.consumibleId,
                             cantidad: 1,
@@ -172,14 +140,8 @@ export async function POST(request) {
                             usuarioId: 1 
                         }, { transaction: t });
                     }
-                } 
-                
-                // =========================================================
-                // CASO B: FUNGIBLE (Grasas, bombillos, cintas reflectivas)
-                // =========================================================
-                else {
+                } else {
                     const esOrigenExterno = item.origen === 'externo';
-
                     if (esOrigenExterno) {
                         await EntradaInventario.create({
                             consumibleId: item.consumibleId,
@@ -206,9 +168,6 @@ export async function POST(request) {
                     }
                 }
 
-                // =========================================================
-                // VINCULACIÓN FINAL
-                // =========================================================
                 await ConsumibleInstalado.create({
                     subsistemaInstanciaId: subsistemaInstanciaId,
                     consumibleId: item.consumibleId,

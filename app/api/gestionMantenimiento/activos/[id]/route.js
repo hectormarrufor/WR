@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
-import { del } from '@vercel/blob'; // <--- Importación vital para borrar imágenes
+import { del } from '@vercel/blob'; 
 import {
     Activo, VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
     Vehiculo, Remolque, Maquina,
@@ -18,13 +18,11 @@ import {
     ODT
 } from '@/models';
 
-
-
 // ----------------------------------------------------------------------
-// GET: Obtener Detalle (Con todas las relaciones explicadas anteriormente)
+// GET: Obtener Detalle 
 // ----------------------------------------------------------------------
 export async function GET(request, { params }) {
-    const { id } = await params; // Next.js 15 requiere await
+    const { id } = await params; 
 
     try {
         const activo = await Activo.findByPk(id, {
@@ -38,7 +36,7 @@ export async function GET(request, { params }) {
                     model: Kilometraje,
                     as: 'registrosKilometraje',
                     limit: 15,
-                    order: [['fecha_registro', 'ASC']] // ASC para el orden cronológico del gráfico
+                    order: [['fecha_registro', 'ASC']] 
                 },
                 {
                     model: Horometro,
@@ -74,7 +72,6 @@ export async function GET(request, { params }) {
                         include: [{ model: Consumible, as: 'fichaTecnica' },
                         { model: ConsumibleSerializado, as: 'serialFisico' },
                         ]
-
                     },
                     ]
                 },
@@ -97,16 +94,11 @@ export async function GET(request, { params }) {
                     as: 'matrizCosto',
                     include: [{model: DetalleMatrizCosto, as: 'detalles'}]
                 },
-                {
-                    model: Flete,
-                    as: 'fletesComoVehiculo',
-
-                },
+                { model: Flete, as: 'fletesComoVehiculo' },
                 { model: Flete, as: 'fletesComoRemolque' },
                 { model: ODT, as: 'odtsComoPrincipal' },
                 { model: ODT, as: 'odtsComoRemolque' },
                 { model: ODT, as: 'odtsComoMaquinaria' },
-
             ],
         });
 
@@ -123,13 +115,12 @@ export async function GET(request, { params }) {
 }
 
 // ----------------------------------------------------------------------
-// PUT: Actualizar (Lógica original respetada + Transacciones)
+// PUT: Actualizar 
 // ----------------------------------------------------------------------
 export async function PUT(request, { params }) {
 
-    console.log("Iniciando proceso de actualización de activo desde la put general (no vehiculo o remolque)...");
+    console.log("Iniciando proceso de actualización de activo desde la put general...");
     const { id } = await params;
-
     const t = await sequelize.transaction();
 
     try {
@@ -142,64 +133,56 @@ export async function PUT(request, { params }) {
 
         const body = await request.json();
 
-        // 1. Extraemos TODOS los campos (Viejos + NUEVOS FINANCIEROS Y MATRIZ)
         const {
             codigoInterno, estado, ubicacionActual, imagen,
             placa, serialChasis, serialMotor, color, kilometrajeActual, horometroActual,
-            // --- NUEVOS CAMPOS DEL FORMULARIO ---
             matrizCostoId, valorReposicion, vidaUtilAnios, valorSalvamento, horasAnuales,
-            velocidadPromedioTeorica, costoMantenimientoTeorico, costoPosesionTeorico, costoPosesionHora,
+            costoMantenimientoTeorico, costoPosesionTeorico, costoPosesionHora,
             tara, anioFabricacion
         } = body;
 
-        // 2. Actualizar Activo Padre (Incluyendo Financieros)
+        // 🔥 Actualizar Activo Padre (ESTRICTAMENTE COSTOS) 🔥
         await activo.update({
             codigoInterno: codigoInterno || activo.codigoInterno,
             estado: estado || activo.estado,
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             imagen: imagen !== undefined ? imagen : activo.imagen,
             anio: anioFabricacion !== undefined ? parseInt(anioFabricacion) : activo.anio,
-            tara: tara !== undefined && tara !== '' ? parseFloat(tara) : null, // <-- NUEVO CAMPO TARa
-            capacidadTonelajeMax: body.capacidadCarga !== undefined && body.capacidadCarga !== '' ? parseFloat(body.capacidadCarga) : activo.capacidadTonelajeMax, // <-- NUEVO CAMPO CAPACIDAD DE CARGA
+            tara: tara !== undefined && tara !== '' ? parseFloat(tara) : null, 
+            capacidadTonelajeMax: body.capacidadCarga !== undefined && body.capacidadCarga !== '' ? parseFloat(body.capacidadCarga) : activo.capacidadTonelajeMax, 
 
-            // --- ACTUALIZACIÓN FINANCIERA ---
             matrizCostoId: matrizCostoId ? parseInt(matrizCostoId) : activo.matrizCostoId,
             valorReposicion: valorReposicion !== undefined ? parseFloat(valorReposicion) : activo.valorReposicion,
             vidaUtilAnios: vidaUtilAnios !== undefined ? parseInt(vidaUtilAnios) : activo.vidaUtilAnios,
             valorSalvamento: valorSalvamento !== undefined ? parseFloat(valorSalvamento) : activo.valorSalvamento,
             horasAnuales: horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales,
 
-            // --- MÉTRICAS DE CÁLCULO PARA FLETECREATOR ---
-            velocidadPromedioTeorica: velocidadPromedioTeorica !== undefined ? parseInt(velocidadPromedioTeorica) : activo.velocidadPromedioTeorica,
             costoMantenimientoTeorico: costoMantenimientoTeorico !== undefined ? parseFloat(costoMantenimientoTeorico) : activo.costoMantenimientoTeorico,
             costoPosesionTeorico: costoPosesionTeorico !== undefined ? parseFloat(costoPosesionTeorico) : activo.costoPosesionTeorico,
             costoPosesionHora: costoPosesionHora !== undefined ? parseFloat(costoPosesionHora) : activo.costoPosesionHora
 
         }, { transaction: t });
 
-        // 3. Actualizar Instancia Hija según tipo
-        // 3. Actualizar Instancia Hija según tipo
         if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
             await VehiculoInstancia.update({
                 placa, serialChasis, serialMotor, color,
                 kilometrajeActual: kilometrajeActual !== undefined ? parseFloat(kilometrajeActual) : undefined,
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
-            }, { where: { id: activo.vehiculoInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
+            }, { where: { id: activo.vehiculoInstanciaId }, transaction: t }); 
         }
         else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
             await RemolqueInstancia.update({
                 placa, color, serialChasis, serialMotor,
-            }, { where: { id: activo.remolqueInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
+            }, { where: { id: activo.remolqueInstanciaId }, transaction: t }); 
         }
         else if (activo.tipoActivo === 'Maquina' && activo.maquinaInstanciaId) {
             await MaquinaInstancia.update({
                 serialMotor,
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
-            }, { where: { id: activo.maquinaInstanciaId }, transaction: t }); // <-- CORREGIDO AQUÍ
+            }, { where: { id: activo.maquinaInstanciaId }, transaction: t }); 
         }
 
         await t.commit();
-
         return NextResponse.json({ success: true, message: 'Activo actualizado correctamente', data: activo });
 
     } catch (error) {
@@ -210,22 +193,18 @@ export async function PUT(request, { params }) {
 }
 
 // ----------------------------------------------------------------------
-// DELETE: Eliminar Activo (Con borrado de imagen en Vercel Blob)
+// DELETE: Eliminar Activo
 // ----------------------------------------------------------------------
 export async function DELETE(request, { params }) {
-    const { id } = await params; // Next.js 15 requiere await
+    const { id } = await params; 
     const t = await sequelize.transaction();
 
     try {
         const activo = await Activo.findByPk(id, { transaction: t });
         if (!activo) throw new Error('Activo no encontrado');
 
-        // 1. Eliminar imagen de Vercel Blob (Limpieza)
-        // NOTA: 'del' requiere la URL completa. Si en BD guardas solo el nombre,
-        // concatenamos la URL base. Si guardas la URL completa, usa activo.imagen directo.
         if (activo.imagen) {
             try {
-                // Construimos la URL completa si lo que tienes guardado es solo el nombre del archivo
                 const blobUrl = activo.imagen.startsWith('http')
                     ? activo.imagen
                     : `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${activo.imagen}`;
@@ -233,12 +212,10 @@ export async function DELETE(request, { params }) {
                 await del(blobUrl);
                 console.log(`[Blob] Imagen eliminada: ${blobUrl}`);
             } catch (e) {
-                console.warn("Advertencia: No se pudo borrar imagen del blob (posiblemente ya no exista):", e.message);
-                // No hacemos throw aquí para permitir que se borre el registro de la BD aunque falle el blob
+                console.warn("Advertencia: No se pudo borrar imagen del blob:", e.message);
             }
         }
 
-        // 2. Eliminar Instancia Hija (Borrado manual explícito para seguridad)
         if (activo.tipoActivo === 'Vehiculo' && activo.vehiculoInstanciaId) {
             await VehiculoInstancia.destroy({ where: { id: activo.vehiculoInstanciaId }, transaction: t });
         } else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
@@ -247,9 +224,7 @@ export async function DELETE(request, { params }) {
             await MaquinaInstancia.destroy({ where: { id: activo.maquinaInstanciaId }, transaction: t });
         }
 
-        // 3. Eliminar el Activo Padre
         await activo.destroy({ transaction: t });
-
         await t.commit();
         return NextResponse.json({ success: true, message: 'Activo y sus archivos eliminados correctamente' });
 

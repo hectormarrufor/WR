@@ -12,7 +12,7 @@ import {
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconCalculator, IconCoin, IconTruck, IconRoute, IconInfoCircle, IconMapPin } from "@tabler/icons-react";
+import { IconCalculator, IconCoin, IconTruck, IconRoute, IconInfoCircle, IconMapPin, IconChartLine } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ export default function FleteCreator() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
+
     const [empleados, setEmpleados] = useState([]);
     const [activos, setActivos] = useState([]);
     const [configPrecios, setConfigPrecios] = useState({ peaje: 1900, gasoil: 0.5 });
@@ -40,10 +41,10 @@ export default function FleteCreator() {
             clienteId: "",
             fechaSalida: new Date(),
             nroFlete: "",
-            jornadaMaxima: 12,  // Ahora será un número, no un string
-            viaticosManuales: 0, // Nuevo campo
-            horaSalida: "06:00", // <--- NUEVO
-            comidaPrimerDia: false, // <--- NUEVO
+            jornadaMaxima: 12,
+            viaticosManuales: 0,
+            horaSalida: "06:00",
+            comidaPrimerDia: false,
             choferId: null,
             ayudanteId: null,
             activoPrincipalId: null,
@@ -52,10 +53,11 @@ export default function FleteCreator() {
             destino: "Circuito Logístico",
             distanciaKm: 0,
             waypoints: [],
-            tramos: [], // Arreglo de segmentos de ruta
+            tramos: [],
             cantidadPeajes: 0,
             calidadRepuestos: 50,
             tipoCarga: "general",
+            margenGanancia: 30, // 🔥 NUEVO: Porcentaje de ganancia por defecto
         },
         validate: {
             clienteId: (val) => (val ? null : "Seleccione un cliente"),
@@ -65,6 +67,8 @@ export default function FleteCreator() {
             distanciaKm: (val) => (val > 0 ? null : "Debe trazar una ruta en el mapa"),
         },
     });
+    const [valorVisualMargen, setValorVisualMargen] = useState(form.values.margenGanancia);
+    const [valorVisualRepuestos, setValorVisualRepuestos] = useState(form.values.calidadRepuestos);
 
     useEffect(() => {
         const cargarDatos = async () => {
@@ -74,17 +78,15 @@ export default function FleteCreator() {
                     fetch(`/api/gestionMantenimiento/activos`).then((r) => r.json()),
                     fetch(`/api/configuracion/precios`).then((r) => r.json()),
                     fetch(`/api/bcv`).then((r) => r.json()),
-                    // 🔥 NUESTRA NUEVA API GLOBAL 🔥
                     fetch(`/api/configuracion/general`).then((r) => r.json()),
                 ]);
 
                 setEmpleados(resEmp || []);
                 setActivos(resAct.success ? resAct.data : []);
                 setBcv(parseFloat(resBcv?.precio || 1));
-                setConfigGlobal(resConfig); // Guardamos toda la configuración
+                setConfigGlobal(resConfig);
 
                 if (resConfig) {
-                    // Ahora tomamos los precios directamente de la Configuración Global
                     setConfigPrecios({
                         peaje: parseFloat(resConfig.precioPeajePromedio || 20),
                         gasoil: parseFloat(resConfig.precioGasoil || 0.5),
@@ -99,6 +101,7 @@ export default function FleteCreator() {
         cargarDatos();
     }, []);
 
+    // 🔥 EL MAPEO LIMPIO: Pasamos raw para que el Grid extraiga los costos puros
     const activosMapeados = useMemo(() => {
         return activos.map((v) => {
             let nombreDisplay = v.codigoInterno;
@@ -112,14 +115,10 @@ export default function FleteCreator() {
                 tipo: v.tipoActivo,
                 tara: v.tara || v.remolqueInstancia?.plantilla?.peso || v.vehiculoInstancia?.plantilla?.peso || null,
                 capacidad: v.capacidadTonelajeMax || v.remolqueInstancia?.plantilla?.capacidadCarga || v.vehiculoInstancia?.plantilla?.capacidadArrastre || null,
-                tarifaPorHora: v.tarifaPorHora,
-                tarifaPorKm: v.tarifaPorKm,
+                raw: v // Esto permite extraer 'costoPosesionHora' y 'costoMantenimientoTeorico' en el grid
             };
         });
     }, [activos]);
-
-
-
 
     const { data: estimacion, isLoading: calcLoading } = useQuery({
         queryKey: [
@@ -127,28 +126,24 @@ export default function FleteCreator() {
             form.values.activoPrincipalId,
             form.values.remolqueId,
             rutaData?.distanciaTotal,
-            JSON.stringify(form.values.tramos), // Este detecta los cambios de tiempo de espera
+            JSON.stringify(form.values.tramos),
             form.values.cantidadPeajes,
             form.values.choferId,
             form.values.ayudanteId,
             form.values.calidadRepuestos,
             form.values.fechaSalida,
-            // --- GATILLOS NUEVOS ---
             form.values.jornadaMaxima,
             form.values.horaSalida,
             form.values.comidaPrimerDia,
-            form.values.viaticosManuales
+            form.values.viaticosManuales,
+            form.values.margenGanancia // 🔥 GATILLO NUEVO: Recalcula al mover el slider
         ],
         queryFn: async () => {
             if (!form.values.activoPrincipalId || !rutaData?.distanciaTotal || !configGlobal) return null;
 
-            console.log("DATA DE CONFIG GLOBAL LLEGANDO AL FLETE:", configGlobal);
-            console.log("OVERHEAD A ENVIAR:", configGlobal.costoAdministrativoPorHora);
-
             const choferObj = empleados.find(e => e.id === form.values.choferId);
             const ayudanteObj = empleados.find(e => e.id === form.values.ayudanteId);
 
-            // Usamos los sueldos base de la config global si el empleado no tiene uno específico
             const sueldoChofer = parseFloat(choferObj?.sueldo || configGlobal.sueldoChoferBase);
             const sueldoAyudante = parseFloat(ayudanteObj?.sueldo || configGlobal.sueldoAyudanteBase);
 
@@ -179,11 +174,11 @@ export default function FleteCreator() {
                     sueldoAyudanteMensual: sueldoAyudante,
                     tieneAyudante: !!form.values.ayudanteId,
                     calidadRepuestos: form.values.calidadRepuestos,
-                    porcentajeGanancia: 0.30,
 
-                    // 🔥 AÑADIMOS EL OVERHEAD ADMINISTRATIVO 🔥
+                    // 🔥 ENVIAMOS EL MARGEN DINÁMICO 🔥
+                    porcentajeGanancia: parseFloat(form.values.margenGanancia) / 100,
+
                     costoAdministrativoPorHora: parseFloat(configGlobal.costoAdministrativoPorHora || 0),
-                    // Y si quieres enviar también los viáticos automáticos de la config:
                     viaticoAlimentacionDia: parseFloat(configGlobal.viaticoAlimentacionDia || 15),
                     viaticoHotelNoche: parseFloat(configGlobal.viaticoHotelNoche || 20),
                 }),
@@ -194,10 +189,6 @@ export default function FleteCreator() {
         },
         enabled: !!form.values.activoPrincipalId && !!rutaData?.distanciaTotal,
     });
-
-    useEffect(() => {
-        console.log(estimacion);
-    }, [estimacion]);
 
     const handleRouteCalculated = useCallback((data) => {
         setRutaData(data);
@@ -241,11 +232,10 @@ export default function FleteCreator() {
 
     if (loading) return <Center h="80vh"><Loader size="xl" /></Center>;
 
-    // Variables derivadas de la telemetría
     const capacidadMaxDynamic = estimacion?.breakdown?.auditoriaPesos?.capacidad?.valor || 40;
     const taraChutoCalc = estimacion?.breakdown?.auditoriaPesos?.chuto?.valor || 0;
     const taraRemolqueCalc = estimacion?.breakdown?.auditoriaPesos?.remolque?.valor || 0;
-    const taraBase = taraChutoCalc + taraRemolqueCalc; // Puro Hierro
+    const taraBase = taraChutoCalc + taraRemolqueCalc;
 
     return (
         <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -351,7 +341,6 @@ export default function FleteCreator() {
                                         </Box>
                                     </Group>
 
-                                    {/* AÑADE ESTO JUSTO AQUÍ */}
                                     <Group justify="space-between" mt={4}>
                                         <Text size="xs" fw={600}>Vel. Promedio (Normalizada):</Text>
                                         <Group gap={5}>
@@ -370,7 +359,6 @@ export default function FleteCreator() {
 
                         <Divider label="Distribución de Carga por Tramos" labelPosition="center" mt="md" />
 
-                        {/* TIMELINE DE TRAMOS MULTI-DROP */}
                         {form.values.tramos.length > 0 ? (
                             <Box px="sm" pb="xs">
                                 <Timeline active={form.values.tramos.length} bulletSize={28} lineWidth={2} color="blue">
@@ -402,11 +390,18 @@ export default function FleteCreator() {
                                                     <Box style={{ flex: 1, marginRight: '15px' }}>
                                                         <Text size="xs" fw={500} mb={5}>Peso de la carga:</Text>
                                                         <Slider
-                                                            value={tramo.tonelaje}
-                                                            onChange={(val) => form.setFieldValue(`tramos.${index}.tonelaje`, val)}
-                                                            step={0.5} min={0} max={capacidadMaxDynamic}
-                                                            marks={[{ value: 0, label: 'Vacío' }, { value: Math.round(capacidadMaxDynamic), label: 'Full' }]}
-                                                            color={tramo.tonelaje > (capacidadMaxDynamic * 0.8) ? 'red' : 'blue'}
+                                                            // Permitimos que el slider sea autónomo en su movimiento
+                                                            defaultValue={tramo.tonelaje}
+                                                            // Solo actualizamos el formulario (y por ende el cálculo) al soltar
+                                                            onChangeEnd={(val) => form.setFieldValue(`tramos.${index}.tonelaje`, val)}
+                                                            step={0.5}
+                                                            min={0}
+                                                            max={capacidadMaxDynamic}
+                                                            label={(val) => `${val}t`} // Muestra el peso mientras arrastras
+                                                            marks={[
+                                                                { value: 0, label: 'Vacío' },
+                                                                { value: Math.round(capacidadMaxDynamic), label: 'Full' }
+                                                            ]}
                                                         />
                                                     </Box>
                                                     <NumberInput
@@ -484,16 +479,52 @@ export default function FleteCreator() {
                         </SimpleGrid>
                     )}
 
-                    <Paper withBorder p="md" mb="md">
-                        <Group mb="xs">
-                            <IconCoin size={20} color="orange" />
-                            <Text fw={700}>Gastos de Peaje</Text>
+                    {/* <Paper withBorder p="md" mt="md" mb="md">
+                        <Group justify="space-between" mb="xs">
+                            <Text size="sm" fw={500}>Calidad de Repuestos a Presupuestar</Text>
+                            <Badge color={form.values.calidadRepuestos < 40 ? 'red' : form.values.calidadRepuestos < 80 ? 'blue' : 'green'}>
+                                {form.values.calidadRepuestos}%
+                            </Badge>
                         </Group>
-                        <SimpleGrid cols={2}>
-                            <NumberInput label="Nro. de Peajes a cruzar" min={0} {...form.getInputProps("cantidadPeajes")} />
-                            <TextInput label="Valor BCV del Día" value={bcv ? `1 USD = ${bcv} Bs` : "Cargando..."} readOnly />
-                        </SimpleGrid>
-                    </Paper>
+                        <Box px="sm" pb="md">
+                            <Slider
+                                value={form.values.calidadRepuestos}
+                                onChange={(val) => form.setFieldValue("calidadRepuestos", val)}
+                                step={10}
+                                marks={[
+                                    { value: 0, label: 'Económico' },
+                                    { value: 50, label: 'Estándar' },
+                                    { value: 100, label: 'Original' },
+                                ]}
+                            />
+                        </Box>
+                    </Paper> */}
+
+                    {/* 🔥 NUEVO SLIDER DE RENTABILIDAD / GANANCIA 🔥 */}
+                    {/* <Paper withBorder p="md" bg="green.0" radius="md" mb="md">
+                        <Group justify="space-between" mb="sm">
+                            <Group gap="xs">
+                                <IconChartLine size={20} color="green" />
+                                <Text fw={700} c="green.9">Margen de Ganancia Comercial</Text>
+                            </Group>
+                            <Badge size="lg" color="green" variant="filled">{form.values.margenGanancia}%</Badge>
+                        </Group>
+                        <Text size="xs" c="dimmed" mb="md">Se calcula sobre el Costo Operativo Total (Break-even). Define tu beneficio neto.</Text>
+                        <Box px="sm" pb="xs">
+                            <Slider
+                                value={form.values.margenGanancia}
+                                onChange={(val) => form.setFieldValue("margenGanancia", val)}
+                                step={1} min={0} max={100}
+                                color="green"
+                                marks={[
+                                    { value: 10, label: '10%' },
+                                    { value: 30, label: '30%' },
+                                    { value: 50, label: '50%' },
+                                    { value: 100, label: '100%' }
+                                ]}
+                            />
+                        </Box>
+                    </Paper>  */}
 
                     <Paper withBorder p="md" bg="blue.0" radius="md">
                         <Group mb="md" justify="space-between">
@@ -502,7 +533,7 @@ export default function FleteCreator() {
                                 <Title order={4}>Presupuesto Inteligente</Title>
                             </Group>
 
-                            {/* EL ACORDEON RESTAURADO */}
+                            {/* EL ACORDEON DE DESGLOSE ABIERTO */}
                             {estimacion?.breakdown?.itemsDetallados && (
                                 <Accordion variant="separated" radius="md" mt="xl" defaultValue="detalles">
                                     <Accordion.Item value="detalles">
@@ -664,7 +695,7 @@ export default function FleteCreator() {
                                                                     </Table.Td>
                                                                 </Table.Tr>
 
-                                                                {/* 3. Gastos Anuales (Dinámicos de la tabla) */}
+                                                                {/* 3. Gastos Anuales */}
                                                                 {configGlobal.gastosFijos?.length > 0 && (
                                                                     <Table.Tr>
                                                                         <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
@@ -677,7 +708,7 @@ export default function FleteCreator() {
                                                                     </Table.Tr>
                                                                 )}
 
-                                                                {/* 4. Factor de Capacidad Ociosa (La explicación del porqué es alto) */}
+                                                                {/* 4. Factor de Capacidad Ociosa */}
                                                                 <Table.Tr>
                                                                     <Table.Td pl="xl" color="red.7" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
                                                                         ↳ ⚠️ Factor Capacidad Ociosa ({configGlobal.utilizacionFlotaPorcentaje}% de Flota Activa)
@@ -749,7 +780,7 @@ export default function FleteCreator() {
                                                     </Table.Tbody>
                                                     <Table.Tfoot>
                                                         <Table.Tr>
-                                                            <Table.Th colSpan={2} ta="right">COSTO OPERATIVO:</Table.Th>
+                                                            <Table.Th colSpan={2} ta="right">COSTO OPERATIVO BASE (Break-Even):</Table.Th>
                                                             <Table.Th ta="right" style={{ fontSize: '1.1rem' }}>${estimacion.costoTotal.toFixed(2)}</Table.Th>
                                                         </Table.Tr>
                                                     </Table.Tfoot>
@@ -800,17 +831,63 @@ export default function FleteCreator() {
                                 <Grid.Col span={4}><Text size="sm" ta="right" fw={500}>${estimacion.breakdown.peajes.toFixed(2)}</Text></Grid.Col>
 
                                 <Grid.Col span={8}>
-                                    <Text size="sm">Desgaste y Posesión:</Text>
+                                    <Text size="sm">Desgaste y Posesión (Incluye Mantenimiento):</Text>
                                 </Grid.Col>
                                 <Grid.Col span={4}><Text size="sm" ta="right" fw={500}>${(estimacion.breakdown.mantenimiento + estimacion.breakdown.posesion).toFixed(2)}</Text></Grid.Col>
 
                                 <Grid.Col span={12}><Divider my="xs" /></Grid.Col>
 
-                                <Grid.Col span={7}><Text fw={700}>Costo Operativo Base:</Text></Grid.Col>
+                                {/* --- NUEVA UBICACIÓN DE CONTROLES ESTRATÉGICOS --- */}
+
+                                <Grid.Col span={12}>
+                                    <Paper withBorder pb="xl" mt={10} radius="md" shadow="xs" bg="green.0">
+                                        <Group justify="space-between" mb="xs">
+                                            <Text size="xs" fw={700} c="green.9">MARGEN GANANCIA</Text>
+                                            <Badge color="green">{valorVisualMargen}%</Badge>
+                                        </Group>
+                                        <Slider
+                                            color="green"
+                                            // 1. El valor visual es el del estado local (movimiento fluido)
+                                            value={valorVisualMargen}
+                                            // 2. onChange actualiza solo el número visual (no dispara el flete)
+                                            onChange={setValorVisualMargen}
+                                            // 3. onChangeEnd actualiza el formulario (aquí sí se dispara el cálculo)
+                                            onChangeEnd={(val) => form.setFieldValue("margenGanancia", val)}
+                                            step={1} min={0} max={100}
+                                            marks={[{ value: 0, label: '0%' }, { value: 100, label: '100%' }]}
+                                        />
+                                    </Paper>
+
+                                    <Paper withBorder pb="xl" mt={10} radius="md" shadow="xs">
+                                        <Group justify="space-between" mb="xs">
+                                            <Text size="xs" fw={700} c="dimmed">CALIDAD REPUESTOS</Text>
+                                            <Badge variant="light">{valorVisualRepuestos}%</Badge>
+                                        </Group>
+                                        <Slider
+                                            value={valorVisualRepuestos}
+                                            onChange={setValorVisualRepuestos}
+                                            onChangeEnd={(val) => form.setFieldValue("calidadRepuestos", val)}
+                                            step={10}
+                                            marks={[{ value: 0, label: 'Econ' }, { value: 100, label: 'Orig' }]}
+                                        />
+                                    </Paper>
+                                </Grid.Col>
+
+
+                                <Grid.Col span={7}><Text fw={700}>Costo Operativo Base (Break-Even):</Text></Grid.Col>
                                 <Grid.Col span={5}><Text fw={700} ta="right" c="red.9">${estimacion.costoTotal.toFixed(2)}</Text></Grid.Col>
 
+                                <Grid.Col span={12}>
+                                    <Group justify="space-between">
+                                        <Text fw={700} c="green.9">+ Margen de Ganancia:</Text>
+                                        <Text fw={700} ta="right" c="green.9">${(estimacion.precioSugerido - estimacion.costoTotal).toFixed(2)}</Text>
+                                    </Group>
+                                </Grid.Col>
+
+                                <Grid.Col span={12}><Divider my="xs" variant="dashed" /></Grid.Col>
+
                                 <Grid.Col span={7}>
-                                    <Tooltip label={`Costo Operativo ÷ (1 - Margen de Ganancia).`} position="top-start" withArrow color="green.9">
+                                    <Tooltip label={`Costo Operativo Base + ${form.values.margenGanancia}% de Margen.`} position="top-start" withArrow color="green.9">
                                         <Text size="xl" fw={900} c="green.9" style={{ cursor: 'help', borderBottom: '2px dotted #2b8a3e', display: 'inline-block' }}>TARIFA A COTIZAR:</Text>
                                     </Tooltip>
                                 </Grid.Col>
@@ -819,29 +896,6 @@ export default function FleteCreator() {
                         ) : (
                             <Box py="xl"><Text c="dimmed" ta="center">Traza la ruta para calcular.</Text></Box>
                         )}
-                    </Paper>
-
-                    <Paper withBorder p="md">
-                        <Group justify="space-between" mb="xs">
-                            <Text size="sm" fw={500}>Calidad de Repuestos a Presupuestar</Text>
-                            <Badge color={form.values.calidadRepuestos < 40 ? 'red' : form.values.calidadRepuestos < 80 ? 'blue' : 'green'}>
-                                {form.values.calidadRepuestos}%
-                            </Badge>
-                        </Group>
-                        <Divider mt="xs" mb="md" />
-                        <Box px="sm" pb="md">
-                            <Slider
-                                value={form.values.calidadRepuestos}
-                                onChange={(val) => form.setFieldValue("calidadRepuestos", val)}
-                                step={10}
-                                marks={[
-                                    { value: 0, label: 'Económico' },
-                                    { value: 50, label: 'Estándar' },
-                                    { value: 100, label: 'Original' },
-                                ]}
-                                mb="xl"
-                            />
-                        </Box>
                     </Paper>
 
                     <Button fullWidth size="xl" mt="xl" type="submit" loading={submitting} leftSection={<IconTruck size={24} />}>
