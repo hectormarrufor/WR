@@ -33,7 +33,6 @@ const ConfiguracionGlobal = sequelize.define('ConfiguracionGlobal', {
 
   // --- 3. PARÁMETROS FINANCIEROS (Módulo Posesión) ---
   tasaInteresAnual: { type: DataTypes.FLOAT, defaultValue: 5.0 }, 
-  horasAnualesOperativas: { type: DataTypes.INTEGER, defaultValue: 2000 }, 
 
  // ==========================================================
   // --- 4. NUEVOS: PARÁMETROS DE MERCADO Y OPERACIONES ---

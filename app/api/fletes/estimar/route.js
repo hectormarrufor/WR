@@ -59,13 +59,13 @@ export async function POST(req) {
             viaticoAlimentacionDia = 15,
             viaticoHotelNoche = 20,
             
-            // Variables para Prorrateo Ponderado ABC (Activity-Based Costing)
-            valorFlotaTotal = 1, // Se previene división por cero
+            // Variables para Prorrateo Ponderado ABC Puro
+            valorFlotaTotal = 1, 
             gastosFijosAnualesTotales = 0,
-            utilizacionFlotaPorcentaje = 100,
-            cantidadTotalUnidades = 1,
-            horasAnualesOperativas = 2000,
-            sueldoDiarioChofer = 25,     // <--- RECIBIMOS EL SUELDO DEL CHOFER
+            horasTotalesFlota = 1, 
+            costoAdministrativoPorHora = 0, 
+            
+            sueldoDiarioChofer = 25,
             sueldoDiarioAyudante = 15,
         } = body;
 
@@ -322,22 +322,27 @@ export async function POST(req) {
 
         const costoPosesionTotal = totalDepreciacion + totalCapital + calculoChuto.posesion + calculoBatea.posesion;
 
+       // ------------------------------------------------------------------
+        // --- 8. CÁLCULO PONDERADO DE OVERHEAD (NUEVO ABC PURO) ---
         // ------------------------------------------------------------------
-        // --- 8. CÁLCULO PONDERADO DE OVERHEAD (NUEVO ABC) ---
-        // ------------------------------------------------------------------
-        const utilizacionDecimal = utilizacionFlotaPorcentaje / 100;
+        
+        // 1. Pesos de los activos (Qué porcentaje del valor de la empresa representan)
+        const pesoChuto = valorFlotaTotal > 0 ? (valorReposicionChuto / valorFlotaTotal) : 0;
+        const pesoBatea = (batea && valorFlotaTotal > 0) ? (valorReposicionBatea / valorFlotaTotal) : 0;
 
-        // 1. Pesos de los activos respecto a la flota total
-        const pesoChuto = valorReposicionChuto / valorFlotaTotal;
-        const pesoBatea = batea ? (valorReposicionBatea / valorFlotaTotal) : 0;
+        // 2. Gasto anual real que debe absorber CADA activo (según su peso)
+        const gastoAnualChutoAsignado = gastosFijosAnualesTotales * pesoChuto;
+        const gastoAnualBateaAsignado = batea ? (gastosFijosAnualesTotales * pesoBatea) : 0;
 
-        // 2. Gasto anual que debe cubrir cada activo (ajustado por inactividad)
-        const gastoAnualChutoAsignado = (gastosFijosAnualesTotales * pesoChuto) / utilizacionDecimal;
-        const gastoAnualBateaAsignado = batea ? ((gastosFijosAnualesTotales * pesoBatea) / utilizacionDecimal) : 0;
+        // 3. Costo Overhead por HORA (Dividido entre las horas REALES asignadas a ese equipo)
+        // Extraemos las horas directas de la base de datos para ese equipo específico.
+        // Protegemos con un "|| 1" para evitar división por cero si el equipo es nuevo o está ocioso.
+        const horasRealChuto = (chuto && chuto.horasAnuales > 0) ? chuto.horasAnuales : 1;
+        const horasRealBatea = (batea && batea.horasAnuales > 0) ? batea.horasAnuales : 1;
 
-        // 3. Costo por hora
-        const overheadHoraChuto = gastoAnualChutoAsignado / horasAnualesOperativas;
-        const overheadHoraBatea = batea ? (gastoAnualBateaAsignado / horasAnualesOperativas) : 0;
+        const overheadHoraChuto = gastoAnualChutoAsignado / horasRealChuto;
+        const overheadHoraBatea = batea ? (gastoAnualBateaAsignado / horasRealBatea) : 0;
+        
         const costoEstructuraHoraPonderado = overheadHoraChuto + overheadHoraBatea;
 
         // 4. Overhead total de la misión
@@ -359,8 +364,7 @@ export async function POST(req) {
             } : null,
             flotaGlobal: {
                 valorTotal: valorFlotaTotal,
-                unidades: cantidadTotalUnidades,
-                utilizacion: utilizacionFlotaPorcentaje
+                horasSoporte: horasTotalesFlota // Refleja la suma de horas reales
             }
         };
 
@@ -431,7 +435,7 @@ export async function POST(req) {
                     nochesHotelFacturadas: nochesHotel
                 },
                 overhead: totalOverhead,
-                overheadDetalle: overheadDetalle, // <--- Aquí va el nuevo objeto detallado
+                overheadDetalle: overheadDetalle, 
                 itinerario: itinerario,
                 posesion: costoPosesionTotal,
                 posesionDetalle: {

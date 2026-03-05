@@ -24,7 +24,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     const [active, setActive] = useState(0);
     const [loading, setLoading] = useState(false);
     const [consumiblesCompatibles, setConsumiblesCompatibles] = useState([]);
-    
+
     const [tasaInteresGlobal, setTasaInteresGlobal] = useState(5.0);
 
     const form = useForm({
@@ -33,11 +33,11 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             estado: initialData?.estado || 'Operativo',
             ubicacionActual: initialData?.ubicacionActual || 'Base Principal',
             placa: initialData?.vehiculoInstancia?.placa || initialData?.remolqueInstancia?.placa || '',
-            serialCarroceria: initialData?.vehiculoInstancia?.serialChasis ||  initialData?.remolqueInstancia?.serialChasis || initialData?.maquinaInstancia?.serialChasis || '',
+            serialCarroceria: initialData?.vehiculoInstancia?.serialChasis || initialData?.remolqueInstancia?.serialChasis || initialData?.maquinaInstancia?.serialChasis || '',
             serialMotor: initialData?.vehiculoInstancia?.serialMotor || initialData?.maquinaInstancia?.serialMotor || '',
             color: initialData?.vehiculoInstancia?.color || initialData?.remolqueInstancia?.color || 'Blanco',
             imagen: initialData?.imagen || "",
-            
+
             anioFabricacion: initialData?.anio || initialData?.anioFabricacion || new Date().getFullYear(),
             kilometrajeActual: initialData?.vehiculoInstancia?.kilometrajeActual || 0,
             horometroActual: initialData?.vehiculoInstancia?.horometroActual || initialData?.maquinaInstancia?.horometroActual || 0,
@@ -148,12 +148,12 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
     }
 
     if (matriz) {
-        costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);     
-        costoHoraMatriz = parseFloat(matriz.totalCostoHora || 0); 
+        costoKmMatriz = parseFloat(matriz.totalCostoKm || 0);
+        costoHoraMatriz = parseFloat(matriz.totalCostoHora || 0);
     }
 
     // C. TOTALES SEPARADOS PARA EL FLETE (COSTO PURO)
-    const totalCostoFijoHora = costoPosesionEquipoHora + costoHoraMatriz; 
+    const totalCostoFijoHora = costoPosesionEquipoHora + costoHoraMatriz;
     const totalCostoVariableKm = costoKmMatriz;
 
     // --------------------------------------------------------
@@ -178,11 +178,11 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                 ...values,
                 anio: values.anioFabricacion,
                 capacidadTonelajeMax: values.capacidadCarga,
-                
-                costoMantenimientoTeorico: totalCostoVariableKm, 
-                costoPosesionTeorico: totalCostoFijoHora,        
-                costoPosesionHora: totalCostoFijoHora, 
-                
+
+                costoMantenimientoTeorico: totalCostoVariableKm,
+                costoPosesionTeorico: totalCostoFijoHora,
+                costoPosesionHora: totalCostoFijoHora,
+
                 usuario: nombre + ' ' + apellido,
             };
 
@@ -199,15 +199,46 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
 
             if (!isEditing) payload.modeloVehiculoId = plantilla.id;
 
-            const response = await fetch(url, { 
-                method: isEditing ? 'PUT' : 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(payload) 
+            const response = await fetch(url, {
+                method: isEditing ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
             const res = await response.json();
-            
+
             if (res.success) {
                 notifications.show({ title: 'Éxito', message: 'Guardado correctamente', color: 'green' });
+                // 2. 🔥 MAGIA FINANCIERA: Notificación de impacto en costos 🔥
+                if (res.cambiosOverhead && res.cambiosOverhead.huboCambio) {
+                    // Formateamos para que se vea bonito y claro
+                    const { horasAnteriores, horasNuevas, overheadAnterior, overheadNuevo } = res.cambiosOverhead;
+
+                    // Color dinámico: Si el overhead sube es "peligro/alerta" (naranja), si baja es "bueno" (teal)
+                    const colorAlerta = overheadNuevo > overheadAnterior ? 'orange' : 'teal';
+
+                    notifications.show({
+                        title: '📈 Impacto Financiero Detectado',
+                        message: (
+                            <div>
+                                <Text size="sm" mb="xs">El ajuste en este activo modificó tu configuración global:</Text>
+                                <Group justify="space-between" mb={4}>
+                                    <Text size="xs" c="dimmed" fw={600}>Horas Flota:</Text>
+                                    <Text size="sm" fw={700}>
+                                        {horasAnteriores} <Text span c="dimmed">➡️</Text> {horasNuevas} hrs
+                                    </Text>
+                                </Group>
+                                <Group justify="space-between">
+                                    <Text size="xs" c="dimmed" fw={600}>Nuevo Overhead:</Text>
+                                    <Text size="sm" fw={800} c={colorAlerta}>
+                                        ${overheadAnterior.toFixed(2)} <Text span c="dimmed">➡️</Text> ${overheadNuevo.toFixed(2)}/hr
+                                    </Text>
+                                </Group>
+                            </div>
+                        ),
+                        color: 'violet', // Un color corporativo para la alerta
+                        autoClose: 10000, // Dale más tiempo para que el usuario pueda leerlo
+                    });
+                }
                 router.push(isEditing ? `/superuser/flota/activos/${initialData.id}` : '/superuser/flota/activos');
             } else throw new Error(res.error || 'Error en el servidor');
 
@@ -227,13 +258,13 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                             <TextInput label="Código Interno" required {...form.getInputProps('codigoInterno')} />
                             <Select label="Estado" data={['Operativo', 'En Mantenimiento', 'Inactivo']} {...form.getInputProps('estado')} />
                             <TextInput label="Ubicación" {...form.getInputProps('ubicacionActual')} />
-                            <NumberInput 
-                                label="Tara / Peso Real Vacío (Tons)" 
+                            <NumberInput
+                                label="Tara / Peso Real Vacío (Tons)"
                                 description="Si queda en blanco, usará el peso de fábrica (Plantilla)"
                                 decimalScale={2}
-                                {...form.getInputProps('tara')} 
+                                {...form.getInputProps('tara')}
                             />
-                                <NumberInput
+                            <NumberInput
                                 label="Capacidad de Carga (Tons)"
                                 description="Solo para vehículos y remolques. Si queda en blanco, usará la capacidad de fábrica"
                                 decimalScale={2}
@@ -256,9 +287,9 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                     </SimpleGrid>
                 </Stepper.Step>
 
-            <Stepper.Step label="Financiero" description="Asignación y Costos" icon={<IconCoin size={18} />}>
+                <Stepper.Step label="Financiero" description="Asignación y Costos" icon={<IconCoin size={18} />}>
                     <SimpleGrid cols={{ base: 1, sm: 2 }} mt="md" spacing="xl">
-                        
+
                         <Stack>
                             <Paper withBorder p="md" radius="md">
                                 <Title order={5} mb="sm" c="blue.9">1. Asociación a Matriz</Title>
@@ -282,17 +313,17 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                     <NumberInput required label="Salvamento ($)" prefix="$" thousandSeparator {...form.getInputProps('valorSalvamento')} />
                                 </Group>
                                 <Divider my="sm" variant="dashed" />
-                                <NumberInput 
-                                    required 
-                                    label="Horas Anuales Estimadas de Trabajo" 
+                                <NumberInput
+                                    required
+                                    label="Horas Anuales Estimadas de Trabajo"
                                     description="Se utiliza para prorratear el costo de depreciación y seguros por hora."
-                                    {...form.getInputProps('horasAnuales')} 
+                                    {...form.getInputProps('horasAnuales')}
                                 />
                             </Paper>
 
                             <Accordion variant="contained" radius="md" defaultValue="calculo">
                                 <Accordion.Item value="calculo" style={{ backgroundColor: '#f8f9fa' }}>
-                                    <Accordion.Control icon={<IconCalculator size={20} color="gray"/>}>
+                                    <Accordion.Control icon={<IconCalculator size={20} color="gray" />}>
                                         <Group gap="lg">
                                             <Badge size="lg" color="teal" variant="light">Costo Fijo: ${totalCostoFijoHora.toFixed(2)}/hr</Badge>
                                             <Badge size="lg" color="orange" variant="light">Costo Var: ${totalCostoVariableKm.toFixed(2)}/km</Badge>
@@ -338,7 +369,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
 
                                             <Box>
                                                 <Divider label="B. COSTOS VARIABLES (Por Rodamiento)" labelPosition="left" color="orange.3" mb="xs" />
-                                                
+
                                                 <Group justify="space-between" align="flex-start" wrap="nowrap">
                                                     <Box>
                                                         <Text size="sm" fw={600}>Mantenimiento (Llantas, Aceites, Repuestos):</Text>

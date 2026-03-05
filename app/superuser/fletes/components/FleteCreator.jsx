@@ -198,12 +198,11 @@ export default function FleteCreator() {
                     viaticoAlimentacionDia: parseFloat(configGlobal.viaticoAlimentacionDia || 15),
                     viaticoHotelNoche: parseFloat(configGlobal.viaticoHotelNoche || 20),
                     
-                    // 🔥 4. ENVIAMOS TODAS LAS VARIABLES DEL COSTEO PONDERADO ABC
+                  // 🔥 4. ENVIAMOS TODAS LAS VARIABLES DEL COSTEO PONDERADO ABC
                     valorFlotaTotal: parseFloat(configGlobal.valorFlotaTotal || 1),
                     gastosFijosAnualesTotales: parseFloat(configGlobal.gastosFijosAnualesTotales || 0),
-                    utilizacionFlotaPorcentaje: parseFloat(configGlobal.utilizacionFlotaPorcentaje || 100),
-                    cantidadTotalUnidades: parseInt(configGlobal.cantidadTotalUnidades || 1),
-                    horasAnualesOperativas: parseInt(configGlobal.horasAnualesOperativas || 2000)
+                    horasTotalesFlota: parseInt(configGlobal.horasTotalesFlota || 1),
+                    costoAdministrativoPorHora: parseFloat(configGlobal.costoAdministrativoPorHora || 0),
                 }),
             });
 
@@ -511,54 +510,7 @@ export default function FleteCreator() {
                         </SimpleGrid>
                     )}
 
-                    {/* <Paper withBorder p="md" mt="md" mb="md">
-                        <Group justify="space-between" mb="xs">
-                            <Text size="sm" fw={500}>Calidad de Repuestos a Presupuestar</Text>
-                            <Badge color={form.values.calidadRepuestos < 40 ? 'red' : form.values.calidadRepuestos < 80 ? 'blue' : 'green'}>
-                                {form.values.calidadRepuestos}%
-                            </Badge>
-                        </Group>
-                        <Box px="sm" pb="md">
-                            <Slider
-                                value={form.values.calidadRepuestos}
-                                onChange={(val) => form.setFieldValue("calidadRepuestos", val)}
-                                step={10}
-                                marks={[
-                                    { value: 0, label: 'Económico' },
-                                    { value: 50, label: 'Estándar' },
-                                    { value: 100, label: 'Original' },
-                                ]}
-                            />
-                        </Box>
-                    </Paper> */}
-
-                    {/* 🔥 NUEVO SLIDER DE RENTABILIDAD / GANANCIA 🔥 */}
-                    {/* <Paper withBorder p="md" bg="green.0" radius="md" mb="md">
-                        <Group justify="space-between" mb="sm">
-                            <Group gap="xs">
-                                <IconChartLine size={20} color="green" />
-                                <Text fw={700} c="green.9">Margen de Ganancia Comercial</Text>
-                            </Group>
-                            <Badge size="lg" color="green" variant="filled">{form.values.margenGanancia}%</Badge>
-                        </Group>
-                        <Text size="xs" c="dimmed" mb="md">Se calcula sobre el Costo Operativo Total (Break-even). Define tu beneficio neto.</Text>
-                        <Box px="sm" pb="xs">
-                            <Slider
-                                value={form.values.margenGanancia}
-                                onChange={(val) => form.setFieldValue("margenGanancia", val)}
-                                step={1} min={0} max={100}
-                                color="green"
-                                marks={[
-                                    { value: 10, label: '10%' },
-                                    { value: 30, label: '30%' },
-                                    { value: 50, label: '50%' },
-                                    { value: 100, label: '100%' }
-                                ]}
-                            />
-                        </Box>
-                    </Paper>  */}
-
-                    <Paper withBorder p="md" bg="blue.0" radius="md">
+                    <Paper withBorder p="md" bg="blue.0" radius="md" mt="md">
 
                         <Group>
                             <IconCalculator size={24} color="#1c7ed6" />
@@ -674,7 +626,7 @@ export default function FleteCreator() {
                                                                     <Table.Td></Table.Td>
                                                                     <Table.Td style={{ fontSize: '0.8rem' }} ta="right" c="dimmed">
                                                                         ${estimacion.breakdown.nominaDetalle.pagoAyudanteRuta.toFixed(2)}
-                                                                    </Table.Td>
+                                                                </Table.Td>
                                                                 </Table.Tr>
                                                             )}
                                                         </>
@@ -712,102 +664,52 @@ export default function FleteCreator() {
                                                                     <Table.Td></Table.Td>
                                                                     <Table.Td style={{ fontSize: '0.8rem' }} ta="right" c="dimmed">
                                                                         ${estimacion.breakdown.viaticosDetalle.pernocta.toFixed(2)}
-                                                                    </Table.Td>
+                                                                </Table.Td>
                                                                 </Table.Tr>
                                                             )}
                                                         </>
                                                     )}
 
-                                                    {/* 4. PEAJES (Sin desglose, no es clickeable) */}
+                                                    {/* 4. PEAJES */}
                                                     <Table.Tr>
                                                         <Table.Td fw={700}>
-                                                            <Text span mr={5} c="transparent">▶</Text> {/* Espacio fantasma para alinear */}
+                                                            <Text span mr={5} c="transparent">▶</Text>
                                                             🚧 Peajes y Tasas
                                                         </Table.Td>
                                                         <Table.Td><Badge color="blue" size="xs">Vialidad</Badge></Table.Td>
                                                         <Table.Td fw={700} ta="right">${estimacion.breakdown.peajes.toFixed(2)}</Table.Td>
                                                     </Table.Tr>
 
-                                                    {/* 5. OVERHEAD / ESTRUCTURA */}
-                                                    {estimacion?.breakdown?.overhead > 0 && configGlobal && (
-                                                        <>
-                                                            <Table.Tr
-                                                                onClick={() => toggleSection('overhead')}
-                                                                style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
-                                                                bg={expandedSections.overhead ? "violet.0" : undefined}
+                                                    {/* FILA DEL TOOLTIP EXPLICATIVO (NUEVO MODELO ABC) */}
+                                                    <Table.Tr>
+                                                        <Table.Td pl="xl" c="red.7" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                ↳ ⚠️ Base Prorrateo ABC ({Number(configGlobal.horasTotalesFlota || 0).toLocaleString()} hrs/año)
+                                                                <Tooltip
+                                                                    multiline
+                                                                    w={280}
+                                                                    withArrow
+                                                                    position="top-start"
+                                                                    label={`Los gastos fijos se están dividiendo entre las ${Number(configGlobal.horasTotalesFlota || 0).toLocaleString()} horas operativas reales de la flota activa. Los equipos ociosos (0 horas) no diluyen este costo, protegiendo tu rentabilidad.`}
+                                                                >
+                                                                    <IconInfoCircle size={14} style={{ cursor: 'help', color: 'gray' }} />
+                                                                </Tooltip>
+                                                            </div> 
+                                                        </Table.Td>
+                                                        <Table.Td></Table.Td>
+                                                        <Table.Td ta="right" style={{ fontSize: '0.8rem' }} fw={700} c="violet.9">
+                                                            <Tooltip
+                                                                withArrow
+                                                                position="top-end"
+                                                                label="Fórmula: (Gastos Fijos de la Empresa) ÷ (Horas Totales Activas)"
                                                             >
-                                                                <Table.Td fw={700}>
-                                                                    <Text span mr={5} c="dimmed">{expandedSections.overhead ? '▼' : '▶'}</Text>
-                                                                    🏢 Estructura Administrativa
-                                                                </Table.Td>
-                                                                <Table.Td><Badge color="violet" size="xs">Gestión</Badge></Table.Td>
-                                                                <Table.Td fw={700} ta="right">${estimacion.breakdown.overhead.toFixed(2)}</Table.Td>
-                                                            </Table.Tr>
-                                                            {expandedSections.overhead && (
-                                                                <>
-                                                                    <Table.Tr>
-                                                                        <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
-                                                                            ↳ 👥 Nómina Fija (Admin/Mec/Vigilancia)
-                                                                        </Table.Td>
-                                                                        <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
-                                                                        <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">
-                                                                            ${((Number(configGlobal.nominaAdministrativaTotal) || 0) + (Number(configGlobal.nominaOperativaFijaTotal) || 0) + ((Number(configGlobal.sueldoMensualVigilante) || 0) * (Number(configGlobal.cantidadVigilantes) || 0))).toLocaleString()} / mes
-                                                                        </Table.Td>
-                                                                    </Table.Tr>
-                                                                    <Table.Tr>
-                                                                        <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
-                                                                            ↳ 📡 Servicios (Oficina, CCTV, Satelital)
-                                                                        </Table.Td>
-                                                                        <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
-                                                                        <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">
-                                                                            ${((Number(configGlobal.gastosOficinaMensual) || 0) + (Number(configGlobal.costoMonitoreoSatelital) || 0)).toLocaleString()} / mes
-                                                                        </Table.Td>
-                                                                    </Table.Tr>
-                                                                    {configGlobal.gastosFijos?.length > 0 && (
-                                                                        <Table.Tr>
-                                                                            <Table.Td pl="xl" c="dimmed" style={{ fontSize: '0.8rem', borderBottom: 'none', paddingBottom: 2 }}>
-                                                                                ↳ 📄 Gastos Anuales (ROTC, RCV, Permisos)
-                                                                            </Table.Td>
-                                                                            <Table.Td style={{ borderBottom: 'none' }}></Table.Td>
-                                                                            <Table.Td style={{ borderBottom: 'none', fontSize: '0.8rem' }} ta="right" c="dimmed">
-                                                                                ${configGlobal.gastosFijos.reduce((acc, g) => acc + g.montoAnual, 0).toLocaleString()} / año
-                                                                            </Table.Td>
-                                                                        </Table.Tr>
-                                                                    )}
+                                                                <span style={{ cursor: 'help', borderBottom: '1px dashed #ced4da' }}>
+                                                                    ${Number(configGlobal.costoAdministrativoPorHora).toFixed(2)} / hr
+                                                                </span>
+                                                            </Tooltip>
+                                                        </Table.Td>
+                                                    </Table.Tr>
 
-                                                                    {/* FILA DEL TOOLTIP EXPLICATIVO */}
-                                                                    <Table.Tr>
-                                                                        <Table.Td pl="xl" c="red.7" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
-                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                                ↳ ⚠️ Factor Capacidad Ociosa ({configGlobal.utilizacionFlotaPorcentaje}%)
-                                                                                <Tooltip
-                                                                                    multiline
-                                                                                    w={280}
-                                                                                    withArrow
-                                                                                    position="top-start"
-                                                                                    label={`Al operar tu flota solo al ${configGlobal.utilizacionFlotaPorcentaje}%, estas pocas horas de viaje deben cargar con todos los gastos fijos del mes (Nómina + Servicios + Gastos Anuales) para que la empresa no pierda dinero.`}
-                                                                                >
-                                                                                    <IconInfoCircle size={14} style={{ cursor: 'help', color: 'gray' }} />
-                                                                                </Tooltip>
-                                                                            </div> 
-                                                                        </Table.Td>
-                                                                        <Table.Td></Table.Td>
-                                                                        <Table.Td ta="right" style={{ fontSize: '0.8rem' }} fw={700} c="violet.9">
-                                                                            <Tooltip
-                                                                                withArrow
-                                                                                position="top-end"
-                                                                                label="Fórmula: (Total Gastos Fijos Mensuales) ÷ (Total de Horas Productivas de la Flota al Mes)"
-                                                                            >
-                                                                                <span style={{ cursor: 'help', borderBottom: '1px dashed #ced4da' }}>
-                                                                                    ${Number(configGlobal.costoAdministrativoPorHora).toFixed(2)} / hr
-                                                                                </span>
-                                                                            </Tooltip>
-                                                                        </Table.Td>
-                                                                    </Table.Tr>
-                                                                </>
-                                                            )}
-                                                        </>
-                                                    )}
                                                     {/* 6. MANTENIMIENTO */}
                                                     <Table.Tr
                                                         onClick={() => toggleSection('mantenimiento')}
@@ -900,56 +802,6 @@ export default function FleteCreator() {
                             <Center py="xl"><Loader /></Center>
                         ) : estimacion ? (
                             <Grid gutter="sm" align="center">
-                                {/* --- DESGLOSE DE COSTOS OPERATIVOS (TUS DETALLES ORIGINALES) --- */}
-                                {/* <Grid.Col span={8}>
-                                    <Tooltip
-                                        label={
-                                            estimacion?.breakdown?.combustibleDetalle ? (
-                                                <Box p={5}>
-                                                    <Text size="xs">🛣️ Distancia plana: <b>{estimacion.breakdown.combustibleDetalle.baseDistancia.toFixed(1)} Lts</b></Text>
-                                                    <Text size="xs">⚖️ Esfuerzo por peso: <Text span c="orange" fw={700}>+{estimacion.breakdown.combustibleDetalle.extraPeso.toFixed(1)} Lts</Text></Text>
-                                                    {estimacion.breakdown.combustibleDetalle.extraElevacion > 0 && (
-                                                        <Text size="xs">⛰️ Esfuerzo en subidas: <Text span c="red.4" fw={700}>+{estimacion.breakdown.combustibleDetalle.extraElevacion.toFixed(1)} Lts</Text></Text>
-                                                    )}
-                                                </Box>
-                                            ) : "Calculando..."
-                                        }
-                                        position="top-start" withArrow color="dark"
-                                    >
-                                        <Text size="sm" style={{ cursor: 'help', borderBottom: '1px dashed #ccc', display: 'inline-block' }}>Combustible (Desglose Físico):</Text>
-                                    </Tooltip>
-                                    <Text size="xs" c="dimmed">Basado en {form.values.tramos.length} tramos</Text>
-                                </Grid.Col>
-                                <Grid.Col span={4}>
-                                    <Group justify="flex-end" gap="xs">
-                                        <Badge size="xs" color="gray" variant="outline">{(estimacion.breakdown.litros || 0).toFixed(0)} Lts</Badge>
-                                        <Text size="sm" ta="right" fw={500}>${estimacion.breakdown.combustible.toFixed(2)}</Text>
-                                    </Group>
-                                </Grid.Col>
-
-                                <Grid.Col span={8}>
-                                    <Text size="sm">Nómina Operadores + Viáticos:</Text>
-                                </Grid.Col>
-                                <Grid.Col span={4}>
-                                    <Text size="sm" ta="right" fw={500}>${(estimacion.breakdown.nomina + estimacion.breakdown.viaticos).toFixed(2)}</Text>
-                                </Grid.Col>
-
-                                <Grid.Col span={8}>
-                                    <Text size="sm">Peajes:</Text>
-                                </Grid.Col>
-                                <Grid.Col span={4}>
-                                    <Text size="sm" ta="right" fw={500}>${estimacion.breakdown.peajes.toFixed(2)}</Text>
-                                </Grid.Col>
-
-                                <Grid.Col span={8}>
-                                    <Text size="sm">Desgaste y Posesión (Mantenimiento):</Text>
-                                </Grid.Col>
-                                <Grid.Col span={4}>
-                                    <Text size="sm" ta="right" fw={500}>${(estimacion.breakdown.mantenimiento + estimacion.breakdown.posesion).toFixed(2)}</Text>
-                                </Grid.Col>
-
-                                <Grid.Col span={12}><Divider my="xs" /></Grid.Col> */}
-
                                 {/* --- CONTROLES ESTRATÉGICOS (SLIDERS) --- */}
                                 <Grid.Col span={12}>
                                     <Paper withBorder pb="xl" mt={10} radius="md" shadow="xs" bg="green.0">

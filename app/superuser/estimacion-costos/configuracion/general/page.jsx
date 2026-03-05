@@ -7,7 +7,7 @@ import {
     Table, ActionIcon, TextInput, Badge, ScrollArea
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconShieldLock, IconGasStation, IconSettings, IconInfoCircle, IconTrash, IconPlus, IconBuildingBank, IconBriefcase, IconTruck } from '@tabler/icons-react';
+import { IconShieldLock, IconGasStation, IconSettings, IconInfoCircle, IconTrash, IconPlus, IconBuildingBank, IconBriefcase, IconTruck, IconUsers } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
 export default function ConfiguracionGlobalPage() {
@@ -21,46 +21,34 @@ export default function ConfiguracionGlobalPage() {
             precioPeajePromedio: 20.00,
             viaticoAlimentacionDia: 15.00,
             viaticoHotelNoche: 20.00,
-            
-            // 🔥 NUEVOS: Sueldos Diarios Operativos 🔥
             sueldoDiarioChofer: 25.00,
             sueldoDiarioAyudante: 15.00,
 
             precioAceiteMotorMin: 7.50, precioAceiteMotorMax: 9.50,
             precioAceiteCajaMin: 10.00, precioAceiteCajaMax: 12.00,
-            precioCauchoMin: 350.00,
-            precioCauchoMax: 450.00,
+            precioCauchoMin: 350.00, precioCauchoMax: 450.00,
             precioBateriaMin: 150.00, precioBateriaMax: 210.00,
 
-            // Módulo Fijos Mensuales
+            // Gastos Fijos (Solo los manuales)
             gastosOficinaMensual: 500,
             pagosGestoriaPermisos: 200,
-            nominaAdministrativaTotal: 1500,
-            nominaOperativaFijaTotal: 2000,
 
-            // Módulo Flota (Manuales y Automáticos)
-            cantidadMaquinariaPesada: 18,
-            cantidadTransportePesado: 15,
-            horasAnualesOperativas: 2000,
-            utilizacionFlotaPorcentaje: 30,
-            
-            // 🔥 NUEVOS: Variables de solo lectura calculadas por el backend 🔥
+            // 🔥 VALORES AUTOMÁTICOS (Solo lectura) 🔥
+            nominaAdministrativaTotal: 0,
+            nominaOperativaFijaTotal: 0,
             valorFlotaTotal: 0,
             cantidadTotalUnidades: 0,
+            horasTotalesFlota: 0,
+            costoAdministrativoPorHora: 0,
 
             // Módulo Resguardo
             cantidadVigilantes: 4,
             sueldoMensualVigilante: 250,
-            horasDiurnas: 12,
-            horasNocturnas: 12,
-            diasGuardia: 6,
-            diasDescanso: 1,
+            horasDiurnas: 12, horasNocturnas: 12,
+            diasGuardia: 6, diasDescanso: 1,
             factorHoraNocturna: 1.35,
             costoSistemaCCTV: 50,
             costoMonitoreoSatelital: 100,
-
-            // Módulo Financiero
-            tasaInteresAnual: 5.0,
         }
     });
 
@@ -79,47 +67,41 @@ export default function ConfiguracionGlobalPage() {
             } finally { setLoading(false); }
         };
         load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // =========================================================================
-    // 🔥 CÁLCULOS EN TIEMPO REAL (EXTRACCIÓN LIMPIA DE VARIABLES) 🔥
+    // 🔥 CÁLCULOS EN TIEMPO REAL PARA VISUALIZACIÓN 🔥
     // =========================================================================
-    
-    // 1. Extraemos los valores garantizando que sean números
-    const oficina = Number(form.values.gastosOficinaMensual) || 0;
-    const gestoria = Number(form.values.pagosGestoriaPermisos) || 0;
-    const nominaAdmin = Number(form.values.nominaAdministrativaTotal) || 0;
-    const nominaOpe = Number(form.values.nominaOperativaFijaTotal) || 0;
-    
+
+    // 1. Gastos de Estructura Mensual
+    const oficinaMensual = Number(form.values.gastosOficinaMensual) || 0;
+    const gestoriaMensual = Number(form.values.pagosGestoriaPermisos) || 0;
+
+    // 2. Resguardo Mensual
     const cantVigilantes = Number(form.values.cantidadVigilantes) || 0;
     const sueldoVigilante = Number(form.values.sueldoMensualVigilante) || 0;
-    const costoCCTV = Number(form.values.costoSistemaCCTV) || 0;
-    const costoSatelital = Number(form.values.costoMonitoreoSatelital) || 0;
-
-    // 2. Cálculo Mensual y Anual Estático
     const costoVigilancia = cantVigilantes * sueldoVigilante;
-    const mensualResguardo = costoVigilancia + costoCCTV + costoSatelital;
-    
-    const mensualEstatico = oficina + gestoria + nominaAdmin + nominaOpe + mensualResguardo;
-    const anualEstatico = mensualEstatico * 12;
+    const mensualResguardo = costoVigilancia + (Number(form.values.costoSistemaCCTV) || 0) + (Number(form.values.costoMonitoreoSatelital) || 0);
 
-    // 3. Gastos Dinámicos Anuales
+    // 3. Nóminas Automáticas Mensuales
+    const nominaAdminMensual = Number(form.values.nominaAdministrativaTotal) || 0;
+    const nominaOpeMensual = Number(form.values.nominaOperativaFijaTotal) || 0;
+
+    // 🔥 Llevamos todo a su proyección ANUAL 🔥
+    const estructuraAnual = (oficinaMensual + gestoriaMensual + mensualResguardo) * 12;
+    const nominaAdminAnual = nominaAdminMensual * 12;
+    const nominaOpeAnual = nominaOpeMensual * 12;
+
+    // 4. Gastos Dinámicos Anuales (Pólizas, RACDA, etc)
     const anualDinamico = gastosFijos.reduce((sum, g) => sum + (Number(g.montoAnual) || 0), 0);
 
-    // 4. GRAN TOTAL ADMINISTRATIVO
-    const granTotalAnual = anualEstatico + anualDinamico;
-    
-    // 5. Prorrateo Overhead Global (Referencia rápida)
-    // Ahora le damos prioridad a las unidades reales de la base de datos
-    const flotaTotal = Number(form.values.cantidadTotalUnidades) || (Number(form.values.cantidadMaquinariaPesada) + Number(form.values.cantidadTransportePesado));
-    
-    const porcentajeUtilizacion = (Number(form.values.utilizacionFlotaPorcentaje) || 100) / 100;
-    const flotaActiva = flotaTotal * porcentajeUtilizacion;
-    
-    const horasAnuales = Number(form.values.horasAnualesOperativas) || 2000;
-    const horasTotalesFlotaAnual = flotaActiva > 0 ? (flotaActiva * horasAnuales) : 1;
-    
-    const overheadPorHoraReferencia = granTotalAnual / horasTotalesFlotaAnual;
+    // 🔥 GRAN TOTAL ANUAL DE LA EMPRESA 🔥
+    const granTotalAnual = estructuraAnual + nominaAdminAnual + nominaOpeAnual + anualDinamico;
+
+    // Prorrateo Overhead Global
+    const horasTotales = Number(form.values.horasTotalesFlota) || 1; // Evitar dividir por cero
+    const overheadPorHoraReferencia = granTotalAnual / horasTotales;
 
     // =========================================================================
 
@@ -135,6 +117,8 @@ export default function ConfiguracionGlobalPage() {
 
             if (res.ok) {
                 notifications.show({ title: 'Éxito', message: 'Configuración guardada y matrices actualizadas', color: 'green' });
+                // Actualizamos las horas y nómina por si hubo cambios en backend
+                form.setFieldValue('costoAdministrativoPorHora', data.overheadCalculado);
             } else {
                 throw new Error(data.error);
             }
@@ -149,7 +133,7 @@ export default function ConfiguracionGlobalPage() {
                 <ThemeIcon size={40} radius="md" color="blue"><IconSettings /></ThemeIcon>
                 <div>
                     <Title order={2}>Configuración Maestra DADICA</Title>
-                    <Text c="dimmed">Parámetros globales para cálculo de fletes y actualización en lote de matrices.</Text>
+                    <Text c="dimmed">Parámetros globales, nómina automática y actualización de matrices.</Text>
                 </div>
             </Group>
 
@@ -170,11 +154,10 @@ export default function ConfiguracionGlobalPage() {
                             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mb="xl">
                                 <NumberInput label="Precio Gasoil (Litro)" prefix="$" decimalScale={3} {...form.getInputProps('precioGasoil')} />
                                 <NumberInput label="Peaje Promedio" prefix="$" decimalScale={2} {...form.getInputProps('precioPeajePromedio')} />
-                                
-                                {/* 🔥 SECCIÓN NÓMINA DINÁMICA DE RUTA 🔥 */}
+
                                 <NumberInput label="Sueldo Diario Chofer" description="Tarifa plana por día de viaje" prefix="$" decimalScale={2} {...form.getInputProps('sueldoDiarioChofer')} />
                                 <NumberInput label="Sueldo Diario Ayudante" description="Tarifa plana por día de viaje" prefix="$" decimalScale={2} {...form.getInputProps('sueldoDiarioAyudante')} />
-                                
+
                                 <NumberInput label="Viático Comida (Día)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoAlimentacionDia')} />
                                 <NumberInput label="Viático Hotel (Noche)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoHotelNoche')} />
                             </SimpleGrid>
@@ -192,7 +175,7 @@ export default function ConfiguracionGlobalPage() {
                                 </Table.Thead>
                                 <Table.Tbody>
                                     {[
-                                        { label: 'Cauchos Flota (Chutos, Bateas, Vacuums)', min: 'precioCauchoMin', max: 'precioCauchoMax' },
+                                        { label: 'Cauchos Flota', min: 'precioCauchoMin', max: 'precioCauchoMax' },
                                         { label: 'Aceite Motor (Litro)', min: 'precioAceiteMotorMin', max: 'precioAceiteMotorMax' },
                                         { label: 'Aceite Caja (Litro)', min: 'precioAceiteCajaMin', max: 'precioAceiteCajaMax' },
                                         { label: 'Batería 1100 Amp', min: 'precioBateriaMin', max: 'precioBateriaMax' },
@@ -213,12 +196,35 @@ export default function ConfiguracionGlobalPage() {
 
                         {/* TAB 2: GASTOS FIJOS MENSUALES */}
                         <Tabs.Panel value="fijos">
-                            <Alert icon={<IconInfoCircle size={16} />} color="blue" mb="md">Estos son los gastos rutinarios base. Se multiplicarán por 12 para el cálculo anual.</Alert>
                             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+                                {/* Campos Manuales */}
                                 <NumberInput label="Gastos Oficina Mensual" description="Alquiler, Luz, Internet" prefix="$" {...form.getInputProps('gastosOficinaMensual')} />
                                 <NumberInput label="Gestoría y Permisos Base" description="Gestor, Trámites regulares" prefix="$" {...form.getInputProps('pagosGestoriaPermisos')} />
-                                <NumberInput label="Nómina Administrativa" description="Gerentes, Secretarias, Contables" prefix="$" {...form.getInputProps('nominaAdministrativaTotal')} />
-                                <NumberInput label="Nómina Operativa Fija" description="Mecánicos de planta (no choferes)" prefix="$" {...form.getInputProps('nominaOperativaFijaTotal')} />
+
+                                {/* Campos Automáticos (Solo Lectura) */}
+                                <Paper p="sm" radius="md" bg="gray.0" withBorder>
+                                    <Group>
+                                        <ThemeIcon color="violet" variant="light"><IconUsers size={20} /></ThemeIcon>
+                                        <div style={{ flex: 1 }}>
+                                            <Text size="sm" fw={600}>Nómina Administrativa (Auto)</Text>
+                                            <Text size="xs" c="dimmed">Presidencia, IT, Administración</Text>
+                                        </div>
+                                        {/* 🔥 AQUÍ ESTABA EL ERROR: Actualizado a nominaAdminMensual 🔥 */}
+                                        <Text fw={800} size="lg" c="violet.9">${nominaAdminMensual.toLocaleString('en-US')}</Text>
+                                    </Group>
+                                </Paper>
+
+                                <Paper p="sm" radius="md" bg="gray.0" withBorder>
+                                    <Group>
+                                        <ThemeIcon color="teal" variant="light"><IconSettings size={20} /></ThemeIcon>
+                                        <div style={{ flex: 1 }}>
+                                            <Text size="sm" fw={600}>Nómina Operativa Fija (Auto)</Text>
+                                            <Text size="xs" c="dimmed">Mecánicos, Taller, Logística</Text>
+                                        </div>
+                                        {/* 🔥 Y AQUÍ: Actualizado a nominaOpeMensual 🔥 */}
+                                        <Text fw={800} size="lg" c="teal.9">${nominaOpeMensual.toLocaleString('en-US')}</Text>
+                                    </Group>
+                                </Paper>
                             </SimpleGrid>
                         </Tabs.Panel>
 
@@ -272,46 +278,46 @@ export default function ConfiguracionGlobalPage() {
 
                     <Divider my="xl" />
 
-                    {/* 🔥 PANEL INFORMATIVO DE OVERHEAD, CAPACIDAD OCIOSA Y VALOR DE FLOTA 🔥 */}
+                    {/* 🔥 PANEL INFORMATIVO (BOTTOM-UP EXACTO) 🔥 */}
                     <Paper bg="gray.0" p="md" radius="md" withBorder mb="lg">
                         <Grid align="center">
                             <Grid.Col span={{ base: 12, md: 5 }}>
-                                <Group grow>
-                                    <NumberInput label="Tasa de Utilización de la Flota (%)" 
-                                        description="¿Qué porcentaje de la flota sale a trabajar?"
-                                        c="orange.9" fw={700} suffix="%" min={1} max={100}
-                                        {...form.getInputProps('utilizacionFlotaPorcentaje')} 
-                                    />
-                                    <NumberInput label="Horas Operativas Anuales" 
-                                        description="Por equipo activo al año"
-                                        {...form.getInputProps('horasAnualesOperativas')} 
-                                    />
-                                </Group>
-                                
-                                <Alert icon={<IconTruck size={16} />} color="blue" mt="md" variant="light" p="xs">
-                                    <Text size="xs">
-                                        Ahora usamos <b>Costeo Basado en Actividades (ABC)</b>. Cada camión absorbe gastos fijos según su peso sobre el <b>Valor Total de la Flota</b>.
+                                <Alert icon={<IconTruck size={16} />} color="blue" variant="light" p="md">
+                                    <Title order={5} mb="xs">Sistema de Costeo (ABC)</Title>
+                                    <Text size="sm">
+                                        El overhead se calcula dividiendo los gastos totales de la empresa (Oficina, Resguardo y <b>Nóminas Fijas Anualizadas</b>) entre la sumatoria de las <b>Horas Anuales Estimadas</b> de los equipos.
                                     </Text>
                                 </Alert>
                             </Grid.Col>
-                            
+
                             <Grid.Col span={{ base: 12, md: 7 }}>
                                 <Group justify="flex-end" gap="xl">
-                                    {/* SECCIÓN DEL VALOR DE LA FLOTA AUTOMÁTICA */}
+                                    {/* SECCIÓN HORAS Y VALOR DE FLOTA */}
                                     <div style={{ textAlign: 'right', paddingRight: '15px', borderRight: '1px solid #dee2e6' }}>
-                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Unidades Detectadas</Text>
-                                        <Text size="lg" fw={800} c="blue.9">{form.values.cantidadTotalUnidades || 0}</Text>
-                                        
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Horas Totales Activas</Text>
+                                        <Text size="lg" fw={800} c="indigo.9">{form.values.horasTotalesFlota.toLocaleString('en-US')} hr/año</Text>
+
                                         <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="sm">Valor Total Flota (USD)</Text>
                                         <Text size="xl" fw={900} c="blue.9">${Number(form.values.valorFlotaTotal || 0).toLocaleString('en-US')}</Text>
                                     </div>
 
-                                    {/* SECCIÓN DE GASTOS ADMINISTRATIVOS Y OVERHEAD */}
+                                    {/* SECCIÓN OVERHEAD CON DESGLOSE */}
                                     <div style={{ textAlign: 'right' }}>
-                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Gastos Admin. Anuales</Text>
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Estructura + Resguardo</Text>
+                                        <Text size="sm" fw={600}>${(estructuraAnual + anualDinamico).toLocaleString('en-US')} / año</Text>
+
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="xs">Nóminas (Admin + Operativa)</Text>
+                                        {/* Si la nómina viene en 0, se pondrá en rojo para alertarte */}
+                                        <Text size="sm" fw={700} c={(nominaAdminAnual + nominaOpeAnual) > 0 ? "teal.7" : "red.6"}>
+                                            + ${(nominaAdminAnual + nominaOpeAnual).toLocaleString('en-US')} / año
+                                        </Text>
+
+                                        <Divider my="sm" />
+
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Gasto Total Empresa</Text>
                                         <Text size="lg" fw={800}>${granTotalAnual.toLocaleString('en-US')}</Text>
 
-                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="sm">Ref. Overhead Global Promedio</Text>
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="sm">Overhead Aplicable</Text>
                                         <Badge size="xl" color="violet" variant="filled">
                                             + ${overheadPorHoraReferencia.toFixed(2)} / Hora
                                         </Badge>
@@ -320,7 +326,7 @@ export default function ConfiguracionGlobalPage() {
                             </Grid.Col>
                         </Grid>
                     </Paper>
-                    
+
                     <Group justify="flex-end">
                         <Button size="lg" type="submit" color="teal" leftSection={<IconSettings size={20} />}>
                             Guardar y Aplicar Batch a Flota

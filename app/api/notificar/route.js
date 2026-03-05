@@ -217,6 +217,42 @@ export async function crearSinNotificar(data) {
     }
 }
 
+export async function notificarSinGuardarEnDB(data) {
+    try {
+        // Solo enviamos push, no guardamos nada en BD
+        
+        const payloadPush = JSON.stringify({
+            title: data.title,
+            body: data.body,
+            url: data.url,
+            icon: "/icons/icon-192x192.png",
+            badge: "/icons/android-launchericon-96-96.png",
+            tag: `notif-temp-${Date.now()}`,
+            data: { timestamp: new Date().toLocaleString('es-VE', { timeZone: 'America/Caracas' }) }
+        });
+        // Aquí podrías agregar lógica para filtrar a quién enviar, similar a la función maestra, pero sin guardar en BD.
+        // Por simplicidad, vamos a enviar a todos los suscriptores activos (¡Ten cuidado con esto en producción!)
+        const subscripciones = await PushSubscription.findOne({ where: { usuarioId: 1 } });
+        const promesas = subscripciones.map(async (sub) => {
+            try {
+                await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payloadPush);
+            } catch (err) {
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                    await sub.destroy(); // Limpieza automática
+                } else {
+                    console.error(`Error push usuario ${sub.usuarioId}:`, err.message);
+                }
+            }
+        });
+        await Promise.all(promesas);
+        return NextResponse.json({ success: true, mensaje: "Notificación enviada sin guardar en BD." });
+
+    } catch (error) {
+        console.error("Error notificando sin guardar en DB:", error);
+        throw error;
+    }
+}
+
 
 // =====================================================================
 // 3. WRAPPERS CON "TRUCO" (Mapeo Manual)
@@ -309,3 +345,10 @@ export async function notificarTodosSinPush(payload) {
         // Al no pasar filtros, se va a todos (Filtro Default)
     });
 }   
+
+export async function pushAdminSinGuardarEnDB(payload) {
+    return notificarSinGuardarEnDB({
+        ...payload,
+        departamentos: ['IT'] // Agrega aquí los departamentos clave
+    });
+}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
-import { del } from '@vercel/blob'; 
+import { del } from '@vercel/blob';
 import {
     Activo, VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
     Vehiculo, Remolque, Maquina,
@@ -15,14 +15,16 @@ import {
     MatrizCosto,
     Flete,
     DetalleMatrizCosto,
-    ODT
+    ODT,
+    ConfiguracionGlobal
 } from '@/models';
+import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
 
 // ----------------------------------------------------------------------
 // GET: Obtener Detalle 
 // ----------------------------------------------------------------------
 export async function GET(request, { params }) {
-    const { id } = await params; 
+    const { id } = await params;
 
     try {
         const activo = await Activo.findByPk(id, {
@@ -36,7 +38,7 @@ export async function GET(request, { params }) {
                     model: Kilometraje,
                     as: 'registrosKilometraje',
                     limit: 15,
-                    order: [['fecha_registro', 'ASC']] 
+                    order: [['fecha_registro', 'ASC']]
                 },
                 {
                     model: Horometro,
@@ -92,7 +94,7 @@ export async function GET(request, { params }) {
                 {
                     model: MatrizCosto,
                     as: 'matrizCosto',
-                    include: [{model: DetalleMatrizCosto, as: 'detalles'}]
+                    include: [{ model: DetalleMatrizCosto, as: 'detalles' }]
                 },
                 { model: Flete, as: 'fletesComoVehiculo' },
                 { model: Flete, as: 'fletesComoRemolque' },
@@ -125,6 +127,10 @@ export async function PUT(request, { params }) {
 
     try {
         const activo = await Activo.findByPk(id, { transaction: t });
+        // 📸 1. TOMAMOS LA FOTO DEL ANTES EN EL INSTANTE CERO
+        const configAnterior = await ConfiguracionGlobal.findByPk(1, { transaction: t });
+        const snapshotHoras = configAnterior ? parseInt(configAnterior.horasTotalesFlota) : 0;
+        const snapshotOverhead = configAnterior ? parseFloat(configAnterior.costoAdministrativoPorHora) : 0;
 
         if (!activo) {
             await t.rollback();
@@ -148,8 +154,8 @@ export async function PUT(request, { params }) {
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             imagen: imagen !== undefined ? imagen : activo.imagen,
             anio: anioFabricacion !== undefined ? parseInt(anioFabricacion) : activo.anio,
-            tara: tara !== undefined && tara !== '' ? parseFloat(tara) : null, 
-            capacidadTonelajeMax: body.capacidadCarga !== undefined && body.capacidadCarga !== '' ? parseFloat(body.capacidadCarga) : activo.capacidadTonelajeMax, 
+            tara: tara !== undefined && tara !== '' ? parseFloat(tara) : null,
+            capacidadTonelajeMax: body.capacidadCarga !== undefined && body.capacidadCarga !== '' ? parseFloat(body.capacidadCarga) : activo.capacidadTonelajeMax,
 
             matrizCostoId: matrizCostoId ? parseInt(matrizCostoId) : activo.matrizCostoId,
             valorReposicion: valorReposicion !== undefined ? parseFloat(valorReposicion) : activo.valorReposicion,
@@ -168,22 +174,25 @@ export async function PUT(request, { params }) {
                 placa, serialChasis, serialMotor, color,
                 kilometrajeActual: kilometrajeActual !== undefined ? parseFloat(kilometrajeActual) : undefined,
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
-            }, { where: { id: activo.vehiculoInstanciaId }, transaction: t }); 
+            }, { where: { id: activo.vehiculoInstanciaId }, transaction: t });
         }
         else if (activo.tipoActivo === 'Remolque' && activo.remolqueInstanciaId) {
             await RemolqueInstancia.update({
                 placa, color, serialChasis, serialMotor,
-            }, { where: { id: activo.remolqueInstanciaId }, transaction: t }); 
+            }, { where: { id: activo.remolqueInstanciaId }, transaction: t });
         }
         else if (activo.tipoActivo === 'Maquina' && activo.maquinaInstanciaId) {
             await MaquinaInstancia.update({
                 serialMotor,
                 horometroActual: horometroActual !== undefined ? parseFloat(horometroActual) : undefined
-            }, { where: { id: activo.maquinaInstanciaId }, transaction: t }); 
+            }, { where: { id: activo.maquinaInstanciaId }, transaction: t });
         }
 
+        // 🔥 INYECCIÓN DE LA SINCRONIZACIÓN MÁGICA 🔥
+        const cambiosOverhead = await recalcularOverheadGlobal(t, snapshotHoras, snapshotOverhead);
+
         await t.commit();
-        return NextResponse.json({ success: true, message: 'Activo actualizado correctamente', data: activo });
+        return NextResponse.json({ success: true, message: 'Activo actualizado correctamente', data: activo, cambiosOverhead });
 
     } catch (error) {
         await t.rollback();
@@ -196,7 +205,7 @@ export async function PUT(request, { params }) {
 // DELETE: Eliminar Activo
 // ----------------------------------------------------------------------
 export async function DELETE(request, { params }) {
-    const { id } = await params; 
+    const { id } = await params;
     const t = await sequelize.transaction();
 
     try {

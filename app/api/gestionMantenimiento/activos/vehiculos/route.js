@@ -5,6 +5,7 @@ import {
     EntradaInventario, Kilometraje, Horometro, SalidaInventario, Consumible, Recauchado 
 } from '@/models';
 import { notificarAdmins } from '@/app/api/notificar/route';
+import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
 
 export async function POST(request) {
     const t = await sequelize.transaction();
@@ -194,6 +195,9 @@ export async function POST(request) {
             }
         }
 
+        // 🔥 INYECCIÓN DE LA SINCRONIZACIÓN MÁGICA 🔥
+        const cambiosOverhead = await recalcularOverheadGlobal(t);
+
         await t.commit();
 
         await notificarAdmins({
@@ -205,7 +209,8 @@ export async function POST(request) {
         return NextResponse.json({
             success: true,
             message: 'Activo creado con éxito',
-            data: { id: nuevoActivo.id, codigo: nuevoActivo.codigoInterno }
+            data: { id: nuevoActivo.id, codigo: nuevoActivo.codigoInterno },
+            cambiosOverhead
         }, { status: 201 });
 
     } catch (error) {

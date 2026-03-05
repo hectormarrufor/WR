@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
-import { 
-    sequelize, Activo, RemolqueInstancia, Remolque, Subsistema, 
-    SubsistemaInstancia, ConsumibleInstalado, ConsumibleSerializado, 
-    EntradaInventario, Kilometraje, SalidaInventario, Consumible, Recauchado 
+import {
+    sequelize, Activo, RemolqueInstancia, Remolque, Subsistema,
+    SubsistemaInstancia, ConsumibleInstalado, ConsumibleSerializado,
+    EntradaInventario, Kilometraje, SalidaInventario, Consumible, Recauchado
 } from '@/models';
+import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
 
 export async function POST(request) {
     const t = await sequelize.transaction();
 
     try {
         const body = await request.json();
-        
+
         const existePlaca = await RemolqueInstancia.findOne({ where: { placa: body.placa }, transaction: t });
         if (existePlaca) throw new Error(`La placa ${body.placa} ya está registrada en otro remolque.`);
-        
+
         const existeCodigo = await Activo.findOne({ where: { codigoInterno: body.codigoInterno }, transaction: t });
         if (existeCodigo) throw new Error(`El código ${body.codigoInterno} ya existe.`);
 
@@ -30,37 +31,37 @@ export async function POST(request) {
             modelo: modelo.modelo,
             serialMotor: body.serialMotor || null,
             color: body.color,
-            anioFabricacion: body.anioFabricacion || modelo.anio, 
-            remolqueId: body.modeloVehiculoId, 
+            anioFabricacion: body.anioFabricacion || modelo.anio,
+            remolqueId: body.modeloVehiculoId,
             serialChasis: body.serialChasis || body.serialCarroceria,
         }, { transaction: t });
 
         // 🔥 ACTIVO PADRE (ESTRICTAMENTE COSTOS) 🔥
         const nuevoActivo = await Activo.create({
             codigoInterno: body.codigoInterno,
-            tipoActivo: 'Remolque', 
+            tipoActivo: 'Remolque',
             estado: body.estado || 'Operativo',
             ubicacionActual: body.ubicacionActual,
-            imagen: body.imagen, 
+            imagen: body.imagen,
             fechaAdquisicion: body.fechaAdquisicion || new Date(),
-            vehiculoInstanciaId: null,      
-            remolqueInstanciaId: nuevaInstancia.id || null, 
+            vehiculoInstanciaId: null,
+            remolqueInstanciaId: nuevaInstancia.id || null,
             maquinaInstanciaId: null,
-            capacidadTonelajeMax: body.capacidadTonelajeMax || body.capacidadCarga || null, 
-            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null, 
-            
+            capacidadTonelajeMax: body.capacidadTonelajeMax || body.capacidadCarga || null,
+            tara: body.tara !== undefined && body.tara !== '' ? parseFloat(body.tara) : null,
+
             anio: body.anio ? parseInt(body.anio) : (body.anioFabricacion ? parseInt(body.anioFabricacion) : new Date().getFullYear()),
             matrizCostoId: body.matrizCostoId ? parseInt(body.matrizCostoId) : null,
             valorReposicion: body.valorReposicion ? parseFloat(body.valorReposicion) : null,
             vidaUtilAnios: body.vidaUtilAnios ? parseInt(body.vidaUtilAnios) : null,
             valorSalvamento: body.valorSalvamento !== undefined ? parseFloat(body.valorSalvamento) : null,
             horasAnuales: body.horasAnuales ? parseInt(body.horasAnuales) : 2000,
-            
+
             costoMantenimientoTeorico: body.costoMantenimientoTeorico !== undefined ? parseFloat(body.costoMantenimientoTeorico) : 0,
             costoPosesionTeorico: body.costoPosesionTeorico !== undefined ? parseFloat(body.costoPosesionTeorico) : 0,
             costoPosesionHora: body.costoPosesionHora !== undefined ? parseFloat(body.costoPosesionHora) : 0,
         }, { transaction: t });
-        
+
         if (body.kilometrajeActual !== undefined && body.kilometrajeActual !== null) {
             await Kilometraje.create({
                 activoId: nuevoActivo.id,
@@ -68,11 +69,11 @@ export async function POST(request) {
                 fecha: body.fechaAdquisicion || new Date(),
                 origen: 'creacion_activo',
                 observacion: 'Kilometraje base (Hubodómetro) al registrar el remolque',
-                usuarioId: 1 
+                usuarioId: 1
             }, { transaction: t });
         }
 
-        const mapaSubsistemas = {}; 
+        const mapaSubsistemas = {};
         if (modelo.subsistemas && modelo.subsistemas.length > 0) {
             for (const subPlantilla of modelo.subsistemas) {
                 const subFisico = await SubsistemaInstancia.create({
@@ -82,7 +83,7 @@ export async function POST(request) {
                     estado: 'ok',
                     observaciones: 'Inicializado en creación de remolque'
                 }, { transaction: t });
-                
+
                 mapaSubsistemas[subPlantilla.id] = subFisico.id;
             }
         }
@@ -94,7 +95,7 @@ export async function POST(request) {
 
                 let serialIdFinal = null;
 
-                if (item.serial) { 
+                if (item.serial) {
                     let serialExistente = await ConsumibleSerializado.findOne({
                         where: { serial: item.serial, consumibleId: item.consumibleId },
                         transaction: t
@@ -102,9 +103,9 @@ export async function POST(request) {
 
                     if (serialExistente) {
                         serialIdFinal = serialExistente.id;
-                        await serialExistente.update({ 
+                        await serialExistente.update({
                             estado: 'asignado',
-                            fechaAsignacion: new Date() 
+                            fechaAsignacion: new Date()
                         }, { transaction: t });
                     } else {
                         const nuevoSerial = await ConsumibleSerializado.create({
@@ -137,7 +138,7 @@ export async function POST(request) {
                             tipo: 'carga_inicial',
                             observacion: `Dotación inicial Remolque ${body.codigoInterno}`,
                             fecha: item.fechaCompra || new Date(),
-                            usuarioId: 1 
+                            usuarioId: 1
                         }, { transaction: t });
                     }
                 } else {
@@ -149,7 +150,7 @@ export async function POST(request) {
                             tipo: 'carga_inicial',
                             observacion: `Dotación inicial (externo) en Remolque ${body.codigoInterno}`,
                             fecha: new Date(),
-                            usuarioId: 1 
+                            usuarioId: 1
                         }, { transaction: t });
                     } else {
                         await SalidaInventario.create({
@@ -163,7 +164,7 @@ export async function POST(request) {
 
                         const consumible = await Consumible.findByPk(item.consumibleId, { transaction: t });
                         if (consumible) {
-                             await consumible.decrement('stockAlmacen', { by: item.cantidad, transaction: t });
+                            await consumible.decrement('stockAlmacen', { by: item.cantidad, transaction: t });
                         }
                     }
                 }
@@ -181,12 +182,15 @@ export async function POST(request) {
             }
         }
 
+        const cambiosOverhead = await recalcularOverheadGlobal(t);
+
         await t.commit();
 
-        return NextResponse.json({ 
-            success: true, 
+        return NextResponse.json({
+            success: true,
             message: 'Remolque creado con éxito',
-            data: { id: nuevoActivo.id, codigo: nuevoActivo.codigoInterno } 
+            data: { id: nuevoActivo.id, codigo: nuevoActivo.codigoInterno },
+            cambiosOverhead
         }, { status: 201 });
 
     } catch (error) {

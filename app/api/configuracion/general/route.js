@@ -2,53 +2,148 @@ import { NextResponse } from 'next/server';
 import db from '@/models';
 import { Op } from 'sequelize';
 
+// ==========================================
+// RUTA GET (Envía datos y nómina en vivo)
+// ==========================================
 export async function GET() {
     const [config] = await db.ConfiguracionGlobal.findOrCreate({
         where: { id: 1 },
         include: [{ model: db.GastoFijoGlobal, as: 'gastosFijos' }]
     });
-    if (!config.gastosFijos) config.gastosFijos = [];
-    return NextResponse.json(config);
-}
 
+    if (!config.gastosFijos) config.gastosFijos = [];
+
+    // Definimos los nombres de los departamentos administrativos tal cual están en tu tabla "Departamentos"
+    const nombresDeptosAdmin = ['Presidencia', 'IT', 'Administracion'];
+
+    // 1. Buscamos empleados con inclusión anidada
+    const empleadosActivos = await db.Empleado.findAll({
+        where: { estado: 'Activo' }, // Verifica si en tu ENUM es 'Activo' o 'Activo'
+        include: [{
+            model: db.Puesto,
+            as: 'puestos',
+            include: [{
+                model: db.Departamento,
+                as: 'departamento',
+                attributes: ['nombre'] // Solo nos interesa el nombre para comparar
+            }]
+        }]
+    });
+
+    let adminSuma = 0;
+    let operativaSuma = 0;
+
+    // 2. Clasificación lógica
+    empleadosActivos.forEach(emp => {
+        const sueldo = parseFloat(emp.sueldo) || 0;
+
+        // Verificamos si alguno de sus puestos pertenece a un depto administrativo
+        const esAdministrativo = emp.puestos && emp.puestos.some(p =>
+            p.departamento && nombresDeptosAdmin.includes(p.departamento.nombre)
+        );
+
+        if (esAdministrativo) {
+            adminSuma += sueldo;
+        } else {
+            operativaSuma += sueldo;
+        }
+    });
+
+    const configData = config.toJSON();
+    configData.nominaAdministrativaTotal = adminSuma;
+    configData.nominaOperativaFijaTotal = operativaSuma;
+
+    return NextResponse.json(configData);
+}
+// ==========================================
+// RUTA POST (Cálculos herméticos y Batch)
+// ==========================================
 export async function POST(req) {
     const t = await db.sequelize.transaction();
     try {
         const body = await req.json();
+
         // =================================================================
-        // 1. CÁLCULO DE OVERHEAD (ADMINISTRATIVO)
+        // 1. EXTRACCIÓN DE NÓMINA DIRECTO DE BD (Manejo de múltiples puestos)
+        // =================================================================
+        const deptosAdministrativos = ['Presidencia', 'IT', 'Administracion'];
+
+        const empleadosActivos = await db.Empleado.findAll({
+            where: { estado: 'Activo' },
+            include: [{
+                model: db.Puesto,
+                as: 'puestos',
+                include: [{
+                    model: db.Departamento,
+                    as: 'departamento',
+                    attributes: ['nombre']
+                }]
+            }],
+            transaction: t
+        });
+
+        let adminSuma = 0;
+        let operativaSuma = 0;
+
+        empleadosActivos.forEach(emp => {
+            const sueldo = parseFloat(emp.sueldo) || 0;
+            const esAdministrativo = emp.puestos && emp.puestos.some(p =>
+                p.departamento && ['Presidencia', 'IT', 'Administracion'].includes(p.departamento.nombre)
+            );
+
+            if (esAdministrativo) adminSuma += sueldo;
+            else operativaSuma += sueldo;
+        });
+
+      // =================================================================
+        // 2. CÁLCULO DE OVERHEAD (ADMINISTRATIVO) PURIFICADO
         // =================================================================
 
-        // A. Sumar los gastos estáticos (Mensuales x 12)
-        const mensualEstatico = (parseFloat(body.gastosOficinaMensual) || 0) +
-            (parseFloat(body.pagosGestoriaPermisos) || 0) +
-            (parseFloat(body.nominaAdministrativaTotal) || 0) +
-            (parseFloat(body.nominaOperativaFijaTotal) || 0);
+        // A. Gastos de Estructura Básica (Oficina y Gestoría)
+        const oficinaMensual = parseFloat(body.gastosOficinaMensual) || 0;
+        const gestoriaMensual = parseFloat(body.pagosGestoriaPermisos) || 0;
+
+        // B. Gastos de Resguardo Mensual (Vigilancia y Monitoreo)
+        const cantVigilantes = parseInt(body.cantidadVigilantes) || 0;
+        const sueldoVigilante = parseFloat(body.sueldoMensualVigilante) || 0;
+        const costoVigilancia = cantVigilantes * sueldoVigilante;
+        const costoCCTV = parseFloat(body.costoSistemaCCTV) || 0;
+        const costoSatelital = parseFloat(body.costoMonitoreoSatelital) || 0;
+        const mensualResguardo = costoVigilancia + costoCCTV + costoSatelital;
+
+     // C. Sumamos los gastos estáticos (Estructura + Resguardo + Nómina Admin + Nómina Operativa)
+        // ✅ CORREGIDO: Se incluye operativaSuma según la regla de negocio
+        const mensualEstatico = oficinaMensual + gestoriaMensual + mensualResguardo + adminSuma + operativaSuma;;
         const anualEstatico = mensualEstatico * 12;
 
-        // B. Sumar los gastos dinámicos
+        // D. Sumar los gastos dinámicos (Pólizas, RACDA, etc.)
         const gastosFijos = body.gastosFijos || [];
         const anualDinamico = gastosFijos.reduce((sum, g) => sum + (parseFloat(g.montoAnual) || 0), 0);
 
-        // C. El Verdadero Gran Total Anual
+        // E. El Verdadero Gran Total Anual del Overhead (Gasto Fijo Puro)
         const granTotalAnual = anualEstatico + anualDinamico;
 
-        // D. Prorrateo Global (Solo como referencia, la estimación real será ponderada por activo)
-        const totalEquipos = body.cantidadTotalUnidades || 1;
-        const porcentajeUtilizacion = (parseFloat(body.utilizacionFlotaPorcentaje) || 100) / 100;
-        const flotaActiva = totalEquipos * porcentajeUtilizacion;
-        const horasAnualesOperativas = parseInt(body.horasAnualesOperativas || 2000);
-        const horasTotalesFlotaAnual = flotaActiva > 0 ? (flotaActiva * horasAnualesOperativas) : 1;
-        const costoAdministrativoPorHoraReferencia = granTotalAnual / horasTotalesFlotaAnual;
+        // F. PRORRATEO GLOBAL EXACTO (Bottom-Up ABC Costing)
+        // Sumamos las horas de todos los activos reales
+        const sumaHoras = await db.Activo.sum('horasAnuales', { transaction: t });
+        const horasTotalesFlotaReal = sumaHoras ? parseInt(sumaHoras) : 0;
+
+        // Evitamos división por cero
+        const nuevoCostoAdministrativoPorHora = horasTotalesFlotaReal > 0
+            ? (granTotalAnual / horasTotalesFlotaReal)
+            : 0;
 
         // =================================================================
-        // 2. GUARDAR CONFIGURACIÓN Y TABLA DINÁMICA EN DB
+        // 3. GUARDAR CONFIGURACIÓN Y TABLA DINÁMICA EN DB
         // =================================================================
 
         await db.ConfiguracionGlobal.update({
             ...body,
-            gastosFijosAnualesTotales: granTotalAnual, // Guardamos el gran total aquí
-            costoAdministrativoPorHora: costoAdministrativoPorHoraReferencia
+            nominaAdministrativaTotal: adminSuma, // Guardamos la foto actual
+            nominaOperativaFijaTotal: operativaSuma, // Guardamos la foto actual
+            gastosFijosAnualesTotales: granTotalAnual,
+            horasTotalesFlota: horasTotalesFlotaReal,
+            costoAdministrativoPorHora: nuevoCostoAdministrativoPorHora
         }, { where: { id: 1 }, transaction: t });
 
 
@@ -64,10 +159,9 @@ export async function POST(req) {
         }
 
         // =================================================================
-        // 3. ACTUALIZACIÓN EN LOTE DE LAS MATRICES (INSUMOS Y RANGOS)
+        // 4. ACTUALIZACIÓN EN LOTE DE LAS MATRICES (INSUMOS Y RANGOS)
         // =================================================================
 
-        // Función auxiliar que arma el paquete de costos (Min, Max, Promedio)
         const prepararCostos = (min, max) => {
             const costoMin = parseFloat(min) || 0;
             const costoMax = parseFloat(max) || 0;
@@ -78,19 +172,12 @@ export async function POST(req) {
             };
         };
 
-        // --- Actualizar Cauchos (Universal para toda la flota) ---
+        // --- Actualizar Cauchos ---
         if (body.precioCauchoMin > 0 && body.precioCauchoMax > 0) {
             await db.DetalleMatrizCosto.update(
                 prepararCostos(body.precioCauchoMin, body.precioCauchoMax),
                 {
-                    where: {
-                        descripcion: {
-                            [Op.or]: [
-                                { [Op.iLike]: '%Neum%' },
-                                { [Op.iLike]: '%Cauch%' }
-                            ]
-                        }
-                    },
+                    where: { descripcion: { [Op.or]: [{ [Op.iLike]: '%Neum%' }, { [Op.iLike]: '%Cauch%' }] } },
                     transaction: t
                 }
             );
@@ -121,12 +208,14 @@ export async function POST(req) {
         }
 
         // =================================================================
-        // 4. RECALCULAR LOS TOTALES ($/Km y $/Hr) DE CADA MATRIZ
+        // 5. RECALCULAR LOS TOTALES DE CADA MATRIZ
         // =================================================================
         const matrices = await db.MatrizCosto.findAll({ include: ['detalles'], transaction: t });
 
-        // 🔥 CONVERTIMOS LAS HORAS ANUALES (DINÁMICAS) A MENSUALES PARA EL DESGASTE 🔥
-        const horasOperativasMensuales = horasAnualesOperativas / 12;
+        // Como las horas ya no son un input global asimétrico, sacamos el promedio mensual 
+        // basándonos en el total de horas operativas declaradas entre la cantidad de unidades.
+        const unidadesTotales = body.cantidadTotalUnidades || 1;
+        const promedioHorasActivoMes = (horasTotalesFlotaReal / unidadesTotales) / 12;
 
         for (const m of matrices) {
             let nuevoTotalKm = 0;
@@ -140,8 +229,8 @@ export async function POST(req) {
                     } else if (d.tipoDesgaste === 'horas') {
                         nuevoTotalHora += (costoFila / d.frecuencia);
                     } else if (d.tipoDesgaste === 'meses') {
-                        // AQUÍ ENTRA EN ACCIÓN LA VARIABLE DINÁMICA:
-                        nuevoTotalHora += (costoFila / (d.frecuencia * horasOperativasMensuales));
+                        // El desgaste mensual ahora usa el promedio de horas reales por camión
+                        nuevoTotalHora += (costoFila / (d.frecuencia * (promedioHorasActivoMes || 166.66)));
                     }
                 }
             }
@@ -151,7 +240,7 @@ export async function POST(req) {
 
         return NextResponse.json({
             success: true,
-            overheadCalculado: costoAdministrativoPorHora.toFixed(2),
+            overheadCalculado: nuevoCostoAdministrativoPorHora.toFixed(2),
             mensaje: "Configuración global guardada y Matrices re-calculadas exitosamente."
         });
 
