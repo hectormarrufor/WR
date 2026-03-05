@@ -41,8 +41,64 @@ export async function PUT(req, { params }) {
 
         await db.DetalleMatrizCosto.bulkCreate(nuevosDetalles, { transaction: t });
 
+        // ==========================================================
+        // 🔥 3. IMPACTO EN ACTIVOS: RECALCULAR Y GENERAR REPORTE 🔥
+        // ==========================================================
+        const reporteImpacto = [];
+
+        // Buscamos la tasa de interés global
+        const config = await db.ConfiguracionGlobal.findByPk(1, { transaction: t });
+        const tasaInteresDecimal = (config ? parseFloat(config.tasaInteresAnual || 5.0) : 5.0) / 100;
+
+        // Buscamos todos los activos que usan esta matriz
+        const activos = await db.Activo.findAll({ where: { matrizCostoId: id }, transaction: t });
+
+        for (const activo of activos) {
+            // "Foto" del antes
+            const costoKmViejo = parseFloat(activo.costoMantenimientoTeorico || 0);
+            const costoHoraViejo = parseFloat(activo.costoPosesionHora || 0);
+
+            // Recalcular la depreciación pura del equipo
+            const valor = parseFloat(activo.valorReposicion) || 0;
+            const salvamento = parseFloat(activo.valorSalvamento) || 0;
+            const vida = parseInt(activo.vidaUtilAnios) || 1;
+            const horasAnuales = parseInt(activo.horasAnuales) || 2000;
+
+            const montoADepreciar = valor - salvamento;
+            const vidaEnHoras = vida * horasAnuales;
+            const depHora = vidaEnHoras > 0 ? (montoADepreciar / vidaEnHoras) : 0;
+            const intHora = horasAnuales > 0 ? ((valor * tasaInteresDecimal) / horasAnuales) : 0;
+
+            const costoPosesionEquipoHora = depHora + intHora;
+
+            // "Foto" del después (Depreciación pura + Nuevos totales de la Matriz)
+            const nuevoCostoFijoHora = costoPosesionEquipoHora + parseFloat(body.totalCostoHora || 0);
+            const nuevoCostoVariableKm = parseFloat(body.totalCostoKm || 0);
+
+            // Guardamos la actualización en el Activo
+            await activo.update({
+                costoMantenimientoTeorico: nuevoCostoVariableKm,
+                costoPosesionTeorico: nuevoCostoFijoHora,
+                costoPosesionHora: nuevoCostoFijoHora
+            }, { transaction: t, hooks: false }); // hooks: false evita bucles infinitos
+
+            // Si cambiaron los números, lo metemos en el reporte
+            if (costoKmViejo !== nuevoCostoVariableKm || costoHoraViejo !== nuevoCostoFijoHora) {
+                reporteImpacto.push({
+                    codigoInterno: activo.codigoInterno,
+                    tipo: activo.tipoActivo,
+                    oldKm: costoKmViejo,
+                    newKm: nuevoCostoVariableKm,
+                    oldHora: costoHoraViejo,
+                    newHora: nuevoCostoFijoHora
+                });
+            }
+        }
+
         await t.commit();
-        return NextResponse.json({ success: true });
+        
+        // Retornamos todo al frontend
+        return NextResponse.json({ success: true, reporteImpacto });
     } catch (e) {
         await t.rollback();
         return NextResponse.json({ error: e.message }, { status: 500 });
