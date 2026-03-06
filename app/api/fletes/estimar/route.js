@@ -58,13 +58,13 @@ export async function POST(req) {
             // 🔥 NUEVAS VARIABLES INYECTADAS DESDE CONFIG. GLOBAL 🔥
             viaticoAlimentacionDia = 15,
             viaticoHotelNoche = 20,
-            
+
             // Variables para Prorrateo Ponderado ABC Puro
-            valorFlotaTotal = 1, 
+            valorFlotaTotal = 1,
             gastosFijosAnualesTotales = 0,
-            horasTotalesFlota = 1, 
-            costoAdministrativoPorHora = 0, 
-            
+            horasTotalesFlota = 1,
+            costoAdministrativoPorHora = 0,
+
             sueldoDiarioChofer = 25,
             sueldoDiarioAyudante = 15,
         } = body;
@@ -128,7 +128,12 @@ export async function POST(req) {
                 const tiempoBaseRealista = (tramo.tiempoBaseSegundos || 0) * 1.4;
                 let segundosTramo = tiempoBaseRealista;
 
-                const pesoBrutoTramo = tramo.tonelaje + pesoRemolque + sobrepesoChuto;
+                // 🔥 Forzamos que sean números. Si vienen vacíos o undefined, asumen 0.
+                const tonelajeSeguro = parseFloat(tramo.tonelaje) || 0;
+                const pesoRemolqueSeguro = parseFloat(pesoRemolque) || 0;
+                const sobrepesoChutoSeguro = parseFloat(sobrepesoChuto) || 0;
+
+                const pesoBrutoTramo = tonelajeSeguro + pesoRemolqueSeguro + sobrepesoChutoSeguro;
                 const factorCarga = Math.min(pesoBrutoTramo / capacidadMax, 1);
 
                 const demoraHorizontal = 0.10 + (0.30 * factorCarga);
@@ -275,21 +280,33 @@ export async function POST(req) {
         const viaticosManual = parseFloat(viaticosManuales || 0);
         const viaticosTotal = totalComida + totalHotel + viaticosManual;
 
-       // --- CÁLCULO DE NÓMINA DINÁMICA (NORMA: TASA FIJA POR DÍA) ---
+        // --- CÁLCULO DE NÓMINA DINÁMICA (NORMA: TASA FIJA POR DÍA) ---
         const diasTotalesNomina = diaActual; // Tomamos el valor final del bucle del cronograma
-        
+
         // Multiplicamos los días reales de viaje por la tarifa dinámica que viene de la BD
         const nominaChofer = diasTotalesNomina * parseFloat(sueldoDiarioChofer);
         let nominaAyudante = tieneAyudante ? (diasTotalesNomina * parseFloat(sueldoDiarioAyudante)) : 0;
 
         const nominaTotal = nominaChofer + nominaAyudante;
 
-        // --- TIEMPOS FINALES Y FECHAS ---
-        const duracionTotalMision = horasTotales + horasDescansoAcumuladas;
+      // --- TIEMPOS FINALES Y FECHAS (BLINDADO) ---
+        // Aseguramos que las horas nunca sean NaN
+        const duracionTotalMision = (parseFloat(horasTotales) || 0) + (parseFloat(horasDescansoAcumuladas) || 0);
 
-        const fechaSalidaObj = new Date(body.fechaSalida || new Date());
-        fechaSalidaObj.setHours(parseInt(horaSalidaSt.split(':')[0]), parseInt(horaSalidaSt.split(':')[1]), 0, 0);
+        // Si la fecha que viene del frontend es inválida o nula, usamos la fecha actual por defecto
+        let fechaSalidaObj = new Date(body.fechaSalida || new Date());
+        if (isNaN(fechaSalidaObj.getTime())) {
+            fechaSalidaObj = new Date(); 
+        }
 
+        // Parseo seguro de la hora ('06:00')
+        const partesHora = horaSalidaSt.split(':');
+        const horaSegura = parseInt(partesHora[0]) || 6;
+        const minSeguro = parseInt(partesHora[1]) || 0;
+        
+        fechaSalidaObj.setHours(horaSegura, minSeguro, 0, 0);
+
+        // Sumamos los milisegundos de manera segura
         const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
 
         // ------------------------------------------------------------------
@@ -300,18 +317,18 @@ export async function POST(req) {
         const vidaUtilAniosChuto = chuto.vidaUtilAnios || 10;
         const horasVidaUtilChuto = vidaUtilAniosChuto * 2400;
         const depreciacionPorHoraChuto = (valorReposicionChuto - valorSalvamentoChuto) / horasVidaUtilChuto;
-        
+
         let depreciacionPorHoraBatea = 0;
         let costoCapitalHoraBatea = 0;
         let valorReposicionBatea = 0;
 
         if (batea) {
-             valorReposicionBatea = batea.valorReposicion || 15000;
-             const valorSalvamentoBatea = batea.valorSalvamento || 2000;
-             const vidaUtilAniosBatea = batea.vidaUtilAnios || 10;
-             const horasVidaUtilBatea = vidaUtilAniosBatea * 2400;
-             depreciacionPorHoraBatea = (valorReposicionBatea - valorSalvamentoBatea) / horasVidaUtilBatea;
-             costoCapitalHoraBatea = (valorReposicionBatea * 0.05) / 2400;
+            valorReposicionBatea = batea.valorReposicion || 15000;
+            const valorSalvamentoBatea = batea.valorSalvamento || 2000;
+            const vidaUtilAniosBatea = batea.vidaUtilAnios || 10;
+            const horasVidaUtilBatea = vidaUtilAniosBatea * 2400;
+            depreciacionPorHoraBatea = (valorReposicionBatea - valorSalvamentoBatea) / horasVidaUtilBatea;
+            costoCapitalHoraBatea = (valorReposicionBatea * 0.05) / 2400;
         }
 
         const interesAnual = 0.05;
@@ -322,10 +339,10 @@ export async function POST(req) {
 
         const costoPosesionTotal = totalDepreciacion + totalCapital + calculoChuto.posesion + calculoBatea.posesion;
 
-       // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
         // --- 8. CÁLCULO PONDERADO DE OVERHEAD (NUEVO ABC PURO) ---
         // ------------------------------------------------------------------
-        
+
         // 1. Pesos de los activos (Qué porcentaje del valor de la empresa representan)
         const pesoChuto = valorFlotaTotal > 0 ? (valorReposicionChuto / valorFlotaTotal) : 0;
         const pesoBatea = (batea && valorFlotaTotal > 0) ? (valorReposicionBatea / valorFlotaTotal) : 0;
@@ -342,7 +359,7 @@ export async function POST(req) {
 
         const overheadHoraChuto = gastoAnualChutoAsignado / horasRealChuto;
         const overheadHoraBatea = batea ? (gastoAnualBateaAsignado / horasRealBatea) : 0;
-        
+
         const costoEstructuraHoraPonderado = overheadHoraChuto + overheadHoraBatea;
 
         // 4. Overhead total de la misión
@@ -369,18 +386,80 @@ export async function POST(req) {
         };
 
         // ------------------------------------------------------------------
-        // --- 9. CIERRE: TARIFAS FIJAS VS COSTO + MARKUP ---
+        // --- 9. CIERRE: RIESGO, TARIFAS FIJAS VS COSTO + MARKUP ---
         // ------------------------------------------------------------------
         const totalPeajes = cantidadPeajes * (precioPeajeBs / bcv);
 
-        // 1. Costo Operativo Real (Break-even)
-        const costoTotal = totalCombustible + nominaTotal + viaticosTotal + totalPeajes + totalMantenimiento + costoPosesionTotal + totalOverhead;
+        // 1. Costo Operativo Base (Subtotal antes del riesgo)
+        const subtotalOperativo = totalCombustible + nominaTotal + viaticosTotal + totalPeajes + totalMantenimiento + costoPosesionTotal + totalOverhead;
 
-        // 2. Calculamos la ganancia comercial pura (el % que pidió el usuario)
+        // 🔥 2. LÓGICA DE CARGA PELIGROSA Y RIESGO (ESCALABLE POR TONELAJE) 🔥
+        let factorRiesgoBase = 0;
+        let factorPorTonelada = 0; 
+        let tipoRiesgoDesc = 'Carga General';
+        
+        // Evaluamos las categorías y asignamos un riesgo base + un multiplicador por tonelada
+        switch (body.tipoCarga) {
+            case 'salmuera':
+                factorRiesgoBase = 0.05;   // 5% fijo (Trámites/Guías base)
+                factorPorTonelada = 0.005; // +0.5% extra por CADA tonelada
+                tipoRiesgoDesc = 'Salmuera / Fluidos (Desgaste acelerado por corrosión extrema)';
+                break;
+            case 'hidrocarburos':
+                factorRiesgoBase = 0.05;   // 5% fijo
+                factorPorTonelada = 0.005; // +0.5% extra por CADA tonelada
+                tipoRiesgoDesc = 'Hidrocarburos (Riesgo inflamable y permisos MENPET)';
+                break;
+            case 'quimicos':
+                factorRiesgoBase = 0.10;   // 10% fijo 
+                factorPorTonelada = 0.01;  // +1.0% extra por CADA tonelada
+                tipoRiesgoDesc = 'Químicos Puros (Alta toxicidad, trajes especiales, RACDA)';
+                break;
+            case 'explosivos':
+                factorRiesgoBase = 0.15;   // 15% fijo 
+                factorPorTonelada = 0.015; // +1.5% extra por CADA tonelada
+                tipoRiesgoDesc = 'Explosivos (Riesgo máximo, permisos DAEX y escoltas)';
+                break;
+            default:
+                factorRiesgoBase = 0; 
+                factorPorTonelada = 0;
+                tipoRiesgoDesc = 'Carga General / No Peligrosa';
+                break;
+        }
+
+        // 1. Aseguramos el tonelaje promedio de la ruta (protegido contra NaN)
+        const tonelajeReal = parseFloat(tonelaje) || 0;
+
+        // 2. Calculamos el porcentaje dinámico total
+        // Ejemplo Químicos con 30t: 10% base + (30t * 1%) = 40% de recargo real.
+        // Ejemplo Químicos con 1t:  10% base + (1t * 1%) = 11% de recargo real.
+        const porcentajeRiesgoAplicado = factorRiesgoBase + (tonelajeReal * factorPorTonelada);
+
+        // 3. Calculamos el monto en dólares de la prima
+        const recargoRiesgoTotal = subtotalOperativo * porcentajeRiesgoAplicado;
+
+        // 4. Desglose interno (Con la fórmula matemática expuesta para el Frontend)
+        const riesgoDetalle = recargoRiesgoTotal > 0 ? {
+            bonoChofer: recargoRiesgoTotal * 0.40,             
+            seguroViaje: recargoRiesgoTotal * 0.30,            
+            contingenciaOperativa: recargoRiesgoTotal * 0.30,  
+            descripcion: tipoRiesgoDesc,
+            porcentajeAplicado: parseFloat((porcentajeRiesgoAplicado * 100).toFixed(1)), // El Total
+            
+            // 🔥 NUEVAS VARIABLES PARA MOSTRAR LA FÓRMULA EN EL FRONTEND 🔥
+            porcentajeBase: parseFloat((factorRiesgoBase * 100).toFixed(1)),
+            porcentajeVariable: parseFloat(((tonelajeReal * factorPorTonelada) * 100).toFixed(1)),
+            tonelajeAplicado: tonelajeReal
+        } : null;
+
+        // 3. Costo Operativo Real Completo (Subtotal + Riesgo)
+        const costoTotal = subtotalOperativo + recargoRiesgoTotal;
+
+        // 4. Calculamos la ganancia comercial pura (el % que pidió el usuario)
         const gananciaBase = costoTotal * porcentajeGanancia;
         let precioCalculado = costoTotal + gananciaBase;
 
-        // 3. Lógica de Tarifas Mínimas y Ajuste
+        // 5. Lógica de Tarifas Mínimas y Ajuste
         let ajusteTarifaMinima = 0;
         let esTarifaMinima = false;
         let tarifaAplicada = "Margen sobre Costo";
@@ -406,7 +485,7 @@ export async function POST(req) {
             success: true,
             costoTotal,
             precioSugerido,
-            gananciaBase,          
+            gananciaBase,
             ajusteTarifaMinima,
             infoTarifa: {
                 aplicada: tarifaAplicada,
@@ -435,15 +514,20 @@ export async function POST(req) {
                     nochesHotelFacturadas: nochesHotel
                 },
                 overhead: totalOverhead,
-                overheadDetalle: overheadDetalle, 
+                overheadDetalle: overheadDetalle,
                 itinerario: itinerario,
                 posesion: costoPosesionTotal,
                 posesionDetalle: {
                     valorActivo: valorReposicionChuto + valorReposicionBatea,
-                    vidaUtilAnios: vidaUtilAniosChuto, 
+                    vidaUtilAnios: vidaUtilAniosChuto,
                     depreciacion: totalDepreciacion,
                     oportunidad: totalCapital
                 },
+
+                // 🔥 AQUÍ EXPORTAMOS EL RIESGO AL FRONTEND 🔥
+                riesgo: recargoRiesgoTotal,
+                riesgoDetalle: riesgoDetalle,
+
                 rutinaViaje: {
                     horasConduccion: horasConduccionPura.toFixed(1),
                     horasEsperaTotales: horasEsperaTotales.toFixed(1),

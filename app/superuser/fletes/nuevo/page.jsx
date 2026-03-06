@@ -7,7 +7,7 @@ import FleteCreator from '../components/FleteCreator';
 
 export default function NuevoFletePage() {
     return (
-        <Container size="xl" py="md">
+        <Container size="100%" py="md" px={0} mx={0}>
             <Group mb="lg">
                 <Button 
                     component={Link} 
