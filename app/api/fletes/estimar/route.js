@@ -460,25 +460,64 @@ export async function POST(req) {
         let precioCalculado = costoTotal + gananciaBase;
 
         // 5. Lógica de Tarifas Mínimas y Ajuste
+
         let ajusteTarifaMinima = 0;
         let esTarifaMinima = false;
         let tarifaAplicada = "Margen sobre Costo";
         let precioSugerido = precioCalculado;
 
-        if (distanciaKm > 0 && distanciaKm <= 50) {
-            if (precioCalculado < 254) {
-                precioSugerido = 254;
-                ajusteTarifaMinima = 254 - precioCalculado;
-                esTarifaMinima = true;
-                tarifaAplicada = "Tarifa Plana (0-50km)";
+        // 🔥 LA CONDICIÓN MÁGICA: Solo aplicamos el mínimo si NO es un servicio ODT 🔥
+        if (tipoCotizacion === 'flete') {
+            if (distanciaKm > 0 && distanciaKm <= 50) {
+                if (precioCalculado < 254) {
+                    precioSugerido = 254;
+                    ajusteTarifaMinima = 254 - precioCalculado;
+                    esTarifaMinima = true;
+                    tarifaAplicada = "Tarifa Plana (0-50km)";
+                }
+            } else if (distanciaKm > 50 && distanciaKm <= 100) {
+                if (precioCalculado < 528) {
+                    precioSugerido = 528;
+                    ajusteTarifaMinima = 528 - precioCalculado;
+                    esTarifaMinima = true;
+                    tarifaAplicada = "Tarifa Plana (50-100km)";
+                }
             }
-        } else if (distanciaKm > 50 && distanciaKm <= 100) {
-            if (precioCalculado < 528) {
-                precioSugerido = 528;
-                ajusteTarifaMinima = 528 - precioCalculado;
-                esTarifaMinima = true;
-                tarifaAplicada = "Tarifa Plana (50-100km)";
-            }
+        }
+
+        // ------------------------------------------------------------------
+        // --- 10. DESGLOSE EXCLUSIVO PARA ODT / SERVICIO (NO AFECTA FLETES) ---
+        // ------------------------------------------------------------------
+        let desgloseServicio = null;
+        if (tipoCotizacion === 'servicio') {
+            const horasViaje = distanciaKm > 0 ? (distanciaKm / 50) : 0; // 50km/h velocidad base
+            
+            // Proporciones de tiempo para dividir gastos fijos (Nómina, Overhead, Posesión)
+            const proporcionViaje = horasTotales > 0 ? (horasViaje / horasTotales) : 0;
+            const proporcionOps = horasTotales > 0 ? (horasOperacion / horasTotales) : 0;
+
+            // FASE 1: Movilización (Tránsito)
+            const mobCombustible = (distanciaKm * consumoVacio) * precioGasoilUsd;
+            // Solo extraemos el mantenimiento por "Rodamiento" (Km) para el viaje
+            const mobMantenimiento = calculoChuto.items.filter(i => i.tipo === 'Rodamiento').reduce((a, b) => a + b.monto, 0) + 
+                                     (calculoBatea ? calculoBatea.items.filter(i => i.tipo === 'Rodamiento').reduce((a, b) => a + b.monto, 0) : 0);
+            
+            const costoMovilizacion = mobCombustible + mobMantenimiento + totalPeajes + (nominaTotal * proporcionViaje) + (costoPosesionTotal * proporcionViaje) + (totalOverhead * proporcionViaje);
+
+            // FASE 2: Operación en Locación
+            const opsCombustible = (horasOperacion * 5.0) * precioGasoilUsd; // 5 L/Hr híbrido
+            const opsMantenimiento = totalMantenimiento - mobMantenimiento; // El resto del mtto (Por Horas/Meses)
+            
+            const costoOperacion = opsCombustible + opsMantenimiento + (nominaTotal * proporcionOps) + (costoPosesionTotal * proporcionOps) + (totalOverhead * proporcionOps);
+
+            desgloseServicio = {
+                horasViajeAprox: horasViaje.toFixed(1),
+                costoMovilizacionTotal: costoMovilizacion,
+                costoOperacionTotal: costoOperacion,
+                costoViaticosYRiesgo: viaticosTotal + recargoRiesgoTotal, // Los separamos para que cuadre la suma
+                mobDetalle: { gasoil: mobCombustible, mtto: mobMantenimiento, peajes: totalPeajes },
+                opsDetalle: { gasoil: opsCombustible, mtto: opsMantenimiento }
+            };
         }
 
         return NextResponse.json({
@@ -492,6 +531,7 @@ export async function POST(req) {
                 esMinima: esTarifaMinima
             },
             breakdown: {
+                desgloseServicio: desgloseServicio, // <--- AGREGA ESTA LÍNEA AQUÍ
                 litros: parseFloat(litrosConsumidos.toFixed(2)),
                 combustible: totalCombustible,
                 combustibleDetalle: {
