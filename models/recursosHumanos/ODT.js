@@ -62,6 +62,57 @@ const ODT = sequelize.define("ODT", {
         type: DataTypes.ENUM('En Curso', 'Finalizada', 'Cancelada'),
         defaultValue: 'En Curso',
         allowNull: true
+    },
+    estado: {
+        type: DataTypes.ENUM('En Curso', 'Finalizada', 'Cancelada'),
+        defaultValue: 'En Curso',
+        allowNull: true
+    },
+    // 🔥 NUEVOS CAMPOS DEL MAPA Y COTIZADOR 🔥
+    distanciaKm: {
+        type: DataTypes.FLOAT,
+        defaultValue: 0,
+    },
+    cantidadPeajes: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+    },
+    tramos: {
+        type: DataTypes.JSON, // Guardamos el array del mapa como JSON
+        allowNull: true,
+    },
+    waypoints: {
+        type: DataTypes.JSON, // Guardamos los puntos del mapa
+        allowNull: true,
+    },
+    destino: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    tipoLiquido: {
+        type: DataTypes.STRING,
+        defaultValue: 'general',
+    },
+    viajesEstimados: {
+        type: DataTypes.INTEGER,
+        defaultValue: 1,
+    },
+    // 🔥 CAMPOS FINANCIEROS Y COTIZADOR 🔥
+    margenGanancia: {
+        type: DataTypes.FLOAT,
+        defaultValue: 35, // El 35% por defecto
+    },
+    costoEstimado: {
+        type: DataTypes.FLOAT,
+        defaultValue: 0,
+    },
+    precioSugerido: {
+        type: DataTypes.FLOAT,
+        defaultValue: 0,
+    },
+    desgloseCostos: {
+        type: DataTypes.JSON, // (Sequelize lo traduce a JSON o JSONB según tu base de datos)
+        allowNull: true,
     }
 });
 

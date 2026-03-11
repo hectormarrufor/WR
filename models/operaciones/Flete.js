@@ -1,58 +1,65 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
-
 const Flete = sequelize.define('Flete', {
-  codigo: { type: DataTypes.STRING, unique: true }, // Ej: FL-2026-001
+  nroFlete: { type: DataTypes.STRING, unique: true }, // Frontend envía nroFlete
   clienteId: { type: DataTypes.INTEGER, allowNull: false },
 
   // Recursos Asignados
   choferId: { type: DataTypes.INTEGER, allowNull: false },
-  ayudanteId: { type: DataTypes.INTEGER }, // Opcional
-  activoPrincipalId: { type: DataTypes.INTEGER, allowNull: false }, // El Chuto/Camión
-  remolqueId: { type: DataTypes.INTEGER }, // La batea/tanque (Opcional)
+  ayudanteId: { type: DataTypes.INTEGER, allowNull: true },
+  activoPrincipalId: { type: DataTypes.INTEGER, allowNull: false }, 
+  remolqueId: { type: DataTypes.INTEGER, allowNull: true }, 
 
-  // Ruta
+  // Ruta y Logística
   origen: { type: DataTypes.STRING, defaultValue: 'Base DADICA - Tía Juana' },
   destino: { type: DataTypes.STRING, allowNull: false },
-  coordenadasDestino: { type: DataTypes.JSON }, // { lat: ..., lng: ... }
-  distanciaKm: { type: DataTypes.FLOAT }, // Ida y vuelta
+  coordenadasDestino: { type: DataTypes.JSON, allowNull: true }, 
+  distanciaKm: { type: DataTypes.FLOAT }, 
   cantidadPeajes: { type: DataTypes.INTEGER, defaultValue: 0 },
   costoPeajesTotal: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+  
+  // 🔥 MAPAS Y TRAMOS 🔥
+  waypoints: { type: DataTypes.JSON, allowNull: true },
+  tramos: { type: DataTypes.JSON, allowNull: true },
 
   // Tiempos
   fechaSalida: { type: DataTypes.DATE, allowNull: false },
-  fechaRetorno: { type: DataTypes.DATE }, // Se llena al finalizar
+  fechaRetorno: { type: DataTypes.DATE, allowNull: true }, 
 
   estado: { type: DataTypes.ENUM('programado', 'en_ruta', 'completado', 'cancelado'), defaultValue: 'programado' },
-  observaciones: { type: DataTypes.TEXT },
+  observaciones: { type: DataTypes.TEXT, allowNull: true },
 
+  // 🔥 FINANZAS Y COTIZACIÓN 🔥
   costoEstimado: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   precioSugerido: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
-  tonelaje: { type: DataTypes.FLOAT },
-  tipoCarga: { type: DataTypes.STRING }, // 'general', 'peligrosa', 'PDVSA-oil'
-  horasEstimadas: { type: DataTypes.FLOAT },
+  tonelaje: { type: DataTypes.FLOAT, allowNull: true },
+  tipoCarga: { type: DataTypes.STRING, defaultValue: 'general' }, 
+  horasEstimadas: { type: DataTypes.FLOAT, allowNull: true },
+  
+  // 🔥 EL SNAPSHOT FINANCIERO 🔥
+  breakdown: { type: DataTypes.JSON, allowNull: true }, 
+  
+  // Auditoría
+  creadoPor: { type: DataTypes.INTEGER, allowNull: true }
 });
 
-Flete.addHook('beforeCreate', async (flete) => {
-  if (flete.coordenadasDestino) {
-    const calc = await calcularFlete(flete);
-    flete.distanciaKm = calc.distanciaKm;
-    flete.costoEstimado = calc.costoEstimado;
-    flete.precioSugerido = calc.precioSugerido;
-  }
-});
-
+// Relaciones
 Flete.associate = (models) => {
   Flete.belongsTo(models.Cliente, { foreignKey: 'clienteId' });
   Flete.belongsTo(models.Empleado, { as: 'chofer', foreignKey: 'choferId' });
   Flete.belongsTo(models.Empleado, { as: 'ayudante', foreignKey: 'ayudanteId' });
   Flete.belongsTo(models.Activo, { as: 'vehiculo', foreignKey: 'activoPrincipalId' });
   Flete.belongsTo(models.Activo, { as: 'remolque', foreignKey: 'remolqueId' });
+  
+  // Si User está definido en tus modelos, lo enlazamos al creador
+  if (models.User) {
+      Flete.belongsTo(models.User, { foreignKey: 'creadoPor', as: 'creador' });
+  }
 
-  // Relación con tu módulo existente
-  Flete.hasMany(models.GastoVariable, { foreignKey: 'fleteId' });
-  Flete.hasOne(models.CostEstimate, { foreignKey: 'fleteId' });
+  // Relaciones extra (Mantenlas si las usas en otros lados)
+  if (models.GastoVariable) Flete.hasMany(models.GastoVariable, { foreignKey: 'fleteId' });
+  if (models.CostEstimate) Flete.hasOne(models.CostEstimate, { foreignKey: 'fleteId' });
 };
 
 module.exports = Flete;

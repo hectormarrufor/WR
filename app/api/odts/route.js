@@ -182,7 +182,7 @@ export async function POST(req) {
       // Quitamos ceros iniciales del número de ODT
       await notificarTodos({
         title: 'Nueva ODT Registrada',
-        body: `${nombreCreador} ha creado la ODT #${nuevaODT.nroOdt.replace(/^0+/, '')} del cliente ${cliente} el ${formatDateLong(nuevaODT.fecha)}: ${nuevaODT.descripcionServicio}`,
+        body: `${nombreCreador} ha creado la ODT #${nuevaODT.nroODT.replace(/^0+/, '')} del cliente ${cliente} el ${formatDateLong(nuevaODT.fecha)}: ${nuevaODT.descripcionServicio}`,
         url: `/superuser/odt/${nuevaODT.id}`,
       });
     } catch (e) { console.error("Error notificando:", e); }

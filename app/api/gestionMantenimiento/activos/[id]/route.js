@@ -147,10 +147,14 @@ export async function PUT(request, { params }) {
             tara, anioFabricacion
         } = body;
 
+        // 🔥 LA REGLA DE ORO: Si horasAnuales es 0, forzamos el estado a Inactivo 🔥
+        const horasParsed = horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales;
+        const estadoFinal = horasParsed === 0 ? 'Inactivo' : (estado || activo.estado);
+
         // 🔥 Actualizar Activo Padre (ESTRICTAMENTE COSTOS) 🔥
         await activo.update({
             codigoInterno: codigoInterno || activo.codigoInterno,
-            estado: estado || activo.estado,
+            estado: estadoFinal, // Usamos la variable evaluada
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             imagen: imagen !== undefined ? imagen : activo.imagen,
             anio: anioFabricacion !== undefined ? parseInt(anioFabricacion) : activo.anio,
@@ -161,7 +165,7 @@ export async function PUT(request, { params }) {
             valorReposicion: valorReposicion !== undefined ? parseFloat(valorReposicion) : activo.valorReposicion,
             vidaUtilAnios: vidaUtilAnios !== undefined ? parseInt(vidaUtilAnios) : activo.vidaUtilAnios,
             valorSalvamento: valorSalvamento !== undefined ? parseFloat(valorSalvamento) : activo.valorSalvamento,
-            horasAnuales: horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales,
+            horasAnuales: horasParsed, // Usamos las horas ya parseadas para evitar repetir código
 
             costoMantenimientoTeorico: costoMantenimientoTeorico !== undefined ? parseFloat(costoMantenimientoTeorico) : activo.costoMantenimientoTeorico,
             costoPosesionTeorico: costoPosesionTeorico !== undefined ? parseFloat(costoPosesionTeorico) : activo.costoPosesionTeorico,

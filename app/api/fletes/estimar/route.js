@@ -30,8 +30,10 @@ const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorc
             const costoPorMes = costoTotalItem / detalle.frecuencia;
             const costoPorHoraFija = costoPorMes / 730;
             costoEnViaje = costoPorHoraFija * horasTotales;
-            costoPosesion += costoEnViaje;
-            tipoEtiqueta = 'Fijo/Tiempo';
+
+            // 🔥 CORRECCIÓN: Pasa a Mantenimiento, ya no a Posesión
+            costoMantenimiento += costoEnViaje;
+            tipoEtiqueta = 'Fijo/Meses';
         }
 
         desgloseItems.push({
@@ -289,24 +291,26 @@ export async function POST(req) {
 
         const nominaTotal = nominaChofer + nominaAyudante;
 
-      // --- TIEMPOS FINALES Y FECHAS (BLINDADO) ---
-        // Aseguramos que las horas nunca sean NaN
+        // --- TIEMPOS FINALES Y FECHAS (BLINDADO CONTRA TIMEZONES) ---
         const duracionTotalMision = (parseFloat(horasTotales) || 0) + (parseFloat(horasDescansoAcumuladas) || 0);
 
-        // Si la fecha que viene del frontend es inválida o nula, usamos la fecha actual por defecto
-        let fechaSalidaObj = new Date(body.fechaSalida || new Date());
-        if (isNaN(fechaSalidaObj.getTime())) {
-            fechaSalidaObj = new Date(); 
+        // 1. Extraemos solo la fecha pura "YYYY-MM-DD" del frontend
+        let dateSolo = new Date().toISOString().substring(0, 10);
+        if (body.fechaSalida) {
+            dateSolo = body.fechaSalida.substring(0, 10);
         }
 
-        // Parseo seguro de la hora ('06:00')
+        // 2. Parseo seguro de la hora ('06:00')
         const partesHora = horaSalidaSt.split(':');
-        const horaSegura = parseInt(partesHora[0]) || 6;
-        const minSeguro = parseInt(partesHora[1]) || 0;
-        
-        fechaSalidaObj.setHours(horaSegura, minSeguro, 0, 0);
+        const horaSegura = String(parseInt(partesHora[0]) || 6).padStart(2, '0');
+        const minSeguro = String(parseInt(partesHora[1]) || 0).padStart(2, '0');
 
-        // Sumamos los milisegundos de manera segura
+        // 🔥 EL TRUCO MAESTRO: Ensamblamos la fecha forzando la zona horaria de Venezuela (-04:00)
+        // Así evitamos que el servidor UTC nos atrase el reloj 4 horas de forma invisible.
+        const fechaSalidaRealStr = `${dateSolo}T${horaSegura}:${minSeguro}:00.000-04:00`;
+        const fechaSalidaObj = new Date(fechaSalidaRealStr);
+
+        // 3. Sumamos los milisegundos de la duración total (misión + descansos)
         const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
 
         // ------------------------------------------------------------------
@@ -395,9 +399,9 @@ export async function POST(req) {
 
         // 🔥 2. LÓGICA DE CARGA PELIGROSA Y RIESGO (ESCALABLE POR TONELAJE) 🔥
         let factorRiesgoBase = 0;
-        let factorPorTonelada = 0; 
+        let factorPorTonelada = 0;
         let tipoRiesgoDesc = 'Carga General';
-        
+
         // Evaluamos las categorías y asignamos un riesgo base + un multiplicador por tonelada
         switch (body.tipoCarga) {
             case 'salmuera':
@@ -406,8 +410,8 @@ export async function POST(req) {
                 tipoRiesgoDesc = 'Salmuera / Fluidos (Desgaste acelerado por corrosión extrema)';
                 break;
             case 'hidrocarburos':
-                factorRiesgoBase = 0.05;   // 5% fijo
-                factorPorTonelada = 0.005; // +0.5% extra por CADA tonelada
+                factorRiesgoBase = 0.03;   // 3% fijo
+                factorPorTonelada = 0.003; // +0.3% extra por CADA tonelada
                 tipoRiesgoDesc = 'Hidrocarburos (Riesgo inflamable y permisos MENPET)';
                 break;
             case 'quimicos':
@@ -421,7 +425,7 @@ export async function POST(req) {
                 tipoRiesgoDesc = 'Explosivos (Riesgo máximo, permisos DAEX y escoltas)';
                 break;
             default:
-                factorRiesgoBase = 0; 
+                factorRiesgoBase = 0;
                 factorPorTonelada = 0;
                 tipoRiesgoDesc = 'Carga General / No Peligrosa';
                 break;
@@ -440,12 +444,12 @@ export async function POST(req) {
 
         // 4. Desglose interno (Con la fórmula matemática expuesta para el Frontend)
         const riesgoDetalle = recargoRiesgoTotal > 0 ? {
-            bonoChofer: recargoRiesgoTotal * 0.40,             
-            seguroViaje: recargoRiesgoTotal * 0.30,            
-            contingenciaOperativa: recargoRiesgoTotal * 0.30,  
+            bonoChofer: recargoRiesgoTotal * 0.40,
+            seguroViaje: recargoRiesgoTotal * 0.30,
+            contingenciaOperativa: recargoRiesgoTotal * 0.30,
             descripcion: tipoRiesgoDesc,
             porcentajeAplicado: parseFloat((porcentajeRiesgoAplicado * 100).toFixed(1)), // El Total
-            
+
             // 🔥 NUEVAS VARIABLES PARA MOSTRAR LA FÓRMULA EN EL FRONTEND 🔥
             porcentajeBase: parseFloat((factorRiesgoBase * 100).toFixed(1)),
             porcentajeVariable: parseFloat(((tonelajeReal * factorPorTonelada) * 100).toFixed(1)),
@@ -486,37 +490,70 @@ export async function POST(req) {
         }
 
         // ------------------------------------------------------------------
-        // --- 10. DESGLOSE EXCLUSIVO PARA ODT / SERVICIO (NO AFECTA FLETES) ---
+        // --- 10. DESGLOSE EXCLUSIVO PARA ODT / SERVICIO (CORREGIDO) ---
         // ------------------------------------------------------------------
         let desgloseServicio = null;
         if (tipoCotizacion === 'servicio') {
             const horasViaje = distanciaKm > 0 ? (distanciaKm / 50) : 0; // 50km/h velocidad base
-            
-            // Proporciones de tiempo para dividir gastos fijos (Nómina, Overhead, Posesión)
+
+            // 🔥 AQUÍ ESTÁN LAS DOS LÍNEAS QUE BORRÉ SIN QUERER 🔥
             const proporcionViaje = horasTotales > 0 ? (horasViaje / horasTotales) : 0;
             const proporcionOps = horasTotales > 0 ? (horasOperacion / horasTotales) : 0;
 
             // FASE 1: Movilización (Tránsito)
             const mobCombustible = (distanciaKm * consumoVacio) * precioGasoilUsd;
-            // Solo extraemos el mantenimiento por "Rodamiento" (Km) para el viaje
-            const mobMantenimiento = calculoChuto.items.filter(i => i.tipo === 'Rodamiento').reduce((a, b) => a + b.monto, 0) + 
-                                     (calculoBatea ? calculoBatea.items.filter(i => i.tipo === 'Rodamiento').reduce((a, b) => a + b.monto, 0) : 0);
-            
-            const costoMovilizacion = mobCombustible + mobMantenimiento + totalPeajes + (nominaTotal * proporcionViaje) + (costoPosesionTotal * proporcionViaje) + (totalOverhead * proporcionViaje);
+
+            // 🔥 CORRECCIÓN MATEMÁTICA: Separamos los 3 tipos de desgaste 🔥
+            const mobMantenimientoRodamiento = calculoChuto.items.filter(i => i.tipo === 'Rodamiento').reduce((a, b) => a + b.monto, 0) +
+                (calculoBatea ? calculoBatea.items.filter(i => i.tipo === 'Rodamiento').reduce((a, b) => a + b.monto, 0) : 0);
+
+            const totalMantenimientoHoras = calculoChuto.items.filter(i => i.tipo === 'Por Hora').reduce((a, b) => a + b.monto, 0) +
+                (calculoBatea ? calculoBatea.items.filter(i => i.tipo === 'Por Hora').reduce((a, b) => a + b.monto, 0) : 0);
+
+            // Rescatamos los que son por meses
+            const totalMantenimientoMeses = calculoChuto.items.filter(i => i.tipo === 'Fijo/Meses').reduce((a, b) => a + b.monto, 0) +
+                (calculoBatea ? calculoBatea.items.filter(i => i.tipo === 'Fijo/Meses').reduce((a, b) => a + b.monto, 0) : 0);
+
+            // El rodamiento lo paga 100% el viaje. Las horas y meses se prorratean por el tiempo viajando.
+            const mobMantenimiento = mobMantenimientoRodamiento + (totalMantenimientoHoras * proporcionViaje) + (totalMantenimientoMeses * proporcionViaje);
+
+            const mobOverhead = costoEstructuraHoraPonderado * horasViaje;
+            const mobPosesion = (depreciacionPorHoraChuto + depreciacionPorHoraBatea + costoCapitalHoraChuto + costoCapitalHoraBatea) * horasViaje;
+            const mobNomina = (nominaTotal / (horasTotales || 1)) * horasViaje;
+
+            const costoMovilizacion = mobCombustible + mobMantenimiento + totalPeajes + mobNomina + mobPosesion + mobOverhead;
 
             // FASE 2: Operación en Locación
-            const opsCombustible = (horasOperacion * 5.0) * precioGasoilUsd; // 5 L/Hr híbrido
-            const opsMantenimiento = totalMantenimiento - mobMantenimiento; // El resto del mtto (Por Horas/Meses)
-            
-            const costoOperacion = opsCombustible + opsMantenimiento + (nominaTotal * proporcionOps) + (costoPosesionTotal * proporcionOps) + (totalOverhead * proporcionOps);
+            const opsCombustible = (horasOperacion * 5.0) * precioGasoilUsd;
+
+            // 🔥 CORRECCIÓN: La locación asume su porción del desgaste de motor (horas) y el desgaste por tiempo (meses)
+            const opsMantenimiento = (totalMantenimientoHoras * proporcionOps) + (totalMantenimientoMeses * proporcionOps);
+
+            // 🔥 CORRECCIÓN: Aplicamos el overhead por las horas de operación real
+            const opsOverhead = costoEstructuraHoraPonderado * horasOperacion;
+            const opsPosesion = costoPosesionTotal - mobPosesion;
+            const opsNomina = nominaTotal - mobNomina;
+
+            const costoOperacion = opsCombustible + opsMantenimiento + opsNomina + opsPosesion + opsOverhead;
 
             desgloseServicio = {
                 horasViajeAprox: horasViaje.toFixed(1),
                 costoMovilizacionTotal: costoMovilizacion,
                 costoOperacionTotal: costoOperacion,
-                costoViaticosYRiesgo: viaticosTotal + recargoRiesgoTotal, // Los separamos para que cuadre la suma
-                mobDetalle: { gasoil: mobCombustible, mtto: mobMantenimiento, peajes: totalPeajes },
-                opsDetalle: { gasoil: opsCombustible, mtto: opsMantenimiento }
+                costoViaticosYRiesgo: viaticosTotal + recargoRiesgoTotal,
+                mobDetalle: {
+                    gasoil: mobCombustible,
+                    mtto: mobMantenimiento,
+                    peajes: totalPeajes,
+                    overhead: mobOverhead,
+                    posesion: mobPosesion // 🔥 AÑADE ESTO
+                },
+                opsDetalle: {
+                    gasoil: opsCombustible,
+                    mtto: opsMantenimiento,
+                    overhead: opsOverhead,
+                    posesion: opsPosesion // 🔥 AÑADE ESTO
+                }
             };
         }
 
