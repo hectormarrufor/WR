@@ -133,7 +133,7 @@ export default function ODTForm({ mode = "create", odtId }) {
 
         // Si guardaste un margen específico, lo ponemos en el estado del Input
         if (data.margenGanancia !== undefined) {
-            setMargenOdt(data.margenGanancia);
+          setMargenOdt(data.margenGanancia);
         }
 
         form.setValues({
@@ -242,7 +242,7 @@ export default function ODTForm({ mode = "create", odtId }) {
           // 🔥 INYECCIÓN PARA MATAR LOS $35 DE VIÁTICOS AUTOMÁTICOS 🔥
           // Para las ODT extendemos la jornada a 24h para que no salte el Hotel automático
           jornadaMaxima: 24,
-          
+
         }),
       });
       if (!response.ok) throw new Error('Error estimando costos');
@@ -371,7 +371,7 @@ export default function ODTForm({ mode = "create", odtId }) {
         costoEstimado: estimacion?.costoTotal || 0,
         precioSugerido: estimacion?.precioSugerido || 0,
         desgloseCostos: estimacion || null, // Se guarda el JSON completo con toda la matemática
-      
+
 
         // Opcional: Puedes guardar el costo estimado en la BD si agregas los campos al modelo de ODT
         // costoEstimado: estimacion?.costoTotal || 0,
@@ -560,6 +560,8 @@ export default function ODTForm({ mode = "create", odtId }) {
                 vehiculoAsignado={!!form.values.vehiculoPrincipalId}
                 taraBase={0}
                 capacidadMax={30}
+                // 🔥 LE PASAMOS LOS PUNTOS GUARDADOS AL MAPA 🔥
+                initialWaypoints={form.values.waypoints}
               />
             </Box>
 

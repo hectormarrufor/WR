@@ -15,7 +15,8 @@ const containerStyle = {
 const center = { lat: 10.257083, lng: -71.343111 };
 const LIBRARIES = [];
 
-export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tramosFormulario = [], taraBase = 13, capacidadMax = 30 }) {
+// 🔥 1. Agregamos initialWaypoints a los props
+export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tramosFormulario = [], taraBase = 13, capacidadMax = 30, initialWaypoints = [] }) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY,
@@ -30,7 +31,6 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
     const [tiempoVisual, setTiempoVisual] = useState("");
     const [desnivelTotalVisual, setDesnivelTotalVisual] = useState(0);
     
-    // --- ESTADO PARA EL BANNER DE PENALIDAD ---
     const [penalidadVisual, setPenalidadVisual] = useState(null);
     
     const [perfilElevacion, setPerfilElevacion] = useState([]); 
@@ -41,9 +41,24 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
     const elevationServiceRef = useRef(null); 
     const onRouteCalculatedRef = useRef(onRouteCalculated);
 
+    // 🔥 2. Referencia para recordar los tramos guardados y no sobreescribirlos con ceros
+    const tramosGuardadosRef = useRef(tramosFormulario);
+
     useEffect(() => {
         onRouteCalculatedRef.current = onRouteCalculated;
     }, [onRouteCalculated]);
+
+    // Actualizamos la referencia secreta solo si llegan tramos externos, para no causar re-renders
+    useEffect(() => {
+        tramosGuardadosRef.current = tramosFormulario;
+    }, [tramosFormulario]);
+
+    // 🔥 3. EFECTO DE HIDRATACIÓN: Si nos pasan waypoints iniciales y el mapa está vacío, los cargamos
+    useEffect(() => {
+        if (initialWaypoints && initialWaypoints.length > 0 && waypoints.length === 0) {
+            setWaypoints(initialWaypoints);
+        }
+    }, [initialWaypoints]);
 
     const onLoad = useCallback(function callback(map) { setMap(map); }, []);
     const onUnmount = useCallback(function callback(map) { setMap(null); }, []);
@@ -119,13 +134,16 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                                 totalMeters += leg.distance.value;
                                 const legPath = leg.steps.flatMap(step => step.path);
                                 
-                                // Pedimos la elevación
                                 const elevacionData = await getElevationForLeg(legPath);
                                 
                                 const isFirst = index === 0;
                                 const isLast = index === route.legs.length - 1;
                                 const origenNombre = isFirst ? "Base DADICA" : leg.start_address.split(',')[0];
                                 const destinoNombre = isLast ? "Base DADICA" : leg.end_address.split(',')[0];
+
+                                // 🔥 4. Rescatamos los valores de tonelaje y espera si venían de la BD
+                                const tonelajeGuardado = tramosGuardadosRef.current[index]?.tonelaje || 0;
+                                const tiempoEsperaGuardado = tramosGuardadosRef.current[index]?.tiempoEspera || 0;
 
                                 return {
                                     tramoId: index + 1,
@@ -134,17 +152,15 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                                     distanciaKm: parseFloat((leg.distance.value / 1000).toFixed(2)),
                                     desnivelMetros: elevacionData.desnivel,
                                     tiempoBaseSegundos: leg.duration.value, 
-                                    tonelaje: 0,
-                                    // LA CLAVE: Guardamos el pedazo de montaña dentro de su propio tramo temporalmente
+                                    tonelaje: tonelajeGuardado, // <-- Mantiene el valor editado/guardado
+                                    tiempoEspera: tiempoEsperaGuardado, // <-- Mantiene el valor editado/guardado
                                     puntosPerfil: elevacionData.puntosPerfil,
                                     puntosCoordenadas: elevacionData.puntosCoordenadas
                                 };
                             });
 
-                            // Esperamos a que TODOS los tramos terminen de calcularse
                             const tramosProcesados = await Promise.all(tramosPromises);
                             
-                            // AHORA SÍ: Los unimos en orden estricto (1, 2, 3...)
                             let perfilCompletoOrdenado = []; 
                             let coordsCompletasOrdenadas = [];
                             let desnivelTotal = 0;
@@ -160,7 +176,6 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                             setDistanciaVisual(kmTotal);
                             setDesnivelTotalVisual(desnivelTotal);
                             
-                            // Pasamos el arreglo ya ordenado lógicamente
                             setPerfilElevacion(perfilCompletoOrdenado); 
                             setPerfilCoords(coordsCompletasOrdenadas); 
 
@@ -184,7 +199,6 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
         }
     }, [isLoaded, waypoints]); 
 
-// --- NUEVO CÁLCULO DE TIEMPO DINÁMICO (CORRECCIÓN Y ESPERA) ---
     useEffect(() => {
         if (!directionsResponse || tramosFormulario.length === 0) return;
 
@@ -196,7 +210,6 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
         const pesoBrutoMaximo = taraBase + capacidadMax;
 
         tramosFormulario.forEach(tramo => {
-            // 1. CORRECCIÓN GOOGLE: Google asume vehículos ligeros. Multiplicamos su tiempo base por 1.4 para simular un camión.
             const tiempoBaseRealista = (tramo.tiempoBaseSegundos * 1.4); 
             tiempoBaseGoogleTotal += tiempoBaseRealista;
 
@@ -206,13 +219,11 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                 const pesoBrutoTramo = taraBase + tramo.tonelaje;
                 const factorCarga = Math.min(pesoBrutoTramo / pesoBrutoMaximo, 1); 
 
-                // Física Horizontal (Peso)
                 const demoraHorizontal = 0.10 + (0.30 * factorCarga); 
                 const extraPorPeso = tiempoBaseRealista * demoraHorizontal;
                 demoraPorRegulacionYPeso += extraPorPeso;
                 segundosTramo += extraPorPeso;
 
-                // Física Montaña
                 if (tramo.desnivelMetros > 0) {
                     const segundosExtraPor100m = 90 + (120 * factorCarga); 
                     const penalidadMontaña = (tramo.desnivelMetros / 100) * segundosExtraPor100m;
@@ -221,20 +232,17 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                 }
             }
             
-            // 2. AGREGAMOS EL TIEMPO DE ESPERA DEL USUARIO EN ESE TRAMO
             const esperaSegundos = (parseFloat(tramo.tiempoEspera || 0)) * 3600;
             segundosTramo += esperaSegundos;
 
             tiempoFinalTotal += segundosTramo;
         });
 
-        // Formatear Tiempo Total
         const rawHours = tiempoFinalTotal / 3600;
         const hours = Math.floor(rawHours);
         const mins = Math.round((rawHours - hours) * 60);
         setTiempoVisual(`${hours}h ${mins}m`);
 
-        // Preparar el Banner Visual
         if (vehiculoAsignado && (demoraPorRegulacionYPeso > 0 || demoraVerticalTotalSegundos > 0)) {
             const totalExtra = demoraPorRegulacionYPeso + demoraVerticalTotalSegundos;
             const extH = Math.floor(totalExtra / 3600);
@@ -325,7 +333,6 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                         </Group>
                     </Group>
                     
-                    {/* EL BANNER DE TRANSPARENCIA FÍSICA */}
                     {penalidadVisual && (
                         <Alert variant="light" color="red" p="xs" icon={<IconAlertTriangle size={16} />}>
                             <Text size="xs" fw={500}>

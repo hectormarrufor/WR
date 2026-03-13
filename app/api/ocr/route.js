@@ -15,26 +15,42 @@ export async function POST(req) {
     const buffer = Buffer.from(arrayBuffer);
     const base64Image = buffer.toString("base64");
     
+    // Gemini 2.5 Flash es rapidísimo y excelente para esto
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
-      Analiza esta imagen de un documento legal venezolano (Transporte/Identidad).
+      Analiza esta imagen de un documento legal o administrativo venezolano (Puede ser de Recursos Humanos, Flota Vehicular o Inmuebles).
       
       Tareas:
-      1. Identifica el TIPO: "Cedula", "RIF", "Licencia" o "CertificadoMedico".
+      1. Identifica el TIPO de documento, debes elegir ESTRICTAMENTE una de estas opciones: 
+         "Cedula", "Licencia", "CertificadoMedico", "RIF", "Documento de Propiedad", "Cedula Catastral", "Permiso de Bomberos", "Derecho de Frente", "Solvencia de Aseo", "Solvencia Municipal", "Solvencia de Servicios Publicos", "RACDA", "RUNSAI", "DAEX", "Poliza de Seguro", "Trimestres Municipales", "ROC", "Otro".
+         - Reglas de clasificación:
+           * Carnet de Circulación INTT o Certificado de Registro de Vehículo -> "Documento de Propiedad"
+           * Cuadro Póliza de Seguros / RCV -> "Poliza de Seguro"
+           * Registro de Operadoras de Transporte de Carga -> "ROC"
+           * Permisos del MinEc para desechos -> "RACDA"
+           * Permisos del INSAI para agro/alimentos -> "RUNSAI"
+           * Armas, explosivos o químicos controlados -> "DAEX"
+
       2. Si es Licencia o Certificado Médico, identifica el GRADO numérico (1, 2, 3, 4, 5). 
-         - Ejemplo: "Quinto Grado" -> 5. "3ra" -> 3.
-      3. Extrae la FECHA DE VENCIMIENTO (Formato YYYY-MM-DD) siendo el primer dia del mes siguiente a su vencimiento para el caso de la cedula, y si la fecha de vencimiento viene completa con su dia, ahi si que tome la fecha indicada.
-      4. Extrae el NÚMERO DE DOCUMENTO (Cédula o RIF).
-         - Si es numero de cedula: responde numeroDocumento sin puntos ni guiones ni la V.
-         - Si es RIF: responde numeroDocumento con el formato completo (Ej: J-12345678-9).
+         - Ejemplo: "Quinto Grado" -> "5". "3ra" -> "3". Si no aplica, devuelve null.
+
+      3. Extrae la FECHA DE VENCIMIENTO (Formato YYYY-MM-DD):
+         - Si es la cédula: el primer dia del mes siguiente a su vencimiento, a menos que tenga el día exacto.
+         - Si el documento NO TIENE fecha de vencimiento (Ej: "Documento de Propiedad" o "Cedula Catastral"), debes devolver null.
+
+      4. Extrae el NÚMERO DE DOCUMENTO o REFERENCIA:
+         - Si es Cédula: número sin puntos, ni guiones, ni la letra V.
+         - Si es RIF: formato completo (Ej: J-12345678-9 o V-12345678-0).
+         - Si es Documento de Propiedad (Vehículo): Extrae la PLACA. Si no hay placa, extrae el SERIAL DE CARROCERÍA.
+         - Si es Póliza, ROC, RACDA, RUNSAI o DAEX: Extrae el número de certificado, póliza o registro principal.
       
-      Responde SOLO este JSON:
+      Responde SOLO este JSON válido:
       {
         "tipo": "string",
-        "numeroDocumento": "string",
+        "numeroDocumento": "string" | null,
         "fechaVencimiento": "YYYY-MM-DD" | null,
-        "gradoLicencia": "string" (Ej: "1", "2", "3", "4", "5") | null
+        "gradoLicencia": "string" | null
       }
     `;
 

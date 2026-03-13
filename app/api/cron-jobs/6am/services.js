@@ -299,50 +299,72 @@ export async function checkHREvents() {
 // ==========================================
 export async function checkAssetDocs() {
     const today = getCaracasDate();
+    const limitDate = addDays(today, 15); // Avisar con 15 días de anticipación
 
     const docs = await DocumentoActivo.findAll({
         where: {
-            fechaVencimiento: { [Op.lte]: addDays(today, 15) }
+            // 🔥 CRÍTICO: Ignorar los documentos permanentes (null) 🔥
+            fechaVencimiento: {
+                [Op.not]: null, 
+                [Op.lte]: limitDate 
+            }
         },
-        include: [{ model: Activo, as: 'activo', attributes: ['tipoActivo'],
+        include: [{ 
+            model: Activo, as: 'activo', attributes: ['id', 'tipoActivo', 'codigoInterno'],
             include: [
-                    {
-                        association: 'vehiculoInstancia', attributes: ['placa'],
-                        include: [{ association: "plantilla", attributes: ['modelo', 'tipoVehiculo'] }]
-                    },
-                    {
-                        association: 'remolqueInstancia', attributes: ['placa'],
-                        include: [{ association: "plantilla", attributes: ['modelo', 'tipoRemolque'] }]
-                    },
-                    {
-                        association: 'maquinaInstancia', attributes: ['placa'],
-                        include: [{ association: "plantilla", attributes: ['modelo', 'tipo'] }]
-                    },
-                    {
-                        association: 'inmuebleInstancia', attributes: ['direccionEspecifica'],
-                        include: [{ association: "plantilla", attributes: ['nombre'] }]
-                    },
-                    {
-                        association: 'equipoInstancia', attributes: ['serialFabrica'],
-                        include: [{ association: "plantilla", attributes: ['tipoEquipo', 'marca', 'modelo'] }]
-                    }
-                ]
-         }]
+                {
+                    association: 'vehiculoInstancia', attributes: ['placa'],
+                    include: [{ association: "plantilla", attributes: ['modelo', 'tipoVehiculo'] }]
+                },
+                {
+                    association: 'remolqueInstancia', attributes: ['placa'],
+                    include: [{ association: "plantilla", attributes: ['modelo', 'tipoRemolque'] }]
+                },
+                {
+                    association: 'maquinaInstancia', attributes: ['placa'],
+                    include: [{ association: "plantilla", attributes: ['modelo', 'tipo'] }]
+                },
+                {
+                    association: 'inmuebleInstancia', attributes: ['direccionEspecifica'],
+                    include: [{ association: "plantilla", attributes: ['nombre'] }]
+                },
+                {
+                    association: 'equipoInstancia', attributes: ['serialFabrica'],
+                    include: [{ association: "plantilla", attributes: ['tipoEquipo', 'marca', 'modelo'] }]
+                }
+            ]
+        }]
     });
 
-    return docs.map(doc => ({
-        msg: doc.activo.tipoActivo === "Vehiculo" ?
-        `${doc.tipo} del ${doc.activo?.vehiculoInstancia.plantilla.tipoVehiculo || 'N/A'} ${doc.activo.vehiculoInstancia.plantilla.modelo} ${doc.activo.vehiculoInstancia?.placa || ''}  vence el ${doc.fechaVencimiento}.`
-        : doc.activo.tipoActivo === "Remolque" ?
-        `${doc.tipo} del ${doc.activo?.remolqueInstancia.plantilla.tipoRemolque || 'N/A'} ${doc.activo.remolqueInstancia.plantilla.modelo} ${doc.activo.remolqueInstancia?.placa || ''}  vence el ${doc.fechaVencimiento}.`
-        : doc.activo.tipoActivo === "Maquina" ? 
-        `${doc.tipo} del ${doc.activo?.maquinaInstancia.plantilla.tipo || 'N/A'} ${doc.activo.maquinaInstancia.plantilla.modelo} ${doc.activo.maquinaInstancia?.placa || ''}  vence el ${doc.fechaVencimiento}.`
-        : doc.activo.tipoActivo === "Inmueble" ?
-        `${doc.tipo} del ${doc.activo?.inmuebleInstancia.plantilla.tipo || 'N/A'} ${doc.activo.inmuebleInstancia?.plantilla.nombre || ''} vence el ${doc.fechaVencimiento}.`
-        : doc.activo.tipoActivo === "Equipo" ?
-        `${doc.tipo} del ${doc.activo?.equipoInstancia.plantilla.tipo || 'N/A'} ${doc.activo.equipoInstancia?.plantilla.marca || ''} ${doc.activo.equipoInstancia?.plantilla.modelo || ''} ubicado en ${doc.activo.ubicacionActual || 'N/A'} vence el ${doc.fechaVencimiento}.`
-        : `${doc.tipo} del Activo ID ${doc.activoId} vence el ${doc.fechaVencimiento}.`
-        ,
-        id: doc.activoId
-    }));
+    return docs.map(doc => {
+        // Calcular días exactos para el mensaje
+        const fVenc = new Date(doc.fechaVencimiento);
+        // Ajuste para evitar diferencias de horas
+        const diffTime = fVenc.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        let estadoTiempo = "";
+        if (diffDays < 0) estadoTiempo = `❌ VENCIDO hace ${Math.abs(diffDays)} días`;
+        else if (diffDays === 0) estadoTiempo = `🚨 VENCE HOY`;
+        else estadoTiempo = `⏳ Vence en ${diffDays} días`;
+
+        // Extraer un nombre amigable del activo sin que crashee si falta un dato
+        let nombreActivo = doc.activo.codigoInterno || `Activo #${doc.activoId}`;
+        const a = doc.activo;
+
+        if (a.tipoActivo === "Vehiculo" && a.vehiculoInstancia) {
+            nombreActivo = `${a.vehiculoInstancia.plantilla?.modelo || 'Vehículo'} (Placa: ${a.vehiculoInstancia.placa || 'S/P'})`;
+        } else if (a.tipoActivo === "Remolque" && a.remolqueInstancia) {
+            nombreActivo = `${a.remolqueInstancia.plantilla?.modelo || 'Remolque'} (Placa: ${a.remolqueInstancia.placa || 'S/P'})`;
+        } else if (a.tipoActivo === "Maquina" && a.maquinaInstancia) {
+            nombreActivo = `${a.maquinaInstancia.plantilla?.modelo || 'Máquina'} (Placa: ${a.maquinaInstancia.placa || 'S/P'})`;
+        } else if (a.tipoActivo === "Inmueble" && a.inmuebleInstancia) {
+            nombreActivo = `${a.inmuebleInstancia.plantilla?.nombre || 'Instalación'}`;
+        }
+
+        return {
+            msg: `• ${doc.tipo} de ${nombreActivo}: ${estadoTiempo}`,
+            id: doc.activoId
+        };
+    });
 }

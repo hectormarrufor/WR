@@ -16,7 +16,8 @@ import {
     Flete,
     DetalleMatrizCosto,
     ODT,
-    ConfiguracionGlobal
+    ConfiguracionGlobal,
+    DocumentoActivo
 } from '@/models';
 import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
 
@@ -101,6 +102,7 @@ export async function GET(request, { params }) {
                 { model: ODT, as: 'odtsComoPrincipal' },
                 { model: ODT, as: 'odtsComoRemolque' },
                 { model: ODT, as: 'odtsComoMaquinaria' },
+                { model: DocumentoActivo, as: 'documentos' }
             ],
         });
 

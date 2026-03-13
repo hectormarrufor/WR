@@ -13,9 +13,11 @@ const DocumentoActivo = sequelize.define("DocumentoActivo", {
         "Solvencia Municipal",
         "Solvencia de Servicios Publicos",
         "RACDA",
+        "RUNSAI", // 🔥 NUEVO
+        "DAEX",   // 🔥 NUEVO
         "Poliza de Seguro",
         "Trimestres Municipales",
-        "ROC",
+        "ROTC",
         "Otro"
     ),
     allowNull: false,
@@ -27,7 +29,7 @@ const DocumentoActivo = sequelize.define("DocumentoActivo", {
   },
   fechaVencimiento: {
     type: DataTypes.DATEONLY,
-    allowNull: false,
+    allowNull: true,
   },
   imagen: {
     type: DataTypes.STRING, // URL de Vercel Blob

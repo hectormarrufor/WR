@@ -14,9 +14,9 @@ import {
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { 
-    IconCalculator, IconCoin, IconTruck, IconRoute, IconInfoCircle, 
-    IconMapPin, IconChartLine, IconSettings, IconSteeringWheel, IconAlertTriangle, IconDashboard 
+import {
+    IconCalculator, IconCoin, IconTruck, IconRoute, IconInfoCircle,
+    IconMapPin, IconChartLine, IconSettings, IconSteeringWheel, IconAlertTriangle, IconDashboard
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +47,7 @@ export default function FleteCreator() {
         posesion: false,
         overhead: false,
         mantenimiento: false,
-        riesgo: false, 
+        riesgo: false,
     });
 
     const toggleSection = (section) => {
@@ -75,7 +75,7 @@ export default function FleteCreator() {
             cantidadPeajes: 0,
             calidadRepuestos: 50,
             tipoCarga: "general",
-            margenGanancia: 30, 
+            margenGanancia: 30,
         },
         validate: {
             clienteId: (val) => (val ? null : "Seleccione un cliente"),
@@ -85,7 +85,7 @@ export default function FleteCreator() {
             distanciaKm: (val) => (val > 0 ? null : "Debe trazar una ruta en el mapa"),
         },
     });
-    
+
     const [valorVisualMargen, setValorVisualMargen] = useState(form.values.margenGanancia);
     const [valorVisualRepuestos, setValorVisualRepuestos] = useState(form.values.calidadRepuestos);
 
@@ -150,7 +150,7 @@ export default function FleteCreator() {
                 tipo: v.tipoActivo,
                 tara: v.tara || v.remolqueInstancia?.plantilla?.peso || v.vehiculoInstancia?.plantilla?.peso || null,
                 capacidad: v.capacidadTonelajeMax || v.remolqueInstancia?.plantilla?.capacidadCarga || v.vehiculoInstancia?.plantilla?.capacidadArrastre || null,
-                raw: v 
+                raw: v
             };
         });
     }, [activos]);
@@ -171,7 +171,7 @@ export default function FleteCreator() {
             form.values.horaSalida,
             form.values.comidaPrimerDia,
             form.values.viaticosManuales,
-            form.values.margenGanancia, 
+            form.values.margenGanancia,
             form.values.tipoCarga
         ],
         queryFn: async () => {
@@ -271,7 +271,7 @@ export default function FleteCreator() {
 
     if (loading) return <Center h="80vh"><Loader size="xl" color="yellow.6" /></Center>;
 
-   // 🔥 1. SOLUCIÓN TARA TOTAL (Suma Inmediata) 🔥
+    // 🔥 1. SOLUCIÓN TARA TOTAL (Suma Inmediata) 🔥
     const chutoSeleccionado = activosMapeados.find(a => a.id === form.values.activoPrincipalId);
     const remolqueSeleccionado = activosMapeados.find(a => a.id === form.values.remolqueId);
 
@@ -312,7 +312,7 @@ export default function FleteCreator() {
                             <Grid.Col span={{ base: 12, lg: 4 }}>
                                 <Stack gap="md">
                                     <Text fw={900} c="dark.5" size="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>Datos Comerciales</Text>
-                                    
+
                                     <SelectClienteConCreacion form={form} fieldName="clienteId" label="Cliente" />
 
                                     <Group grow>
@@ -377,7 +377,7 @@ export default function FleteCreator() {
                                                 <IconDashboard size={20} color="#fab005" />
                                                 <Text size="sm" fw={900} c="white" tt="uppercase">Telemetría de Flota Detectada</Text>
                                             </Group>
-                                            
+
                                             <SimpleGrid cols={2} spacing="md">
                                                 <Box>
                                                     <Text size="xs" fw={700} c="gray.5" tt="uppercase">Tara Flota (Vacía):</Text>
@@ -461,9 +461,11 @@ export default function FleteCreator() {
                             <GoogleRouteMap
                                 onRouteCalculated={handleRouteCalculated}
                                 tramosFormulario={form.values.tramos}
-                                taraBase={taraBaseVisual}
-                                capacidadMax={capacidadMaxDynamic}
-                                vehiculoAsignado={!!form.values.activoPrincipalId}
+                                vehiculoAsignado={!!form.values.vehiculoPrincipalId}
+                                taraBase={0}
+                                capacidadMax={30}
+                                // 🔥 LE PASAMOS LOS PUNTOS GUARDADOS AL MAPA 🔥
+                                initialWaypoints={form.values.waypoints}
                             />
                         </Box>
 
@@ -472,7 +474,7 @@ export default function FleteCreator() {
                                 <Text fw={900} c="dark.8" size="lg" tt="uppercase" mb="xl" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>
                                     Distribución de Carga por Tramos
                                 </Text>
-                                
+
                                 <Timeline active={form.values.tramos.length} bulletSize={32} lineWidth={4} color="yellow.6">
                                     {form.values.tramos.map((tramo, index) => (
                                         <Timeline.Item
@@ -496,7 +498,7 @@ export default function FleteCreator() {
                                                             <Text size="sm" mt="xs" fw={600}>Peso Bruto: <Text span c="dark.9" fw={900}>{((Number(taraBaseVisual) || 0) + (Number(tramo.tonelaje) || 0)).toFixed(1)}t</Text></Text>
                                                         </Stack>
                                                     </Grid.Col>
-                                                    
+
                                                     <Grid.Col span={{ base: 12, md: 6 }}>
                                                         <Text size="md" fw={800} mb={10} c="dark.7">Ajustar Peso a Mover en este Tramo:</Text>
                                                         <Slider
@@ -504,14 +506,14 @@ export default function FleteCreator() {
                                                             defaultValue={tramo.tonelaje}
                                                             onChangeEnd={(val) => form.setFieldValue(`tramos.${index}.tonelaje`, val)}
                                                             step={0.5} min={0} max={capacidadMaxDynamic}
-                                                            label={(val) => `${val}t`} 
+                                                            label={(val) => `${val}t`}
                                                             marks={[
                                                                 { value: 0, label: <Text fw={800}>Vacío</Text> },
                                                                 { value: Math.round(capacidadMaxDynamic), label: <Text fw={800}>Full</Text> }
                                                             ]}
                                                         />
                                                     </Grid.Col>
-                                                    
+
                                                     <Grid.Col span={{ base: 12, md: 3 }}>
                                                         <NumberInput
                                                             label={<Text fw={700}>Espera en parada (Hrs)</Text>}
@@ -551,7 +553,7 @@ export default function FleteCreator() {
                             </Alert>
                         ) : (
                             <Stack gap="xl">
-                                
+
                                 {estimacion?.breakdown?.rutinaViaje && (
                                     <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
                                         <Paper withBorder p="xl" radius="md" ta="center" bg="gray.1" shadow="xs">
@@ -585,7 +587,7 @@ export default function FleteCreator() {
 
                                             {estimacion?.breakdown?.itinerario && estimacion.breakdown.itinerario.length > 0 && (
                                                 <Box mt="md" mb="xl" p="xl" bg="gray.0" style={{ borderRadius: '8px', border: '1px solid #e9ecef' }}>
-                                                    <Text fw={900} mb="lg" size="lg" c="dark.8" tt="uppercase"><IconRoute size={20} style={{ verticalAlign: 'middle', marginRight: 8 }}/> Cronograma Estimado de la Misión</Text>
+                                                    <Text fw={900} mb="lg" size="lg" c="dark.8" tt="uppercase"><IconRoute size={20} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Cronograma Estimado de la Misión</Text>
                                                     <Timeline active={estimacion.breakdown.itinerario.length} bulletSize={24} lineWidth={3} color="yellow.6">
                                                         {estimacion.breakdown.itinerario.map((evento, idx) => (
                                                             <Timeline.Item key={idx} title={<Text fw={900} c="dark.8" size="md">Día {evento.dia}</Text>} lineVariant={evento.tipo === 'descanso' ? 'dashed' : 'solid'} color={evento.tipo === 'descanso' ? 'orange.6' : 'yellow.6'}>
@@ -764,12 +766,12 @@ export default function FleteCreator() {
                                                         <Text size="lg" fw={900} c="dark.7">Margen de Ganancia Comercial</Text>
                                                         <Badge color="green.7" size="xl" radius="sm" variant="filled" style={{ fontSize: '1.2rem', padding: '16px 12px' }}>{valorVisualMargen}%</Badge>
                                                     </Group>
-                                                    <Slider 
+                                                    <Slider
                                                         color="green.6" size="xl"
-                                                        value={valorVisualMargen} onChange={setValorVisualMargen} 
-                                                        onChangeEnd={(val) => form.setFieldValue("margenGanancia", val)} 
-                                                        step={1} min={0} max={100} 
-                                                        marks={[{ value: 0, label: <Text fw={800}>0%</Text> }, { value: 100, label: <Text fw={800}>100%</Text> }]} 
+                                                        value={valorVisualMargen} onChange={setValorVisualMargen}
+                                                        onChangeEnd={(val) => form.setFieldValue("margenGanancia", val)}
+                                                        step={1} min={0} max={100}
+                                                        marks={[{ value: 0, label: <Text fw={800}>0%</Text> }, { value: 100, label: <Text fw={800}>100%</Text> }]}
                                                     />
                                                 </Box>
                                                 <Box mt="xl">
@@ -777,11 +779,11 @@ export default function FleteCreator() {
                                                         <Text size="lg" fw={900} c="dark.7">Calidad Repuestos Asignada</Text>
                                                         <Badge variant="filled" color="dark.5" size="xl" radius="sm">{valorVisualRepuestos}%</Badge>
                                                     </Group>
-                                                    <Slider 
+                                                    <Slider
                                                         color="dark.4" size="lg"
-                                                        value={valorVisualRepuestos} onChange={setValorVisualRepuestos} 
-                                                        onChangeEnd={(val) => form.setFieldValue("calidadRepuestos", val)} 
-                                                        step={10} marks={[{ value: 0, label: <Text fw={700}>Económico</Text> }, { value: 100, label: <Text fw={700}>Original</Text> }]} 
+                                                        value={valorVisualRepuestos} onChange={setValorVisualRepuestos}
+                                                        onChangeEnd={(val) => form.setFieldValue("calidadRepuestos", val)}
+                                                        step={10} marks={[{ value: 0, label: <Text fw={700}>Económico</Text> }, { value: 100, label: <Text fw={700}>Original</Text> }]}
                                                     />
                                                 </Box>
                                             </Stack>
@@ -805,7 +807,7 @@ export default function FleteCreator() {
                                                         <Text size="xl" fw={900} c="orange.7" style={{ fontSize: '2rem' }}>${estimacion.ajusteTarifaMinima.toFixed(2)}</Text>
                                                     </Group>
                                                 )}
-                                                
+
                                                 <Box ta="right" mt="xl">
                                                     <Text size="xl" tt="uppercase" fw={900} c="dark.4" mb={8} style={{ letterSpacing: '2px' }}>Tarifa Final Sugerida al Cliente</Text>
                                                     <Text style={{ fontSize: '5.5rem', lineHeight: '1' }} fw={900} c="dark.9">
@@ -828,11 +830,11 @@ export default function FleteCreator() {
                     </Paper>
 
                     <Box px="xl" pb="xl">
-                        <Button 
-                            fullWidth 
-                            radius="md" 
-                            type="submit" 
-                            loading={submitting} 
+                        <Button
+                            fullWidth
+                            radius="md"
+                            type="submit"
+                            loading={submitting}
                             leftSection={<IconSteeringWheel size={36} />}
                             color="yellow.6"
                             c="dark.9"

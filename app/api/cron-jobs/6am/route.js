@@ -76,20 +76,23 @@ export async function GET(request) {
     }
 
     // 6. Procesar DOCUMENTOS ACTIVOS
-    if (activos.status === 'fulfilled' && activos.value.length > 0) {
-        const docs = activos.value;
-        // Agrupamos para no saturar si hay muchos
-        const count = docs.length;
-        const preview = docs.slice(0, 2).map(d => d.msg).join('\n'); // Mostrar los primeros 2 en el cuerpo
+        if (activos.status === 'fulfilled' && activos.value.length > 0) {
+            const docs = activos.value;
+            const count = docs.length;
+            
+            // Mostrar los primeros 3 documentos en la vista previa del teléfono
+            const preview = docs.slice(0, 3).map(d => d.msg).join('\n'); 
 
-        await notificarCabezas({
-            title: `🚨 ${count} Documentos de Activos por vencer`,
-            body: `${preview}\n... y ${count - 2} más.`,
-            url: '/superuser/flota/documentacion',
-            tag: 'asset-docs'
-        });
-        report.push(`✅ ${count} documentos de activos detectados.`);
-    }
+            await notificarCabezas({
+                title: `🚨 ${count} Docs. de Activos Vencidos/Por Vencer`,
+                body: `${preview}${count > 3 ? `\n... y ${count - 3} más.` : ''}`,
+                url: '/superuser/flota/activos', // Llévalos al panel principal de activos
+                tag: 'asset-docs'
+            });
+            report.push(`✅ ${count} alertas de documentos de activos enviadas.`);
+        } else if (activos.status === 'rejected') {
+            report.push(`❌ Error Documentos Activos: ${activos.reason}`);
+        }
 
     return NextResponse.json({ success: true, report });
 
