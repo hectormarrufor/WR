@@ -18,7 +18,7 @@ module.exports = (sequelize) => {
   }, {
     indexes: [
       { fields: ['fleteId', 'timestamp'] }, // Para buscar historial rápido
-      { fields: ['posicion'], using: 'gist' } // ÍNDICE ESPACIAL (Clave para velocidad)
+      { fields: ['posicion'], type: 'SPATIAL' } // ÍNDICE ESPACIAL (Clave para velocidad)
     ]
   });
 

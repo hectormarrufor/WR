@@ -27,6 +27,8 @@ import ModalActualizarLectura from './inspecciones/ModalActualizarLecturas';
 import ModalInstallComponente from '../components/ModalInstallComponente';
 import ModalDesinstalarComponente from '../components/ModalDesinstalarComponente';
 import ModalAgregarDocumento from '../components/ModalAgregarDocumento';
+import ModalGenerarOM from './ordenes/nueva/ModalGenerarOM';
+
 
 export default function DetalleActivoPage({ params }) {
 
@@ -323,18 +325,29 @@ export default function DetalleActivoPage({ params }) {
                                     </Tabs.Tab>
                                 </Tabs.List>
 
-                                {/* 🔥 1. TAB: SALUD Y ALERTAS (RESTAURADO) 🔥 */}
+                                {/* 1. TAB: SALUD Y ALERTAS */}
                                 <Tabs.Panel value="alertas">
-                                    <Group justify="space-between" align="center" mb="xl">
+                                    <Group justify="space-between" align="center" mb="xl" wrap="wrap">
                                         <Group align="center">
                                             <ThemeIcon size="lg" radius="md" variant="filled" color={hallazgosPendientes.length > 0 ? "red.8" : "teal.7"}>
                                                 <IconAlertTriangle size={20} color="white" />
                                             </ThemeIcon>
                                             <Title order={3} c="dark.9" tt="uppercase">Estado de Salud y Reportes</Title>
                                         </Group>
-                                        <Button color="red.7" radius="sm" leftSection={<IconClipboardCheck size={18} />} onClick={() => setModalFallaOpened(true)}>
-                                            Reportar Falla o Novedad
-                                        </Button>
+                                        
+                                        <Group gap="sm">
+                                            {/* 🔥 Botón para reportar falla (Chofer) 🔥 */}
+                                            <Button color="red.7" radius="sm" leftSection={<IconClipboardCheck size={18} />} onClick={() => setModalFallaOpened(true)}>
+                                                Reportar Falla
+                                            </Button>
+                                            
+                                            {/* 🔥 Botón NUEVO: Generar OM Global agrupando lo que él quiera 🔥 */}
+                                            {hallazgosPendientes.length > 0 && (
+                                                <Button color="blue.7" radius="sm" leftSection={<IconTool size={18} />} onClick={() => { setSelectedHallazgo(null); setModalOrdenOpened(true); }}>
+                                                    Generar OM
+                                                </Button>
+                                            )}
+                                        </Group>
                                     </Group>
 
                                     {hallazgosPendientes.length > 0 ? (
@@ -767,15 +780,16 @@ export default function DetalleActivoPage({ params }) {
                 </Grid>
             </Box>
 
-            {/* 🔥 MODALES: ¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE! 🔥 */}
-            <Modal opened={modalOrdenOpened} onClose={() => setModalOrdenOpened(false)} title={<Text fw={900} size="lg" tt="uppercase">Generar ODT</Text>} centered radius="md">
-                {selectedHallazgo && (
-                    <Stack>
-                        <Alert color="blue.7" icon={<IconInfoCircle />}>Atendiendo: <b>{selectedHallazgo.descripcion}</b></Alert>
-                        <Button color="dark.9" radius="sm" size="md" onClick={() => { notifications.show({ title: 'Orden Creada', color: 'green' }); setModalOrdenOpened(false); }}>Confirmar Apertura</Button>
-                    </Stack>
-                )}
-            </Modal>
+            {/* 🔥 EL MODAL MAESTRO DE MANTENIMIENTO 🔥 */}
+            <ModalGenerarOM 
+                opened={modalOrdenOpened} 
+                onClose={() => { setModalOrdenOpened(false); setSelectedHallazgo(null); }} 
+                activo={activo} 
+                hallazgosPendientes={hallazgosPendientes} 
+                selectedHallazgo={selectedHallazgo} // 👉 Le pasamos la falla seleccionada
+                userId={userId} 
+                onSuccess={fetchData} 
+            />
 
             <ModalReportarFalla opened={modalFallaOpened} onClose={() => setModalFallaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
             <ModalActualizarLectura opened={modalLecturaOpened} onClose={() => setModalLecturaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
@@ -792,11 +806,11 @@ export default function DetalleActivoPage({ params }) {
                 onSuccess={fetchData}
             />
             {/* 🔥 MODAL VISOR DE DOCUMENTOS (CON IMPRIMIR/DESCARGAR) 🔥 */}
-            <Modal 
-                opened={!!docPreview} 
-                onClose={() => setDocPreview(null)} 
-                size="auto" 
-                centered 
+            <Modal
+                opened={!!docPreview}
+                onClose={() => setDocPreview(null)}
+                size="auto"
+                centered
                 withCloseButton={false}
                 padding={0}
                 overlayProps={{ blur: 5, opacity: 0.8, color: '#212529' }}
@@ -814,24 +828,24 @@ export default function DetalleActivoPage({ params }) {
                         </Group>
 
                         <Box style={{ backgroundColor: '#ffffff', borderRadius: '4px', padding: '4px' }}>
-                            <Image 
-                                src={docPreview.url} 
-                                fit="contain" 
-                                style={{ maxHeight: '75vh', width: 'auto', margin: '0 auto', display: 'block' }} 
+                            <Image
+                                src={docPreview.url}
+                                fit="contain"
+                                style={{ maxHeight: '75vh', width: 'auto', margin: '0 auto', display: 'block' }}
                             />
                         </Box>
 
                         <Group justify="center" mt="md" gap="md">
-                            <Button 
-                                size="md" radius="sm" color="blue.7" 
-                                leftSection={<IconDownload size={20} />} 
+                            <Button
+                                size="md" radius="sm" color="blue.7"
+                                leftSection={<IconDownload size={20} />}
                                 onClick={() => handleDownloadDoc(docPreview.url, docPreview.filename)}
                             >
                                 DESCARGAR
                             </Button>
-                            <Button 
-                                size="md" radius="sm" color="teal.7" 
-                                leftSection={<IconPrinter size={20} />} 
+                            <Button
+                                size="md" radius="sm" color="teal.7"
+                                leftSection={<IconPrinter size={20} />}
                                 onClick={() => handlePrintDoc(docPreview.url)}
                             >
                                 IMPRIMIR
