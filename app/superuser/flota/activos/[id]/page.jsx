@@ -352,28 +352,33 @@ export default function DetalleActivoPage({ params }) {
 
                                     {hallazgosPendientes.length > 0 ? (
                                         <Timeline active={hallazgosPendientes.length} bulletSize={24} lineWidth={2} color="red">
-                                            {hallazgosPendientes.map((hallazgo) => (
-                                                <Timeline.Item key={hallazgo.id} bullet={<IconAlertTriangle size={12} />} title={<Text fw={900} size="md" tt="uppercase">{hallazgo.tipo}</Text>}>
-                                                    <Paper withBorder p="md" mt="sm" radius="sm" shadow="xs" style={{ borderLeft: `6px solid ${hallazgo.severidad === 'Crítica' ? '#e03131' : '#fab005'}` }}>
-                                                        <Group justify="space-between" align="flex-start" mb="xs">
-                                                            <Text size="sm" c="dark.8" fw={600}>{hallazgo.descripcion}</Text>
-                                                            <Badge color={hallazgo.severidad === 'Crítica' ? 'red' : 'yellow'} variant="filled" radius="sm">{hallazgo.severidad}</Badge>
-                                                        </Group>
-                                                        <Group gap="xl">
-                                                            <Text size="xs" c="dimmed" fw={700}>ID: #{hallazgo.id}</Text>
-                                                            <Text size="xs" c="dimmed" fw={700}>Reportado: {new Date(hallazgo.createdAt).toLocaleDateString()}</Text>
-                                                            {hallazgo.observacion && <Text size="xs" c="gray.6" fs="italic">"{hallazgo.observacion}"</Text>}
-                                                        </Group>
-                                                        {hallazgo.estado === 'Pendiente' && (
-                                                            <Group mt="md" justify="flex-end">
-                                                                <Button size="xs" variant="light" color="blue" onClick={() => { setSelectedHallazgo(hallazgo); setModalOrdenOpened(true); }}>
-                                                                    Generar ODT
-                                                                </Button>
+                                            {hallazgosPendientes.map((hallazgo) => {
+                                                // Definimos los semáforos correctos basados en tu modelo
+                                                const esCritico = hallazgo.impacto === 'No Operativo';
+                                                const colorImpacto = esCritico ? 'red' : (hallazgo.impacto === 'Advertencia' ? 'yellow' : 'teal');
+
+                                                return (
+                                                    <Timeline.Item key={hallazgo.id} bullet={<IconAlertTriangle size={12} />} title={<Text fw={900} size="md" tt="uppercase">FALLA REPORTADA</Text>}>
+                                                        <Paper withBorder p="md" mt="sm" radius="sm" shadow="xs" style={{ borderLeft: `6px solid ${esCritico ? '#e03131' : (hallazgo.impacto === 'Advertencia' ? '#fab005' : '#12b886')}` }}>
+                                                            <Group justify="space-between" align="flex-start" mb="xs">
+                                                                <Text size="sm" c="dark.8" fw={600} style={{ flex: 1 }}>{hallazgo.descripcion}</Text>
+                                                                <Badge color={colorImpacto} variant="filled" radius="sm">{hallazgo.impacto}</Badge>
                                                             </Group>
-                                                        )}
-                                                    </Paper>
-                                                </Timeline.Item>
-                                            ))}
+                                                            <Group gap="xl">
+                                                                <Text size="xs" c="dimmed" fw={700}>ID: #{hallazgo.id}</Text>
+                                                                <Text size="xs" c="dimmed" fw={700}>Reportado: {new Date(hallazgo.createdAt).toLocaleDateString()}</Text>
+                                                            </Group>
+                                                            {hallazgo.estado === 'Pendiente' && (
+                                                                <Group mt="md" justify="flex-end">
+                                                                    <Button size="xs" variant="light" color="blue" onClick={() => { setSelectedHallazgo(hallazgo); setModalOrdenOpened(true); }}>
+                                                                        Generar ODT
+                                                                    </Button>
+                                                                </Group>
+                                                            )}
+                                                        </Paper>
+                                                    </Timeline.Item>
+                                                );
+                                            })}
                                         </Timeline>
                                     ) : (
                                         <Alert color="teal.6" variant="outline" style={{ borderStyle: 'dashed', borderWidth: '2px' }} ta="center" py="xl">

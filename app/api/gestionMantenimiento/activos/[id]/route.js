@@ -88,9 +88,16 @@ export async function GET(request, { params }) {
                 {
                     model: Inspeccion,
                     as: 'inspecciones',
-                    limit: 5,
+                    // Te recomiendo quitar el limit o subirlo, porque si la falla está 
+                    // en una inspección vieja (hace 6 reportes) y tienes limit: 5, no se mostrará.
                     order: [['fecha', 'DESC']],
-                    required: false
+                    required: false,
+                    include: [
+                        {
+                            model: Hallazgo, // 🔥 FALTABA ESTO 🔥
+                            as: 'hallazgos'
+                        }
+                    ]
                 },
                 {
                     model: MatrizCosto,
