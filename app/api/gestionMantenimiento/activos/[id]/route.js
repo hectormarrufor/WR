@@ -17,7 +17,8 @@ import {
     DetalleMatrizCosto,
     ODT,
     ConfiguracionGlobal,
-    DocumentoActivo
+    DocumentoActivo,
+    Hallazgo
 } from '@/models';
 import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
 
