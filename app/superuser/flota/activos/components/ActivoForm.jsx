@@ -58,7 +58,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
             valorReposicion: (val) => (!val || val <= 0 ? 'Ingrese el valor del equipo' : null),
             vidaUtilAnios: (val) => (!val || val <= 0 ? 'Ingrese los años de vida útil' : null),
             valorSalvamento: (val) => (val === '' || val < 0 ? 'Ingrese valor de salvamento' : null),
-            horasAnuales: (val) => (!val || val <= 0 ? 'Requerido' : null),
+            horasAnuales: (val) => ( val < 0 ? 'Debe ser 0 o mayor' : null),
         }
     });
 
@@ -314,7 +314,7 @@ export default function ActivoForm({ matricesData = [], plantilla, tipoActivo, o
                                 </Group>
                                 <Divider my="sm" variant="dashed" />
                                 <NumberInput
-                                    required
+                                    
                                     label="Horas Anuales Estimadas de Trabajo"
                                     description="Se utiliza para prorratear el costo de depreciación y seguros por hora."
                                     {...form.getInputProps('horasAnuales')}
