@@ -36,8 +36,11 @@ export default function MatrizEditor({ matrizId }) {
                 setFilas(matrizData.detalles || []);
 
                 if (configData && configData.horasTotalesFlota) {
-                    setHorasAnuales(configData.horasTotalesFlota / configData.cantidadTotalUnidades); // Si tienes el total de unidades en configData
-                    setHorasPorMes((configData.horasTotalesFlota / configData.cantidadTotalUnidades) / 12);
+                    // Evitamos dividir por cero por si no hay ninguna unidad activa
+                    const unidadesActivas = configData.cantidadUnidadesActivas || 1; 
+                    
+                    setHorasAnuales(configData.horasTotalesFlota / unidadesActivas);
+                    setHorasPorMes((configData.horasTotalesFlota / unidadesActivas) / 12);
                 }
             })
             .catch(err => {
