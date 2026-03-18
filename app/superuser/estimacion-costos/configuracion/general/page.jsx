@@ -37,7 +37,9 @@ export default function ConfiguracionGlobalPage() {
             nominaAdministrativaTotal: 0,
             nominaOperativaFijaTotal: 0,
             valorFlotaTotal: 0,
+            valorFlotaActiva: 0,       // <-- ¡NUEVA!
             cantidadTotalUnidades: 0,
+            cantidadUnidadesActivas: 0, // <-- ¡NUEVA!
             horasTotalesFlota: 0,
             costoAdministrativoPorHora: 0,
 
@@ -294,11 +296,21 @@ export default function ConfiguracionGlobalPage() {
                                 <Group justify="flex-end" gap="xl">
                                     {/* SECCIÓN HORAS Y VALOR DE FLOTA */}
                                     <div style={{ textAlign: 'right', paddingRight: '15px', borderRight: '1px solid #dee2e6' }}>
-                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Horas Totales Activas</Text>
-                                        <Text size="lg" fw={800} c="indigo.9">{form.values.horasTotalesFlota.toLocaleString('en-US')} hr/año</Text>
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase">Músculo Operativo (Produciendo)</Text>
+                                        <Text size="lg" fw={800} c="indigo.9">
+                                            {form.values.cantidadUnidadesActivas} Equipos / {Number(form.values.horasTotalesFlota || 0).toLocaleString('en-US')} hr
+                                        </Text>
+                                        <Text size="xl" fw={900} c="blue.9">
+                                            ${Number(form.values.valorFlotaActiva || 0).toLocaleString('en-US')}
+                                        </Text>
 
-                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="sm">Valor Total Flota (USD)</Text>
-                                        <Text size="xl" fw={900} c="blue.9">${Number(form.values.valorFlotaTotal || 0).toLocaleString('en-US')}</Text>
+                                        <Text size="xs" c="dimmed" fw={700} tt="uppercase" mt="sm">Patrimonio Total (Incluye Inactivos)</Text>
+                                        <Text size="sm" fw={700} c="gray.7">
+                                            {form.values.cantidadTotalUnidades} Equipos Físicos
+                                        </Text>
+                                        <Text size="md" fw={800} c="gray.8">
+                                            ${Number(form.values.valorFlotaTotal || 0).toLocaleString('en-US')}
+                                        </Text>
                                     </div>
 
                                     {/* SECCIÓN OVERHEAD CON DESGLOSE */}

@@ -123,38 +123,43 @@ export async function POST(req) {
         // E. El Verdadero Gran Total Anual del Overhead (Gasto Fijo Puro)
         const granTotalAnual = anualEstatico + anualDinamico;
 
+        // =================================================================
         // F. PRORRATEO GLOBAL EXACTO (Bottom-Up ABC Costing)
         // =================================================================
         
-        // 🔥 FILTRO FINANCIERO: Solo sumamos activos que SÍ están produciendo
-        const condicionOperativa = {
-            estado: {
-                [Op.notIn]: ['Inactivo', 'Desincorporado']
+        // 1. Traemos la foto completa de la flota
+        const todosLosActivos = await db.Activo.findAll({
+            where: { estado: { [Op.ne]: 'Desincorporado' } },
+            attributes: ['estado', 'valorReposicion', 'horasAnuales'],
+            raw: true,
+            transaction: t
+        });
+
+        let vTotal = 0;       // Patrimonio
+        let vActivo = 0;      // Capital Operativo
+        let hTotales = 0;     // Horas de trabajo
+        let uTotales = 0;     // Camiones en el patio
+        let uActivas = 0;     // Camiones trabajando
+
+        todosLosActivos.forEach(a => {
+            const valor = parseFloat(a.valorReposicion) || 0;
+            const horas = parseInt(a.horasAnuales) || 0;
+
+            // A. Todo lo del patio suma al patrimonio total
+            vTotal += valor;
+            uTotales += 1;
+
+            // B. Si NO está inactivo, suma al capital operativo
+            if (a.estado !== 'Inactivo') {
+                vActivo += valor;
+                hTotales += horas;
+                uActivas += 1;
             }
-        };
-
-        const sumaHoras = await db.Activo.sum('horasAnuales', { 
-            where: condicionOperativa,
-            transaction: t 
-        });
-        const horasTotalesFlotaReal = sumaHoras ? parseInt(sumaHoras) : 0;
-
-        // 🔥 CONTEO REAL EN VIVO (Nunca confiar en el body del frontend para esto)
-        const unidadesTotalesReales = await db.Activo.count({
-            where: condicionOperativa,
-            transaction: t
         });
 
-        // 🔥 SUMA DEL VALOR TOTAL DE LA FLOTA EN VIVO
-        const sumaValorFlota = await db.Activo.sum('valorReposicion', {
-            where: condicionOperativa,
-            transaction: t
-        });
-        const valorFlotaReal = sumaValorFlota ? parseFloat(sumaValorFlota) : 0;
-
-        // Evitamos división por cero (Cálculo del Overhead)
-        const nuevoCostoAdministrativoPorHora = horasTotalesFlotaReal > 0
-            ? (granTotalAnual / horasTotalesFlotaReal)
+        // 2. Evitamos división por cero para el Overhead (Usamos las horas ACTIVAS)
+        const nuevoCostoAdministrativoPorHora = hTotales > 0
+            ? (granTotalAnual / hTotales)
             : 0;
 
         // =================================================================
@@ -166,14 +171,16 @@ export async function POST(req) {
             nominaAdministrativaTotal: adminSuma, 
             nominaOperativaFijaTotal: operativaSuma, 
             gastosFijosAnualesTotales: granTotalAnual,
-            horasTotalesFlota: horasTotalesFlotaReal, // Protegido
-            cantidadTotalUnidades: unidadesTotalesReales, // Protegido
-            valorFlotaTotal: valorFlotaReal, // Protegido
+            horasTotalesFlota: hTotales,             // Protegido
+            cantidadTotalUnidades: uTotales,         // Patrimonio físico
+            cantidadUnidadesActivas: uActivas,       // Musculo de trabajo
+            valorFlotaTotal: vTotal,                 // Patrimonio en $
+            valorFlotaActiva: vActivo,               // Capital Operativo en $
             costoAdministrativoPorHora: nuevoCostoAdministrativoPorHora
         }, { where: { id: 1 }, transaction: t });
 
 
-        // Limpiar y recrear gastos fijos extra (Se queda igual)
+        // Limpiar y recrear gastos fijos extra
         await db.GastoFijoGlobal.destroy({ where: { configuracionId: 1 }, transaction: t });
         if (body.gastosFijos && body.gastosFijos.length > 0) {
             const nuevosGastos = body.gastosFijos.map(g => ({
@@ -198,18 +205,13 @@ export async function POST(req) {
             };
         };
 
-        // --- Actualizar Cauchos ---
         if (body.precioCauchoMin > 0 && body.precioCauchoMax > 0) {
             await db.DetalleMatrizCosto.update(
                 prepararCostos(body.precioCauchoMin, body.precioCauchoMax),
-                {
-                    where: { descripcion: { [Op.or]: [{ [Op.iLike]: '%Neum%' }, { [Op.iLike]: '%Cauch%' }] } },
-                    transaction: t
-                }
+                { where: { descripcion: { [Op.or]: [{ [Op.iLike]: '%Neum%' }, { [Op.iLike]: '%Cauch%' }] } }, transaction: t }
             );
         }
 
-        // --- Actualizar Aceite Motor ---
         if (body.precioAceiteMotorMin > 0 && body.precioAceiteMotorMax > 0) {
             await db.DetalleMatrizCosto.update(
                 prepararCostos(body.precioAceiteMotorMin, body.precioAceiteMotorMax),
@@ -217,7 +219,6 @@ export async function POST(req) {
             );
         }
 
-        // --- Actualizar Aceite Caja ---
         if (body.precioAceiteCajaMin > 0 && body.precioAceiteCajaMax > 0) {
             await db.DetalleMatrizCosto.update(
                 prepararCostos(body.precioAceiteCajaMin, body.precioAceiteCajaMax),
@@ -225,7 +226,6 @@ export async function POST(req) {
             );
         }
 
-        // --- Actualizar Baterías ---
         if (body.precioBateriaMin > 0 && body.precioBateriaMax > 0) {
             await db.DetalleMatrizCosto.update(
                 prepararCostos(body.precioBateriaMin, body.precioBateriaMax),
@@ -233,14 +233,14 @@ export async function POST(req) {
             );
         }
 
-       // =================================================================
+        // =================================================================
         // 5. RECALCULAR LOS TOTALES DE CADA MATRIZ
         // =================================================================
         const matrices = await db.MatrizCosto.findAll({ include: ['detalles'], transaction: t });
 
-        // 🔥 AHORA USAMOS EL CONTEO REAL BLINDADO 🔥
-        const divisorUnidades = unidadesTotalesReales > 0 ? unidadesTotalesReales : 1;
-        const promedioHorasActivoMes = (horasTotalesFlotaReal / divisorUnidades) / 12;
+        // 🔥 AQUÍ SE REPARÓ EL ENLACE CON LAS NUEVAS VARIABLES 🔥
+        const divisorUnidades = uActivas > 0 ? uActivas : 1;
+        const promedioHorasActivoMes = (hTotales / divisorUnidades) / 12;
 
         for (const m of matrices) {
             let nuevoTotalKm = 0;
@@ -260,6 +260,7 @@ export async function POST(req) {
             }
             await m.update({ totalCostoKm: nuevoTotalKm, totalCostoHora: nuevoTotalHora }, { transaction: t });
         }
+        
         await t.commit();
 
         return NextResponse.json({

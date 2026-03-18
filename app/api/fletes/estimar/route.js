@@ -72,7 +72,7 @@ export async function POST(req) {
             viaticoHotelNoche = 20,
 
             // Variables para Prorrateo Ponderado ABC Puro
-            valorFlotaTotal = 1,
+            valorFlotaActiva = 1,
             gastosFijosAnualesTotales = 0,
             horasTotalesFlota = 1,
             costoAdministrativoPorHora = 0,
@@ -358,9 +358,9 @@ export async function POST(req) {
         // --- 8. CÁLCULO PONDERADO DE OVERHEAD (NUEVO ABC PURO) ---
         // ------------------------------------------------------------------
 
-        // 1. Pesos de los activos (Qué porcentaje del valor de la empresa representan)
-        const pesoChuto = valorFlotaTotal > 0 ? (valorReposicionChuto / valorFlotaTotal) : 0;
-        const pesoBatea = (batea && valorFlotaTotal > 0) ? (valorReposicionBatea / valorFlotaTotal) : 0;
+       // 🔥 1. Pesos de los activos (Contra la flota ACTIVA, no la muerta)
+        const pesoChuto = valorFlotaActiva > 0 ? (valorReposicionChuto / valorFlotaActiva) : 0;
+        const pesoBatea = (batea && valorFlotaActiva > 0) ? (valorReposicionBatea / valorFlotaActiva) : 0;
 
         // 2. Gasto anual real que debe absorber CADA activo (según su peso)
         const gastoAnualChutoAsignado = gastosFijosAnualesTotales * pesoChuto;
@@ -395,8 +395,8 @@ export async function POST(req) {
                 costoHora: overheadHoraBatea
             } : null,
             flotaGlobal: {
-                valorTotal: valorFlotaTotal,
-                horasSoporte: horasTotalesFlota // Refleja la suma de horas reales
+                valorTotalAplicado: valorFlotaActiva, // 🔥 Actualizamos la etiqueta
+                horasSoporte: horasTotalesFlota
             }
         };
 

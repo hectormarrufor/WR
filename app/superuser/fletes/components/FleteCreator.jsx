@@ -247,7 +247,7 @@ export default function FleteCreator() {
                     viaticoAlimentacionDia: parseFloat(configGlobal.viaticoAlimentacionDia || 15),
                     viaticoHotelNoche: parseFloat(configGlobal.viaticoHotelNoche || 20),
 
-                    valorFlotaTotal: parseFloat(configGlobal.valorFlotaTotal || 1),
+                    valorFlotaActiva: parseFloat(configGlobal.valorFlotaActiva || 1),
                     gastosFijosAnualesTotales: parseFloat(configGlobal.gastosFijosAnualesTotales || 0),
                     horasTotalesFlota: parseInt(configGlobal.horasTotalesFlota || 1),
                     costoAdministrativoPorHora: parseFloat(configGlobal.costoAdministrativoPorHora || 0),
@@ -542,7 +542,7 @@ export default function FleteCreator() {
     // 1. Desglose de Overhead (Corregido a ABC Puro)
     const chutoValor = chutoSeleccionado ? Number(chutoSeleccionado.raw?.valorReposicion || 0) : 0;
     const bateaValor = remolqueSeleccionado ? Number(remolqueSeleccionado.raw?.valorReposicion || 0) : 0;
-    const valorFlota = configGlobal?.valorFlotaTotal ? Number(configGlobal.valorFlotaTotal) : 1;
+    const valorFlota = configGlobal?.valorFlotaActiva ? Number(configGlobal.valorFlotaActiva) : 1;
 
     const pesoChutoDecimal = chutoValor / valorFlota;
     const pesoBateaDecimal = bateaValor / valorFlota;
