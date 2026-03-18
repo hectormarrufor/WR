@@ -21,6 +21,7 @@ import db, {
     Hallazgo
 } from '@/models';
 import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
+import { Op } from 'sequelize';
 
 // ----------------------------------------------------------------------
 // GET: Obtener Detalle 
