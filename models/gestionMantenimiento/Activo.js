@@ -141,33 +141,40 @@ Activo.afterDestroy(async (activo, options) => {
 
 async function actualizarTotalesFlota(transaction) {
   const db = require('..'); 
+  const { Op } = require('sequelize'); // 🔥 Asegúrate de requerir Op aquí
 
   if (!db || !db.Activo || !db.ConfiguracionGlobal) {
     console.warn("No se pudo actualizar la flota, los modelos no están listos.");
     return;
   }
 
-  // 1. Ahora también sumamos las horasAnuales
+  // 1. Sumamos SOLO los activos que van a producir dinero
   const resultado = await db.Activo.findAll({
     attributes: [
       [db.sequelize.fn('SUM', db.sequelize.col('valorReposicion')), 'valorTotal'],
-      [db.sequelize.fn('SUM', db.sequelize.col('horasAnuales')), 'horasTotales'], // <-- NUEVO
+      [db.sequelize.fn('SUM', db.sequelize.col('horasAnuales')), 'horasTotales'],
       [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'totalUnidades']
     ],
+    where: {
+      // 🔥 EL FILTRO FINANCIERO: Excluir los que no pueden absorber overhead
+      estado: {
+        [Op.notIn]: ['Inactivo', 'Desincorporado'] 
+      }
+    },
     raw: true,
     transaction
   });
 
   const valorFlota = resultado[0].valorTotal || 0;
-  const horasTotales = resultado[0].horasTotales || 0; // <-- NUEVO
+  const horasTotales = resultado[0].horasTotales || 0; 
   const conteoUnidades = resultado[0].totalUnidades || 0;
 
-  // 2. Actualizamos la configuración global mandando las horas
+  // 2. Actualizamos la configuración global con los números reales
   await db.ConfiguracionGlobal.update(
     {
       valorFlotaTotal: parseFloat(valorFlota),
       cantidadTotalUnidades: parseInt(conteoUnidades),
-      horasTotalesFlota: parseInt(horasTotales) // <-- SE GUARDA AQUÍ
+      horasTotalesFlota: parseInt(horasTotales) 
     },
     { where: { id: 1 }, transaction }
   );

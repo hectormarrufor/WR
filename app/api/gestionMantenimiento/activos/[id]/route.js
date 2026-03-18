@@ -159,15 +159,16 @@ export async function PUT(request, { params }) {
         } = body;
 
         // 🔥 LA NUEVA REGLA DE ORO: Semáforo de Salud (Físico > Administrativo) 🔥
-        const horasParsed = horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales;
+        // Convierte a número de forma segura, si viene vacío o texto raro, lo vuelve 0
+        const horasParsed = horasAnuales !== undefined ? (Number(horasAnuales) || 0) : activo.horasAnuales;
         let estadoFinal = estado || activo.estado;
 
         if (estadoFinal !== 'Desincorporado') {
-            
+
             // A. Mantenimientos abiertos
             const ordenesAbiertas = await OrdenMantenimiento.count({
-                where: { 
-                    activoId: activo.id, 
+                where: {
+                    activoId: activo.id,
                     estado: { [Op.in]: ['Diagnostico', 'Esperando Stock', 'Por Ejecutar', 'En Ejecucion'] }
                 },
                 transaction: t
@@ -181,12 +182,12 @@ export async function PUT(request, { params }) {
             // C. Hallazgos Pendientes
             const inspeccionesDelActivo = await Inspeccion.findAll({ where: { activoId: activo.id }, attributes: ['id'], transaction: t });
             const inspeccionIds = inspeccionesDelActivo.map(i => i.id);
-            
+
             const hallazgosPendientes = await Hallazgo.findAll({
                 where: { inspeccionId: inspeccionIds, estado: 'Pendiente' },
                 transaction: t
             });
-            
+
             const tieneHallazgoCritico = hallazgosPendientes.some(h => h.impacto === 'No Operativo');
             const tieneHallazgoLeve = hallazgosPendientes.some(h => h.impacto === 'Advertencia');
 
@@ -200,7 +201,7 @@ export async function PUT(request, { params }) {
             } else if (tienePiezaLeve || tieneHallazgoLeve) {
                 estadoFinal = 'Advertencia';
             } else {
-                estadoFinal = 'Operativo'; 
+                estadoFinal = 'Operativo';
             }
         }
 
@@ -258,9 +259,6 @@ export async function PUT(request, { params }) {
     }
 }
 
-// ----------------------------------------------------------------------
-// DELETE: Eliminar Activo
-// ----------------------------------------------------------------------
 export async function DELETE(request, { params }) {
     const { id } = await params;
     const t = await sequelize.transaction();
@@ -268,6 +266,11 @@ export async function DELETE(request, { params }) {
     try {
         const activo = await Activo.findByPk(id, { transaction: t });
         if (!activo) throw new Error('Activo no encontrado');
+
+        // (Foto del antes para el recalculo)
+        const configAnterior = await ConfiguracionGlobal.findByPk(1, { transaction: t });
+        const snapshotHoras = configAnterior ? parseInt(configAnterior.horasTotalesFlota) : 0;
+        const snapshotOverhead = configAnterior ? parseFloat(configAnterior.costoAdministrativoPorHora) : 0;
 
         if (activo.imagen) {
             try {
@@ -290,7 +293,14 @@ export async function DELETE(request, { params }) {
             await MaquinaInstancia.destroy({ where: { id: activo.maquinaInstanciaId }, transaction: t });
         }
 
+       // Destruimos el activo principal
         await activo.destroy({ transaction: t });
+
+        // 🔥 OBLIGAMOS A RECALCULAR LA FLOTA Y EL DINERO TRAS BORRAR EL CAMIÓN 🔥
+        // Nota: Asegúrate de importar recalcularOverheadGlobal en este archivo si no lo está.
+        await Activo.actualizarTotalesFlota(t); // Si tienes la función exportada en el modelo
+        await recalcularOverheadGlobal(t, snapshotHoras, snapshotOverhead);
+
         await t.commit();
         return NextResponse.json({ success: true, message: 'Activo y sus archivos eliminados correctamente' });
 

@@ -124,11 +124,35 @@ export async function POST(req) {
         const granTotalAnual = anualEstatico + anualDinamico;
 
         // F. PRORRATEO GLOBAL EXACTO (Bottom-Up ABC Costing)
-        // Sumamos las horas de todos los activos reales
-        const sumaHoras = await db.Activo.sum('horasAnuales', { transaction: t });
+        // =================================================================
+        
+        // 🔥 FILTRO FINANCIERO: Solo sumamos activos que SÍ están produciendo
+        const condicionOperativa = {
+            estado: {
+                [Op.notIn]: ['Inactivo', 'Desincorporado']
+            }
+        };
+
+        const sumaHoras = await db.Activo.sum('horasAnuales', { 
+            where: condicionOperativa,
+            transaction: t 
+        });
         const horasTotalesFlotaReal = sumaHoras ? parseInt(sumaHoras) : 0;
 
-        // Evitamos división por cero
+        // 🔥 CONTEO REAL EN VIVO (Nunca confiar en el body del frontend para esto)
+        const unidadesTotalesReales = await db.Activo.count({
+            where: condicionOperativa,
+            transaction: t
+        });
+
+        // 🔥 SUMA DEL VALOR TOTAL DE LA FLOTA EN VIVO
+        const sumaValorFlota = await db.Activo.sum('valorReposicion', {
+            where: condicionOperativa,
+            transaction: t
+        });
+        const valorFlotaReal = sumaValorFlota ? parseFloat(sumaValorFlota) : 0;
+
+        // Evitamos división por cero (Cálculo del Overhead)
         const nuevoCostoAdministrativoPorHora = horasTotalesFlotaReal > 0
             ? (granTotalAnual / horasTotalesFlotaReal)
             : 0;
@@ -139,15 +163,17 @@ export async function POST(req) {
 
         await db.ConfiguracionGlobal.update({
             ...body,
-            nominaAdministrativaTotal: adminSuma, // Guardamos la foto actual
-            nominaOperativaFijaTotal: operativaSuma, // Guardamos la foto actual
+            nominaAdministrativaTotal: adminSuma, 
+            nominaOperativaFijaTotal: operativaSuma, 
             gastosFijosAnualesTotales: granTotalAnual,
-            horasTotalesFlota: horasTotalesFlotaReal,
+            horasTotalesFlota: horasTotalesFlotaReal, // Protegido
+            cantidadTotalUnidades: unidadesTotalesReales, // Protegido
+            valorFlotaTotal: valorFlotaReal, // Protegido
             costoAdministrativoPorHora: nuevoCostoAdministrativoPorHora
         }, { where: { id: 1 }, transaction: t });
 
 
-        // Limpiar y recrear gastos fijos extra
+        // Limpiar y recrear gastos fijos extra (Se queda igual)
         await db.GastoFijoGlobal.destroy({ where: { configuracionId: 1 }, transaction: t });
         if (body.gastosFijos && body.gastosFijos.length > 0) {
             const nuevosGastos = body.gastosFijos.map(g => ({
@@ -207,15 +233,14 @@ export async function POST(req) {
             );
         }
 
-        // =================================================================
+       // =================================================================
         // 5. RECALCULAR LOS TOTALES DE CADA MATRIZ
         // =================================================================
         const matrices = await db.MatrizCosto.findAll({ include: ['detalles'], transaction: t });
 
-        // Como las horas ya no son un input global asimétrico, sacamos el promedio mensual 
-        // basándonos en el total de horas operativas declaradas entre la cantidad de unidades.
-        const unidadesTotales = body.cantidadTotalUnidades || 1;
-        const promedioHorasActivoMes = (horasTotalesFlotaReal / unidadesTotales) / 12;
+        // 🔥 AHORA USAMOS EL CONTEO REAL BLINDADO 🔥
+        const divisorUnidades = unidadesTotalesReales > 0 ? unidadesTotalesReales : 1;
+        const promedioHorasActivoMes = (horasTotalesFlotaReal / divisorUnidades) / 12;
 
         for (const m of matrices) {
             let nuevoTotalKm = 0;
@@ -229,7 +254,6 @@ export async function POST(req) {
                     } else if (d.tipoDesgaste === 'horas') {
                         nuevoTotalHora += (costoFila / d.frecuencia);
                     } else if (d.tipoDesgaste === 'meses') {
-                        // El desgaste mensual ahora usa el promedio de horas reales por camión
                         nuevoTotalHora += (costoFila / (d.frecuencia * (promedioHorasActivoMes || 166.66)));
                     }
                 }
