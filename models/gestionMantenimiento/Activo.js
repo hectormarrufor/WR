@@ -141,43 +141,49 @@ Activo.afterDestroy(async (activo, options) => {
 
 async function actualizarTotalesFlota(transaction) {
   const db = require('..'); 
-  const { Op } = require('sequelize'); // 🔥 Asegúrate de requerir Op aquí
+  const { Op } = require('sequelize');
 
-  if (!db || !db.Activo || !db.ConfiguracionGlobal) {
-    console.warn("No se pudo actualizar la flota, los modelos no están listos.");
-    return;
-  }
+  if (!db || !db.Activo || !db.ConfiguracionGlobal) return;
 
-  // 1. Sumamos SOLO los activos que van a producir dinero
-  const resultado = await db.Activo.findAll({
-    attributes: [
-      [db.sequelize.fn('SUM', db.sequelize.col('valorReposicion')), 'valorTotal'],
-      [db.sequelize.fn('SUM', db.sequelize.col('horasAnuales')), 'horasTotales'],
-      [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'totalUnidades']
-    ],
-    where: {
-      // 🔥 EL FILTRO FINANCIERO: Excluir los que no pueden absorber overhead
-      estado: {
-        [Op.notIn]: ['Inactivo', 'Desincorporado'] 
-      }
-    },
+  // 1. Traemos TODOS los activos que NO sean chatarra (Desincorporado)
+  const todosLosActivos = await db.Activo.findAll({
+    where: { estado: { [Op.ne]: 'Desincorporado' } },
+    attributes: ['estado', 'valorReposicion', 'horasAnuales'],
     raw: true,
     transaction
   });
 
-  const valorFlota = resultado[0].valorTotal || 0;
-  const horasTotales = resultado[0].horasTotales || 0; 
-  const conteoUnidades = resultado[0].totalUnidades || 0;
+  let vTotal = 0;       // Patrimonio
+  let vActivo = 0;      // Capital Operativo
+  let hTotales = 0;     // Horas de trabajo
+  let uTotales = 0;     // Camiones en el patio
+  let uActivas = 0;     // Camiones trabajando
 
-  // 2. Actualizamos la configuración global con los números reales
-  await db.ConfiguracionGlobal.update(
-    {
-      valorFlotaTotal: parseFloat(valorFlota),
-      cantidadTotalUnidades: parseInt(conteoUnidades),
-      horasTotalesFlota: parseInt(horasTotales) 
-    },
-    { where: { id: 1 }, transaction }
-  );
+  // 2. Clasificamos y sumamos en un solo ciclo (Súper rápido en memoria)
+  todosLosActivos.forEach(a => {
+    const valor = parseFloat(a.valorReposicion) || 0;
+    const horas = parseInt(a.horasAnuales) || 0;
+
+    // A. Todo lo que esté en el patio suma al patrimonio total
+    vTotal += valor;
+    uTotales += 1;
+
+    // B. Si NO está inactivo, entonces es un equipo que produce y absorbe costos
+    if (a.estado !== 'Inactivo') {
+      vActivo += valor;
+      hTotales += horas;
+      uActivas += 1;
+    }
+  });
+
+  // 3. Guardamos ambos mundos en la Configuración Global
+  await db.ConfiguracionGlobal.update({
+    valorFlotaTotal: vTotal,
+    valorFlotaActiva: vActivo,
+    cantidadTotalUnidades: uTotales,
+    cantidadUnidadesActivas: uActivas,
+    horasTotalesFlota: hTotales 
+  }, { where: { id: 1 }, transaction });
 }
 
 module.exports = Activo;

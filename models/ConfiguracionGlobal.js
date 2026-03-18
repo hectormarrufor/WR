@@ -62,10 +62,20 @@ const ConfiguracionGlobal = sequelize.define('ConfiguracionGlobal', {
     defaultValue: 0,
     comment: 'Suma automática del valor de reposición de todos los activos'
   },
+  valorFlotaActiva: { 
+    type: DataTypes.FLOAT, 
+    defaultValue: 0,
+    comment: 'Capital Operativo: Suma de activos que NO están Inactivos (Los que absorben costos)'
+  },
   cantidadTotalUnidades: { 
     type: DataTypes.INTEGER, 
     defaultValue: 0,
     comment: 'Conteo automático de vehículos, remolques y maquinaria'
+  },
+  cantidadUnidadesActivas: { 
+    type: DataTypes.INTEGER, 
+    defaultValue: 0,
+    comment: 'Conteo SOLO de los equipos que están produciendo'
   },
   gastosFijosAnualesTotales: {
     type: DataTypes.FLOAT,
