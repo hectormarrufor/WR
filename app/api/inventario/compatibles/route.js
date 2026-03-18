@@ -89,7 +89,7 @@ export async function GET(request) {
             categoria: c.categoria,
             // disabled: parseFloat(c.stockAlmacen || 0) <= 0,
             serialesDisponibles: c.serializados ? c.serializados.map(s => ({
-                value: s.id,
+                value: s.id.toString(),
                 label: s.serial,
                 id: s.id
             })) : []

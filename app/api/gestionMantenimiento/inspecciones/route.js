@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import db from "@/models"; 
+import { notificarCabezas } from '@/app/api/notificar/route'; // 🔥 Motor de Notificaciones
 
 export async function POST(request) {
   const t = await db.sequelize.transaction();
@@ -18,7 +19,6 @@ export async function POST(request) {
     // 1. Crear el registro de "Inspección" (sirve como log de la actualización)
     const nuevaInspeccion = await db.Inspeccion.create({
       fecha: new Date(),
-      // Guardamos el valor solo si se envió, sino guardamos null (o el anterior si quisieras ser redundante)
       kilometrajeRegistrado: kilometraje || null,
       horometroRegistrado: horometro || null,
       observacionGeneral: observacionGeneral || 'Actualización de contadores',
@@ -27,57 +27,63 @@ export async function POST(request) {
       usuarioId
     }, { transaction: t });
 
+    let tieneFallaCritica = false;
+    let tieneAdvertencia = false;
+
     // 2. Crear los Hallazgos (SOLO SI EXISTEN)
     if (hallazgos && Array.isArray(hallazgos) && hallazgos.length > 0) {
-      const hallazgosData = hallazgos.map(h => ({
-        ...h,
-        inspeccionId: nuevaInspeccion.id,
-        estado: 'Pendiente'
-      }));
+      const hallazgosData = hallazgos.map(h => {
+        if (h.impacto === 'No Operativo') tieneFallaCritica = true;
+        if (h.impacto === 'Advertencia') tieneAdvertencia = true;
+
+        return {
+            ...h,
+            inspeccionId: nuevaInspeccion.id,
+            estado: 'Pendiente'
+        };
+      });
+      
       await db.Hallazgo.bulkCreate(hallazgosData, { transaction: t });
       
       // Actualizar estado del activo si hay hallazgos críticos
-      const hayCritico = hallazgos.some(h => h.impacto === 'No Operativo');
-      if (hayCritico) {
+      if (tieneFallaCritica) {
         await db.Activo.update({ estado: 'No Operativo' }, { where: { id: activoId }, transaction: t });
       }
     }
 
-    // 3. ACTUALIZACIÓN DE CONTADORES DEL ACTIVO
+    // 3. ACTUALIZACIÓN DE CONTADORES DEL ACTIVO (Tu lógica original impecable)
     const activo = await db.Activo.findByPk(activoId, { 
         include: [
             { model: db.VehiculoInstancia, as: 'vehiculoInstancia' },
-            { model: db.MaquinaInstancia, as: 'maquinaInstancia' } // Corregido MaquinaInstancia
+            { model: db.MaquinaInstancia, as: 'maquinaInstancia' } 
         ],
         transaction: t 
     });
 
+    if (!activo) throw new Error("Activo no encontrado");
+
     // A. Actualizar Kilometraje (Solo si vino un valor y es un vehículo)
     if (activo.vehiculoInstancia && kilometraje) {
-        // Validación extra de backend: No permitir bajar kilometraje (opcional)
-        // if (kilometraje > activo.vehiculoInstancia.kilometrajeActual) { ... }
-        
         await activo.vehiculoInstancia.update({ 
             kilometrajeActual: kilometraje 
         }, { transaction: t });
 
-        // Registrar en tabla histórica de Kilometraje
+        // Registrar en tabla histórica de Kilometraje (Para las gráficas)
         await db.Kilometraje.create({ 
             activoId, 
             valor: kilometraje, 
             fecha_registro: new Date(), 
-            origen: 'Inspeccion' // O 'Actualizacion Manual'
+            origen: 'Inspeccion' 
         }, { transaction: t });
     } 
 
     // B. Actualizar Horómetro (Solo si vino un valor y es máquina)
-    // Nota: Usamos 'if' separados. Si es un camión con horómetro (raro pero posible), actualiza ambos.
     if (activo.maquinaInstancia && horometro) {
         await activo.maquinaInstancia.update({ 
             horometroActual: horometro 
         }, { transaction: t });
 
-        // Registrar en tabla histórica de Horómetro
+        // Registrar en tabla histórica de Horómetro (Para las gráficas)
         await db.Horometro.create({ 
             activoId, 
             valor: horometro, 
@@ -86,8 +92,28 @@ export async function POST(request) {
         }, { transaction: t });
     }
 
+    // Confirmamos toda la operación en la Base de Datos
     await t.commit();
-    return NextResponse.json({ success: true, message: 'Operación registrada con éxito' });
+
+    // 4. 🔥 DISPARAR NOTIFICACIONES PUSH (NUEVO) 🔥
+    // Lo hacemos fuera del commit para que la BD ya tenga los datos guardados
+    if (tieneFallaCritica) {
+        await notificarCabezas({
+            title: `🚨 PARADA DE EQUIPO: ${activo.codigoInterno}`,
+            body: `Se reportó una falla CRÍTICA. El equipo ha sido marcado como NO OPERATIVO.`,
+            url: `/superuser/flota/activos/${activo.id}`,
+            tag: 'falla-critica'
+        });
+    } else if (tieneAdvertencia) {
+        await notificarCabezas({
+            title: `⚠️ Advertencia en Equipo: ${activo.codigoInterno}`,
+            body: `Se ha reportado una falla leve que requiere revisión en taller.`,
+            url: `/superuser/flota/activos/${activo.id}`,
+            tag: 'falla-leve'
+        });
+    }
+
+    return NextResponse.json({ success: true, message: 'Operación registrada con éxito', data: nuevaInspeccion });
 
   } catch (error) {
     await t.rollback();

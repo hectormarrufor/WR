@@ -8,9 +8,11 @@ import {
 import { useForm } from '@mantine/form';
 import { IconPlus, IconTrash, IconAlertTriangle, IconCheck, IconSettings } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import ModalCrearSubsistema from '../../../components/ModalCrearSubsistema';
 
 export default function ModalReportarFalla({ opened, onClose, activo, onSuccess, userId }) {
     const [loading, setLoading] = useState(false);
+    const [modalCrearSubOpened, setModalCrearSubOpened] = useState(false); // NUEVO
 
     // Formulario principal de la inspección
     const form = useForm({
@@ -69,6 +71,13 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
             };
         });
     }, [activo.subsistemasInstancia, nuevoHallazgo.subsistemaInstanciaId]);
+
+    // 🔥 Opciones de Plantilla (Para el modal de Crear Al Vuelo)
+    const instance = activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinaInstancia || {};
+    const opcionesPlantillaSub = instance?.plantilla?.subsistemas?.map(sub => ({
+        value: sub.id.toString(),
+        label: sub.nombre
+    })) || [];
 
     // Manejador al cambiar subsistema (Limpia la pieza si cambias de subsistema)
     const handleSubsistemaChange = (val) => {
@@ -172,23 +181,35 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                         />
 
                         <Group grow mb="sm" align="flex-start">
-                            <Select
-                                label={<Text fw={700} size="xs" c="dark.6">Área / Subsistema</Text>}
-                                placeholder="General / No sé"
-                                data={subsistemasOptions}
-                                value={nuevoHallazgo.subsistemaInstanciaId}
-                                onChange={handleSubsistemaChange}
-                                clearable radius="sm"
-                            />
+                            {/* Contenedor Flex para alinear el Select y el Botón */}
+                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                                <Select
+                                    label={<Text fw={700} size="xs" c="dark.6">Área / Subsistema</Text>}
+                                    placeholder="General / No sé"
+                                    data={subsistemasOptions}
+                                    value={nuevoHallazgo.subsistemaInstanciaId}
+                                    onChange={handleSubsistemaChange}
+                                    clearable radius="sm"
+                                    style={{ flex: 1 }} // Que el select tome todo el espacio posible
+                                />
+                                <ActionIcon
+                                    size="input-sm"
+                                    color="blue.7"
+                                    variant="light"
+                                    onClick={() => setModalCrearSubOpened(true)}
+                                    title="Crear Subsistema Nuevo"
+                                >
+                                    <IconPlus size={18} />
+                                </ActionIcon>
+                            </div>
+
                             <Select
                                 label={<Text fw={700} size="xs" c="dark.6">Pieza Sospechosa (Opcional)</Text>}
                                 placeholder={consumiblesOptions.length > 0 ? "Seleccione si la conoce" : "No hay piezas registradas"}
                                 data={consumiblesOptions}
                                 value={nuevoHallazgo.consumibleInstaladoId}
                                 onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, consumibleInstaladoId: val })}
-                                clearable radius="sm"
-                                disabled={consumiblesOptions.length === 0}
-                                searchable
+                                clearable radius="sm" disabled={consumiblesOptions.length === 0} searchable
                             />
                         </Group>
 
@@ -268,6 +289,18 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                     </Group>
                 </Stack>
             </form>
-        </Modal>
+            <ModalCrearSubsistema
+                opened={modalCrearSubOpened}
+                onClose={() => setModalCrearSubOpened(false)}
+                activoId={activo.id}
+                opcionesPlantilla={opcionesPlantillaSub}
+                onSuccess={(nuevoSub) => {
+                    onSuccess(); // Actualiza los datos del padre (Activo)
+                    // Magia: Lo auto-seleccionamos para que el usuario no tenga que buscarlo
+                    setNuevoHallazgo({ ...nuevoHallazgo, subsistemaInstanciaId: nuevoSub.id.toString() });
+                }}
+            />
+        
+        </Modal >
     );
 }

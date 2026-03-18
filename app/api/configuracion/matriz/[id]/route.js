@@ -10,11 +10,11 @@ export async function GET(req, { params }) {
 }
 
 export async function PUT(req, { params }) {
-    const body = await req.json(); 
+    const body = await req.json();
     const t = await db.sequelize.transaction();
-    
+
     // 👇 ¡ESTA LÍNEA ES LA QUE FALTABA! 👇
-    const { id } = await params; 
+    const { id } = await params;
 
     try {
         // 1. Actualizar Header con el nuevo total
@@ -32,7 +32,7 @@ export async function PUT(req, { params }) {
 
         // Limpiamos los IDs viejos para que Sequelize no se confunda al recrear
         const nuevosDetalles = body.detalles.map(d => {
-            const { id: oldId, createdAt, updatedAt, ...rest } = d; 
+            const { id: oldId, createdAt, updatedAt, ...rest } = d;
             return {
                 ...rest,
                 matrizId: id
@@ -41,66 +41,72 @@ export async function PUT(req, { params }) {
 
         await db.DetalleMatrizCosto.bulkCreate(nuevosDetalles, { transaction: t });
 
-        // ==========================================================
-        // 🔥 3. IMPACTO EN ACTIVOS: RECALCULAR Y GENERAR REPORTE 🔥
+     // ==========================================================
+        // 🔥 3. IMPACTO EN ACTIVOS: RECALCULO DE CONCEPTOS SEPARADOS
         // ==========================================================
         const reporteImpacto = [];
-
-        // Buscamos la tasa de interés global
         const config = await db.ConfiguracionGlobal.findByPk(1, { transaction: t });
         const tasaInteresDecimal = (config ? parseFloat(config.tasaInteresAnual || 5.0) : 5.0) / 100;
 
-        // Buscamos todos los activos que usan esta matriz
         const activos = await db.Activo.findAll({ where: { matrizCostoId: id }, transaction: t });
 
         for (const activo of activos) {
-            // "Foto" del antes
             const costoKmViejo = parseFloat(activo.costoMantenimientoTeorico || 0);
             const costoHoraViejo = parseFloat(activo.costoPosesionHora || 0);
 
-            // Recalcular la depreciación pura del equipo
-            const valor = parseFloat(activo.valorReposicion) || 0;
-            const salvamento = parseFloat(activo.valorSalvamento) || 0;
-            const vida = parseInt(activo.vidaUtilAnios) || 1;
-            const horasAnuales = parseInt(activo.horasAnuales) || 2000;
+            // --- CÁLCULO 1: POSESIÓN FINANCIERA PURA (Depreciación + Interés) ---
+            const valor = parseFloat(activo.valorReposicion);
+            const salvamento = parseFloat(activo.valorSalvamento);
+            const vida = parseInt(activo.vidaUtilAnios);
+            const horasAnuales = parseInt(activo.horasAnuales); // Según tu data real
 
             const montoADepreciar = valor - salvamento;
             const vidaEnHoras = vida * horasAnuales;
             const depHora = vidaEnHoras > 0 ? (montoADepreciar / vidaEnHoras) : 0;
             const intHora = horasAnuales > 0 ? ((valor * tasaInteresDecimal) / horasAnuales) : 0;
 
-            const costoPosesionEquipoHora = depHora + intHora;
+            const costoPosesionFinancieraHora = depHora + intHora;
 
-            // "Foto" del después (Depreciación pura + Nuevos totales de la Matriz)
-            const nuevoCostoFijoHora = costoPosesionEquipoHora + parseFloat(body.totalCostoHora || 0);
-            const nuevoCostoVariableKm = parseFloat(body.totalCostoKm || 0);
+            console.log(`Activo ${activo.codigoInterno}: DepHora=${depHora.toFixed(2)}, IntHora=${intHora.toFixed(2)}, TotalPosesionHora=${costoPosesionFinancieraHora.toFixed(2)}`);
+            console.log(`Activo ${activo.codigoInterno}: CostoMantenimientoKm Viejo=${costoKmViejo.toFixed(2)}, Nuevo=${body.totalCostoKm}`);
+            console.log(`Activo ${activo.codigoInterno}: CostoPosesionHora Viejo=${costoHoraViejo.toFixed(2)}, Nuevo=${costoPosesionFinancieraHora.toFixed(2)}`);
+            console.log("valor, salvamento y horas anules: ", valor, salvamento, horasAnuales);
+            console.log("Tasa de interés anual y decimal: ", config.tasaInteresAnual, tasaInteresDecimal);
+            console.log("Vida en horas: ", vidaEnHoras);
+            console.log("Monto a depreciar: ", montoADepreciar);
+            console.log("vida en años: ", vida);
 
-            // Guardamos la actualización en el Activo
+            // --- CÁLCULO 2: MANTENIMIENTO (Viene de la Matriz nueva) ---
+            const nuevoMantenimientoVariableKm = parseFloat(body.totalCostoKm || 0);
+            const nuevoMantenimientoFijoHora = parseFloat(body.totalCostoHora || 0);
+
+            // 🔥 ACTUALIZACIÓN SIN MEZCLAR CONCEPTOS 🔥
             await activo.update({
-                costoMantenimientoTeorico: nuevoCostoVariableKm,
-                costoPosesionTeorico: nuevoCostoFijoHora,
-                costoPosesionHora: nuevoCostoFijoHora
-            }, { transaction: t, hooks: false }); // hooks: false evita bucles infinitos
+                // Lo que se gasta por KM (Cauchos, Aceite)
+                costoMantenimientoTeorico: nuevoMantenimientoVariableKm, 
+                
+                // Lo que se gasta por HORA de mantenimiento (Seguros, Patas)
+                costoPosesionTeorico: nuevoMantenimientoFijoHora, 
+                
+                // Lo que cuesta el DINERO y el HIERRO (Posesión pura)
+                costoPosesionHora: costoPosesionFinancieraHora 
+            }, { transaction: t, hooks: false });
 
-            // Si cambiaron los números, lo metemos en el reporte
-            if (costoKmViejo !== nuevoCostoVariableKm || costoHoraViejo !== nuevoCostoFijoHora) {
+            if (costoKmViejo !== nuevoMantenimientoVariableKm || costoHoraViejo !== costoPosesionFinancieraHora) {
                 reporteImpacto.push({
                     codigoInterno: activo.codigoInterno,
-                    tipo: activo.tipoActivo,
                     oldKm: costoKmViejo,
-                    newKm: nuevoCostoVariableKm,
+                    newKm: nuevoMantenimientoVariableKm,
                     oldHora: costoHoraViejo,
-                    newHora: nuevoCostoFijoHora
+                    newHora: costoPosesionFinancieraHora
                 });
             }
         }
 
         await t.commit();
-        
-        // Retornamos todo al frontend
         return NextResponse.json({ success: true, reporteImpacto });
     } catch (e) {
-        await t.rollback();
+        if (t) await t.rollback();
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }
@@ -108,10 +114,10 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
     try {
         const { id } = await params;
-        
+
         // Destruye la matriz (y el CASCADE destruirá sus detalles automáticamente)
         await db.MatrizCosto.destroy({ where: { id: id } });
-        
+
         return NextResponse.json({ success: true });
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });

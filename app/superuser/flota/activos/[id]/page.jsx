@@ -28,6 +28,10 @@ import ModalInstallComponente from '../components/ModalInstallComponente';
 import ModalDesinstalarComponente from '../components/ModalDesinstalarComponente';
 import ModalAgregarDocumento from '../components/ModalAgregarDocumento';
 import ModalGenerarOM from './ordenes/nueva/ModalGenerarOM';
+import ModalCrearSubsistema from '../../components/ModalCrearSubsistema';
+import ModalCrearSlot from '../../components/ModalCrearSlot';
+import ModalInstalarPieza from '../../components/ModalInstalarPieza';
+import ModalCrearConsumible from '../components/ModalCrearConsumible';
 
 
 export default function DetalleActivoPage({ params }) {
@@ -50,6 +54,14 @@ export default function DetalleActivoPage({ params }) {
     const [modalUninstallOpened, setModalUninstallOpened] = useState(false);
     const [itemToUninstall, setItemToUninstall] = useState(null);
     const [docPreview, setDocPreview] = useState(null); // Guardará la URL y datos del doc a ver
+    const [modalCrearSubOpened, setModalCrearSubOpened] = useState(false);
+    const [modalSlotOpened, setModalSlotOpened] = useState(false);
+    const [targetPlantillaId, setTargetPlantillaId] = useState(null); // Para saber a qué subsistema le estamos creando el slot
+    const [modalInstalarOpened, setModalInstalarOpened] = useState(false);
+    const [datosInstalacion, setDatosInstalacion] = useState({ slot: null, subsistemaInstanciaId: null });
+    const [modalCrearConsumibleOpened, setModalCrearConsumibleOpened] = useState(false);
+    // Un contador para usar como disparador de recarga en el modal hijo
+    const [reloadInventarioTrigger, setReloadInventarioTrigger] = useState(0);
 
     const fetchData = async () => {
         try {
@@ -122,6 +134,11 @@ export default function DetalleActivoPage({ params }) {
 
     const fNum = (val) => val ? parseFloat(val) : 0;
 
+    const opcionesPlantillaSub = plantilla?.subsistemas?.map(sub => ({
+        value: sub.id.toString(),
+        label: sub.nombre
+    })) || [];
+
     const getEstadoColor = (estado) => {
         switch (estado) {
             case 'Operativo': return 'teal.6';
@@ -165,6 +182,12 @@ export default function DetalleActivoPage({ params }) {
             // Fallback por si hay bloqueos de CORS
             window.open(url, '_blank');
         }
+    };
+
+    const handleConsumibleCreadoExitosamente = (nuevoItem) => {
+        notifications.show({ title: 'Consumible Creado', message: 'Se ha registrado en inventario. Refrescando lista de instalación...', color: 'blue' });
+        // Incrementamos el contador para "avisarle" al modal de instalación que recargue
+        setReloadInventarioTrigger(prev => prev + 1);
     };
 
     const handlePrintDoc = (url) => {
@@ -334,13 +357,13 @@ export default function DetalleActivoPage({ params }) {
                                             </ThemeIcon>
                                             <Title order={3} c="dark.9" tt="uppercase">Estado de Salud y Reportes</Title>
                                         </Group>
-                                        
+
                                         <Group gap="sm">
                                             {/* 🔥 Botón para reportar falla (Chofer) 🔥 */}
                                             <Button color="red.7" radius="sm" leftSection={<IconClipboardCheck size={18} />} onClick={() => setModalFallaOpened(true)}>
                                                 Reportar Falla
                                             </Button>
-                                            
+
                                             {/* 🔥 Botón NUEVO: Generar OM Global agrupando lo que él quiera 🔥 */}
                                             {hallazgosPendientes.length > 0 && (
                                                 <Button color="blue.7" radius="sm" leftSection={<IconTool size={18} />} onClick={() => { setSelectedHallazgo(null); setModalOrdenOpened(true); }}>
@@ -677,9 +700,18 @@ export default function DetalleActivoPage({ params }) {
 
                                 {/* 6. TAB: COMPONENTES */}
                                 <Tabs.Panel value="componentes">
-                                    <Group align="center" mb="xl">
-                                        <ThemeIcon size="lg" radius="md" variant="filled" color="dark.8"><IconSettings size={20} color="#fab005" /></ThemeIcon>
-                                        <Title order={3} c="dark.9" tt="uppercase">Control de Piezas e Inventario Físico</Title>
+                                    <Group align="center" justify="space-between" mb="xl">
+                                        <Group>
+                                            <ThemeIcon size="lg" radius="md" variant="filled" color="dark.8"><IconSettings size={20} color="#fab005" /></ThemeIcon>
+                                            <Title order={3} c="dark.9" tt="uppercase">Control de Piezas e Inventario Físico</Title>
+                                        </Group>
+                                        <Button
+                                            leftSection={<IconPlus size={16} />}
+                                            color="blue.7"
+                                            onClick={() => setModalCrearSubOpened(true)}
+                                        >
+                                            Añadir Subsistema
+                                        </Button>
                                     </Group>
 
                                     <Stack gap="lg">
@@ -692,8 +724,25 @@ export default function DetalleActivoPage({ params }) {
                                                     <Accordion.Item value="open" style={{ backgroundColor: '#ffffff', border: '1px solid #ced4da', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                                                         <Accordion.Control p="md">
                                                             <Group justify="space-between" pr="md">
-                                                                <Text fw={900} size="lg" c="dark.8" tt="uppercase">{sub.nombre}</Text>
-                                                                <Badge size="lg" variant="filled" color="dark.8" radius="sm">{recomendaciones.length} Elementos Auditables</Badge>
+                                                                <Group>
+                                                                    <Text fw={900} size="lg" c="dark.8" tt="uppercase">{sub.nombre}</Text>
+                                                                    <Badge size="lg" variant="filled" color="dark.8" radius="sm">{recomendaciones.length} Elementos Auditables</Badge>
+                                                                </Group>
+
+                                                                {/* 🔥 EL BOTÓN MÁGICO PARA CREAR SLOTS 🔥 */}
+                                                                <Button
+                                                                    size="xs"
+                                                                    variant="light"
+                                                                    color="blue"
+                                                                    leftSection={<IconPlus size={14} />}
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault(); // Evita que el acordeón se cierre/abra al darle clic al botón
+                                                                        setTargetPlantillaId(sub.subsistemaPlantilla?.id);
+                                                                        setModalSlotOpened(true);
+                                                                    }}
+                                                                >
+                                                                    Añadir Puesto
+                                                                </Button>
                                                             </Group>
                                                         </Accordion.Control>
                                                         <Accordion.Panel p="sm">
@@ -707,42 +756,58 @@ export default function DetalleActivoPage({ params }) {
                                                                 </Table.Thead>
                                                                 <Table.Tbody>
                                                                     {recomendaciones.map((rec) => {
-                                                                        const matches = instalaciones.filter(inst => inst.recomendacionId === rec.id);
-                                                                        const cantidadInstalada = matches.reduce((sum, inst) => sum + parseFloat(inst.cantidad || 0), 0);
-                                                                        const recCantidad = parseFloat(rec.cantidad || 1);
-                                                                        const estaCompleto = cantidadInstalada >= recCantidad;
+                                                                        // 1. Buscamos cuántas piezas físicas reales están instaladas
+                                                                        const instalados = instalaciones.filter(inst => inst.consumibleRecomendadoId === rec.id);
+
+                                                                        // 2. Extraemos la cantidad de la llave 'canti' y la pasamos a número
+                                                                        const cantidadReq = parseInt(rec.canti, 10) || 1;
+
+                                                                        // 3. Extraemos los valores con las llaves exactas y extrañas de tu JSON
+                                                                        const nombrePuesto = rec.valor || 'Puesto Sin Nombre';
+                                                                        const categoria = rec.categ || 'Desconocida';
 
                                                                         return (
                                                                             <Table.Tr key={rec.id}>
                                                                                 <Table.Td>
-                                                                                    <Text size="md" fw={800} c="dark.7">{rec.label || rec.categoria}</Text>
-                                                                                    <Group gap="xs" mt={8}>
-                                                                                        {matches.map(inst => (
-                                                                                            <Badge
-                                                                                                key={inst.id} size="md" color="dark.4" variant="outline" radius="sm"
-                                                                                                rightSection={
-                                                                                                    <ActionIcon size="xs" color="red" variant="transparent" onClick={() => { setItemToUninstall(inst); setModalUninstallOpened(true); }}>
-                                                                                                        <IconX size={12} />
-                                                                                                    </ActionIcon>
-                                                                                                }
-                                                                                            >
-                                                                                                {inst.fichaTecnica.nombre}
-                                                                                            </Badge>
-                                                                                        ))}
-                                                                                    </Group>
+                                                                                    <Text size="sm" fw={800} c="dark.8" tt="uppercase">{nombrePuesto}</Text>
+                                                                                    <Text size="xs" c="dimmed" tt="capitalize">Tipo: {categoria}</Text>
                                                                                 </Table.Td>
+
                                                                                 <Table.Td>
-                                                                                    <Badge size="lg" radius="sm" color={estaCompleto ? 'green.7' : 'orange.6'} variant="filled">
-                                                                                        {cantidadInstalada} / {recCantidad} Instalados
+                                                                                    <Badge
+                                                                                        size="md"
+                                                                                        variant="filled"
+                                                                                        color={instalados.length >= cantidadReq ? 'teal' : 'orange.6'}
+                                                                                    >
+                                                                                        {instalados.length} / {cantidadReq} INSTALADOS
                                                                                     </Badge>
                                                                                 </Table.Td>
-                                                                                <Table.Td ta="right">
-                                                                                    <Button size="xs" radius="sm" variant="light" color="blue.7" leftSection={<IconPlus size={14} />} onClick={() => {
-                                                                                        setSelectedItem({ sub: sub, rec: { ...rec, cantidad: recCantidad, label: rec.label || rec.categoria } });
-                                                                                        setModalInstallOpened(true);
-                                                                                    }}>
-                                                                                        Instalar Parte
-                                                                                    </Button>
+
+                                                                                <Table.Td>
+                                                                                    <Table.Td>
+                                                                                        <Table.Td>
+                                                                                            <Group gap="xs"> {/* <-- Envolvemos en un Group */}
+                                                                                                <Button
+                                                                                                    size="xs" variant="light" color="blue"
+                                                                                                    leftSection={<IconPlus size={14} />}
+                                                                                                    onClick={() => {
+                                                                                                        setDatosInstalacion({ slot: rec, subsistemaInstanciaId: sub.id });
+                                                                                                        setModalInstalarOpened(true);
+                                                                                                    }}
+                                                                                                >
+                                                                                                    Instalar Parte
+                                                                                                </Button>
+                                                                                                {/* 🔥 Botón rápido para crear consumible si ya sabemos que no hay */}
+                                                                                                <ActionIcon
+                                                                                                    variant="light" color="gray" size="sm"
+                                                                                                    onClick={() => setModalCrearConsumibleOpened(true)}
+                                                                                                    title="Registrar Consumible Nuevo en Inventario"
+                                                                                                >
+                                                                                                    <IconPlus size={16} />
+                                                                                                </ActionIcon>
+                                                                                            </Group>
+                                                                                        </Table.Td>
+                                                                                    </Table.Td>
                                                                                 </Table.Td>
                                                                             </Table.Tr>
                                                                         );
@@ -786,21 +851,52 @@ export default function DetalleActivoPage({ params }) {
             </Box>
 
             {/* 🔥 EL MODAL MAESTRO DE MANTENIMIENTO 🔥 */}
-            <ModalGenerarOM 
-                opened={modalOrdenOpened} 
-                onClose={() => { setModalOrdenOpened(false); setSelectedHallazgo(null); }} 
-                activo={activo} 
-                hallazgosPendientes={hallazgosPendientes} 
+            <ModalGenerarOM
+                opened={modalOrdenOpened}
+                onClose={() => { setModalOrdenOpened(false); setSelectedHallazgo(null); }}
+                activo={activo}
+                hallazgosPendientes={hallazgosPendientes}
                 selectedHallazgo={selectedHallazgo} // 👉 Le pasamos la falla seleccionada
-                userId={userId} 
-                onSuccess={fetchData} 
+                userId={userId}
+                onSuccess={fetchData}
+            />
+            {/* Modal de Instalación Actualizado */}
+            <ModalInstalarPieza
+                opened={modalInstalarOpened}
+                onClose={() => setModalInstalarOpened(false)}
+                activo={activo}
+                subsistemaInstanciaId={datosInstalacion.subsistemaInstanciaId}
+                slotSeleccionado={datosInstalacion.slot}
+                onSuccess={fetchData} // Refresca la vista principal del camión
+
+                // 🔥 NUEVAS PROPS 🔥
+                onSolicitarCrearConsumible={() => setModalCrearConsumibleOpened(true)}
+                reloadTrigger={reloadInventarioTrigger}
             />
 
+            {/* 🔥 TU MODAL DE CREAR CONSUMIBLE INTEGRADO 🔥 */}
+            <ModalCrearConsumible
+                opened={modalCrearConsumibleOpened}
+                onClose={() => setModalCrearConsumibleOpened(false)}
+                onSuccess={handleConsumibleCreadoExitosamente}
+            />
             <ModalReportarFalla opened={modalFallaOpened} onClose={() => setModalFallaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
             <ModalActualizarLectura opened={modalLecturaOpened} onClose={() => setModalLecturaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
             <ModalInstallComponente opened={modalInstallOpened} onClose={() => { setModalInstallOpened(false); setSelectedItem(null); }} target={selectedItem} activoId={activo.id} onSuccess={fetchData} />
             <ModalDesinstalarComponente opened={modalUninstallOpened} onClose={() => setModalUninstallOpened(false)} item={itemToUninstall} onSuccess={fetchData} />
-
+            <ModalCrearSubsistema
+                opened={modalCrearSubOpened}
+                onClose={() => setModalCrearSubOpened(false)}
+                activoId={activo.id}
+                opcionesPlantilla={opcionesPlantillaSub}
+                onSuccess={fetchData}
+            />
+            <ModalCrearSlot
+                opened={modalSlotOpened}
+                onClose={() => { setModalSlotOpened(false); setTargetPlantillaId(null); }}
+                subsistemaPlantillaId={targetPlantillaId}
+                onSuccess={fetchData}
+            />
             {/* AQUÍ FALTA TU MODAL DE DOCUMENTOS, LO AGREGO: */}
             <ModalAgregarDocumento
                 opened={modalDocOpened}

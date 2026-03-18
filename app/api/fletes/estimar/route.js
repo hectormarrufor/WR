@@ -2,13 +2,17 @@ import { NextResponse } from 'next/server';
 import db from '@/models';
 
 // Función mágica que procesa una matriz dinámica en vivo
-const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorcentaje, nombreActivo) => {
+// 🔥 Le agregamos 'horasAnuales' al final de los parámetros
+const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorcentaje, nombreActivo, horasAnuales) => {
     if (!matriz || !matriz.detalles) return { mtto: 0, posesion: 0, items: [] };
 
     let costoMantenimiento = 0;
     let costoPosesion = 0;
     let desgloseItems = [];
     const factor = calidadPorcentaje / 100;
+
+    // Si por algún error el equipo no tiene horas anuales, usamos 2400 por defecto para evitar división por 0
+    const horasUsoAnual = (horasAnuales && horasAnuales > 0) ? horasAnuales : 2400;
 
     matriz.detalles.forEach(detalle => {
         const costoAplicado = detalle.costoMinimo + ((detalle.costoMaximo - detalle.costoMinimo) * factor);
@@ -17,21 +21,28 @@ const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorc
         let tipoEtiqueta = '';
 
         if (detalle.tipoDesgaste === 'km') {
-            const costoPorKm = costoTotalItem / detalle.frecuencia;
+            const costoPorKm = costoTotalItem / (detalle.frecuencia || 1);
             costoEnViaje = costoPorKm * distanciaKm;
             costoMantenimiento += costoEnViaje;
             tipoEtiqueta = 'Rodamiento';
         } else if (detalle.tipoDesgaste === 'horas') {
-            const costoPorHora = costoTotalItem / detalle.frecuencia;
-            costoEnViaje = costoPorHora * horasTotales;
+            costoEnViaje = costoTotalItem * horasTotales;
             costoMantenimiento += costoEnViaje;
             tipoEtiqueta = 'Por Hora';
         } else if (detalle.tipoDesgaste === 'meses') {
-            const costoPorMes = costoTotalItem / detalle.frecuencia;
-            const costoPorHoraFija = costoPorMes / 730;
+            // 🔥 AQUÍ ESTÁ TU MATEMÁTICA CORREGIDA 🔥
+            // 1. Convertimos los meses de vida útil a años (Ej: 24 meses / 12 = 2 años)
+            const vidaUtilAnios = (detalle.frecuencia || 1) / 12;
+
+            // 2. Sacamos el costo anual ($650 / 2 años = $325 al año)
+            const costoAnual = costoTotalItem / vidaUtilAnios;
+
+            // 3. Dividimos entre tus horas de trabajo reales ($325 / 212.5 = $1.529/hr)
+            const costoPorHoraFija = costoAnual / horasUsoAnual;
+
+            // 4. Multiplicamos por las 12 horas del flete ($1.529 * 12 = $18.35)
             costoEnViaje = costoPorHoraFija * horasTotales;
 
-            // 🔥 CORRECCIÓN: Pasa a Mantenimiento, ya no a Posesión
             costoMantenimiento += costoEnViaje;
             tipoEtiqueta = 'Fijo/Meses';
         }
@@ -45,7 +56,6 @@ const calcularDesgasteDinamico = (matriz, distanciaKm, horasTotales, calidadPorc
 
     return { mtto: costoMantenimiento, posesion: costoPosesion, items: desgloseItems };
 };
-
 
 export async function POST(req) {
     try {
@@ -166,8 +176,8 @@ export async function POST(req) {
         // ------------------------------------------------------------------
         // --- 4. MANTENIMIENTO DINÁMICO (Con las horas calculadas) ---
         // ------------------------------------------------------------------
-        const calculoChuto = calcularDesgasteDinamico(chuto.matrizCosto, distanciaKm, horasTotales, calidadRepuestos, 'Chuto');
-        const calculoBatea = batea ? calcularDesgasteDinamico(batea.matrizCosto, distanciaKm, horasTotales, calidadRepuestos, 'Batea') : { mtto: 0, posesion: 0, items: [] };
+        const calculoChuto = calcularDesgasteDinamico(chuto.matrizCosto, distanciaKm, horasTotales, calidadRepuestos, 'Chuto', chuto.horasAnuales);
+        const calculoBatea = batea ? calcularDesgasteDinamico(batea.matrizCosto, distanciaKm, horasTotales, calidadRepuestos, 'Batea', batea.horasAnuales) : { mtto: 0, posesion: 0, items: [] };
 
         const totalMantenimiento = calculoChuto.mtto + calculoBatea.mtto;
         const listaCompletaRepuestos = [...calculoChuto.items, ...calculoBatea.items].sort((a, b) => b.monto - a.monto);
@@ -314,35 +324,36 @@ export async function POST(req) {
         const fechaLlegadaObj = new Date(fechaSalidaObj.getTime() + (duracionTotalMision * 3600 * 1000));
 
         // ------------------------------------------------------------------
-        // --- 7. DEPRECIACIÓN Y COSTO DE POSESIÓN ---
+        // --- 7. DEPRECIACIÓN Y COSTO DE POSESIÓN (CORREGIDO Y SEGURO) ---
         // ------------------------------------------------------------------
+        
+        // 🔥 RESTAURAMOS LAS VARIABLES QUE NECESITA LA SECCIÓN 8 (OVERHEAD) 🔥
         const valorReposicionChuto = chuto.valorReposicion || 40000;
-        const valorSalvamentoChuto = chuto.valorSalvamento || 5000;
         const vidaUtilAniosChuto = chuto.vidaUtilAnios || 10;
-        const horasVidaUtilChuto = vidaUtilAniosChuto * 2400;
-        const depreciacionPorHoraChuto = (valorReposicionChuto - valorSalvamentoChuto) / horasVidaUtilChuto;
-
-        let depreciacionPorHoraBatea = 0;
-        let costoCapitalHoraBatea = 0;
+        
         let valorReposicionBatea = 0;
-
         if (batea) {
             valorReposicionBatea = batea.valorReposicion || 15000;
-            const valorSalvamentoBatea = batea.valorSalvamento || 2000;
-            const vidaUtilAniosBatea = batea.vidaUtilAnios || 10;
-            const horasVidaUtilBatea = vidaUtilAniosBatea * 2400;
-            depreciacionPorHoraBatea = (valorReposicionBatea - valorSalvamentoBatea) / horasVidaUtilBatea;
-            costoCapitalHoraBatea = (valorReposicionBatea * 0.05) / 2400;
         }
 
-        const interesAnual = 0.05;
-        const costoCapitalHoraChuto = (valorReposicionChuto * interesAnual) / 2400;
+        // 1. Obtenemos las tarifas directas por hora de tu base de datos
+        // Si el chuto no tiene, usamos un estimado de $15/hr para no dejarlo en 0
+        const tarifaPosesionChutoHora = parseFloat(chuto.costoPosesionHora) || 15.0;
+        const tarifaPosesionBateaHora = batea ? (parseFloat(batea.costoPosesionHora) || 5.0) : 0;
 
-        const totalDepreciacion = (depreciacionPorHoraChuto + depreciacionPorHoraBatea) * horasTotales;
-        const totalCapital = (costoCapitalHoraChuto + costoCapitalHoraBatea) * horasTotales;
+        // 2. Calculamos el costo total de posesión de este viaje
+        // (Tarifa $/hr de la BD) * (Horas Totales del Viaje)
+        const costoPosesionTotalViaje = (tarifaPosesionChutoHora + tarifaPosesionBateaHora) * horasTotales;
 
-        const costoPosesionTotal = totalDepreciacion + totalCapital + calculoChuto.posesion + calculoBatea.posesion;
+        // 3. Para el desglose visual (PDF/Breakdown), dividimos el total con una lógica contable estándar:
+        // El 70% suele ser Depreciación (hierro) y el 30% Costo de Oportunidad (dinero)
+        const totalDepreciacion = costoPosesionTotalViaje * 0.70;
+        const totalCapital = costoPosesionTotalViaje * 0.30;
 
+        // 4. Sumamos cualquier extra de las matrices si existiera
+        const costoPosesionTotal = costoPosesionTotalViaje + (calculoChuto.posesion || 0) + (calculoBatea.posesion || 0);
+
+        // (No necesitas volver a declarar posesionDetalle aquí, ya está abajo en tu return final)
         // ------------------------------------------------------------------
         // --- 8. CÁLCULO PONDERADO DE OVERHEAD (NUEVO ABC PURO) ---
         // ------------------------------------------------------------------
