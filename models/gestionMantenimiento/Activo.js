@@ -17,7 +17,7 @@ const Activo = sequelize.define('Activo', {
     allowNull: true
   },
   estado: {
-    type: DataTypes.ENUM('Operativo', 'En Mantenimiento', 'Inactivo', 'Desincorporado'),
+    type: DataTypes.ENUM('Operativo', 'Advertencia', 'No Operativo', 'En Mantenimiento', 'Inactivo', 'Desincorporado'),
     defaultValue: 'Operativo'
   },
   fechaAdquisicion: {

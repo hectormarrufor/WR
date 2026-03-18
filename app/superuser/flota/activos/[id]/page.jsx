@@ -142,9 +142,12 @@ export default function DetalleActivoPage({ params }) {
     const getEstadoColor = (estado) => {
         switch (estado) {
             case 'Operativo': return 'teal.6';
-            case 'Operativo con Advertencia': return 'yellow.6';
+            case 'Advertencia': return 'yellow.6'; // 🔥 Ajustado al ENUM exacto
             case 'No Operativo': return 'red.7';
-            default: return 'gray.6';
+            case 'En Mantenimiento': return 'blue.6';
+            case 'Inactivo': 
+            case 'Desincorporado': return 'gray.6';
+            default: return 'dark.4';
         }
     };
 
@@ -254,9 +257,17 @@ export default function DetalleActivoPage({ params }) {
             {/* 🔥 CONTENEDOR PRINCIPAL 🔥 */}
             <Box px={{ base: 'md', xl: '3rem' }} mt="xl">
 
+                {/* Alerta Roja (Crítica) */}
                 {activo.estado === 'No Operativo' && (
                     <Alert variant="filled" color="red.8" title={<Text fw={900} size="lg" tt="uppercase">ALERTA ROJA: EQUIPO INOPERATIVO</Text>} icon={<IconAlertOctagon size={32} />} mb="xl" radius="md" style={{ borderLeft: '8px solid #c92a2a', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                         <Text fw={600} size="md">Este activo se encuentra detenido por hallazgos críticos de mantenimiento o documentación. Revise la pestaña de "Salud y Alertas" para ver los detalles.</Text>
+                    </Alert>
+                )}
+
+                {/* 🔥 Alerta Amarilla (Leve/Advertencia) NUEVA 🔥 */}
+                {activo.estado === 'Advertencia' && (
+                    <Alert variant="light" color="yellow.8" title={<Text fw={900} size="lg" tt="uppercase">PRECAUCIÓN: EQUIPO CON ADVERTENCIAS</Text>} icon={<IconAlertTriangle size={32} />} mb="xl" radius="md" style={{ borderLeft: '8px solid #fab005', backgroundColor: '#fff9db' }}>
+                        <Text fw={600} size="md" c="dark.8">Este camión está operativo pero presenta fallas leves (hallazgos pendientes). Se recomienda programar un mantenimiento pronto para evitar inoperatividad.</Text>
                     </Alert>
                 )}
 

@@ -748,15 +748,18 @@ export default function FleteCreator() {
                             <Grid.Col span={{ base: 12, lg: 4 }}>
                                 <Stack gap="md">
                                     <Text fw={900} c="dark.5" size="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>Tripulación</Text>
+                                    {/* Para el Chofer */}
                                     <ODTSelectableGrid
                                         label="Chofer Principal"
-                                        data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen }))}
+                                        data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))} // 🔥 Agregado raw: e
                                         onChange={(val) => form.setFieldValue("choferId", val)}
                                         value={form.values.choferId}
                                     />
+
+                                    {/* Para el Ayudante */}
                                     <ODTSelectableGrid
                                         label="Ayudante / Escolta (Opcional)"
-                                        data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen }))}
+                                        data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))} // 🔥 Agregado raw: e
                                         onChange={(val) => form.setFieldValue("ayudanteId", val)}
                                         value={form.values.ayudanteId}
                                     />

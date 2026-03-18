@@ -521,16 +521,19 @@ export default function ODTForm({ mode = "create", odtId }) {
               <Grid.Col span={{ base: 12, md: 6 }}>
                 <Text fw={800} c="dark.6" mb="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block' }}>Personal a Cargo</Text>
                 <Stack gap="md">
+                  {/* Para el Chofer */}
                   <ODTSelectableGrid
-                    label="Chofer / Operador"
-                    data={empleadosMapeados.filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer") || p.nombre.toLowerCase().includes("operador"))).filter(e => e.nombre.toLowerCase().includes(qChofer.toLowerCase()))}
-                    onChange={(v) => form.setFieldValue("choferId", v)}
+                    label="Chofer Principal"
+                    data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))} // 🔥 Agregado raw: e
+                    onChange={(val) => form.setFieldValue("choferId", val)}
                     value={form.values.choferId}
                   />
+
+                  {/* Para el Ayudante */}
                   <ODTSelectableGrid
-                    label="Ayudante (Opcional)"
-                    data={empleadosMapeados.filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante"))).filter(e => e.nombre.toLowerCase().includes(qAyudante.toLowerCase()))}
-                    onChange={(v) => form.setFieldValue("ayudanteId", v)}
+                    label="Ayudante / Escolta (Opcional)"
+                    data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))} // 🔥 Agregado raw: e
+                    onChange={(val) => form.setFieldValue("ayudanteId", val)}
                     value={form.values.ayudanteId}
                   />
                 </Stack>

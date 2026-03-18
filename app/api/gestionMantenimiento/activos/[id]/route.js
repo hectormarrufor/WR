@@ -157,14 +157,53 @@ export async function PUT(request, { params }) {
             tara, anioFabricacion
         } = body;
 
-        // 🔥 LA REGLA DE ORO: Si horasAnuales es 0, forzamos el estado a Inactivo 🔥
+        // 🔥 LA REGLA DE ORO EVOLUCIONADA: Semáforo de Salud 🔥
         const horasParsed = horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales;
-        const estadoFinal = horasParsed === 0 ? 'Inactivo' : (estado || activo.estado);
+        let estadoFinal = estado || activo.estado;
+
+        if (horasParsed <= 0) {
+            estadoFinal = 'Inactivo';
+        } else if (estadoFinal !== 'Desincorporado') {
+                
+            // A. Mantenimientos abiertos
+            const ordenesAbiertas = await OrdenMantenimiento.count({
+                where: { activoId: activo.id, estado: 'En Progreso' },
+                transaction: t
+            });
+
+            // B. Piezas dañadas
+            const subsistemas = await SubsistemaInstancia.findAll({ where: { activoId: activo.id }, transaction: t });
+            const tienePiezaCritica = subsistemas.some(s => ['roto', 'critico', 'no operativo'].includes(s.estado?.toLowerCase()));
+            const tienePiezaLeve = subsistemas.some(s => ['advertencia', 'regular', 'desgaste'].includes(s.estado?.toLowerCase()));
+
+            // C. 🔥 HALLAZGOS PENDIENTES (LA PIEZA QUE FALTABA AQUÍ) 🔥
+            const inspeccionesDelActivo = await Inspeccion.findAll({ where: { activoId: activo.id }, attributes: ['id'], transaction: t });
+            const inspeccionIds = inspeccionesDelActivo.map(i => i.id);
+            
+            const hallazgosPendientes = await Hallazgo.findAll({
+                where: { inspeccionId: inspeccionIds, estado: 'Pendiente' },
+                transaction: t
+            });
+            
+            const tieneHallazgoCritico = hallazgosPendientes.some(h => h.impacto === 'No Operativo');
+            const tieneHallazgoLeve = hallazgosPendientes.some(h => h.impacto === 'Advertencia');
+
+            // D. Jerarquía de Gravedad
+            if (ordenesAbiertas > 0) {
+                estadoFinal = 'En Mantenimiento';
+            } else if (tienePiezaCritica || tieneHallazgoCritico) {
+                estadoFinal = 'No Operativo';
+            } else if (tienePiezaLeve || tieneHallazgoLeve) {
+                estadoFinal = 'Advertencia';
+            } else {
+                estadoFinal = 'Operativo'; 
+            }
+        }
 
         // 🔥 Actualizar Activo Padre (ESTRICTAMENTE COSTOS) 🔥
         await activo.update({
             codigoInterno: codigoInterno || activo.codigoInterno,
-            estado: estadoFinal, // Usamos la variable evaluada
+            estado: estadoFinal, // Se inyecta el estado calculado
             ubicacionActual: ubicacionActual || activo.ubicacionActual,
             imagen: imagen !== undefined ? imagen : activo.imagen,
             anio: anioFabricacion !== undefined ? parseInt(anioFabricacion) : activo.anio,
