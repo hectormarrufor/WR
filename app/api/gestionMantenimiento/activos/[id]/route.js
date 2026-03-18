@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
 import { del } from '@vercel/blob';
-import {
+import db, {
     Activo, VehiculoInstancia, RemolqueInstancia, MaquinaInstancia,
     Vehiculo, Remolque, Maquina,
     SubsistemaInstancia, Subsistema, OrdenMantenimiento, Inspeccion,
@@ -164,10 +164,15 @@ export async function PUT(request, { params }) {
         if (horasParsed <= 0) {
             estadoFinal = 'Inactivo';
         } else if (estadoFinal !== 'Desincorporado') {
-                
-            // A. Mantenimientos abiertos
-            const ordenesAbiertas = await OrdenMantenimiento.count({
-                where: { activoId: activo.id, estado: 'En Progreso' },
+
+            // A. Mantenimientos abiertos (Usando los estados reales de tu ENUM)
+            const ordenesAbiertas = await db.OrdenMantenimiento.count({
+                where: {
+                    activoId: activo.id,
+                    estado: {
+                        [db.Sequelize.Op.in]: ['Diagnostico', 'Esperando Stock', 'Por Ejecutar', 'En Ejecucion']
+                    }
+                },
                 transaction: t
             });
 
@@ -179,12 +184,12 @@ export async function PUT(request, { params }) {
             // C. 🔥 HALLAZGOS PENDIENTES (LA PIEZA QUE FALTABA AQUÍ) 🔥
             const inspeccionesDelActivo = await Inspeccion.findAll({ where: { activoId: activo.id }, attributes: ['id'], transaction: t });
             const inspeccionIds = inspeccionesDelActivo.map(i => i.id);
-            
+
             const hallazgosPendientes = await Hallazgo.findAll({
                 where: { inspeccionId: inspeccionIds, estado: 'Pendiente' },
                 transaction: t
             });
-            
+
             const tieneHallazgoCritico = hallazgosPendientes.some(h => h.impacto === 'No Operativo');
             const tieneHallazgoLeve = hallazgosPendientes.some(h => h.impacto === 'Advertencia');
 
@@ -196,7 +201,7 @@ export async function PUT(request, { params }) {
             } else if (tienePiezaLeve || tieneHallazgoLeve) {
                 estadoFinal = 'Advertencia';
             } else {
-                estadoFinal = 'Operativo'; 
+                estadoFinal = 'Operativo';
             }
         }
 
