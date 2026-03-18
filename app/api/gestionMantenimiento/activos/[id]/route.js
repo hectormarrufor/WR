@@ -157,21 +157,17 @@ export async function PUT(request, { params }) {
             tara, anioFabricacion
         } = body;
 
-        // 🔥 LA REGLA DE ORO EVOLUCIONADA: Semáforo de Salud 🔥
+        // 🔥 LA NUEVA REGLA DE ORO: Semáforo de Salud (Físico > Administrativo) 🔥
         const horasParsed = horasAnuales !== undefined ? parseInt(horasAnuales) : activo.horasAnuales;
         let estadoFinal = estado || activo.estado;
 
-        if (horasParsed <= 0) {
-            estadoFinal = 'Inactivo';
-        } else if (estadoFinal !== 'Desincorporado') {
-
-            // A. Mantenimientos abiertos (Usando los estados reales de tu ENUM)
-            const ordenesAbiertas = await db.OrdenMantenimiento.count({
-                where: {
-                    activoId: activo.id,
-                    estado: {
-                        [db.Sequelize.Op.in]: ['Diagnostico', 'Esperando Stock', 'Por Ejecutar', 'En Ejecucion']
-                    }
+        if (estadoFinal !== 'Desincorporado') {
+            
+            // A. Mantenimientos abiertos
+            const ordenesAbiertas = await OrdenMantenimiento.count({
+                where: { 
+                    activoId: activo.id, 
+                    estado: { [Op.in]: ['Diagnostico', 'Esperando Stock', 'Por Ejecutar', 'En Ejecucion'] }
                 },
                 transaction: t
             });
@@ -181,27 +177,29 @@ export async function PUT(request, { params }) {
             const tienePiezaCritica = subsistemas.some(s => ['roto', 'critico', 'no operativo'].includes(s.estado?.toLowerCase()));
             const tienePiezaLeve = subsistemas.some(s => ['advertencia', 'regular', 'desgaste'].includes(s.estado?.toLowerCase()));
 
-            // C. 🔥 HALLAZGOS PENDIENTES (LA PIEZA QUE FALTABA AQUÍ) 🔥
+            // C. Hallazgos Pendientes
             const inspeccionesDelActivo = await Inspeccion.findAll({ where: { activoId: activo.id }, attributes: ['id'], transaction: t });
             const inspeccionIds = inspeccionesDelActivo.map(i => i.id);
-
+            
             const hallazgosPendientes = await Hallazgo.findAll({
                 where: { inspeccionId: inspeccionIds, estado: 'Pendiente' },
                 transaction: t
             });
-
+            
             const tieneHallazgoCritico = hallazgosPendientes.some(h => h.impacto === 'No Operativo');
             const tieneHallazgoLeve = hallazgosPendientes.some(h => h.impacto === 'Advertencia');
 
-            // D. Jerarquía de Gravedad
+            // 🔥 D. JERARQUÍA MAESTRA 🔥
             if (ordenesAbiertas > 0) {
                 estadoFinal = 'En Mantenimiento';
             } else if (tienePiezaCritica || tieneHallazgoCritico) {
-                estadoFinal = 'No Operativo';
+                estadoFinal = 'No Operativo'; // ¡El taller gana!
+            } else if (horasParsed <= 0) {
+                estadoFinal = 'Inactivo';     // ¡Finanzas entra de tercero!
             } else if (tienePiezaLeve || tieneHallazgoLeve) {
                 estadoFinal = 'Advertencia';
             } else {
-                estadoFinal = 'Operativo';
+                estadoFinal = 'Operativo'; 
             }
         }
 
