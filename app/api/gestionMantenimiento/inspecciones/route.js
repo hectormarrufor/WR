@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import db from "@/models"; 
 import { notificarCabezas } from '@/app/api/notificar/route'; // 🔥 Motor de Notificaciones
 
-import { NextResponse } from "next/server";
-import db from "@/models"; 
-import { notificarCabezas } from '@/app/api/notificar/route';
 
 export async function POST(request) {
   const t = await db.sequelize.transaction();
@@ -42,8 +39,9 @@ export async function POST(request) {
     // 3. ACTUALIZACIÓN DE CONTADORES DEL ACTIVO
     const activo = await db.Activo.findByPk(activoId, { 
         include: [
-            { model: db.VehiculoInstancia, as: 'vehiculoInstancia' },
-            { model: db.MaquinaInstancia, as: 'maquinaInstancia' } 
+            { model: db.VehiculoInstancia, as: 'vehiculoInstancia', include: [{ model: db.Vehiculo, as: 'plantilla' }] },
+            { model: db.MaquinaInstancia, as: 'maquinaInstancia', include: [{ model: db.Maquina, as: 'plantilla' }] },
+            { model: db.RemolqueInstancia, as: 'remolqueInstancia', include: [{ model: db.Remolque, as: 'plantilla' }] },
         ],
         transaction: t 
     });
@@ -112,14 +110,14 @@ export async function POST(request) {
     // 5. 🔥 DISPARAR NOTIFICACIONES PUSH 🔥
     if (tieneFallaCriticaActual) {
         await notificarCabezas({
-            title: `🚨 PARADA DE EQUIPO: ${activo.codigoInterno}`,
+            title: `🚨 PARADA DE EQUIPO: ${activo.vehiculoInstancia ? `${activo.vehiculoInstancia.plantilla.tipoVehiculo}` : activo.remolqueInstancia ? `${activo.remolqueInstancia.plantilla.tipoRemolque}` : `${activo.maquinaInstancia.plantilla.tipo}`} ${activo.vehiculoInstancia ? `(${activo.vehiculoInstancia.placa})` : activo.remolqueInstancia ? `(${activo.remolqueInstancia.placa})` : `${activo.maquinaInstancia ? `(${activo.maquinaInstancia.placa})` : ''}`}`,
             body: `Se reportó una falla CRÍTICA. El equipo ha pasado a NO OPERATIVO.`,
             url: `/superuser/flota/activos/${activo.id}`,
             tag: 'falla-critica'
         });
     } else if (tieneAdvertenciaActual) {
         await notificarCabezas({
-            title: `⚠️ Advertencia en Equipo: ${activo.codigoInterno}`,
+            title: `⚠️ Advertencia en Equipo: ${activo.vehiculoInstancia ? `${activo.vehiculoInstancia.plantilla.tipoVehiculo}` : activo.remolqueInstancia ? `${activo.remolqueInstancia.plantilla.tipoRemolque}` : `${activo.maquinaInstancia.plantilla.tipo}`} ${activo.vehiculoInstancia ? `(${activo.vehiculoInstancia.placa})` : activo.remolqueInstancia ? `(${activo.remolqueInstancia.placa})` : `${activo.maquinaInstancia ? `(${activo.maquinaInstancia.placa})` : ''}`}`,
             body: `Se ha reportado una falla leve que requiere revisión en taller.`,
             url: `/superuser/flota/activos/${activo.id}`,
             tag: 'falla-leve'
