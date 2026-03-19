@@ -32,6 +32,7 @@ import ModalCrearSubsistema from '../../components/ModalCrearSubsistema';
 import ModalCrearSlot from '../../components/ModalCrearSlot';
 import ModalInstalarPieza from '../../components/ModalInstalarPieza';
 import ModalCrearConsumible from '../components/ModalCrearConsumible';
+import ModalDetallarFalla from '../components/ModalDetallarFalla';
 
 
 export default function DetalleActivoPage({ params }) {
@@ -60,6 +61,10 @@ export default function DetalleActivoPage({ params }) {
     const [modalInstalarOpened, setModalInstalarOpened] = useState(false);
     const [datosInstalacion, setDatosInstalacion] = useState({ slot: null, subsistemaInstanciaId: null });
     const [modalCrearConsumibleOpened, setModalCrearConsumibleOpened] = useState(false);
+
+    // Dentro de tu componente DetalleActivoPage:
+    const [modalDetallarOpened, setModalDetallarOpened] = useState(false);
+    const [hallazgoParaDetallar, setHallazgoParaDetallar] = useState(null);
     // Un contador para usar como disparador de recarga en el modal hijo
     const [reloadInventarioTrigger, setReloadInventarioTrigger] = useState(0);
 
@@ -145,7 +150,7 @@ export default function DetalleActivoPage({ params }) {
             case 'Advertencia': return 'yellow.6'; // 🔥 Ajustado al ENUM exacto
             case 'No Operativo': return 'red.7';
             case 'En Mantenimiento': return 'blue.6';
-            case 'Inactivo': 
+            case 'Inactivo':
             case 'Desincorporado': return 'gray.6';
             default: return 'dark.4';
         }
@@ -404,6 +409,21 @@ export default function DetalleActivoPage({ params }) {
                                                             </Group>
                                                             {hallazgo.estado === 'Pendiente' && (
                                                                 <Group mt="md" justify="flex-end">
+                                                                    {!hallazgo.subsistemaInstanciaId && (
+                                                                        <Button
+                                                                            size="xs"
+                                                                            variant="light"
+                                                                            color="orange.8"
+                                                                            mt="xs"
+                                                                            leftSection={<IconSettings size={14} />}
+                                                                            onClick={() => {
+                                                                                setHallazgoParaDetallar(hallazgo);
+                                                                                setModalDetallarOpened(true);
+                                                                            }}
+                                                                        >
+                                                                            DETALLAR ANATOMÍA
+                                                                        </Button>
+                                                                    )}
                                                                     <Button size="xs" variant="light" color="blue" onClick={() => { setSelectedHallazgo(hallazgo); setModalOrdenOpened(true); }}>
                                                                         Generar ODT
                                                                     </Button>
@@ -916,6 +936,13 @@ export default function DetalleActivoPage({ params }) {
                 tipoActivo={activo.tipoActivo}
                 codigoInterno={activo.codigoInterno} // 🔥 LÍNEA NUEVA 🔥
                 onSuccess={fetchData}
+            />
+            <ModalDetallarFalla
+                opened={modalDetallarOpened}
+                onClose={() => setModalDetallarOpened(false)}
+                hallazgo={hallazgoParaDetallar}
+                activo={activo}
+                onSuccess={fetchData} // Esto hará que el camión se refresque y veas el nuevo subsistema
             />
             {/* 🔥 MODAL VISOR DE DOCUMENTOS (CON IMPRIMIR/DESCARGAR) 🔥 */}
             <Modal

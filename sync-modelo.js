@@ -2,7 +2,7 @@
 const db = require('./models'); // Ajusta esta ruta si es necesario
 
 // 🔥 VARIABLE MÁGICA: Escribe aquí el nombre exacto del modelo que quieres actualizar
-const nombreModelo = 'ConfiguracionGlobal'; 
+const nombreModelo = 'Consumible'; 
 
 async function sincronizarModeloDinámico() {
     try {

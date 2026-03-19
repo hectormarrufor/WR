@@ -25,6 +25,8 @@ const Consumible = sequelize.define('Consumible', {
         'correa',
         'capacitador',
         'bombillo',
+        "otros",
+        "repuesto general",
     ), allowNull: false },
     stockAlmacen: {
         type: DataTypes.DECIMAL(10, 2),
