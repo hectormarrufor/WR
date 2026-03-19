@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
     Title, Text, Button, Container, Paper, Box, Stack,
-    Group, Anchor, Center, Image, ThemeIcon, Grid,
+    Group, Anchor, Center, Image as MantineImage, ThemeIcon, Grid,
     Flex, SimpleGrid, Card, Badge, List, Divider, Overlay,
     Avatar, Blockquote
 } from '@mantine/core';
@@ -17,6 +17,7 @@ import {
 import { Fade } from 'react-slideshow-image';
 import 'react-slideshow-image/dist/styles.css';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 // --- COLORES CORPORATIVOS (Hex Manuales para precisión) ---
 const COLORS = {
@@ -161,11 +162,13 @@ export default function LandingPage() {
                     <Fade duration={4000} transitionDuration={1500} arrows={false} pauseOnHover={false} infinite>
                         {slideImages.map((img, index) => (
                             <div key={index} style={{ height: heroHeight, width: '100%' }}>
-                                <Image
+                                <MantineImage
+                                    component={Image}
                                     src={img}
                                     alt="Slide"
-                                    h={heroHeight}
-                                    w="100%"
+                                    // h={heroHeight}
+                                    fill
+                                    // height={heroHeight}
                                     fit="cover"
                                     style={{ filter: 'grayscale(30%) contrast(1.1)' }}
                                     fallbackSrc="https://placehold.co/1920x1080/0D2B3E/FFF?text=Transporte+Dadica"
@@ -306,7 +309,7 @@ export default function LandingPage() {
                             <FadeInSection key={index} delay={index * 0.1}>
                                 <Card padding="none" radius="md" withBorder shadow="sm" h="100%">
                                     <Card.Section>
-                                        <Image src={srv.img} height={200} alt={srv.title} fallbackSrc="https://placehold.co/600x400?text=Servicio" />
+                                        <MantineImage component={Image} src={srv.img} fill alt={srv.title} fallbackSrc="https://placehold.co/600x400?text=Servicio" />
                                     </Card.Section>
                                     <Stack p="xl" gap="sm">
                                         <Group justify="space-between">
@@ -410,7 +413,7 @@ export default function LandingPage() {
                         </Grid.Col>
                         <Grid.Col span={{ base: 12, md: 6 }}>
                             <FadeInSection delay={0.2}>
-                                <Image radius="md" src="/flota.jpg" alt="Flota Dadica" fallbackSrc="https://placehold.co/800x600/333/666?text=Flota+Operativa" />
+                                <MantineImage component={Image} fill radius="md" src="/flota.jpg" alt="Flota Dadica" fallbackSrc="https://placehold.co/800x600/333/666?text=Flota+Operativa" />
                             </FadeInSection>
                         </Grid.Col>
                     </Grid>
@@ -451,7 +454,7 @@ export default function LandingPage() {
             {/* =========================================
                 SECCIÓN 8: CLIENTES Y ESTADÍSTICAS
                ========================================= */}
-            <Box bg="#f8f9fa" py={100}>
+            {/* <Box bg="#f8f9fa" py={100}>
                 <Container size="xl">
                     <Grid gutter={50} align="center">
                         <Grid.Col span={{ base: 12, md: 5 }}>
@@ -468,14 +471,14 @@ export default function LandingPage() {
                             </FadeInSection>
                         </Grid.Col>
                         <Grid.Col span={{ base: 12, md: 7 }}>
-                            {/* AQUÍ IRÍA EL RENDER DE LOGOS CUANDO TENGAS AUTORIZACIÓN */}
+                        // Mock de logos de clientes (Comentado hasta tener autorización)
                             <Center h={200} bg="gray.1" style={{ borderRadius: 16, border: '2px dashed #ced4da' }}>
                                 <Text c="dimmed" size="sm" fs="italic">Espacio reservado para logos de Aliados Comerciales</Text>
                             </Center>
                         </Grid.Col>
                     </Grid>
                 </Container>
-            </Box>
+            </Box> */}
 
             {/* =========================================
                 SECCIÓN 9: BLOG TÉCNICO
@@ -530,7 +533,7 @@ export default function LandingPage() {
                 <Container size="lg">
                     <Flex direction={isMobile ? 'column' : 'row'} justify="space-between" align="center" gap="xl">
                         <Stack gap={5} align={isMobile ? 'center' : 'flex-start'}>
-                            <Image src="/logo.png" alt="Logo Dadica" w={200} fit="contain" mb="xs" fallbackSrc="https://placehold.co/150x50/000/FFF?text=DADICA" />
+                            <MantineImage component={Image} src="/logo.png" alt="Logo Dadica" height={50} width={200} fit="contain" mb="xs" fallbackSrc="https://placehold.co/150x50/000/FFF?text=DADICA" />
                             <Text size="sm">Rif: J-29599557-0</Text>
                             <Text size="xs">Ciudad Ojeda, Zulia, Venezuela</Text>
                         </Stack>

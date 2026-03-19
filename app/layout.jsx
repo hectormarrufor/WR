@@ -7,7 +7,7 @@ import './global.css'; // Asegúrate de que este archivo exista o quítalo
 import 'dayjs/locale/es';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { AppShell, Burger, createTheme, Group, Image, MantineProvider, UnstyledButton, Box, Flex, Center, Loader } from '@mantine/core';
+import { AppShell, Burger, createTheme, Group, Image as MantineImage, MantineProvider, UnstyledButton, Box, Flex, Center, Loader } from '@mantine/core';
 import { useDisclosure, useHeadroom } from '@mantine/hooks'; // useHeadroom es mejor para el header que se esconde
 import { Notifications } from '@mantine/notifications';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,7 @@ import AuthGuard from '@/hooks/authGuard';
 import NotificationBell from './components/NotificationBell';
 import { DatesProvider } from '@mantine/dates';
 import ReactQueryProvider from './QueryProvider';
+import Image from 'next/image';
 
 // Crear el tema FUERA del componente para evitar re-renders innecesarios
 const theme = createTheme(themeConfig);
@@ -99,7 +100,7 @@ export default function RootLayout({ children }) {
                   
                             {/* LADO IZQUIERDO: Logo (Siempre visible) */}
                             <UnstyledButton onClick={() => router.push('/')}>
-                              <Image src="/logo.png" h={40} fit="contain" alt="Dadica Logo" />
+                              <MantineImage component={Image} src="/logo.png" h={40} fit="contain" width={80} height={40} alt="Dadica Logo" />
                             </UnstyledButton>
                   
                             {/* LADO DERECHO: Burger (Móvil) o LayoutMenu (Desktop) */}
