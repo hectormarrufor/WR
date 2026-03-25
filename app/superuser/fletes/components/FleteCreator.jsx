@@ -277,7 +277,7 @@ export default function FleteCreator() {
 
         // Cálculo dinámico del margen de ganancia basado en la distancia
         if (distanciaCalculada > 0) {
-            let nuevoMargen = Math.round((1500 / (distanciaCalculada + 4)) + 28);
+            let nuevoMargen = Math.round((2000 / (distanciaCalculada + 50)) + 28);
             
             // Limitamos el margen entre 0 y 1000 para evitar desbordes
             if (nuevoMargen > 1000) nuevoMargen = 1000;
@@ -1198,12 +1198,11 @@ export default function FleteCreator() {
                                                         color="green.6" size="xl"
                                                         value={valorVisualMargen} onChange={setValorVisualMargen}
                                                         onChangeEnd={(val) => form.setFieldValue("margenGanancia", val)}
-                                                        step={1} min={0} max={1000}
+                                                        step={1} min={0} max={500}
                                                         marks={[
                                                             { value: 30, label: <Text fw={800}>30%</Text> },
                                                             { value: 100, label: <Text fw={800}>100%</Text> },
                                                             { value: 500, label: <Text fw={800}>500%</Text> },
-                                                            { value: 1000, label: <Text fw={800}>1000%</Text> }
                                                         ]}
                                                     />
                                                 </Box>
