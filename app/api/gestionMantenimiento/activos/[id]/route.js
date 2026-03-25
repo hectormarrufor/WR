@@ -96,8 +96,26 @@ export async function GET(request, { params }) {
                     required: false,
                     include: [
                         {
-                            model: Hallazgo, // 🔥 FALTABA ESTO 🔥
-                            as: 'hallazgos'
+                            model: Hallazgo,
+                            as: 'hallazgos',
+                            include: [
+                                // 🔥 1. Traemos el Área/Subsistema asociado al hallazgo
+                                {
+                                    model: SubsistemaInstancia,
+                                    as: 'subsistema'
+                                },
+                                // 🔥 2. Traemos la Pieza Física afectada y su ficha de inventario
+                                {
+                                    model: ConsumibleInstalado,
+                                    as: 'componenteDañado',
+                                    include: [
+                                        {
+                                            model: Consumible,
+                                            as: 'fichaTecnica'
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -293,7 +311,7 @@ export async function DELETE(request, { params }) {
             await MaquinaInstancia.destroy({ where: { id: activo.maquinaInstanciaId }, transaction: t });
         }
 
-       // Destruimos el activo principal
+        // Destruimos el activo principal
         await activo.destroy({ transaction: t });
 
         // 🔥 OBLIGAMOS A RECALCULAR LA FLOTA Y EL DINERO TRAS BORRAR EL CAMIÓN 🔥

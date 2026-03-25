@@ -25,6 +25,7 @@ const Consumible = sequelize.define('Consumible', {
         'correa',
         'capacitador',
         'bombillo',
+        "manguera", // 🔥 NUEVO ENUM
         "otros",
         "repuesto general",
     ), allowNull: false },
@@ -50,6 +51,11 @@ const Consumible = sequelize.define('Consumible', {
     unidadMedida: {
         type: DataTypes.ENUM('litros', 'kilogramos', 'unidades', 'metros', 'galones'),
         allowNull: false
+    },
+    // 🔥 EL CAMPO MAESTRO PARA EVITAR CREAR TABLAS NUEVAS
+    datosTecnicos: {
+        type: DataTypes.JSONB,
+        allowNull: true
     }
 
 }, {
@@ -59,7 +65,6 @@ const Consumible = sequelize.define('Consumible', {
 
 Consumible.associate = (models) => {
     Consumible.hasMany(models.ConsumibleSerializado, { foreignKey: 'consumibleId', as: 'serializados' , onDelete: 'CASCADE' });
-    // Un consumible puede tener muchas entradas y salidas de inventario
     Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
     Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
     Consumible.hasOne(models.Aceite, { foreignKey: 'consumibleId' , onDelete: 'CASCADE' });
@@ -71,7 +76,5 @@ Consumible.associate = (models) => {
     Consumible.hasMany(models.ConsumibleRecomendado, { foreignKey: 'consumibleId', as: 'recomendaciones', onDelete: 'CASCADE' });
     Consumible.hasMany(models.ConsumibleInstalado, { foreignKey: 'consumibleId', as: 'instalaciones',    onDelete: 'CASCADE' });
 };
-
-
 
 module.exports = Consumible;

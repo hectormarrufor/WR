@@ -123,7 +123,8 @@ export async function POST(request) {
             stockAsignado,
             stockMinimo,
             precioPromedio,
-            unidadMedida: "unidad" ? "unidades" : unidadMedida // Ajuste específico,
+            unidadMedida: unidadMedida === "unidad" ? "unidades" : unidadMedida,
+            datosTecnicos // 🔥 AL INYECTARLO AQUÍ, GUARDAMOS LOS DATOS DE LA MANGUERA AUTOMÁTICAMENTE
         }, { transaction: t });
 
         // 2. Lógica Específica FILTRO
@@ -201,7 +202,6 @@ export async function POST(request) {
                 esRecauchable: datosTecnicos.esRecauchable || false,
                 esTubeless: datosTecnicos.esTubeless || false
             }, { transaction: t });
-
 
         }
         else if (categoria === 'bateria') {

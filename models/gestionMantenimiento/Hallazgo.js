@@ -14,7 +14,7 @@ const Hallazgo = sequelize.define('Hallazgo', {
   },
   // Ciclo de vida del problema
   estado: {
-    type: DataTypes.ENUM('Pendiente', 'En Diagnostico', 'En Reparacion', 'Cerrado', 'Descartado'),
+    type: DataTypes.ENUM('Pendiente', 'En Diagnostico', 'En Reparacion', 'Cerrado', 'Descartado', "Esperando Repuesto"),
     defaultValue: 'Pendiente'
   },
   imagenEvidencia: {

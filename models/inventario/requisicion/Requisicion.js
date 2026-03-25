@@ -50,6 +50,7 @@ Requisicion.associate = (models) => {
   
   // Sus detalles (Items)
   Requisicion.hasMany(models.RequisicionDetalle, { foreignKey: 'requisicionId', as: 'detalles' });
+  Requisicion.belongsTo(models.Hallazgo, { foreignKey: 'hallazgoId', as: 'hallazgoOrigen' });
 };
 
 module.exports = Requisicion;

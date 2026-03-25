@@ -65,6 +65,10 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             esTubeless: false,
             esRecauchable: false,
             //Sensores
+            // Mangueras
+            diametro: '',
+            longitud: '', // Ahora será tratada numéricamente
+            conectores: ''
         },
         validate: {
             itemsSerializados: (val, values) => {
@@ -102,16 +106,6 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
         }
     }, [initialValues]);
 
-    // Debugging (Existente)
-    useEffect(() => {
-        console.log("Equivalencia seleccionada:", equivalenciaSeleccionada);
-    }, [equivalenciaSeleccionada]);
-
-    useEffect(() => {
-        console.log("Valores del formulario:", form.values);
-    }, [form.values]);
-
-    // Efecto: Auto-configurar Serializado según el tipo
     useEffect(() => {
         // Solo ejecutamos lógica automática si NO estamos cargando datos iniciales (para evitar sobrescribir)
         // O si el usuario cambia manualmente el tipo específico
@@ -149,12 +143,13 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 'Bateria': 'bateria',
                 'Neumatico': 'neumatico',
                 'Correa': 'correa',
-                'Gasoil': 'gasoil'
+                'Gasoil': 'gasoil',
+                'Manguera': 'manguera' 
             };
             if (tipoEspecifico === "Aceite" && !isEdit) {
                 form.setFieldValue('unidadMedida', 'litros');
             }
-            if ((tipoEspecifico === "Correa" || tipoEspecifico === "Sensor") && !isEdit) {
+            if ((tipoEspecifico === "Correa" || tipoEspecifico === "Sensor" || tipoEspecifico === "Manguera") && !isEdit) {
                 form.setFieldValue('unidadMedida', 'unidades');
             }
             if (tipoEspecifico === "Gasoil" && !isEdit) {
@@ -169,18 +164,14 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
 
     }, [tipoEspecifico, form.values.tipo]);
 
-    // Función que recibe la selección del Modal
     const handleConfirmEquivalencia = (selectedFilters) => {
-        console.log("Equivalencias seleccionadas del modal:", selectedFilters);
-        const filtro = selectedFilters[0]; // Tomamos el primero seleccionado
+        const filtro = selectedFilters[0]; 
 
         if (filtro) {
-            // Si el filtro ya tiene un grupo, guardamos el ID
-            // Si no tiene grupo, guardamos los datos para crearlo en el backend
             setEquivalenciaSeleccionada({
-                id: filtro.grupoEquivalenciaId || filtro.id, // Referencia
+                id: filtro.grupoEquivalenciaId || filtro.id, 
                 nombre: `${filtro.marca} ${filtro.codigo}`,
-                esNuevoGrupo: !filtro.grupoEquivalenciaId, // Bandera para el backend
+                esNuevoGrupo: !filtro.grupoEquivalenciaId, 
                 sugerenciaNombreGrupo: `Grupo para ${filtro.marca} ${filtro.codigo}`
             });
             setShowEquivalencias(false);
@@ -189,7 +180,6 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
 
     const handleSubmit = async (values) => {
         setLoading(true);
-        console.log("Enviando datos del formulario:", values);
 
         try {
             // 1. GENERACIÓN DE NOMBRE Y DATOS TÉCNICOS
@@ -199,13 +189,12 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             if (tipoEspecifico === 'Filtro') {
                 nombreGenerado = `${values.categoria} ${values.marca} ${values.codigo}`;
                 datosTecnicos = {
-                    marca: values.marca, // Asegurar enviar ID si es combobox
+                    marca: values.marca, 
                     tipo: values.tipo?.toLowerCase(),
-                    codigo: values.codigo, // Manejar ambos keys
+                    codigo: values.codigo, 
                     posicion: values.posicion?.toLowerCase(),
                     imagen: values.imagen,
                     equivalenciaSeleccionada: equivalenciaSeleccionada || null,
-                    // datosGrupo: equivalenciaSeleccionada?.datosNuevoGrupo || null // Pasamos datos de grupo nuevo si existen
                 };
             }
             else if (tipoEspecifico === 'Aceite') {
@@ -213,7 +202,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 datosTecnicos = {
                     marca: values.marca,
                     modelo: values.modelo,
-                    tipoBase: values.tipoAceite, // Ajuste nombre campo
+                    tipoBase: values.tipoAceite, 
                     viscosidad: values.viscosidad,
                     aplicacion: values.aplicacion?.toLowerCase(),
                 };
@@ -222,7 +211,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 nombreGenerado = `Batería ${values.marca} Gr.${values.codigo} ${values.amperaje}CCA`;
                 datosTecnicos = {
                     marca: values.marca,
-                    codigo: values.codigo, // Grupo
+                    codigo: values.codigo, 
                     amperaje: values.amperaje,
                     voltaje: values.voltaje,
                     capacidad: values.capacidad
@@ -245,25 +234,30 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                     codigo: values.codigo
                 };
             }
+            // 🔥 LÓGICA MANGUERA REVISADA PARA FORMATO DE NOMBRE
+            else if (tipoEspecifico === 'Manguera') {
+                nombreGenerado = `Manguera ${values.diametro}" x ${values.longitud}cm ${values.conectores ? `(${values.conectores})` : ''}`.trim();
+                datosTecnicos = {
+                    diametro: values.diametro,
+                    longitud: values.longitud,
+                    conectores: values.conectores
+                };
+            }
           
-
-            // Si estamos editando y el usuario no cambió el nombre manualmente,
-            // podemos optar por mantener el viejo o regenerarlo. 
-            // Aquí regeneramos para consistencia, pero si initialValues.nombre es custom, cuidado.
             const nombreFinal = nombreGenerado || values.nombre;
 
             // 2. PREPARAR PAYLOAD
             const payload = {
                 nombre: nombreFinal,
-                tipo: values.clasificacion.toLowerCase(), // 'fungible' o 'serializado'
+                tipo: values.clasificacion.toLowerCase(), 
                 categoria: values.categoria,
                 stockAlmacen: values.clasificacion === 'Serializado' ? values.itemsSerializados.length : values.stockAlmacen,
                 stockMinimo: values.stockMinimo,
                 unidadMedida: values.unidadMedida,
                 precioPromedio: values.precioPromedio,
-                tipoSpecifico: tipoEspecifico, // Útil para el backend en el PUT
+                tipoSpecifico: tipoEspecifico, 
                 datosTecnicos: datosTecnicos,
-                itemsSerializados: values.itemsSerializados // Enviamos los hijos
+                itemsSerializados: values.itemsSerializados 
             };
 
             // SUBIDA DE IMAGEN
@@ -279,17 +273,14 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 });
 
                 if (!response.ok) console.log('Falló la subida o ya existe.');
-                // const newBlob = await response.json(); // Si necesitas URL del blob
                 payload.datosTecnicos.imagen = uniqueFilename;
                 notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen lista.', color: 'green' });
             }
 
             // 3. DECISIÓN: EDITAR (onSubmit prop) o CREAR (fetch interno)
             if (isEdit && onSubmit) {
-                // Modo EDICIÓN: Delegamos al padre
                 await onSubmit(payload);
             } else {
-                // Modo CREACIÓN: Fetch local
                 const response = await fetch('/api/inventario/consumibles', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -335,20 +326,16 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
             <LoadingOverlay visible={loading} />
 
             <SimpleGrid cols={2} breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
-
-                {/* SELECCIÓN DEL TIPO (Esto define qué inputs mostramos) */}
                 <Select
                     label="Tipo de consumible"
-                    data={['Filtro', 'Gasoil', 'Aceite', 'Bateria', 'Correa', 'Neumatico']}
+                    data={['Filtro', 'Gasoil', 'Aceite', 'Bateria', 'Correa', 'Neumatico', 'Manguera']}
                     value={tipoEspecifico}
                     onChange={(val) => {
-                        // Al cambiar tipo, resetear form PERO mantener valores iniciales si volvemos al mismo tipo en edit?
-                        // Por simplicidad, reset total, usuario debe rellenar.
                         setTipoEspecifico(val);
                         form.reset();
                     }}
                     allowDeselect={false}
-                    disabled={isEdit} // EN EDICIÓN NO SE PUEDE CAMBIAR EL TIPO ESTRUCTURAL
+                    disabled={isEdit} 
                 />
                 <Select
                     label="Unidad de Medida"
@@ -357,7 +344,6 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                     value={form.values.unidadMedida}
                     onChange={(val) => form.setFieldValue('unidadMedida', val)}
                 />
-                {/* El select de clasificación puede ser manual o auto */}
                 <Select
                     label="Clasificación"
                     disabled
@@ -371,15 +357,13 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                 />
             </SimpleGrid>
 
-
             <Divider />
 
-            {/* FORMULARIO ÚNICO - USANDO EL TRUCO DEL STOPPROPAGATION */}
             <form onSubmit={(e) => { e.stopPropagation(); form.onSubmit(handleSubmit)(e); }}>
                 <Stack gap="md">
 
                     {/* --- DATOS COMUNES --- */}
-                    {tipoEspecifico !== 'Gasoil' && (
+                    {tipoEspecifico !== 'Gasoil' && tipoEspecifico !== 'Manguera' && (
                     <Group grow>
                         <AsyncCatalogComboBox
                             key={tipoCatalogo}
@@ -391,9 +375,31 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                             tipo={tipoCatalogo}
                         />
                     </Group>
-                    )
-}
-                    {/* --- INPUTS ESPECÍFICOS (Renderizado Condicional) --- */}
+                    )}
+
+                    {/* CASO: MANGUERA 🔥 (Nuevos inputs con estandarización) */}
+                    {tipoEspecifico === 'Manguera' && (
+                        <Group grow align="flex-start">
+                            <TextInput 
+                                label="Diámetro" 
+                                placeholder="Ej: 1/2, 5/8, 1" 
+                                rightSection={<Text size="xs" c="dimmed" mr="xs">pulg.</Text>} 
+                                {...form.getInputProps('diametro')} 
+                            />
+                            <NumberInput 
+                                label="Longitud" 
+                                placeholder="Ej: 150" 
+                                suffix=" cm" 
+                                min={1} 
+                                {...form.getInputProps('longitud')} 
+                            />
+                            <TextInput 
+                                label="Conectores (Opcional)" 
+                                placeholder="Ej: Recto JIC x Curvo 90°" 
+                                {...form.getInputProps('conectores')} 
+                            />
+                        </Group>
+                    )}
 
                     {/* CASO: FILTRO */}
                     {tipoEspecifico === 'Filtro' && (
@@ -514,7 +520,6 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                         </Group>
                     )}
 
-                    {/* --- SECCIÓN DE STOCK Y SERIALES --- */}
                     <Divider label="Inventario" labelPosition="center" />
                     <NumberInput
                         label="Precio Promedio Unitario"
@@ -532,7 +537,7 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                     <NumberInput
                         label={esSerializado ? "Cantidad a Ingresar (Unidades)" : "Stock Almacen"}
                         min={esSerializado ? 1 : 0}
-                        disabled={isEdit && !esSerializado} // En edición no solemos cambiar stock directo, sino por ajustes
+                        disabled={isEdit && !esSerializado} 
                         {...form.getInputProps('stockAlmacen')}
                     />
 
@@ -552,7 +557,6 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                         </>
                     )}
 
-                    {/* --- BOTONES --- */}
                     <Group justify="right" mt="xl">
                         {onCancel && <Button variant="default" onClick={onCancel} type="button">Cancelar</Button>}
                         <Button type="submit" leftSection={<IconDeviceFloppy size={18} />}>
@@ -561,7 +565,6 @@ export default function ConsumibleForm({ onSuccess, onCancel, initialValues = nu
                     </Group>
                 </Stack>
             </form>
-            {/* MODAL DE EQUIVALENCIAS */}
             <ModalEquivalencias
                 open={showEquivalencias}
                 onClose={() => setShowEquivalencias(false)}

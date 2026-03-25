@@ -33,6 +33,7 @@ import ModalCrearSlot from '../../components/ModalCrearSlot';
 import ModalInstalarPieza from '../../components/ModalInstalarPieza';
 import ModalCrearConsumible from '../components/ModalCrearConsumible';
 import ModalDetallarFalla from '../components/ModalDetallarFalla';
+import ModalVistaFalla from '../components/ModalVistaFalla';
 
 
 export default function DetalleActivoPage({ params }) {
@@ -54,19 +55,21 @@ export default function DetalleActivoPage({ params }) {
     const [selectedHallazgo, setSelectedHallazgo] = useState(null);
     const [modalUninstallOpened, setModalUninstallOpened] = useState(false);
     const [itemToUninstall, setItemToUninstall] = useState(null);
-    const [docPreview, setDocPreview] = useState(null); // Guardará la URL y datos del doc a ver
+    const [docPreview, setDocPreview] = useState(null); 
     const [modalCrearSubOpened, setModalCrearSubOpened] = useState(false);
     const [modalSlotOpened, setModalSlotOpened] = useState(false);
-    const [targetPlantillaId, setTargetPlantillaId] = useState(null); // Para saber a qué subsistema le estamos creando el slot
+    const [targetPlantillaId, setTargetPlantillaId] = useState(null); 
     const [modalInstalarOpened, setModalInstalarOpened] = useState(false);
     const [datosInstalacion, setDatosInstalacion] = useState({ slot: null, subsistemaInstanciaId: null });
     const [modalCrearConsumibleOpened, setModalCrearConsumibleOpened] = useState(false);
 
-    // Dentro de tu componente DetalleActivoPage:
     const [modalDetallarOpened, setModalDetallarOpened] = useState(false);
     const [hallazgoParaDetallar, setHallazgoParaDetallar] = useState(null);
-    // Un contador para usar como disparador de recarga en el modal hijo
     const [reloadInventarioTrigger, setReloadInventarioTrigger] = useState(0);
+
+    // 🔥 Estado para el nuevo modal de vista de falla
+    const [modalVistaFallaOpened, setModalVistaFallaOpened] = useState(false);
+    const [hallazgoParaVer, setHallazgoParaVer] = useState(null);
 
     const fetchData = async () => {
         try {
@@ -96,14 +99,12 @@ export default function DetalleActivoPage({ params }) {
         const docsActuales = activo.documentos || [];
         const faltantes = [];
 
-        // Universal
         if (!docsActuales.some(d => d.tipo === 'Documento de Propiedad')) faltantes.push('Doc. Propiedad');
 
         if (activo.tipoActivo === 'Vehiculo' || activo.tipoActivo === 'Remolque') {
             if (!docsActuales.some(d => d.tipo === 'Poliza de Seguro')) faltantes.push('Seguro');
             if (!docsActuales.some(d => d.tipo === 'ROTC')) faltantes.push('ROTC');
 
-            // 🔥 Si quieres obligarlos para toda la flota:
             if (!docsActuales.some(d => d.tipo === 'RACDA')) faltantes.push('RACDA');
             if (!docsActuales.some(d => d.tipo === 'RUNSAI')) faltantes.push('RUNSAI');
             if (!docsActuales.some(d => d.tipo === 'DAEX')) faltantes.push('DAEX');
@@ -126,7 +127,12 @@ export default function DetalleActivoPage({ params }) {
     const instance = activo.vehiculoInstancia || activo.remolqueInstancia || activo.maquinaInstancia || {};
     const plantilla = instance?.plantilla || {};
     const subsistemas = activo.subsistemasInstancia || [];
-    const hallazgosPendientes = activo.inspecciones?.flatMap(i => i.hallazgos || []).filter(h => h.estado !== 'Cerrado') || [];
+
+    // 🔥 Ordenamiento de hallazgos por fecha descendente
+    const hallazgosPendientes = (activo.inspecciones?.flatMap(i => i.hallazgos || []).filter(h => h.estado !== 'Cerrado') || [])
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        console.log("Hallazgos Pendientes Ordenados:", hallazgosPendientes);
 
     const dataKilometraje = (activo.registrosKilometraje || []).map(r => ({
         fecha: new Date(r.fecha_registro).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }),
@@ -147,7 +153,7 @@ export default function DetalleActivoPage({ params }) {
     const getEstadoColor = (estado) => {
         switch (estado) {
             case 'Operativo': return 'teal.6';
-            case 'Advertencia': return 'yellow.6'; // 🔥 Ajustado al ENUM exacto
+            case 'Advertencia': return 'yellow.6'; 
             case 'No Operativo': return 'red.7';
             case 'En Mantenimiento': return 'blue.6';
             case 'Inactivo':
@@ -172,10 +178,8 @@ export default function DetalleActivoPage({ params }) {
         return 'N/D';
     };
 
-    // 🔥 FUNCIONES DE VISOR DE DOCUMENTOS 🔥
     const handleDownloadDoc = async (url, filename) => {
         try {
-            // Hacemos fetch para forzar la descarga en lugar de abrir una pestaña nueva
             const response = await fetch(url);
             const blob = await response.blob();
             const blobUrl = window.URL.createObjectURL(blob);
@@ -187,14 +191,12 @@ export default function DetalleActivoPage({ params }) {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(blobUrl);
         } catch (error) {
-            // Fallback por si hay bloqueos de CORS
             window.open(url, '_blank');
         }
     };
 
     const handleConsumibleCreadoExitosamente = (nuevoItem) => {
         notifications.show({ title: 'Consumible Creado', message: 'Se ha registrado en inventario. Refrescando lista de instalación...', color: 'blue' });
-        // Incrementamos el contador para "avisarle" al modal de instalación que recargue
         setReloadInventarioTrigger(prev => prev + 1);
     };
 
@@ -214,7 +216,6 @@ export default function DetalleActivoPage({ params }) {
     return (
         <Box w="100%" p={0} m={0} bg="#e9ecef" style={{ minHeight: '100vh', paddingBottom: '60px' }}>
 
-            {/* 🔥 HEADER INDUSTRIAL 🔥 */}
             <Box bg="dark.9" px={{ base: 'md', xl: '3rem' }} py="xl" style={{ borderBottom: '6px solid #fab005', boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
                 <Group justify="space-between" align="flex-start" wrap="wrap">
                     <Group gap="lg" align="center">
@@ -259,17 +260,14 @@ export default function DetalleActivoPage({ params }) {
                 </Group>
             </Box>
 
-            {/* 🔥 CONTENEDOR PRINCIPAL 🔥 */}
             <Box px={{ base: 'md', xl: '3rem' }} mt="xl">
 
-                {/* Alerta Roja (Crítica) */}
                 {activo.estado === 'No Operativo' && (
                     <Alert variant="filled" color="red.8" title={<Text fw={900} size="lg" tt="uppercase">ALERTA ROJA: EQUIPO INOPERATIVO</Text>} icon={<IconAlertOctagon size={32} />} mb="xl" radius="md" style={{ borderLeft: '8px solid #c92a2a', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                         <Text fw={600} size="md">Este activo se encuentra detenido por hallazgos críticos de mantenimiento o documentación. Revise la pestaña de "Salud y Alertas" para ver los detalles.</Text>
                     </Alert>
                 )}
 
-                {/* 🔥 Alerta Amarilla (Leve/Advertencia) NUEVA 🔥 */}
                 {activo.estado === 'Advertencia' && (
                     <Alert variant="light" color="yellow.8" title={<Text fw={900} size="lg" tt="uppercase">PRECAUCIÓN: EQUIPO CON ADVERTENCIAS</Text>} icon={<IconAlertTriangle size={32} />} mb="xl" radius="md" style={{ borderLeft: '8px solid #fab005', backgroundColor: '#fff9db' }}>
                         <Text fw={600} size="md" c="dark.8">Este camión está operativo pero presenta fallas leves (hallazgos pendientes). Se recomienda programar un mantenimiento pronto para evitar inoperatividad.</Text>
@@ -375,12 +373,9 @@ export default function DetalleActivoPage({ params }) {
                                         </Group>
 
                                         <Group gap="sm">
-                                            {/* 🔥 Botón para reportar falla (Chofer) 🔥 */}
                                             <Button color="red.7" radius="sm" leftSection={<IconClipboardCheck size={18} />} onClick={() => setModalFallaOpened(true)}>
                                                 Reportar Falla
                                             </Button>
-
-                                            {/* 🔥 Botón NUEVO: Generar OM Global agrupando lo que él quiera 🔥 */}
                                             {hallazgosPendientes.length > 0 && (
                                                 <Button color="blue.7" radius="sm" leftSection={<IconTool size={18} />} onClick={() => { setSelectedHallazgo(null); setModalOrdenOpened(true); }}>
                                                     Generar OM
@@ -392,13 +387,25 @@ export default function DetalleActivoPage({ params }) {
                                     {hallazgosPendientes.length > 0 ? (
                                         <Timeline active={hallazgosPendientes.length} bulletSize={24} lineWidth={2} color="red">
                                             {hallazgosPendientes.map((hallazgo) => {
-                                                // Definimos los semáforos correctos basados en tu modelo
                                                 const esCritico = hallazgo.impacto === 'No Operativo';
                                                 const colorImpacto = esCritico ? 'red' : (hallazgo.impacto === 'Advertencia' ? 'yellow' : 'teal');
 
                                                 return (
                                                     <Timeline.Item key={hallazgo.id} bullet={<IconAlertTriangle size={12} />} title={<Text fw={900} size="md" tt="uppercase">FALLA REPORTADA</Text>}>
-                                                        <Paper withBorder p="md" mt="sm" radius="sm" shadow="xs" style={{ borderLeft: `6px solid ${esCritico ? '#e03131' : (hallazgo.impacto === 'Advertencia' ? '#fab005' : '#12b886')}` }}>
+                                                        <Paper 
+                                                            withBorder p="md" mt="sm" radius="sm" shadow="xs" 
+                                                            style={{ 
+                                                                borderLeft: `6px solid ${esCritico ? '#e03131' : (hallazgo.impacto === 'Advertencia' ? '#fab005' : '#12b886')}`,
+                                                                cursor: 'pointer',
+                                                                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                                                            }}
+                                                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)'; }}
+                                                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--mantine-shadow-xs)'; }}
+                                                            onClick={() => {
+                                                                setHallazgoParaVer(hallazgo);
+                                                                setModalVistaFallaOpened(true);
+                                                            }}
+                                                        >
                                                             <Group justify="space-between" align="flex-start" mb="xs">
                                                                 <Text size="sm" c="dark.8" fw={600} style={{ flex: 1 }}>{hallazgo.descripcion}</Text>
                                                                 <Badge color={colorImpacto} variant="filled" radius="sm">{hallazgo.impacto}</Badge>
@@ -416,7 +423,8 @@ export default function DetalleActivoPage({ params }) {
                                                                             color="orange.8"
                                                                             mt="xs"
                                                                             leftSection={<IconSettings size={14} />}
-                                                                            onClick={() => {
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
                                                                                 setHallazgoParaDetallar(hallazgo);
                                                                                 setModalDetallarOpened(true);
                                                                             }}
@@ -424,7 +432,14 @@ export default function DetalleActivoPage({ params }) {
                                                                             DETALLAR ANATOMÍA
                                                                         </Button>
                                                                     )}
-                                                                    <Button size="xs" variant="light" color="blue" onClick={() => { setSelectedHallazgo(hallazgo); setModalOrdenOpened(true); }}>
+                                                                    <Button 
+                                                                        size="xs" variant="light" color="blue" 
+                                                                        onClick={(e) => { 
+                                                                            e.stopPropagation();
+                                                                            setSelectedHallazgo(hallazgo); 
+                                                                            setModalOrdenOpened(true); 
+                                                                        }}
+                                                                    >
                                                                         Generar ODT
                                                                     </Button>
                                                                 </Group>
@@ -442,7 +457,7 @@ export default function DetalleActivoPage({ params }) {
                                     )}
                                 </Tabs.Panel>
 
-                                {/* 🔥 2. TAB: DOCUMENTOS LEGALES 🔥 */}
+                                {/* 2. TAB: DOCUMENTOS LEGALES */}
                                 <Tabs.Panel value="documentos">
                                     <Group justify="space-between" align="center" mb="xl" wrap="wrap">
                                         <Group align="center">
@@ -475,15 +490,14 @@ export default function DetalleActivoPage({ params }) {
                                     ) : (
                                         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
                                             {activo.documentos?.map(doc => {
-                                                // 🔥 Evaluamos si el documento tiene fecha o es PERMANENTE 🔥
                                                 const esPermanente = !doc.fechaVencimiento;
 
                                                 let estaVencido = false;
                                                 let estaPorVencer = false;
                                                 let diasRestantes = null;
 
-                                                let badgeColor = 'blue.7'; // Color por defecto para permanentes (Azul corporativo)
-                                                let borderColor = '#ced4da'; // Borde por defecto
+                                                let badgeColor = 'blue.7'; 
+                                                let borderColor = '#ced4da';
 
                                                 if (!esPermanente) {
                                                     const hoy = new Date();
@@ -493,7 +507,7 @@ export default function DetalleActivoPage({ params }) {
                                                     estaVencido = diasRestantes < 0;
                                                     estaPorVencer = diasRestantes >= 0 && diasRestantes <= 30;
 
-                                                    badgeColor = 'green.7'; // Es temporal y está vigente
+                                                    badgeColor = 'green.7'; 
                                                     if (estaVencido) { badgeColor = 'red.7'; borderColor = '#e03131'; }
                                                     else if (estaPorVencer) { badgeColor = 'orange.6'; borderColor = '#fd7e14'; }
                                                 }
@@ -507,7 +521,6 @@ export default function DetalleActivoPage({ params }) {
                                                             </Group>
                                                         </Group>
 
-                                                        {/* Vista Previa de la Imagen (AHORA CLICKEABLE) */}
                                                         <Box
                                                             bg="dark.8"
                                                             onClick={() => {
@@ -534,7 +547,6 @@ export default function DetalleActivoPage({ params }) {
                                                                         src={`${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/${doc.imagen}?v=${process.env.NEXT_PUBLIC_APP_VERSION}`}
                                                                         fit="cover" h="100%" w="100%" alt="Documento"
                                                                     />
-                                                                    {/* Icono flotante indicador de "Ampliar" */}
                                                                     <ThemeIcon size="md" radius="sm" color="dark.9" style={{ position: 'absolute', bottom: 8, right: 8, opacity: 0.8 }}>
                                                                         <IconMaximize size={16} color="white" />
                                                                     </ThemeIcon>
@@ -548,7 +560,6 @@ export default function DetalleActivoPage({ params }) {
                                                                 </Center>
                                                             )}
 
-                                                            {/* Overlay de Vencido */}
                                                             {!esPermanente && estaVencido && (
                                                                 <Box style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(224, 49, 49, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                     <Badge color="red.9" variant="filled" size="lg" radius="sm">DOCUMENTO INVÁLIDO</Badge>
@@ -568,7 +579,6 @@ export default function DetalleActivoPage({ params }) {
                                                                 <Text size="xs" fw={800} c="dark.7">{doc.numeroDocumento || 'S/N'}</Text>
                                                             </Group>
 
-                                                            {/* Alerta Semáforo Condicional */}
                                                             {!esPermanente && (estaPorVencer || estaVencido) && (
                                                                 <Text size="xs" fw={800} c={estaVencido ? 'red.7' : 'orange.7'} ta="center" mt="xs" bg={estaVencido ? 'red.0' : 'orange.0'} py={4} style={{ borderRadius: 4 }}>
                                                                     {estaVencido ? `Vencido hace ${Math.abs(diasRestantes)} días` : `Atención: Vence en ${diasRestantes} días`}
@@ -759,15 +769,13 @@ export default function DetalleActivoPage({ params }) {
                                                                     <Text fw={900} size="lg" c="dark.8" tt="uppercase">{sub.nombre}</Text>
                                                                     <Badge size="lg" variant="filled" color="dark.8" radius="sm">{recomendaciones.length} Elementos Auditables</Badge>
                                                                 </Group>
-
-                                                                {/* 🔥 EL BOTÓN MÁGICO PARA CREAR SLOTS 🔥 */}
                                                                 <Button
                                                                     size="xs"
                                                                     variant="light"
                                                                     color="blue"
                                                                     leftSection={<IconPlus size={14} />}
                                                                     onClick={(e) => {
-                                                                        e.preventDefault(); // Evita que el acordeón se cierre/abra al darle clic al botón
+                                                                        e.preventDefault(); 
                                                                         setTargetPlantillaId(sub.subsistemaPlantilla?.id);
                                                                         setModalSlotOpened(true);
                                                                     }}
@@ -787,13 +795,8 @@ export default function DetalleActivoPage({ params }) {
                                                                 </Table.Thead>
                                                                 <Table.Tbody>
                                                                     {recomendaciones.map((rec) => {
-                                                                        // 1. Buscamos cuántas piezas físicas reales están instaladas
                                                                         const instalados = instalaciones.filter(inst => inst.consumibleRecomendadoId === rec.id);
-
-                                                                        // 2. Extraemos la cantidad de la llave 'canti' y la pasamos a número
                                                                         const cantidadReq = parseInt(rec.canti, 10) || 1;
-
-                                                                        // 3. Extraemos los valores con las llaves exactas y extrañas de tu JSON
                                                                         const nombrePuesto = rec.valor || 'Puesto Sin Nombre';
                                                                         const categoria = rec.categ || 'Desconocida';
 
@@ -817,7 +820,7 @@ export default function DetalleActivoPage({ params }) {
                                                                                 <Table.Td>
                                                                                     <Table.Td>
                                                                                         <Table.Td>
-                                                                                            <Group gap="xs"> {/* <-- Envolvemos en un Group */}
+                                                                                            <Group gap="xs"> 
                                                                                                 <Button
                                                                                                     size="xs" variant="light" color="blue"
                                                                                                     leftSection={<IconPlus size={14} />}
@@ -828,7 +831,6 @@ export default function DetalleActivoPage({ params }) {
                                                                                                 >
                                                                                                     Instalar Parte
                                                                                                 </Button>
-                                                                                                {/* 🔥 Botón rápido para crear consumible si ya sabemos que no hay */}
                                                                                                 <ActionIcon
                                                                                                     variant="light" color="gray" size="sm"
                                                                                                     onClick={() => setModalCrearConsumibleOpened(true)}
@@ -881,40 +883,39 @@ export default function DetalleActivoPage({ params }) {
                 </Grid>
             </Box>
 
-            {/* 🔥 EL MODAL MAESTRO DE MANTENIMIENTO 🔥 */}
+            {/* 🔥 MODALES 🔥 */}
             <ModalGenerarOM
                 opened={modalOrdenOpened}
                 onClose={() => { setModalOrdenOpened(false); setSelectedHallazgo(null); }}
                 activo={activo}
                 hallazgosPendientes={hallazgosPendientes}
-                selectedHallazgo={selectedHallazgo} // 👉 Le pasamos la falla seleccionada
+                selectedHallazgo={selectedHallazgo} 
                 userId={userId}
                 onSuccess={fetchData}
             />
-            {/* Modal de Instalación Actualizado */}
+            
             <ModalInstalarPieza
                 opened={modalInstalarOpened}
                 onClose={() => setModalInstalarOpened(false)}
                 activo={activo}
                 subsistemaInstanciaId={datosInstalacion.subsistemaInstanciaId}
                 slotSeleccionado={datosInstalacion.slot}
-                onSuccess={fetchData} // Refresca la vista principal del camión
-
-                // 🔥 NUEVAS PROPS 🔥
+                onSuccess={fetchData} 
                 onSolicitarCrearConsumible={() => setModalCrearConsumibleOpened(true)}
                 reloadTrigger={reloadInventarioTrigger}
             />
 
-            {/* 🔥 TU MODAL DE CREAR CONSUMIBLE INTEGRADO 🔥 */}
             <ModalCrearConsumible
                 opened={modalCrearConsumibleOpened}
                 onClose={() => setModalCrearConsumibleOpened(false)}
                 onSuccess={handleConsumibleCreadoExitosamente}
             />
+
             <ModalReportarFalla opened={modalFallaOpened} onClose={() => setModalFallaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
             <ModalActualizarLectura opened={modalLecturaOpened} onClose={() => setModalLecturaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
             <ModalInstallComponente opened={modalInstallOpened} onClose={() => { setModalInstallOpened(false); setSelectedItem(null); }} target={selectedItem} activoId={activo.id} onSuccess={fetchData} />
             <ModalDesinstalarComponente opened={modalUninstallOpened} onClose={() => setModalUninstallOpened(false)} item={itemToUninstall} onSuccess={fetchData} />
+            
             <ModalCrearSubsistema
                 opened={modalCrearSubOpened}
                 onClose={() => setModalCrearSubOpened(false)}
@@ -922,29 +923,38 @@ export default function DetalleActivoPage({ params }) {
                 opcionesPlantilla={opcionesPlantillaSub}
                 onSuccess={fetchData}
             />
+
             <ModalCrearSlot
                 opened={modalSlotOpened}
                 onClose={() => { setModalSlotOpened(false); setTargetPlantillaId(null); }}
                 subsistemaPlantillaId={targetPlantillaId}
                 onSuccess={fetchData}
             />
-            {/* AQUÍ FALTA TU MODAL DE DOCUMENTOS, LO AGREGO: */}
+            
             <ModalAgregarDocumento
                 opened={modalDocOpened}
                 onClose={() => setModalDocOpened(false)}
                 activoId={activo.id}
                 tipoActivo={activo.tipoActivo}
-                codigoInterno={activo.codigoInterno} // 🔥 LÍNEA NUEVA 🔥
+                codigoInterno={activo.codigoInterno}
                 onSuccess={fetchData}
             />
+
             <ModalDetallarFalla
                 opened={modalDetallarOpened}
                 onClose={() => setModalDetallarOpened(false)}
                 hallazgo={hallazgoParaDetallar}
                 activo={activo}
-                onSuccess={fetchData} // Esto hará que el camión se refresque y veas el nuevo subsistema
+                onSuccess={fetchData} 
             />
-            {/* 🔥 MODAL VISOR DE DOCUMENTOS (CON IMPRIMIR/DESCARGAR) 🔥 */}
+
+            {/* 🔥 NUEVO MODAL DE VISTA DE FALLA 🔥 */}
+            <ModalVistaFalla
+                opened={modalVistaFallaOpened}
+                onClose={() => setModalVistaFallaOpened(false)}
+                hallazgo={hallazgoParaVer}
+            />
+
             <Modal
                 opened={!!docPreview}
                 onClose={() => setDocPreview(null)}

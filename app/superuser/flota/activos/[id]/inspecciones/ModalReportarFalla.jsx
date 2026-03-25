@@ -1,11 +1,10 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Modal, Button, TextInput, NumberInput, Textarea,
     Stack, Group, Text, ActionIcon, Paper, Badge, Divider,
     SegmentedControl, Box, Autocomplete, Collapse,
-    Select,
-    Checkbox
+    Select, Checkbox, Switch
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconPlus, IconTrash, IconAlertTriangle, IconCheck, IconSettings } from '@tabler/icons-react';
@@ -13,6 +12,7 @@ import { notifications } from '@mantine/notifications';
 
 export default function ModalReportarFalla({ opened, onClose, activo, onSuccess, userId }) {
     const [loading, setLoading] = useState(false);
+    const [catalogoGlobal, setCatalogoGlobal] = useState([]);
 
     const form = useForm({
         initialValues: {
@@ -28,89 +28,93 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
         }
     });
 
-    // 🔥 Estado 100% Orgánico
     const [nuevoHallazgo, setNuevoHallazgo] = useState({
         descripcion: '', impacto: 'Operativo', subsistemaTexto: '', piezaTexto: '',
         cantidadSlots: 1, clasificacionPiezaNueva: 'Fungible', categoriaPiezaNueva: 'Repuesto General',
-        serialesNuevos: [''], // Array dinámico de seriales
-        serialesFallaIndices: [0], // 🔥 Ahora es un array para soportar múltiples checkboxes
-        cantidadFallaFungible: 1,   //
-        serialFallaIndex: 0,   // Índice de cuál de los seriales es el que tiene la falla
-        categoriaSubsistemaNuevo: 'otros', // Valor por defecto seguro
-        // 🔥 CAMPOS TÉCNICOS DINÁMICOS (Unificados para no tener 20 variables)
-        marcaPieza: '',
-        codigoPieza: '',
-        modeloPieza: '',
-        medidaPieza: '',
-        amperajePieza: ''
+        serialesNuevos: [''], 
+        serialesFallaIndices: [0], 
+        cantidadFallaFungible: 1,   
+        categoriaSubsistemaNuevo: 'otros', 
+        esFaltante: false, 
+        marcaPieza: '', codigoPieza: '', modeloPieza: '', medidaPieza: '', amperajePieza: '',
+        diametroPieza: '', longitudPieza: '', conectoresPieza: ''
     });
 
-    // 1. Extraer nombres de subsistemas existentes para autocompletar
+    useEffect(() => {
+        if (opened) {
+            fetch('/api/inventario/consumibles') 
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        setCatalogoGlobal(data.data);
+                    } else if (Array.isArray(data)) {
+                        setCatalogoGlobal(data);
+                    }
+                })
+                .catch(err => console.error("Error cargando catálogo:", err));
+        }
+    }, [opened]);
+
     const subsistemasExistentes = activo.subsistemasInstancia || [];
     const subsistemasNombres = subsistemasExistentes
         .map(sub => sub.nombre || sub.subsistemaPlantilla?.nombre)
-        .filter(Boolean); // Filtrar nulos
+        .filter(Boolean); 
 
-    // 2. Extraer piezas del subsistema que el usuario esté tecleando (si coincide con uno existente)
-    const piezasNombres = useMemo(() => {
-        const subMatch = subsistemasExistentes.find(s => (s.nombre || s.subsistemaPlantilla?.nombre) === nuevoHallazgo.subsistemaTexto);
-        if (!subMatch) return [];
+    const piezaSeleccionada = catalogoGlobal.find(c => c.nombre.toLowerCase() === nuevoHallazgo.piezaTexto.toLowerCase());
+    const isPiezaNueva = nuevoHallazgo.piezaTexto.trim().length > 0 && !piezaSeleccionada;
+    const isSubsistemaNuevo = nuevoHallazgo.subsistemaTexto.trim().length > 0 && !subsistemasNombres.includes(nuevoHallazgo.subsistemaTexto);
 
-        return (subMatch.instalaciones || [])
-            .map(inst => inst.fichaTecnica?.nombre)
-            .filter(Boolean);
-    }, [nuevoHallazgo.subsistemaTexto, subsistemasExistentes]);
-
-    // 3. Detectar si la pieza que está escribiendo es totalmente nueva para desplegar el "Cantidad"
-    const isPiezaNueva = nuevoHallazgo.piezaTexto.trim().length > 0 && !piezasNombres.includes(nuevoHallazgo.piezaTexto);
-    const isSubsistemaNuevo = nuevoHallazgo.subsistemaTexto.trim().length > 0 &&
-        !subsistemasNombres.includes(nuevoHallazgo.subsistemaTexto);
+    const clasificacionEfectiva = piezaSeleccionada 
+        ? (piezaSeleccionada.tipo === 'serializado' ? 'Serializado' : 'Fungible') 
+        : nuevoHallazgo.clasificacionPiezaNueva;
 
     const agregarHallazgo = () => {
         if (!nuevoHallazgo.descripcion.trim()) return;
 
-        // Búsqueda inversa: Vemos si lo que escribió es un ID o texto nuevo
-        const subMatch = subsistemasExistentes.find(s => (s.nombre || s.subsistemaPlantilla?.nombre) === nuevoHallazgo.subsistemaTexto);
-
-        let piezaMatch = null;
-        if (subMatch) {
-            piezaMatch = (subMatch.instalaciones || []).find(inst => inst.fichaTecnica?.nombre === nuevoHallazgo.piezaTexto);
+        if (clasificacionEfectiva === 'Serializado' && !nuevoHallazgo.esFaltante && nuevoHallazgo.serialesFallaIndices.length === 0) {
+            return notifications.show({ title: 'Atención', message: 'Debe marcar al menos un serial que presente falla', color: 'orange' });
         }
+
+        const subMatch = subsistemasExistentes.find(s => (s.nombre || s.subsistemaPlantilla?.nombre) === nuevoHallazgo.subsistemaTexto);
+        const consumibleIdGlobal = piezaSeleccionada ? piezaSeleccionada.id : null;
 
         form.insertListItem('hallazgos', {
             descripcion: nuevoHallazgo.descripcion,
             impacto: nuevoHallazgo.impacto,
             subsistemaInstanciaId: subMatch ? subMatch.id : null,
             nombreSubsistemaNuevo: subMatch ? null : (nuevoHallazgo.subsistemaTexto.trim() || null),
-            categoriaSubsistemaNuevo: subMatch ? null : nuevoHallazgo.categoriaSubsistemaNuevo, // 🔥 ENVIAMOS ESTO
-            consumibleInstaladoId: piezaMatch ? piezaMatch.id : null,
-            nombrePiezaNueva: piezaMatch ? null : (nuevoHallazgo.piezaTexto.trim() || null),
-
-            // 🔥 Mandamos el perfil básico a la lista
+            categoriaSubsistemaNuevo: subMatch ? null : nuevoHallazgo.categoriaSubsistemaNuevo, 
+            consumibleIdGlobal: consumibleIdGlobal, 
+            nombrePiezaNueva: consumibleIdGlobal ? null : (nuevoHallazgo.piezaTexto.trim() || null),
             cantidadSlots: nuevoHallazgo.cantidadSlots,
-            clasificacionPiezaNueva: nuevoHallazgo.clasificacionPiezaNueva,
+            clasificacionPiezaNueva: clasificacionEfectiva, 
             categoriaPiezaNueva: nuevoHallazgo.categoriaPiezaNueva,
             serialesNuevos: nuevoHallazgo.serialesNuevos,
-            serialesFallaIndices: nuevoHallazgo.serialesFallaIndices, // Array de averiados
-            cantidadFallaFungible: nuevoHallazgo.cantidadFallaFungible, // Cantidad averiada
+            serialesFallaIndices: nuevoHallazgo.serialesFallaIndices, 
+            cantidadFallaFungible: nuevoHallazgo.cantidadFallaFungible, 
+            esFaltante: nuevoHallazgo.esFaltante, 
             nombreVisualSub: nuevoHallazgo.subsistemaTexto,
-            nombreVisualPieza: nuevoHallazgo.piezaTextom,
+            nombreVisualPieza: nuevoHallazgo.piezaTexto,
             marcaPieza: nuevoHallazgo.marcaPieza.trim() || null,
             codigoPieza: nuevoHallazgo.codigoPieza.trim() || null,
             modeloPieza: nuevoHallazgo.modeloPieza.trim() || null,
             medidaPieza: nuevoHallazgo.medidaPieza.trim() || null,
             amperajePieza: nuevoHallazgo.amperajePieza || null,
+            diametroPieza: nuevoHallazgo.diametroPieza.trim() || null,
+            longitudPieza: nuevoHallazgo.longitudPieza || null, 
+            conectoresPieza: nuevoHallazgo.conectoresPieza.trim() || null,
         });
 
         setNuevoHallazgo({
             descripcion: '', impacto: 'Operativo', subsistemaTexto: '', piezaTexto: '',
             cantidadSlots: 1, clasificacionPiezaNueva: 'Fungible', categoriaPiezaNueva: 'Repuesto General',
             serialesNuevos: [''], serialesFallaIndices: [0], cantidadFallaFungible: 1,
-            marcaPieza: '', codigoPieza: '', modeloPieza: '', medidaPieza: '', amperajePieza: ''
+            esFaltante: false, 
+            marcaPieza: '', codigoPieza: '', modeloPieza: '', medidaPieza: '', amperajePieza: '',
+            diametroPieza: '', longitudPieza: '', conectoresPieza: '', categoriaSubsistemaNuevo: 'otros'
         });
     };
 
-    // 2. Ajustamos el manejador de cantidad para no romper los índices
     const handleCantidadChange = (val) => {
         const count = Math.max(1, val || 1);
         setNuevoHallazgo(prev => {
@@ -122,9 +126,7 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                 ...prev,
                 cantidadSlots: count,
                 serialesNuevos: nuevosSeriales,
-                // Filtramos los índices que hayan quedado fuera de rango al restar cantidad
                 serialesFallaIndices: prev.serialesFallaIndices.filter(idx => idx < count),
-                // Si es fungible, asegurarnos de que no reporte más fallas que el total
                 cantidadFallaFungible: Math.min(prev.cantidadFallaFungible, count)
             };
         });
@@ -133,7 +135,6 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
-            // Limpiamos los auxiliares visuales antes de enviar
             const payloadHallazgos = values.hallazgos.map(({ nombreVisualSub, nombreVisualPieza, ...resto }) => resto);
 
             const res = await fetch('/api/gestionMantenimiento/inspecciones', {
@@ -187,7 +188,6 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                             radius="sm" mb="sm"
                         />
 
-                        {/* 🔥 EL CORAZÓN DEL FLUJO ORGÁNICO 🔥 */}
                         <Group grow mb="sm" align="flex-start">
                             <Autocomplete
                                 label={<Text fw={700} size="xs" c="dark.6">Área / Subsistema</Text>}
@@ -199,9 +199,9 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                             />
 
                             <Autocomplete
-                                label={<Text fw={700} size="xs" c="dark.6">Pieza Específica (Opcional)</Text>}
-                                placeholder="Ej: Inyector, Compresor..."
-                                data={piezasNombres}
+                                label={<Text fw={700} size="xs" c="dark.6">Pieza Específica (Catálogo Global)</Text>}
+                                placeholder="Ej: Manguera de refrigerante 1 pulg..."
+                                data={catalogoGlobal.map(c => c.nombre)}
                                 value={nuevoHallazgo.piezaTexto}
                                 onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, piezaTexto: val })}
                                 radius="sm"
@@ -235,17 +235,45 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                                 </Group>
                             </Paper>
                         </Collapse>
-                        {/* Se despliega automáticamente si la pieza no existe en la base de datos */}
+
+                        {/* 🔥 SWITCH MOVIDO ARRIBA */}
+                        {nuevoHallazgo.piezaTexto && (
+                            <Box mt="xs" mb="xs">
+                                <Switch 
+                                    label={<Text fw={700} c="red.8">La pieza está FALTANTE (Extraviada o no instalada)</Text>}
+                                    color="red"
+                                    checked={nuevoHallazgo.esFaltante}
+                                    onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, esFaltante: e.currentTarget.checked })}
+                                />
+                            </Box>
+                        )}
+                        
+                        <Collapse in={!!piezaSeleccionada}>
+                            <Paper p="sm" withBorder bg="teal.0" mb="sm" style={{ borderLeft: '4px solid #2b8a3e' }}>
+                                <Group grow align="flex-end">
+                                    <NumberInput
+                                        label={`Cantidad de la instalación (${piezaSeleccionada?.unidadMedida || 'und'})`}
+                                        min={1} size="xs"
+                                        value={nuevoHallazgo.cantidadSlots}
+                                        onChange={handleCantidadChange} 
+                                    />
+                                    <TextInput label="Clasificación" size="xs" disabled value={clasificacionEfectiva} />
+                                </Group>
+                            </Paper>
+                        </Collapse>
+
                         <Collapse in={isPiezaNueva}>
                             <Paper p="sm" withBorder bg="blue.0" mb="sm" style={{ borderLeft: '4px solid #339af0' }}>
                                 <Stack gap="xs">
-                                    <Text size="xs" fw={700} c="blue.9">NUEVO COMPONENTE DETECTADO. Perfil para el inventario:</Text>
+                                    <Text size="xs" fw={700} c="blue.9">
+                                        {nuevoHallazgo.esFaltante ? "REQUERIMIENTO TÉCNICO DE LA PIEZA FALTANTE" : "NUEVO COMPONENTE DETECTADO. Perfil para el inventario:"}
+                                    </Text>
                                     <Group grow align="flex-end">
                                         <NumberInput
-                                            label="Cant. en el equipo"
+                                            label={nuevoHallazgo.esFaltante ? "Cant. Requerida" : "Cant. en el equipo"}
                                             min={1} size="xs"
                                             value={nuevoHallazgo.cantidadSlots}
-                                            onChange={handleCantidadChange} // 🔥 Usamos la nueva función
+                                            onChange={handleCantidadChange} 
                                         />
                                         <Select
                                             label="Clasificación" size="xs"
@@ -255,105 +283,114 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                                         />
                                         <Select
                                             label="Categoría" size="xs"
-                                            data={['Repuesto General', 'Filtro', 'Correa', 'Neumatico', 'Bateria', 'Sensor']}
+                                            data={['Repuesto General', 'Filtro', 'Correa', 'Neumatico', 'Bateria', 'Sensor', 'Manguera', 'Aceite']}
                                             value={nuevoHallazgo.categoriaPiezaNueva}
                                             onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, categoriaPiezaNueva: val })}
                                         />
-                                        {/* 🔥 RENDERIZADO CONDICIONAL DE CAMPOS TÉCNICOS (Opcionales) */}
-                                        <Group grow align="flex-start" mt="xs">
-
-                                            {/* CASO: Repuestos Generales, Filtros, Correas, Sensores */}
-                                            {['Repuesto General', 'Filtro', 'Correa', 'Sensor'].includes(nuevoHallazgo.categoriaPiezaNueva) && (
-                                                <>
-                                                    <TextInput label="Marca" size="xs" placeholder="Ej: WIX, Caterpillar" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />
-                                                    <TextInput label="Nro Parte / Código" size="xs" placeholder="Ej: 1R-0716" value={nuevoHallazgo.codigoPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, codigoPieza: e.target.value })} />
-                                                </>
-                                            )}
-
-                                            {/* CASO: Neumáticos */}
-                                            {nuevoHallazgo.categoriaPiezaNueva === 'Neumatico' && (
-                                                <>
-                                                    <TextInput label="Marca" size="xs" placeholder="Ej: Firestone" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />
-                                                    <TextInput label="Modelo" size="xs" placeholder="Ej: FS400" value={nuevoHallazgo.modeloPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, modeloPieza: e.target.value })} />
-                                                    <TextInput label="Medida" size="xs" placeholder="Ej: 295/80R22.5" value={nuevoHallazgo.medidaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, medidaPieza: e.target.value })} />
-                                                </>
-                                            )}
-
-                                            {/* CASO: Baterías */}
-                                            {nuevoHallazgo.categoriaPiezaNueva === 'Bateria' && (
-                                                <>
-                                                    <TextInput label="Marca" size="xs" placeholder="Ej: Duncan" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />
-                                                    <TextInput label="Grupo" size="xs" placeholder="Ej: 24F, 4D" value={nuevoHallazgo.codigoPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, codigoPieza: e.target.value })} />
-                                                    <NumberInput label="Amperaje (CCA)" size="xs" placeholder="Ej: 800" value={nuevoHallazgo.amperajePieza} onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, amperajePieza: val })} />
-                                                </>
-                                            )}
-
-                                            {/* CASO: Aceite / Fluidos */}
-                                            {nuevoHallazgo.categoriaPiezaNueva === 'Aceite' && (
-                                                <>
-                                                    <TextInput label="Marca" size="xs" placeholder="Ej: Motul, PDV" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />
-                                                    <TextInput label="Viscosidad" size="xs" placeholder="Ej: 15W-40" value={nuevoHallazgo.medidaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, medidaPieza: e.target.value })} />
-                                                </>
-                                            )}
-
-                                        </Group>
                                     </Group>
 
-                                    {/* CASO A: SERIALIZADO (Checkboxes múltiples) */}
-                                    {nuevoHallazgo.clasificacionPiezaNueva === 'Serializado' && (
-                                        <Box mt="xs" p="xs" style={{ border: '1px dashed #74c0fc', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' }}>
-                                            <Text size="xs" fw={700} mb={4} c="dark.6">
-                                                Ingrese los seriales y marque (<span style={{ color: 'red' }}>☑️</span>) los que presentan falla:
-                                            </Text>
-                                            <Stack gap={4}>
-                                                {nuevoHallazgo.serialesNuevos.map((serial, idx) => (
-                                                    <Group key={idx} wrap="nowrap" align="center">
-                                                        <Checkbox
-                                                            color="red" size="sm"
-                                                            checked={nuevoHallazgo.serialesFallaIndices.includes(idx)}
-                                                            onChange={(e) => {
-                                                                const isChecked = e.currentTarget.checked;
-                                                                setNuevoHallazgo(prev => ({
-                                                                    ...prev,
-                                                                    serialesFallaIndices: isChecked
-                                                                        ? [...prev.serialesFallaIndices, idx]
-                                                                        : prev.serialesFallaIndices.filter(i => i !== idx)
-                                                                }));
-                                                            }}
-                                                        />
-                                                        <TextInput
-                                                            placeholder={`Serial Unidad #${idx + 1}`} size="xs" style={{ flex: 1 }}
-                                                            value={serial}
-                                                            onChange={(e) => {
-                                                                const nuevos = [...nuevoHallazgo.serialesNuevos];
-                                                                nuevos[idx] = e.target.value.toUpperCase();
-                                                                setNuevoHallazgo({ ...nuevoHallazgo, serialesNuevos: nuevos });
-                                                            }}
-                                                        />
-                                                    </Group>
-                                                ))}
-                                            </Stack>
-                                        </Box>
-                                    )}
+                                    <Group grow align="flex-start" mt="xs">
+                                        {['Repuesto General', 'Filtro', 'Correa', 'Sensor'].includes(nuevoHallazgo.categoriaPiezaNueva) && !nuevoHallazgo.esFaltante && (
+                                            <>
+                                                <TextInput label="Marca" size="xs" placeholder="Ej: WIX, Caterpillar" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />
+                                                <TextInput label="Nro Parte / Código" size="xs" placeholder="Ej: 1R-0716" value={nuevoHallazgo.codigoPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, codigoPieza: e.target.value })} />
+                                            </>
+                                        )}
 
-                                    {/* CASO B: FUNGIBLE (NumberInput de fallas) */}
-                                    {nuevoHallazgo.clasificacionPiezaNueva === 'Fungible' && nuevoHallazgo.cantidadSlots > 1 && (
-                                        <Box mt="xs" p="xs" style={{ border: '1px dashed #74c0fc', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' }}>
-                                            <Group justify="space-between" align="center">
-                                                <Text size="xs" fw={700} c="dark.6">¿Cuántas de estas {nuevoHallazgo.cantidadSlots} unidades están fallando?</Text>
-                                                <NumberInput
-                                                    size="xs" w={100} min={1} max={nuevoHallazgo.cantidadSlots}
-                                                    value={nuevoHallazgo.cantidadFallaFungible}
-                                                    onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, cantidadFallaFungible: val })}
+                                        {nuevoHallazgo.categoriaPiezaNueva === 'Manguera' && (
+                                            <>
+                                                <TextInput 
+                                                    label="Diámetro" size="xs" placeholder="Ej: 1/2" rightSection={<Text size="xs" c="dimmed" mr="xs">pulg.</Text>}
+                                                    value={nuevoHallazgo.diametroPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, diametroPieza: e.target.value })} 
                                                 />
-                                            </Group>
-                                        </Box>
-                                    )}
+                                                <NumberInput 
+                                                    label="Longitud (Catálogo)" size="xs" placeholder="Ej: 150" suffix=" cm" min={1}
+                                                    value={nuevoHallazgo.longitudPieza} onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, longitudPieza: val })} 
+                                                />
+                                                <TextInput 
+                                                    label="Conectores" size="xs" placeholder="Ej: Recto a 90°" 
+                                                    value={nuevoHallazgo.conectoresPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, conectoresPieza: e.target.value })} 
+                                                />
+                                            </>
+                                        )}
+
+                                        {nuevoHallazgo.categoriaPiezaNueva === 'Neumatico' && (
+                                            <>
+                                                {!nuevoHallazgo.esFaltante && <TextInput label="Marca" size="xs" placeholder="Ej: Firestone" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />}
+                                                {!nuevoHallazgo.esFaltante && <TextInput label="Modelo" size="xs" placeholder="Ej: FS400" value={nuevoHallazgo.modeloPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, modeloPieza: e.target.value })} />}
+                                                <TextInput label="Medida (Requerida)" size="xs" placeholder="Ej: 295/80R22.5" value={nuevoHallazgo.medidaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, medidaPieza: e.target.value })} />
+                                            </>
+                                        )}
+
+                                        {nuevoHallazgo.categoriaPiezaNueva === 'Bateria' && (
+                                            <>
+                                                {!nuevoHallazgo.esFaltante && <TextInput label="Marca" size="xs" placeholder="Ej: Duncan" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />}
+                                                <TextInput label="Grupo / Tamaño" size="xs" placeholder="Ej: 24F, 4D, 8D" value={nuevoHallazgo.codigoPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, codigoPieza: e.target.value })} />
+                                                <NumberInput label="Amperaje (CCA)" size="xs" placeholder="Ej: 800" value={nuevoHallazgo.amperajePieza} onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, amperajePieza: val })} />
+                                            </>
+                                        )}
+
+                                        {nuevoHallazgo.categoriaPiezaNueva === 'Aceite' && (
+                                            <>
+                                                {!nuevoHallazgo.esFaltante && <TextInput label="Marca" size="xs" placeholder="Ej: Motul, PDV" value={nuevoHallazgo.marcaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, marcaPieza: e.target.value })} />}
+                                                <TextInput label="Viscosidad" size="xs" placeholder="Ej: 15W-40" value={nuevoHallazgo.medidaPieza} onChange={(e) => setNuevoHallazgo({ ...nuevoHallazgo, medidaPieza: e.target.value })} />
+                                            </>
+                                        )}
+                                    </Group>
                                 </Stack>
                             </Paper>
                         </Collapse>
 
-                        <Stack gap={4} mb="sm">
+                        {nuevoHallazgo.piezaTexto && !nuevoHallazgo.esFaltante && clasificacionEfectiva === 'Serializado' && (
+                            <Box mt="xs" p="xs" style={{ border: '1px dashed #74c0fc', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' }}>
+                                <Text size="xs" fw={700} mb={4} c="dark.6">
+                                    Ingrese los seriales y marque (<span style={{ color: 'red' }}>☑️</span>) los que presentan falla:
+                                </Text>
+                                <Stack gap={4}>
+                                    {nuevoHallazgo.serialesNuevos.map((serial, idx) => (
+                                        <Group key={idx} wrap="nowrap" align="center">
+                                            <Checkbox
+                                                color="red" size="sm"
+                                                checked={nuevoHallazgo.serialesFallaIndices.includes(idx)}
+                                                onChange={(e) => {
+                                                    const isChecked = e.currentTarget.checked;
+                                                    setNuevoHallazgo(prev => ({
+                                                        ...prev,
+                                                        serialesFallaIndices: isChecked
+                                                            ? [...prev.serialesFallaIndices, idx]
+                                                            : prev.serialesFallaIndices.filter(i => i !== idx)
+                                                    }));
+                                                }}
+                                            />
+                                            <TextInput
+                                                placeholder={`Serial Unidad #${idx + 1}`} size="xs" style={{ flex: 1 }}
+                                                value={serial}
+                                                onChange={(e) => {
+                                                    const nuevos = [...nuevoHallazgo.serialesNuevos];
+                                                    nuevos[idx] = e.target.value.toUpperCase();
+                                                    setNuevoHallazgo({ ...nuevoHallazgo, serialesNuevos: nuevos });
+                                                }}
+                                            />
+                                        </Group>
+                                    ))}
+                                </Stack>
+                            </Box>
+                        )}
+
+                        {nuevoHallazgo.piezaTexto && !nuevoHallazgo.esFaltante && clasificacionEfectiva === 'Fungible' && nuevoHallazgo.cantidadSlots > 1 && (
+                            <Box mt="xs" p="xs" style={{ border: '1px dashed #74c0fc', borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' }}>
+                                <Group justify="space-between" align="center">
+                                    <Text size="xs" fw={700} c="dark.6">¿Cuántas de estas {nuevoHallazgo.cantidadSlots} unidades están fallando?</Text>
+                                    <NumberInput
+                                        size="xs" w={100} min={1} max={nuevoHallazgo.cantidadSlots}
+                                        value={nuevoHallazgo.cantidadFallaFungible}
+                                        onChange={(val) => setNuevoHallazgo({ ...nuevoHallazgo, cantidadFallaFungible: val })}
+                                    />
+                                </Group>
+                            </Box>
+                        )}
+
+                        <Stack gap={4} mb="sm" mt="md">
                             <Text size="xs" fw={700} c="dark.6">Nivel de Impacto (Severidad)</Text>
                             <SegmentedControl
                                 size="sm" radius="sm"
@@ -372,7 +409,6 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                         </Button>
                     </Box>
 
-                    {/* BORRADOR (Lista abajo) */}
                     {form.values.hallazgos.length > 0 && (
                         <Stack gap="xs" mt="sm">
                             <Text size="xs" fw={900} tt="uppercase" c="dark.5">Borrador de Fallas ({form.values.hallazgos.length})</Text>
@@ -386,6 +422,7 @@ export default function ModalReportarFalla({ opened, onClose, activo, onSuccess,
                                                 <Group gap="xs" mt={4}>
                                                     {item.nombreVisualSub && <Badge size="xs" variant="outline" color="dark.4">{item.nombreVisualSub}</Badge>}
                                                     {item.nombreVisualPieza && <Badge size="xs" color="blue.7" variant="light" leftSection={<IconSettings size={10} />}>{item.nombreVisualPieza}</Badge>}
+                                                    {item.esFaltante && <Badge size="xs" color="red" variant="filled">FALTANTE</Badge>}
                                                 </Group>
                                             </Stack>
                                         </Group>
