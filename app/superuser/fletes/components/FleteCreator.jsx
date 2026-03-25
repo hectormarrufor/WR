@@ -263,7 +263,9 @@ export default function FleteCreator() {
 
     const handleRouteCalculated = useCallback((data) => {
         setRutaData(data);
-        form.setFieldValue("distanciaKm", parseFloat(data.distanciaTotal));
+        const distanciaCalculada = parseFloat(data.distanciaTotal) || 0;
+        
+        form.setFieldValue("distanciaKm", distanciaCalculada);
         form.setFieldValue("waypoints", data.waypoints);
         form.setFieldValue("tramos", data.tramos || []);
 
@@ -272,7 +274,19 @@ export default function FleteCreator() {
             form.setFieldValue("origen", data.tramos[0].origen.split(',')[0]);
             form.setFieldValue("destino", data.tramos[data.tramos.length - 1].destino.split(',')[0]);
         }
-    }, []);
+
+        // Cálculo dinámico del margen de ganancia basado en la distancia
+        if (distanciaCalculada > 0) {
+            let nuevoMargen = Math.round((1500 / (distanciaCalculada + 4)) + 28);
+            
+            // Limitamos el margen entre 0 y 1000 para evitar desbordes
+            if (nuevoMargen > 1000) nuevoMargen = 1000;
+            if (nuevoMargen < 0) nuevoMargen = 0;
+
+            setValorVisualMargen(nuevoMargen);
+            form.setFieldValue("margenGanancia", nuevoMargen);
+        }
+    }, [form]); // Asegurado incluir form en las dependencias
 
     const handleGenerarCotizacionPDF = async () => {
         if (!estimacion) {
@@ -1184,8 +1198,13 @@ export default function FleteCreator() {
                                                         color="green.6" size="xl"
                                                         value={valorVisualMargen} onChange={setValorVisualMargen}
                                                         onChangeEnd={(val) => form.setFieldValue("margenGanancia", val)}
-                                                        step={1} min={0} max={100}
-                                                        marks={[{ value: 0, label: <Text fw={800}>0%</Text> }, { value: 100, label: <Text fw={800}>100%</Text> }]}
+                                                        step={1} min={0} max={1000}
+                                                        marks={[
+                                                            { value: 30, label: <Text fw={800}>30%</Text> },
+                                                            { value: 100, label: <Text fw={800}>100%</Text> },
+                                                            { value: 500, label: <Text fw={800}>500%</Text> },
+                                                            { value: 1000, label: <Text fw={800}>1000%</Text> }
+                                                        ]}
                                                     />
                                                 </Box>
                                                 <Box mt="xl">
@@ -1215,12 +1234,12 @@ export default function FleteCreator() {
                                                     <Text size="xl" fw={900} c="green.8" tt="uppercase">+ Ganancia Comercial Esperada:</Text>
                                                     <Text size="xl" fw={900} c="green.8" style={{ fontSize: '2rem' }}>${estimacion.gananciaBase.toFixed(2)}</Text>
                                                 </Group>
-                                                {estimacion.ajusteTarifaMinima > 0 && (
+                                                {/* {estimacion.ajusteTarifaMinima > 0 && (
                                                     <Group justify="space-between" style={{ borderBottom: '2px dashed #adb5bd', paddingBottom: '16px' }}>
                                                         <Text size="xl" fw={900} c="orange.7" tt="uppercase">+ Ajuste Tarifa Mínima de Salida:</Text>
                                                         <Text size="xl" fw={900} c="orange.7" style={{ fontSize: '2rem' }}>${estimacion.ajusteTarifaMinima.toFixed(2)}</Text>
                                                     </Group>
-                                                )}
+                                                )} */}
 
                                                 <Box ta="right" mt="xl">
                                                     <Text size="xl" tt="uppercase" fw={900} c="dark.4" mb={8} style={{ letterSpacing: '2px' }}>Tarifa Final Sugerida al Cliente</Text>

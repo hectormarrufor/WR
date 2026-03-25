@@ -401,7 +401,7 @@ export async function POST(req) {
         };
 
         // ------------------------------------------------------------------
-        // --- 9. CIERRE: RIESGO, TARIFAS FIJAS VS COSTO + MARKUP ---
+        // --- 9. CIERRE: RIESGO, COSTO + MARKUP ---
         // ------------------------------------------------------------------
         const totalPeajes = cantidadPeajes * (precioPeajeBs / bcv);
 
@@ -472,33 +472,8 @@ export async function POST(req) {
 
         // 4. Calculamos la ganancia comercial pura (el % que pidió el usuario)
         const gananciaBase = costoTotal * porcentajeGanancia;
-        let precioCalculado = costoTotal + gananciaBase;
-
-        // 5. Lógica de Tarifas Mínimas y Ajuste
-
-        let ajusteTarifaMinima = 0;
-        let esTarifaMinima = false;
-        let tarifaAplicada = "Margen sobre Costo";
-        let precioSugerido = precioCalculado;
-
-        // 🔥 LA CONDICIÓN MÁGICA: Solo aplicamos el mínimo si NO es un servicio ODT 🔥
-        if (tipoCotizacion === 'flete') {
-            if (distanciaKm > 0 && distanciaKm <= 50) {
-                if (precioCalculado < 254) {
-                    precioSugerido = 254;
-                    ajusteTarifaMinima = 254 - precioCalculado;
-                    esTarifaMinima = true;
-                    tarifaAplicada = "Tarifa Plana (0-50km)";
-                }
-            } else if (distanciaKm > 50 && distanciaKm <= 100) {
-                if (precioCalculado < 528) {
-                    precioSugerido = 528;
-                    ajusteTarifaMinima = 528 - precioCalculado;
-                    esTarifaMinima = true;
-                    tarifaAplicada = "Tarifa Plana (50-100km)";
-                }
-            }
-        }
+        const precioCalculado = costoTotal + gananciaBase;
+        const precioSugerido = precioCalculado; // Mantenemos variable para compatibilidad del front
 
         // ------------------------------------------------------------------
         // --- 10. DESGLOSE EXCLUSIVO PARA ODT / SERVICIO (CORREGIDO) ---
@@ -529,7 +504,7 @@ export async function POST(req) {
             const mobMantenimiento = mobMantenimientoRodamiento + (totalMantenimientoHoras * proporcionViaje) + (totalMantenimientoMeses * proporcionViaje);
 
             const mobOverhead = costoEstructuraHoraPonderado * horasViaje;
-            const mobPosesion = (depreciacionPorHoraChuto + depreciacionPorHoraBatea + costoCapitalHoraChuto + costoCapitalHoraBatea) * horasViaje;
+            const mobPosesion = (tarifaPosesionChutoHora + tarifaPosesionBateaHora) * horasViaje;
             const mobNomina = (nominaTotal / (horasTotales || 1)) * horasViaje;
 
             const costoMovilizacion = mobCombustible + mobMantenimiento + totalPeajes + mobNomina + mobPosesion + mobOverhead;
@@ -573,11 +548,6 @@ export async function POST(req) {
             costoTotal,
             precioSugerido,
             gananciaBase,
-            ajusteTarifaMinima,
-            infoTarifa: {
-                aplicada: tarifaAplicada,
-                esMinima: esTarifaMinima
-            },
             breakdown: {
                 desgloseServicio: desgloseServicio, // <--- AGREGA ESTA LÍNEA AQUÍ
                 litros: parseFloat(litrosConsumidos.toFixed(2)),
