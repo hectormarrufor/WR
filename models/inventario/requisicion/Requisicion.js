@@ -27,7 +27,8 @@ const Requisicion = sequelize.define('Requisicion', {
       'Orden Compra',    // Ya se pidió al proveedor
       'Parcial',         // Llegaron algunas cosas
       'Cerrada',         // Llegó todo
-      'Rechazada'
+      'Rechazada',
+      "En Evaluacion"
     ),
     defaultValue: 'Pendiente'
   },
