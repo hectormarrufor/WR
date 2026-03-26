@@ -15,10 +15,14 @@ import {
 import { useAuth } from '@/hooks/useAuth'; 
 
 export default function PanelFallas() {
-    const { userId } = useAuth(); 
+    // Extraemos userId y departamentos del contexto
+    const { userId, departamentos } = useAuth(); 
     const isMobile = useMediaQuery('(max-width: 48em)');
 
-    // URL base para las imágenes (Blob Storage)
+    // Lógica de Permisos: Es el SuperUsuario(1) o pertenece al departamento de IT
+    // (Ajusta el string 'IT' al nombre exacto que tengas en tu base de datos)
+    const puedeCrearReq = userId === 1 || departamentos?.some(dep => dep.nombre?.toUpperCase() === 'IT');
+
     const blobBaseUrl = process.env.NEXT_PUBLIC_BLOB_BASE_URL || '';
 
     const [fallas, setFallas] = useState([]);
@@ -26,12 +30,10 @@ export default function PanelFallas() {
     const [loading, setLoading] = useState(true);
     const [procesando, setProcesando] = useState(false);
 
-    // Estados de control
     const [seleccionadas, setSeleccionadas] = useState([]);
     const [modalBatchOpened, setModalBatchOpened] = useState(false);
     const [repuestosAsignados, setRepuestosAsignados] = useState({});
     
-    // Estado para el Modal de Detalle
     const [selectedFalla, setSelectedFalla] = useState(null);
 
     const fetchData = async () => {
@@ -58,13 +60,12 @@ export default function PanelFallas() {
 
     useEffect(() => { fetchData(); }, []);
 
-    // --- LÓGICA DE ORDENAMIENTO POR IMPACTO ---
     const valoresImpacto = { 'No Operativo': 3, 'Advertencia': 2, 'Operativo': 1 };
     
     const fallasOrdenadas = [...fallas].sort((a, b) => {
         const valA = valoresImpacto[a.impacto] || 0;
         const valB = valoresImpacto[b.impacto] || 0;
-        return valB - valA; // Prioridad descendente (3, 2, 1)
+        return valB - valA; 
     });
 
     const getColorImpacto = (impacto) => ({ 'No Operativo': 'red', 'Advertencia': 'orange', 'Operativo': 'green' }[impacto] || 'gray');
@@ -161,7 +162,6 @@ export default function PanelFallas() {
         return codigoInterno || 'Activo s/n';
     };
 
-    // Helper para obtener URL de imágenes con el Blob Base URL
     const getUrlImagen = (path) => path ? `${blobBaseUrl}/${path}` : null;
 
     return (
@@ -173,7 +173,8 @@ export default function PanelFallas() {
                 </Group>
                 
                 <Group gap="sm">
-                    {seleccionadas.length > 0 && (
+                    {/* Renderiza los botones de lote SOLO si hay selección y tiene permisos */}
+                    {seleccionadas.length > 0 && puedeCrearReq && (
                         <Group gap="sm">
                             {userId === 1 && (
                                 <Button color="red" variant="light" leftSection={<IconTrash size={16}/>} onClick={eliminarFallasLote} loading={procesando}>
@@ -191,7 +192,7 @@ export default function PanelFallas() {
                 </Group>
             </Group>
 
-            {/* VISTA MÓVIL (Tarjetas) */}
+            {/* VISTA MÓVIL */}
             <Box hiddenFrom="sm">
                 <Stack gap="sm">
                     {fallasOrdenadas.map((falla) => {
@@ -199,12 +200,17 @@ export default function PanelFallas() {
                         return (
                             <Card key={falla.id} shadow="sm" radius="md" withBorder style={{ borderColor: seleccionadas.includes(falla.id) ? '#20c997' : undefined, opacity: tieneReq ? 0.7 : 1 }}>
                                 <Group justify="space-between" mb="xs" align="flex-start">
-                                    <Checkbox 
-                                        color="teal" 
-                                        checked={seleccionadas.includes(falla.id)} 
-                                        onChange={() => toggleSeleccion(falla.id)} 
-                                        disabled={tieneReq}
-                                    />
+                                    {/* Muestra checkbox si puede crear req y no tiene ya una asignada */}
+                                    {puedeCrearReq ? (
+                                        <Checkbox 
+                                            color="teal" 
+                                            checked={seleccionadas.includes(falla.id)} 
+                                            onChange={() => toggleSeleccion(falla.id)} 
+                                            disabled={tieneReq}
+                                        />
+                                    ) : (
+                                        <Box /> // Espaciador para mantener al badge a la derecha
+                                    )}
                                     <Badge color={getColorImpacto(falla.impacto)} variant="filled">{falla.impacto}</Badge>
                                 </Group>
                                 <Text size="sm" fw={900} c="blue.9">{obtenerInfoActivo(falla.inspeccion?.activo)}</Text>
@@ -212,7 +218,7 @@ export default function PanelFallas() {
                                 
                                 <Group justify="space-between" mt="md">
                                     <Group gap="xs">
-                                        <Avatar src={getUrlImagen(falla.inspeccion?.reportadoPor?.empleado?.foto || falla.inspeccion?.reportadoPor?.empleado?.imagen)} color="blue" radius="xl" size="sm">
+                                        <Avatar src={getUrlImagen(falla.inspeccion?.reportadoPor?.empleado?.foto || falla.inspeccion?.reportadoPor?.empleado?.imagen)} color="blue" radius="xl" size="xs">
                                             <IconUser size="0.8rem" />
                                         </Avatar>
                                         <Text size="xs" c="dimmed">
@@ -238,13 +244,22 @@ export default function PanelFallas() {
                 </Stack>
             </Box>
 
-            {/* VISTA ESCRITORIO (Tabla) */}
+            {/* VISTA ESCRITORIO */}
             <Paper withBorder shadow="sm" radius="md" visibleFrom="sm">
                 <ScrollArea h={600}>
                     <Table striped highlightOnHover verticalSpacing="md">
                         <Table.Thead bg="dark.9">
                             <Table.Tr>
-                                <Table.Th w={40}><Checkbox color="teal" onChange={toggleTodas} checked={seleccionadas.length > 0} indeterminate={seleccionadas.length > 0 && seleccionadas.length < fallasOrdenadas.filter(f => !f.requisiciones?.length).length} /></Table.Th>
+                                <Table.Th w={40}>
+                                    {puedeCrearReq && (
+                                        <Checkbox 
+                                            color="teal" 
+                                            onChange={toggleTodas} 
+                                            checked={seleccionadas.length > 0} 
+                                            indeterminate={seleccionadas.length > 0 && seleccionadas.length < fallasOrdenadas.filter(f => !f.requisiciones?.length).length} 
+                                        />
+                                    )}
+                                </Table.Th>
                                 <Table.Th c="white" w={100}>Fecha</Table.Th>
                                 <Table.Th c="white">Equipo Afectado</Table.Th>
                                 <Table.Th c="white">Falla Reportada</Table.Th>
@@ -260,12 +275,14 @@ export default function PanelFallas() {
                                 return (
                                     <Table.Tr key={falla.id} bg={seleccionadas.includes(falla.id) ? 'teal.0' : undefined} style={{ opacity: tieneReq ? 0.6 : 1 }}>
                                         <Table.Td>
-                                            <Checkbox 
-                                                color="teal" 
-                                                checked={seleccionadas.includes(falla.id)} 
-                                                onChange={() => toggleSeleccion(falla.id)} 
-                                                disabled={tieneReq}
-                                            />
+                                            {puedeCrearReq && (
+                                                <Checkbox 
+                                                    color="teal" 
+                                                    checked={seleccionadas.includes(falla.id)} 
+                                                    onChange={() => toggleSeleccion(falla.id)} 
+                                                    disabled={tieneReq}
+                                                />
+                                            )}
                                         </Table.Td>
                                         <Table.Td><Text size="sm" fw={700}>{new Date(falla.createdAt).toLocaleDateString('es-VE')}</Text></Table.Td>
                                         <Table.Td><Text size="sm" fw={900} c="blue.9">{obtenerInfoActivo(falla.inspeccion?.activo)}</Text></Table.Td>
@@ -309,11 +326,9 @@ export default function PanelFallas() {
                 </ScrollArea>
             </Paper>
 
-            {/* 🔥 NUEVO MODAL: DETALLE DE LA FALLA (HALLAZGO) 🔥 */}
             <Modal opened={!!selectedFalla} onClose={() => setSelectedFalla(null)} title={<Text fw={900} size="lg" tt="uppercase">Inspección de Falla</Text>} size="xl" fullScreen={isMobile}>
                 {selectedFalla && (
                     <Stack gap="md">
-                        {/* Cabecera del Modal */}
                         <Group justify="space-between">
                             <Box>
                                 <Text size="xs" c="dimmed" tt="uppercase" fw={800}>Código de Falla / Hallazgo</Text>
@@ -325,13 +340,11 @@ export default function PanelFallas() {
                         <Divider />
 
                         <Grid>
-                            {/* Columna Izquierda: Info del Equipo y Reporte */}
                             <Grid.Col span={isMobile ? 12 : 7}>
                                 <Stack gap="md">
                                     <Paper withBorder p="md" radius="md">
                                         <Text size="xs" c="dimmed" tt="uppercase" fw={800} mb="xs">Equipo Afectado</Text>
                                         <Group wrap="nowrap">
-                                            {/* Imagen del Activo */}
                                             <Image 
                                                 src={getUrlImagen(selectedFalla.inspeccion?.activo?.imagen)} 
                                                 fallbackSrc="https://placehold.co/150x150?text=Sin+Foto"
@@ -354,7 +367,6 @@ export default function PanelFallas() {
                                 </Stack>
                             </Grid.Col>
 
-                            {/* Columna Derecha: Reportado Por y Evidencia */}
                             <Grid.Col span={isMobile ? 12 : 5}>
                                 <Stack gap="md">
                                     <Paper withBorder p="md" radius="md" bg="gray.0">
@@ -379,7 +391,6 @@ export default function PanelFallas() {
                                         </Group>
                                     </Paper>
 
-                                    {/* Evidencia Fotográfica (Si existe) */}
                                     {selectedFalla.imagenEvidencia && (
                                         <Paper withBorder p="xs" radius="md">
                                             <Text size="xs" c="dimmed" tt="uppercase" fw={800} mb="xs">Evidencia Fotográfica</Text>
@@ -401,7 +412,6 @@ export default function PanelFallas() {
                 )}
             </Modal>
 
-            {/* MODAL WIZARD: CREACIÓN DE REQUISICIONES EN LOTE */}
             <Modal opened={modalBatchOpened} onClose={() => setModalBatchOpened(false)} title={<Text fw={900} size="lg" tt="uppercase">Generar Requisiciones</Text>} size="xl" fullScreen={isMobile}>
                 <Stack gap="md">
                     <ScrollArea h={isMobile ? 'calc(100vh - 200px)' : 500} type="auto">
