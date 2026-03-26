@@ -9,18 +9,18 @@ import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { 
     IconCarCrash, IconRefresh, IconShoppingCartPlus, IconPlus, IconTrash, 
-    IconUser, IconCheck, IconFileInvoice, IconEye, IconAlertTriangle, IconCalendar
+    IconUser, IconCheck, IconFileInvoice, IconEye, IconAlertTriangle, 
+    IconCalendar, IconPrinter
 } from '@tabler/icons-react';
 
 import { useAuth } from '@/hooks/useAuth'; 
+import { generarPDFFallas } from '@/app/helpers/generarPDFFallas';
 
 export default function PanelFallas() {
-    // Extraemos userId y departamentos del contexto
     const { userId, departamentos } = useAuth(); 
     const isMobile = useMediaQuery('(max-width: 48em)');
 
-    // Lógica de Permisos: Es el SuperUsuario(1) o pertenece al departamento de IT
-    // (Ajusta el string 'IT' al nombre exacto que tengas en tu base de datos)
+    // Lógica de Permisos
     const puedeCrearReq = userId === 1 || departamentos?.some(dep => dep.nombre?.toUpperCase() === 'IT');
 
     const blobBaseUrl = process.env.NEXT_PUBLIC_BLOB_BASE_URL || '';
@@ -107,13 +107,27 @@ export default function PanelFallas() {
         setModalBatchOpened(true);
     };
 
-    const agregarLineaRepuesto = (fallaId) => setRepuestosAsignados(prev => ({ ...prev, [fallaId]: [...prev[fallaId], { consumibleId: '', cantidad: 1 }] }));
-    const eliminarLineaRepuesto = (fallaId, indexLinea) => setRepuestosAsignados(prev => ({ ...prev, [fallaId]: prev[fallaId].filter((_, i) => i !== indexLinea) }));
-    const actualizarLinea = (fallaId, indexLinea, campo, valor) => setRepuestosAsignados(prev => {
-        const nuevasLineas = [...prev[fallaId]];
-        nuevasLineas[indexLinea][campo] = valor;
-        return { ...prev, [fallaId]: nuevasLineas };
-    });
+    const agregarLineaRepuesto = (fallaId) => {
+        setRepuestosAsignados(prev => ({ 
+            ...prev, 
+            [fallaId]: [...prev[fallaId], { consumibleId: '', cantidad: 1 }] 
+        }));
+    };
+
+    const eliminarLineaRepuesto = (fallaId, indexLinea) => {
+        setRepuestosAsignados(prev => ({ 
+            ...prev, 
+            [fallaId]: prev[fallaId].filter((_, i) => i !== indexLinea) 
+        }));
+    };
+
+    const actualizarLinea = (fallaId, indexLinea, campo, valor) => {
+        setRepuestosAsignados(prev => {
+            const nuevasLineas = [...prev[fallaId]];
+            nuevasLineas[indexLinea][campo] = valor;
+            return { ...prev, [fallaId]: nuevasLineas };
+        });
+    };
 
     const generarRequisicionesLote = async () => {
         setProcesando(true);
@@ -129,7 +143,10 @@ export default function PanelFallas() {
                     hallazgoId: fallaId,
                     justificacion: `Solución para hallazgo: ${falla.descripcion}`,
                     prioridad: falla.impacto === 'No Operativo' ? 'Critica' : (falla.impacto === 'Advertencia' ? 'Alta' : 'Media'),
-                    detalles: lineas.map(l => ({ consumibleId: parseInt(l.consumibleId), cantidadSolicitada: l.cantidad }))
+                    detalles: lineas.map(l => ({ 
+                        consumibleId: parseInt(l.consumibleId), 
+                        cantidadSolicitada: l.cantidad 
+                    }))
                 };
             });
 
@@ -164,6 +181,16 @@ export default function PanelFallas() {
 
     const getUrlImagen = (path) => path ? `${blobBaseUrl}/${path}` : null;
 
+    // --- FUNCIÓN PARA GENERAR EL PDF ---
+    const handleImprimirReporte = () => {
+        // Mapeamos para inyectar el nombre del equipo y simplificarle el trabajo al generador PDF
+        const datosParaPDF = fallasOrdenadas.map(f => ({
+            ...f,
+            nombreEquipo: obtenerInfoActivo(f.inspeccion?.activo)
+        }));
+        generarPDFFallas(datosParaPDF);
+    };
+
     return (
         <Box p={isMobile ? 'xs' : 'md'}>
             <Group justify="space-between" mb="xl">
@@ -173,7 +200,18 @@ export default function PanelFallas() {
                 </Group>
                 
                 <Group gap="sm">
-                    {/* Renderiza los botones de lote SOLO si hay selección y tiene permisos */}
+                    {/* Botón de Imprimir Reporte (Siempre visible) */}
+                    <Button 
+                        variant="outline" 
+                        color="dark" 
+                        size={isMobile ? 'xs' : 'sm'} 
+                        leftSection={<IconPrinter size={16}/>} 
+                        onClick={handleImprimirReporte}
+                    >
+                        Imprimir
+                    </Button>
+
+                    {/* Botones de Lote condicionados a selección y permisos */}
                     {seleccionadas.length > 0 && puedeCrearReq && (
                         <Group gap="sm">
                             {userId === 1 && (
@@ -200,17 +238,14 @@ export default function PanelFallas() {
                         return (
                             <Card key={falla.id} shadow="sm" radius="md" withBorder style={{ borderColor: seleccionadas.includes(falla.id) ? '#20c997' : undefined, opacity: tieneReq ? 0.7 : 1 }}>
                                 <Group justify="space-between" mb="xs" align="flex-start">
-                                    {/* Muestra checkbox si puede crear req y no tiene ya una asignada */}
                                     {puedeCrearReq ? (
                                         <Checkbox 
                                             color="teal" 
                                             checked={seleccionadas.includes(falla.id)} 
                                             onChange={() => toggleSeleccion(falla.id)} 
-                                            disabled={tieneReq}
+                                            disabled={tieneReq} 
                                         />
-                                    ) : (
-                                        <Box /> // Espaciador para mantener al badge a la derecha
-                                    )}
+                                    ) : ( <Box /> )}
                                     <Badge color={getColorImpacto(falla.impacto)} variant="filled">{falla.impacto}</Badge>
                                 </Group>
                                 <Text size="sm" fw={900} c="blue.9">{obtenerInfoActivo(falla.inspeccion?.activo)}</Text>
@@ -280,13 +315,19 @@ export default function PanelFallas() {
                                                     color="teal" 
                                                     checked={seleccionadas.includes(falla.id)} 
                                                     onChange={() => toggleSeleccion(falla.id)} 
-                                                    disabled={tieneReq}
+                                                    disabled={tieneReq} 
                                                 />
                                             )}
                                         </Table.Td>
-                                        <Table.Td><Text size="sm" fw={700}>{new Date(falla.createdAt).toLocaleDateString('es-VE')}</Text></Table.Td>
-                                        <Table.Td><Text size="sm" fw={900} c="blue.9">{obtenerInfoActivo(falla.inspeccion?.activo)}</Text></Table.Td>
-                                        <Table.Td><Text size="sm" fw={600}>"{falla.descripcion}"</Text></Table.Td>
+                                        <Table.Td>
+                                            <Text size="sm" fw={700}>{new Date(falla.createdAt).toLocaleDateString('es-VE')}</Text>
+                                        </Table.Td>
+                                        <Table.Td>
+                                            <Text size="sm" fw={900} c="blue.9">{obtenerInfoActivo(falla.inspeccion?.activo)}</Text>
+                                        </Table.Td>
+                                        <Table.Td>
+                                            <Text size="sm" fw={600}>"{falla.descripcion}"</Text>
+                                        </Table.Td>
                                         <Table.Td>
                                             <Group gap="xs">
                                                 <Avatar src={getUrlImagen(falla.inspeccion?.reportadoPor?.empleado?.foto || falla.inspeccion?.reportadoPor?.empleado?.imagen)} color="blue" radius="xl" size="sm">
@@ -310,7 +351,9 @@ export default function PanelFallas() {
                                             )}
                                         </Table.Td>
 
-                                        <Table.Td ta="center"><Badge color={getColorImpacto(falla.impacto)} variant="filled">{falla.impacto}</Badge></Table.Td>
+                                        <Table.Td ta="center">
+                                            <Badge color={getColorImpacto(falla.impacto)} variant="filled">{falla.impacto}</Badge>
+                                        </Table.Td>
                                         <Table.Td ta="right">
                                             <Tooltip label="Ver Detalle Completo">
                                                 <ActionIcon variant="light" color="blue" onClick={() => setSelectedFalla(falla)}>
@@ -326,6 +369,7 @@ export default function PanelFallas() {
                 </ScrollArea>
             </Paper>
 
+            {/* MODAL DETALLE DE FALLA */}
             <Modal opened={!!selectedFalla} onClose={() => setSelectedFalla(null)} title={<Text fw={900} size="lg" tt="uppercase">Inspección de Falla</Text>} size="xl" fullScreen={isMobile}>
                 {selectedFalla && (
                     <Stack gap="md">
@@ -412,6 +456,7 @@ export default function PanelFallas() {
                 )}
             </Modal>
 
+            {/* MODAL WIZARD: CREACIÓN DE REQUISICIONES EN LOTE */}
             <Modal opened={modalBatchOpened} onClose={() => setModalBatchOpened(false)} title={<Text fw={900} size="lg" tt="uppercase">Generar Requisiciones</Text>} size="xl" fullScreen={isMobile}>
                 <Stack gap="md">
                     <ScrollArea h={isMobile ? 'calc(100vh - 200px)' : 500} type="auto">
@@ -429,15 +474,43 @@ export default function PanelFallas() {
                                             </Box>
                                             <Badge color={getColorImpacto(falla.impacto)}>{falla.impacto}</Badge>
                                         </Group>
+                                        
                                         <Divider my="sm" variant="dashed" />
+                                        
                                         {lineas.map((linea, idx) => (
                                             <Group key={idx} align="flex-end" mb="sm" wrap={isMobile ? "wrap" : "nowrap"}>
-                                                <Select label={idx === 0 ? "Repuesto a Solicitar" : ""} placeholder="Buscar repuesto..." data={consumibles} searchable w={isMobile ? '100%' : 300} value={linea.consumibleId} onChange={(val) => actualizarLinea(fallaId, idx, 'consumibleId', val)}/>
-                                                <NumberInput label={idx === 0 ? "Cant." : ""} min={1} w={isMobile ? 100 : 80} value={linea.cantidad} onChange={(val) => actualizarLinea(fallaId, idx, 'cantidad', val)}/>
-                                                <ActionIcon color="red" variant="subtle" size="lg" mb={4} onClick={() => eliminarLineaRepuesto(fallaId, idx)} disabled={lineas.length === 1}><IconTrash size={18} /></ActionIcon>
+                                                <Select 
+                                                    label={idx === 0 ? "Repuesto a Solicitar" : ""} 
+                                                    placeholder="Buscar repuesto..." 
+                                                    data={consumibles} 
+                                                    searchable 
+                                                    w={isMobile ? '100%' : 300} 
+                                                    value={linea.consumibleId} 
+                                                    onChange={(val) => actualizarLinea(fallaId, idx, 'consumibleId', val)}
+                                                />
+                                                <NumberInput 
+                                                    label={idx === 0 ? "Cant." : ""} 
+                                                    min={1} 
+                                                    w={isMobile ? 100 : 80} 
+                                                    value={linea.cantidad} 
+                                                    onChange={(val) => actualizarLinea(fallaId, idx, 'cantidad', val)}
+                                                />
+                                                <ActionIcon 
+                                                    color="red" 
+                                                    variant="subtle" 
+                                                    size="lg" 
+                                                    mb={4} 
+                                                    onClick={() => eliminarLineaRepuesto(fallaId, idx)} 
+                                                    disabled={lineas.length === 1}
+                                                >
+                                                    <IconTrash size={18} />
+                                                </ActionIcon>
                                             </Group>
                                         ))}
-                                        <Button variant="subtle" color="teal" size="xs" leftSection={<IconPlus size={14}/>} onClick={() => agregarLineaRepuesto(fallaId)}>Pedir otro repuesto para esta falla</Button>
+                                        
+                                        <Button variant="subtle" color="teal" size="xs" leftSection={<IconPlus size={14}/>} onClick={() => agregarLineaRepuesto(fallaId)}>
+                                            Pedir otro repuesto para esta falla
+                                        </Button>
                                     </Paper>
                                 );
                             })}
@@ -445,7 +518,9 @@ export default function PanelFallas() {
                     </ScrollArea>
                     <Group justify="flex-end" mt="md">
                         <Button variant="default" onClick={() => setModalBatchOpened(false)}>Cancelar</Button>
-                        <Button color="teal" leftSection={<IconCheck size={16}/>} onClick={generarRequisicionesLote} loading={procesando}>Generar {seleccionadas.length} Requisiciones</Button>
+                        <Button color="teal" leftSection={<IconCheck size={16}/>} onClick={generarRequisicionesLote} loading={procesando}>
+                            Generar {seleccionadas.length} Requisiciones
+                        </Button>
                     </Group>
                 </Stack>
             </Modal>

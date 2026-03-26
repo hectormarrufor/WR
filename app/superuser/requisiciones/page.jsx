@@ -21,8 +21,8 @@ export default function PanelRequisiciones() {
     const { userId, departamentos } = useAuth(); 
     
     // Lógica de Permisos
-    const esPresidente = userId === 1; // Presidencia autoriza y aprueba dinero
-    const esCompras = departamentos?.some(dep => dep.nombre?.toUpperCase() === 'COMPRAS') || userId === 1;
+    const esPresidente = departamentos?.some(dep => dep.nombre?.toUpperCase() === 'PRESIDENCIA') || userId === 1; // Presidencia autoriza y aprueba dinero
+    const esCompras = departamentos?.some(dep => dep.nombre?.toUpperCase() === 'ADMINISTRACION') || departamentos?.some(dep => dep.nombre?.toUpperCase() === 'COMPRAS') || userId === 1;
 
     const isMobile = useMediaQuery('(max-width: 48em)');
 
