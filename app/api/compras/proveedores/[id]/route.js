@@ -1,57 +1,58 @@
-import { NextResponse } from 'next/server';
-import db from '../../../../../models';
+import { NextResponse } from "next/server";
+import db from "@/models";
 
 export async function GET(request, { params }) {
-  const { id } = await params;
-  try {
-    const proveedor = await db.Proveedor.findByPk(id, {
-      include: [{ model: db.OrdenCompra, as: 'ordenesCompra' }],
-    });
-    if (!proveedor) {
-      return NextResponse.json({ message: 'Proveedor no encontrado' }, { status: 404 });
+    try {
+        const { id } = await params; // En Next.js 15 params es una promesa
+        
+        const proveedor = await db.Proveedor.findByPk(id);
+        if (!proveedor) {
+            return NextResponse.json({ success: false, error: 'Proveedor no encontrado' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true, data: proveedor });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json(proveedor);
-  } catch (error) {
-    console.error('Error fetching proveedor:', error);
-    return NextResponse.json({ message: 'Error al obtener proveedor', error: error.message }, { status: 500 });
-  }
 }
 
-export async function PUT(request, { params }) {
-  const { id } = await params;
-  try {
-    const body = await request.json();
-    const proveedor = await db.Proveedor.findByPk(id);
-    if (!proveedor) {
-      return NextResponse.json({ message: 'Proveedor no encontrado' }, { status: 404 });
+export async function PATCH(request, { params }) {
+    try {
+        const { id } = await params;
+        const body = await request.json();
+
+        const proveedor = await db.Proveedor.findByPk(id);
+        if (!proveedor) {
+            return NextResponse.json({ success: false, error: 'Proveedor no encontrado' }, { status: 404 });
+        }
+
+        await proveedor.update(body);
+
+        return NextResponse.json({ success: true, data: proveedor });
+    } catch (error) {
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return NextResponse.json({ success: false, error: 'Ya existe un proveedor con ese nombre o RIF' }, { status: 400 });
+        }
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    await proveedor.update(body);
-    return NextResponse.json(proveedor);
-  } catch (error) {
-    console.error('Error updating proveedor:', error);
-    return NextResponse.json({ message: 'Error al actualizar proveedor', error: error.message }, { status: 400 });
-  }
 }
 
 export async function DELETE(request, { params }) {
-  const { id } = await params;
-  try {
-    const proveedor = await db.Proveedor.findByPk(id);
-    if (!proveedor) {
-      return NextResponse.json({ message: 'Proveedor no encontrado' }, { status: 404 });
-    }
+    try {
+        const { id } = await params;
 
-    // Opcional: Verificar si el proveedor tiene órdenes de compra asociadas
-    // Si tiene, podrías prohibir la eliminación o hacer una "eliminación lógica" (marcar como inactivo)
-    const ordenesCompraCount = await db.OrdenCompra.count({ where: { proveedorId: id } });
-    if (ordenesCompraCount > 0) {
-      return NextResponse.json({ message: 'No se puede eliminar el proveedor porque tiene órdenes de compra asociadas. Considere desactivarlo si su modelo lo permite.' }, { status: 400 });
-    }
+        const borrados = await db.Proveedor.destroy({ where: { id } });
+        
+        if (borrados === 0) {
+            return NextResponse.json({ success: false, error: 'Proveedor no encontrado' }, { status: 404 });
+        }
 
-    await proveedor.destroy();
-    return NextResponse.json({ message: 'Proveedor eliminado exitosamente' }, { status: 200 });
-  } catch (error) {
-    console.error('Error deleting proveedor:', error);
-    return NextResponse.json({ message: 'Error al eliminar proveedor', error: error.message }, { status: 500 });
-  }
+        return NextResponse.json({ success: true, message: 'Proveedor eliminado correctamente' });
+    } catch (error) {
+        // Captura error si intentas borrar un proveedor que ya tiene compras asociadas
+        if (error.name === 'SequelizeForeignKeyConstraintError') {
+            return NextResponse.json({ success: false, error: 'No se puede eliminar el proveedor porque tiene operaciones asociadas.' }, { status: 400 });
+        }
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 }

@@ -1,53 +1,72 @@
 import { NextResponse } from "next/server";
-import db from "@/models";
+import db, { Equipo, Maquina, Remolque, Vehiculo } from "@/models";
 import { notificarCabezas } from '@/app/api/notificar/route';
 import { Requisicion, RequisicionDetalle, Consumible, OrdenMantenimiento, User, Hallazgo, Empleado } from '@/models';
 
 export async function GET(req) {
     try {
-        const requisiciones = await Requisicion.findAll({
+        // 1. Buscamos las Requisiciones (Base)
+        const requisicionesRaw = await db.Requisicion.findAll({
             order: [['createdAt', 'DESC']],
             include: [
                 {
-                    model: User,
+                    model: db.User,
                     as: 'solicitante',
-                    attributes: ['user'], 
-                    include: [
-                        {
-                            model: Empleado,
-                            as: 'empleado',
-                            attributes: ['nombre', 'apellido'] 
-                        }
-                    ]
-                },
-                // 🔥 CORRECCIÓN: Estos modelos van al nivel de la Requisicion, no dentro del User
-                {
-                    model: OrdenMantenimiento,
-                    as: 'ordenOrigen',
-                    attributes: ['codigo']
+                    attributes: ['user'],
+                    include: [{ model: db.Empleado, as: 'empleado', attributes: ['nombre', 'apellido'] }]
                 },
                 {
-                    model: Hallazgo,
-                    as: 'hallazgoOrigen',
-                    attributes: ['id', 'descripcion', 'impacto']
-                },
-                {
-                    model: RequisicionDetalle,
+                    model: db.RequisicionDetalle,
                     as: 'detalles',
+                    include: [{ model: db.Consumible, as: 'consumible' }]
+                },
+                {
+                    model: db.Cotizacion,
+                    as: 'cotizaciones',
                     include: [
-                        {
-                            model: Consumible,
-                            as: 'consumible',
-                            attributes: ['nombre', 'unidadMedida', 'categoria']
-                        }
+                        { model: db.Proveedor, as: 'proveedor', attributes: ['nombre'] },
+                        { model: db.CotizacionDetalle, as: 'detalles' } // Fundamental para cruzar precios
                     ]
                 }
             ]
         });
 
-        return NextResponse.json({ success: true, data: requisiciones });
+        // 2. Extraemos todos los IDs de Hallazgos que no sean nulos
+        const hallazgoIds = [...new Set(requisicionesRaw.map(r => r.hallazgoId).filter(id => id))];
+
+        // 3. Consulta SEPARADA para los Hallazgos (Ruta corta = No hay minificación)
+        const hallazgosData = await db.Hallazgo.findAll({
+            where: { id: hallazgoIds },
+            include: [{
+                model: db.Inspeccion,
+                as: 'inspeccion',
+                include: [{
+                    model: db.Activo,
+                    as: 'activo',
+                    include: [
+                        { association: 'vehiculoInstancia', include: [{ association: 'plantilla' }] },
+                        { association: 'remolqueInstancia', include: [{ association: 'plantilla' }] },
+                        { association: 'maquinaInstancia', include: [{ association: 'plantilla' }] }
+                    ]
+                }]
+            }]
+        });
+
+        // Creamos un mapa para búsqueda rápida O(1)
+        const hallazgosMap = new Map(hallazgosData.map(h => [h.id, h.toJSON()]));
+
+        // 4. Unimos la data
+        const dataFinal = requisicionesRaw.map(req => {
+            const r = req.toJSON();
+            if (r.hallazgoId) {
+                r.hallazgoOrigen = hallazgosMap.get(r.hallazgoId);
+            }
+            return r;
+        });
+
+        return NextResponse.json({ success: true, data: dataFinal });
     } catch (error) {
-        console.error("Error obteniendo requisiciones:", error);
+        console.error("Error en GET Requisiciones:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
@@ -95,9 +114,9 @@ export async function POST(request) {
         // 5. Consultar la data armada para el PDF
         const reqCompleta = await db.Requisicion.findByPk(nuevaRequisicion.id, {
             include: [
-                { 
-                    model: db.User, 
-                    as: 'solicitante', 
+                {
+                    model: db.User,
+                    as: 'solicitante',
                     attributes: ['user'], // 🔥 Corrección: El modelo User solo tiene la columna 'user'
                     include: [
                         {
@@ -107,14 +126,14 @@ export async function POST(request) {
                         }
                     ]
                 },
-                { 
-                    model: db.RequisicionDetalle, 
+                {
+                    model: db.RequisicionDetalle,
                     as: 'detalles',
                     include: [{ model: db.Consumible, as: 'consumible', attributes: ['nombre', 'unidadMedida', 'categoria'] }]
                 }
             ]
         });
-        
+
         // 6. Notificar a las cabezas
         await notificarCabezas({
             title: `🛒 Requisición de Compras: ${codigo}`,

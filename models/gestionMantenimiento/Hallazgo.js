@@ -14,7 +14,7 @@ const Hallazgo = sequelize.define('Hallazgo', {
   },
   // Ciclo de vida del problema
   estado: {
-    type: DataTypes.ENUM('Pendiente', 'En Diagnostico', 'En Reparacion', 'Cerrado', 'Descartado', "Esperando Repuesto"),
+    type: DataTypes.ENUM('Pendiente', 'Reparado', 'En Diagnostico', 'En Reparacion', 'Cerrado', 'Descartado', "Esperando Repuesto"),
     defaultValue: 'Pendiente'
   },
   imagenEvidencia: {
@@ -35,6 +35,7 @@ Hallazgo.associate = (models) => {
     foreignKey: 'consumibleInstaladoId', 
     as: 'componenteDañado' 
   });
+  Hallazgo.hasMany(models.Requisicion, { foreignKey: 'hallazgoId', as: 'requisiciones' });
 };
 
 module.exports = Hallazgo;

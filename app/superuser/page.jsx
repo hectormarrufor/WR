@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import {
     IconTruck, IconCash, IconArchive, IconUser, IconClock2,
-    IconClipboardText, IconBuildingBank, IconChartBar, IconExchange, IconShoppingCart, IconFileInvoice
+    IconClipboardText, IconBuildingBank, IconChartBar, IconExchange, IconShoppingCart, IconFileInvoice,
+    IconAlertTriangle
 } from '@tabler/icons-react';
 import './superuser.css'; // Asegúrate de que este archivo no tenga estilos que choquen
 import { useAuth } from '@/hooks/useAuth';
@@ -129,6 +130,8 @@ export default function SuperUserHome() {
 
     const menuOptions = [
         { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Estimación de costos', href: '/superuser/estimacion-costos/configuracion', description: 'Calcula el costo operativo por servicio.', icon: IconChartBar, color: 'orange' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Lista de Requisiciones', href: '/superuser/requisiciones', description: 'Gestión de requisiciones.', icon: IconShoppingCart, color: 'green' },
+        { disabled: false, visible: isAdmin || departamentos.includes("Presidencia") || departamentos.includes("Mantenimiento"), title: 'Lista de Fallas', href: '/superuser/fallas', description: 'Gestión de fallas de los carros.', icon: IconAlertTriangle, color: 'red' },
         // { disabled: false, visible: isAdmin || departamentos.includes("Presidencia"), title: 'Gastos Fijos', href: '/superuser/gastos', description: 'Configura los gastos mensuales.', icon: IconExchange, color: 'cyan' },
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Presidencia"), title: 'Pagar Empleados', href: '/superuser/pagar', description: 'Gestión de nómina semanal.', icon: IconCash, color: 'green' },
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Presidencia"), title: 'Cuentas Bancarias', href: '/superuser/mis-cuentas', description: 'Gestión de tesorería.', icon: IconBuildingBank, color: 'yellow' },

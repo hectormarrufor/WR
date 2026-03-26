@@ -953,6 +953,9 @@ export default function DetalleActivoPage({ params }) {
                 opened={modalVistaFallaOpened}
                 onClose={() => setModalVistaFallaOpened(false)}
                 hallazgo={hallazgoParaVer}
+                activo={activo}
+                userId={userId}
+
             />
 
             <Modal

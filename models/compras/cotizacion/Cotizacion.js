@@ -20,6 +20,10 @@ const Cotizacion = sequelize.define('Cotizacion', {
     type: DataTypes.ENUM('USD', 'VES', 'EUR'),
     defaultValue: 'USD',
   },
+  archivoUrl: {
+    type: DataTypes.STRING,
+    allowNull: true, // Ruta donde se guarda el PDF o Imagen
+  },
   tasaCambioReferencial: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true, // Si cotizan en Bs, a qué tasa lo calcularon
