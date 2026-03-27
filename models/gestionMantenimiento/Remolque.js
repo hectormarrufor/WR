@@ -10,6 +10,10 @@ const Remolque = sequelize.define('Remolque', {
     esDual: { type: DataTypes.BOOLEAN, defaultValue: false }, // Si es Dual, cada eje cuenta con 4 ruedas para efectos de mantenimiento
     capacidadCarga: { type: DataTypes.STRING, allowNull: true },
     peso: { type: DataTypes.STRING, allowNull: true },
+    capacidadTanqueEstandar: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+    },
     tipoRemolque: { type: DataTypes.ENUM('Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Vaccum', 'Tolva'), allowNull: true },
     
 }, {

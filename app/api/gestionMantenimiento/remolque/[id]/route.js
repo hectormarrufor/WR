@@ -80,6 +80,7 @@ export async function PUT(request, { params }) {
             capacidadCarga: body.capacidadCarga,
             peso: body.peso,
             tipoRemolque: body.tipoRemolque,
+            capacidadTanqueEstandar: body.capacidadTanqueEstandar
         }, { transaction: t });
 
         // =========================================================
@@ -155,7 +156,8 @@ export async function PUT(request, { params }) {
                             activoId: activo.id,
                             subsistemaPlantillaId: subsistemaPlantilla.id,
                             estado: 'ok',
-                            observaciones: 'Añadido por actualización de modelo (remolque)'
+                            observaciones: 'Añadido por actualización de modelo (remolque)',
+                            capacidadTanqueEstandar: subData.capacidadTanqueEstandar || null
                         }));
                         await SubsistemaInstancia.bulkCreate(nuevasInstanciasFisicas, { transaction: t });
                     }

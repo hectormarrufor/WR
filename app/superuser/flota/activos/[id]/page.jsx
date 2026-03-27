@@ -34,6 +34,8 @@ import ModalInstalarPieza from '../../components/ModalInstalarPieza';
 import ModalCrearConsumible from '../components/ModalCrearConsumible';
 import ModalDetallarFalla from '../components/ModalDetallarFalla';
 import ModalVistaFalla from '../components/ModalVistaFalla';
+import ModalCargarCombustible from '../../combustible/components/ModalCargarCombustible';
+
 
 
 export default function DetalleActivoPage({ params }) {
@@ -55,13 +57,14 @@ export default function DetalleActivoPage({ params }) {
     const [selectedHallazgo, setSelectedHallazgo] = useState(null);
     const [modalUninstallOpened, setModalUninstallOpened] = useState(false);
     const [itemToUninstall, setItemToUninstall] = useState(null);
-    const [docPreview, setDocPreview] = useState(null); 
+    const [docPreview, setDocPreview] = useState(null);
     const [modalCrearSubOpened, setModalCrearSubOpened] = useState(false);
     const [modalSlotOpened, setModalSlotOpened] = useState(false);
-    const [targetPlantillaId, setTargetPlantillaId] = useState(null); 
+    const [targetPlantillaId, setTargetPlantillaId] = useState(null);
     const [modalInstalarOpened, setModalInstalarOpened] = useState(false);
     const [datosInstalacion, setDatosInstalacion] = useState({ slot: null, subsistemaInstanciaId: null });
     const [modalCrearConsumibleOpened, setModalCrearConsumibleOpened] = useState(false);
+    const [modalCombustibleOpened, setModalCombustibleOpened] = useState(false);
 
     const [modalDetallarOpened, setModalDetallarOpened] = useState(false);
     const [hallazgoParaDetallar, setHallazgoParaDetallar] = useState(null);
@@ -132,7 +135,7 @@ export default function DetalleActivoPage({ params }) {
     const hallazgosPendientes = (activo.inspecciones?.flatMap(i => i.hallazgos || []).filter(h => h.estado !== 'Cerrado') || [])
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        console.log("Hallazgos Pendientes Ordenados:", hallazgosPendientes);
+    console.log("Hallazgos Pendientes Ordenados:", hallazgosPendientes);
 
     const dataKilometraje = (activo.registrosKilometraje || []).map(r => ({
         fecha: new Date(r.fecha_registro).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }),
@@ -153,7 +156,7 @@ export default function DetalleActivoPage({ params }) {
     const getEstadoColor = (estado) => {
         switch (estado) {
             case 'Operativo': return 'teal.6';
-            case 'Advertencia': return 'yellow.6'; 
+            case 'Advertencia': return 'yellow.6';
             case 'No Operativo': return 'red.7';
             case 'En Mantenimiento': return 'blue.6';
             case 'Inactivo':
@@ -392,9 +395,9 @@ export default function DetalleActivoPage({ params }) {
 
                                                 return (
                                                     <Timeline.Item key={hallazgo.id} bullet={<IconAlertTriangle size={12} />} title={<Text fw={900} size="md" tt="uppercase">FALLA REPORTADA</Text>}>
-                                                        <Paper 
-                                                            withBorder p="md" mt="sm" radius="sm" shadow="xs" 
-                                                            style={{ 
+                                                        <Paper
+                                                            withBorder p="md" mt="sm" radius="sm" shadow="xs"
+                                                            style={{
                                                                 borderLeft: `6px solid ${esCritico ? '#e03131' : (hallazgo.impacto === 'Advertencia' ? '#fab005' : '#12b886')}`,
                                                                 cursor: 'pointer',
                                                                 transition: 'transform 0.2s ease, box-shadow 0.2s ease'
@@ -432,12 +435,12 @@ export default function DetalleActivoPage({ params }) {
                                                                             DETALLAR ANATOMÍA
                                                                         </Button>
                                                                     )}
-                                                                    <Button 
-                                                                        size="xs" variant="light" color="blue" 
-                                                                        onClick={(e) => { 
+                                                                    <Button
+                                                                        size="xs" variant="light" color="blue"
+                                                                        onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setSelectedHallazgo(hallazgo); 
-                                                                            setModalOrdenOpened(true); 
+                                                                            setSelectedHallazgo(hallazgo);
+                                                                            setModalOrdenOpened(true);
                                                                         }}
                                                                     >
                                                                         Generar ODT
@@ -496,7 +499,7 @@ export default function DetalleActivoPage({ params }) {
                                                 let estaPorVencer = false;
                                                 let diasRestantes = null;
 
-                                                let badgeColor = 'blue.7'; 
+                                                let badgeColor = 'blue.7';
                                                 let borderColor = '#ced4da';
 
                                                 if (!esPermanente) {
@@ -507,7 +510,7 @@ export default function DetalleActivoPage({ params }) {
                                                     estaVencido = diasRestantes < 0;
                                                     estaPorVencer = diasRestantes >= 0 && diasRestantes <= 30;
 
-                                                    badgeColor = 'green.7'; 
+                                                    badgeColor = 'green.7';
                                                     if (estaVencido) { badgeColor = 'red.7'; borderColor = '#e03131'; }
                                                     else if (estaPorVencer) { badgeColor = 'orange.6'; borderColor = '#fd7e14'; }
                                                 }
@@ -775,7 +778,7 @@ export default function DetalleActivoPage({ params }) {
                                                                     color="blue"
                                                                     leftSection={<IconPlus size={14} />}
                                                                     onClick={(e) => {
-                                                                        e.preventDefault(); 
+                                                                        e.preventDefault();
                                                                         setTargetPlantillaId(sub.subsistemaPlantilla?.id);
                                                                         setModalSlotOpened(true);
                                                                     }}
@@ -820,7 +823,7 @@ export default function DetalleActivoPage({ params }) {
                                                                                 <Table.Td>
                                                                                     <Table.Td>
                                                                                         <Table.Td>
-                                                                                            <Group gap="xs"> 
+                                                                                            <Group gap="xs">
                                                                                                 <Button
                                                                                                     size="xs" variant="light" color="blue"
                                                                                                     leftSection={<IconPlus size={14} />}
@@ -857,9 +860,21 @@ export default function DetalleActivoPage({ params }) {
 
                                 {/* 7. TAB: USO */}
                                 <Tabs.Panel value="uso">
-                                    <Group align="center" mb="xl">
-                                        <ThemeIcon size="lg" radius="md" variant="filled" color="dark.8"><IconChartLine size={20} color="#fab005" /></ThemeIcon>
-                                        <Title order={3} c="dark.9" tt="uppercase">Telemetría de Rendimiento</Title>
+                                    <Group justify="space-between" align="center" mb="xl">
+                                        <Group>
+                                            <ThemeIcon size="lg" radius="md" variant="filled" color="dark.8">
+                                                <IconChartLine size={20} color="#fab005" />
+                                            </ThemeIcon>
+                                            <Title order={3} c="dark.9" tt="uppercase">Telemetría de Rendimiento</Title>
+                                        </Group>
+                                        <Button
+                                            color="blue.7"
+                                            radius="sm"
+                                            leftSection={<IconGasStation size={18} />}
+                                            onClick={() => setModalCombustibleOpened(true)}
+                                        >
+                                            Registrar Carga
+                                        </Button>
                                     </Group>
 
                                     <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="xl">
@@ -889,18 +904,18 @@ export default function DetalleActivoPage({ params }) {
                 onClose={() => { setModalOrdenOpened(false); setSelectedHallazgo(null); }}
                 activo={activo}
                 hallazgosPendientes={hallazgosPendientes}
-                selectedHallazgo={selectedHallazgo} 
+                selectedHallazgo={selectedHallazgo}
                 userId={userId}
                 onSuccess={fetchData}
             />
-            
+
             <ModalInstalarPieza
                 opened={modalInstalarOpened}
                 onClose={() => setModalInstalarOpened(false)}
                 activo={activo}
                 subsistemaInstanciaId={datosInstalacion.subsistemaInstanciaId}
                 slotSeleccionado={datosInstalacion.slot}
-                onSuccess={fetchData} 
+                onSuccess={fetchData}
                 onSolicitarCrearConsumible={() => setModalCrearConsumibleOpened(true)}
                 reloadTrigger={reloadInventarioTrigger}
             />
@@ -915,7 +930,13 @@ export default function DetalleActivoPage({ params }) {
             <ModalActualizarLectura opened={modalLecturaOpened} onClose={() => setModalLecturaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
             <ModalInstallComponente opened={modalInstallOpened} onClose={() => { setModalInstallOpened(false); setSelectedItem(null); }} target={selectedItem} activoId={activo.id} onSuccess={fetchData} />
             <ModalDesinstalarComponente opened={modalUninstallOpened} onClose={() => setModalUninstallOpened(false)} item={itemToUninstall} onSuccess={fetchData} />
-            
+                <ModalCargarCombustible
+                opened={modalCombustibleOpened}
+                onClose={() => setModalCombustibleOpened(false)}
+                activoPredeterminadoId={activo.id.toString()} // Le pasamos el ID actual
+                onSuccess={fetchData} // Refresca las gráficas del activo
+            />
+
             <ModalCrearSubsistema
                 opened={modalCrearSubOpened}
                 onClose={() => setModalCrearSubOpened(false)}
@@ -930,7 +951,7 @@ export default function DetalleActivoPage({ params }) {
                 subsistemaPlantillaId={targetPlantillaId}
                 onSuccess={fetchData}
             />
-            
+
             <ModalAgregarDocumento
                 opened={modalDocOpened}
                 onClose={() => setModalDocOpened(false)}
@@ -945,7 +966,7 @@ export default function DetalleActivoPage({ params }) {
                 onClose={() => setModalDetallarOpened(false)}
                 hallazgo={hallazgoParaDetallar}
                 activo={activo}
-                onSuccess={fetchData} 
+                onSuccess={fetchData}
             />
 
             {/* 🔥 NUEVO MODAL DE VISTA DE FALLA 🔥 */}

@@ -91,6 +91,16 @@ const Activo = sequelize.define('Activo', {
     type: DataTypes.INTEGER,
     references: { model: 'MatrizCostos', key: 'id' }
   },
+  capacidadTanque: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        defaultValue: 0,
+    },
+    nivelCombustible: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        defaultValue: 0,
+    }
 }, {
   tableName: 'Activos',
   timestamps: true,

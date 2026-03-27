@@ -10,6 +10,10 @@ const Maquina = sequelize.define('Maquina', {
   capacidadCucharon: { type: DataTypes.FLOAT, allowNull: true },
   alcanceMaximo: { type: DataTypes.FLOAT, allowNull: true },
   traccion: { type: DataTypes.ENUM('oruga', 'ruedas'), allowNull: true },
+  capacidadTanqueEstandar: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+    },
   tipo: { type: DataTypes.ENUM('Retroexcavadora', 'Taladro', 'Montacargas', 'Jumbo', 'Grua'), allowNull: false }, // Ej: "soldadora"
   potencia: { type: DataTypes.STRING, allowNull: true }
 });

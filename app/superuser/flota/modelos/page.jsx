@@ -40,6 +40,15 @@ export default function GestionModelosPage() {
         fetch('/api/gestionMantenimiento/remolque'),
         fetch('/api/gestionMantenimiento/maquina')
       ]);
+      if (!resVehiculos.ok || !resRemolques.ok || !resMaquinas.ok) {
+        console.error('Error en uno de los fetch:', {
+          vehiculos: resVehiculos.statusText,
+          remolques: resRemolques.statusText,
+          maquinas: resMaquinas.statusText
+        });
+        
+        throw new Error('Error al cargar los modelos. Ver consola para más detalles.');
+      }
 
       // 2. Convertimos a JSON (Manejar errores si alguno falla es recomendable)
       const vehiculosRaw = await resVehiculos.json() || []  ;

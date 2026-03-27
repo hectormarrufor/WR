@@ -142,6 +142,7 @@ export async function GET(request) {
         const vehiculos = await Vehiculo.findAll();
         return NextResponse.json({ success: true, data: vehiculos });
     } catch (error) {
+        console.error("Error fetching vehículos:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

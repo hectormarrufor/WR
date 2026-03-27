@@ -18,6 +18,7 @@ export async function GET(request) {
         const maquinas = await Maquina.findAll();
         return NextResponse.json({ success: true, data: maquinas });
     } catch (error) {
+        console.error("Error fetching máquinas:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
@@ -99,6 +100,8 @@ export async function POST(request) {
         }
 
         await t.commit();
+
+        
         return NextResponse.json({ success: true, data: nuevaMaquina }, { status: 201 });
 
     } catch (error) {

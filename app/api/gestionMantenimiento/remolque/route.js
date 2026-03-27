@@ -18,6 +18,7 @@ export async function GET(request) {
         const remolques = await Remolque.findAll();
         return NextResponse.json({ success: true, data: remolques });
     } catch (error) {
+        console.error("Error fetching remolques:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

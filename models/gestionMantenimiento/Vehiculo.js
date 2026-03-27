@@ -12,7 +12,10 @@ const Vehiculo = sequelize.define('Vehiculo', {
   imagen: { type: DataTypes.STRING, allowNull: true },
   capacidadArrastre: { type: DataTypes.FLOAT, allowNull: true },
   potenciaMotor: { type: DataTypes.FLOAT, allowNull: true },
-  capacidadTanque: { type: DataTypes.FLOAT, allowNull: true },
+  capacidadTanqueEstandar: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+    },
   pesoMaximoCombinado: { type: DataTypes.FLOAT, allowNull: true },
   tipoCombustible: { type: DataTypes.ENUM('Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"), allowNull: true },
   consumoTeoricoLleno: { // Consumo teórico en litros por kilómetro cuando el vehículo está cargado al máximo

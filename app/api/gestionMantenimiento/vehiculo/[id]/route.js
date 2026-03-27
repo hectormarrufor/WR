@@ -90,7 +90,7 @@ export async function PUT(request, { params }) {
             imagen: body.imagen,
             capacidadArrastre: body.capacidadArrastre,
             pesoMaximoCombinado: body.pesoMaximoCombinado,
-            capacidadTanque: body.capacidadTanque,
+            capacidadTanqueEstandar: body.capacidadTanqueEstandar,
             potenciaMotor: body.potenciaMotor,
             consumoTeoricoLleno: body.consumoTeoricoLleno,
             consumoTeoricoVacio: body.consumoTeoricoVacio,
@@ -176,7 +176,8 @@ export async function PUT(request, { params }) {
                             activoId: activo.id,
                             subsistemaId: subsistemaActual.id, // FK Correcta
                             estado: 'ok',
-                            observaciones: 'Propagado por actualización de modelo'
+                            observaciones: 'Propagado por actualización de modelo',
+                            capacidadTanqueEstandar: subData.capacidadTanqueEstandar || null // Si el subsistema tiene este campo, lo propagamos
                         }));
                         await SubsistemaInstancia.bulkCreate(nuevasInstancias, { transaction: t });
                     }

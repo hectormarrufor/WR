@@ -62,6 +62,7 @@ export default function ListarConsumiblesPage() {
             if (!response.ok) throw new Error('No se pudieron cargar los consumibles');
 
             const data = await response.json();
+            console.log("Respuesta de consumibles:", data); // Debug: Ver la respuesta completa
 
             // Ajuste para leer tu estructura JSON: { items: [], total: 1, ... }
             setConsumibles(data.items || []);

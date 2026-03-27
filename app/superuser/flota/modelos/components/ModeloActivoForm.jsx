@@ -1,4 +1,3 @@
-// app/superuser/flota/modelos/components/ModeloActivoForm.jsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -15,7 +14,6 @@ import { IconDeviceFloppy, IconPlus, IconTrash, IconSitemap, IconTool, IconInfoC
 import { AsyncCatalogComboBox } from '@/app/components/CatalogCombobox';
 import ImageDropzone from '../../activos/components/ImageDropzone';
 import ConsumibleRecomendadoCreator from './ConsumibleRecomendadoCreator';
-
 
 export default function ModeloActivoForm({
     tipoPreseleccionado = 'Vehiculo',
@@ -49,7 +47,8 @@ export default function ModeloActivoForm({
             capacidadLevante: '',
             capacidadCucharon: '',
             alcanceMaximo: '',
-            capacidadTanque: '',
+            capacidadTanque: '', // Se mantiene por compatibilidad legacy
+            capacidadTanqueEstandar: '', // Nuevo campo
             potenciaMotor: '',
 
             consumoTeoricoLleno: '',
@@ -67,27 +66,21 @@ export default function ModeloActivoForm({
             direccion: '',
         },
         validate: {
-            // Marca es obligatoria solo si NO es inmueble ni Equipo Genérico (opcional)
             marca: (val) => (tipoPreseleccionado !== 'Inmueble' && tipoPreseleccionado !== 'Equipo' && !val ? 'La marca es obligatoria' : null),
-            // Modelo es obligatorio (En inmuebles actúa como Nombre)
             modelo: (val) => (!val ? (tipoPreseleccionado === 'Inmueble' ? 'El nombre/identificador es obligatorio' : 'El modelo es obligatorio') : null),
         }
     });
 
-    // Cargar valores iniciales si existen (Edición)
     useEffect(() => {
         if (initialValues) {
             form.setValues(initialValues);
         }
     }, [initialValues]);
 
-    // Sincronizar estado local de subsistemas con el formulario
     useEffect(() => {
         setSubsistemas(form.values.subsistemas || []);
     }, [form.values.subsistemas]); 
 
-
-    // --- HELPERS PARA SUBSISTEMAS / HIJOS ---
     const addSubsistema = () => {
         setSubsistemas([...subsistemas, {
             nombre: '',
@@ -108,7 +101,6 @@ export default function ModeloActivoForm({
         setSubsistemas(updated);
     };
 
-    // --- LOGICA CATEGORIAS DINAMICAS ---
     const getCategoriasSubsistemas = () => {
         if (tipoPreseleccionado === 'Inmueble') {
             return [
@@ -118,7 +110,6 @@ export default function ModeloActivoForm({
                 'Estructura', 'Techo/Cubierta', 'Área Común', 'Habitación'
             ];
         }
-        // Para vehículos y maquinaria
         return [
             'motor', 'transmision', 'frenos', 'tren de rodaje', 'suspension', 
             'electrico', 'iluminacion', 'sistema de escape', 'sistema hidraulico', 
@@ -136,22 +127,18 @@ export default function ModeloActivoForm({
         return "Nombre del Subsistema (ej. Motor)";
     };
 
-
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
             let endpoint = '';
-            
-            // Payload base común
             let payload = {
-                modelo: values.modelo, // Nombre
-                marca: values.marca || 'N/A', // Default para inmuebles
+                modelo: values.modelo,
+                marca: values.marca || 'N/A',
                 anio: values.anio,
                 imagen: values.imagen,
-                subsistemas: subsistemas // Enviamos la estructura hija configurada
+                subsistemas: subsistemas
             };
 
-            // 1. LÓGICA DE VEHÍCULO (Con subida de imagen)
             if (tipoPreseleccionado === 'Vehiculo') {
                  if (values.imagen && typeof values.imagen.arrayBuffer === 'function') {
                     notifications.show({ id: 'uploading-image', title: 'Subiendo imagen...', message: 'Por favor espera.', loading: true });
@@ -164,8 +151,7 @@ export default function ModeloActivoForm({
                         body: imagenFile,
                     });
 
-                    if (!response.ok) console.log('Falló la subida de la imagen. Probablemente ya exista una con ese nombre.');
-                    // Asumimos que si falla es porque ya existe o algo similar, pero seguimos el flujo
+                    if (!response.ok) console.log('Falló la subida de la imagen.');
                     payload.imagen = uniqueFilename; 
                     notifications.update({ id: 'uploading-image', title: 'Éxito', message: 'Imagen subida.', color: 'green' });
                  }
@@ -179,22 +165,22 @@ export default function ModeloActivoForm({
                     capacidadArrastre: values.capacidadArrastre, 
                     pesoMaximoCombinado: values.pesoMaximoCombinado,
                     potenciaMotor: values.potenciaMotor,
-                    capacidadTanque: values.capacidadTanque,
+                    capacidadTanque: values.capacidadTanque || values.capacidadTanqueEstandar, // Compatibilidad
+                    capacidadTanqueEstandar: values.capacidadTanqueEstandar,
                     consumoTeoricoLleno: values.consumoTeoricoLleno,
                     consumoTeoricoVacio: values.consumoTeoricoVacio,
                 });
             }
-            // 2. LÓGICA DE REMOLQUE
             else if (tipoPreseleccionado === 'Remolque') {
                 endpoint = initialValues ? `/api/gestionMantenimiento/remolque/${id}` : '/api/gestionMantenimiento/remolque';
                 Object.assign(payload, { 
                     tipoRemolque: values.tipoRemolque, 
                     nroEjes: values.ejes, 
                     peso: values.peso, 
-                    capacidadCarga: values.capacidadCarga 
+                    capacidadCarga: values.capacidadCarga,
+                    capacidadTanqueEstandar: values.capacidadTanqueEstandar // Los vacuum necesitan esto
                 });
             }
-            // 3. LÓGICA DE MAQUINA
             else if (tipoPreseleccionado === 'Maquina') {
                 endpoint = initialValues ? `/api/gestionMantenimiento/maquina/${id}` : '/api/gestionMantenimiento/maquina';
                 Object.assign(payload, { 
@@ -203,10 +189,10 @@ export default function ModeloActivoForm({
                     capacidadLevante: values.capacidadLevante, 
                     capacidadCucharon: values.capacidadCucharon, 
                     alcanceMaximo: values.alcanceMaximo, 
-                    tipoCombustible: values.tipoCombustible 
+                    tipoCombustible: values.tipoCombustible,
+                    capacidadTanqueEstandar: values.capacidadTanqueEstandar
                 });
             }
-            // 4. LÓGICA DE INMUEBLE (NUEVO)
             else if (tipoPreseleccionado === 'Inmueble') {
                 endpoint = initialValues ? `/api/gestionMantenimiento/inmueble/${id}` : '/api/gestionMantenimiento/inmueble';
                 Object.assign(payload, {
@@ -216,10 +202,8 @@ export default function ModeloActivoForm({
                     habitaciones: values.habitaciones,
                     banios: values.banios,
                     direccion: values.direccion,
-                    marca: values.marca || 'Propia' 
                 });
             }
-            // 5. LÓGICA DE EQUIPO (NUEVO)
             else if (tipoPreseleccionado === 'Equipo') {
                 endpoint = initialValues ? `/api/gestionMantenimiento/equipo/${id}` : '/api/gestionMantenimiento/equipo';
                 Object.assign(payload, { especificacion: values.especificacion });
@@ -236,7 +220,7 @@ export default function ModeloActivoForm({
             });
             const res = await response.json();
 
-            if (!res.success) throw new Error(res.error || 'No se pudo crear el modelo');
+            if (!res.success) throw new Error(res.error || 'No se pudo procesar el modelo');
 
             notifications.show({ title: 'Éxito', message: 'Modelo configurado correctamente', color: 'green' });
             if (onSuccess) onSuccess(res.data);
@@ -256,9 +240,7 @@ export default function ModeloActivoForm({
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="md">
 
-                    {/* --- CAMPOS COMUNES SEGÚN TIPO --- */}
-                    
-                    {/* A. CASO VEHICULO / MAQUINA / REMOLQUE (Usan Marca y Modelo Clásico) */}
+                    {/* --- CAMPOS COMUNES --- */}
                     {(tipoPreseleccionado === 'Vehiculo' || tipoPreseleccionado === 'Remolque' || tipoPreseleccionado === 'Maquina') && (
                         <>
                             <AsyncCatalogComboBox
@@ -280,53 +262,6 @@ export default function ModeloActivoForm({
                         </>
                     )}
 
-                    {/* B. CASO EQUIPO (Usan Marca y Modelo/Nombre) */}
-                    {tipoPreseleccionado === 'Equipo' && (
-                        <>
-                            <AsyncCatalogComboBox
-                                label="Marca"
-                                placeholder="Buscar o crear marca..."
-                                form={form}
-                                fieldKey="marca"
-                                catalogo="marcas"
-                                tipo="vehiculo"
-                            />
-                            <TextInput
-                                label="Modelo / Nombre del Equipo"
-                                placeholder="Ej: Generador 500kVA"
-                                {...form.getInputProps('modelo')} 
-                            />
-                        </>
-                    )}
-
-                    {/* C. CASO INMUEBLE (Usa Nombre y Constructora opcional) */}
-                    {tipoPreseleccionado === 'Inmueble' && (
-                        <>
-                             <TextInput
-                                label="Nombre / Identificador del Inmueble"
-                                placeholder="Ej: Torre Principal, Galpón B, Sede Occidente"
-                                description="Este será el nombre principal del modelo"
-                                required
-                                {...form.getInputProps('modelo')} 
-                            />
-                            <Group grow>
-                                <Select
-                                    label="Tipo de Inmueble"
-                                    placeholder="Seleccione..."
-                                    data={['Edificio Administrativo', 'Galpón Industrial', 'Terreno', 'Local Comercial', 'Casa/Residencia', 'Caseta de Vigilancia', 'Campamento']}
-                                    required
-                                    {...form.getInputProps('tipoInmueble')}
-                                />
-                                <TextInput
-                                    label="Constructora (Opcional)"
-                                    placeholder="Ej: Constructora S.A."
-                                    {...form.getInputProps('marca')}
-                                />
-                            </Group>
-                        </>
-                    )}
-
-                    
                     {/* --- CAMPOS ESPECÍFICOS --- */}
 
                     {tipoPreseleccionado === 'Vehiculo' && (
@@ -337,19 +272,23 @@ export default function ModeloActivoForm({
                             </Group>
                             <Select
                                 label="Tipo de Vehículo"
-                                placeholder="Seleccione..."
                                 data={['Chuto', 'Carro', 'Camioneta', 'Moto', 'Bus', "Van", "Volqueta", "Camion"]}
                                 {...form.getInputProps('tipoVehiculo')}
                             />
                             <ImageDropzone label="Imagen del Vehículo" form={form} fieldPath="imagen" />
-                            <NumberInput label="Tara (tons)" {...form.getInputProps('peso')} />
-                            <NumberInput label="Capacidad de Arrastre (tons)" {...form.getInputProps('capacidadArrastre')} />
-                            <NumberInput label="Peso Maximo Combinado (tons)" {...form.getInputProps('pesoMaximoCombinado')} />
-                            <NumberInput label="Consumo Teórico Lleno (L/km)" {...form.getInputProps('consumoTeoricoLleno')} />
-                            <NumberInput label="Consumo Teórico Vacío (L/km)" {...form.getInputProps('consumoTeoricoVacio')} />
-                            <NumberInput label="Capacidad del Tanque (L)" {...form.getInputProps('capacidadTanque')} />
-                            <NumberInput label="Potencia del Motor (HP)" {...form.getInputProps('potenciaMotor')} />
-                            <Select label="Tipo de Combustible" placeholder="Seleccione..." data={['Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"]} {...form.getInputProps('tipoCombustible')} />
+                            <SimpleGrid cols={2}>
+                                <NumberInput label="Tara (tons)" {...form.getInputProps('peso')} />
+                                <NumberInput label="Capacidad Tanque Estándar (L)" {...form.getInputProps('capacidadTanqueEstandar')} />
+                                <NumberInput label="Potencia Motor (HP)" {...form.getInputProps('potenciaMotor')} />
+                                <Select label="Combustible" data={['Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"]} {...form.getInputProps('tipoCombustible')} />
+                            </SimpleGrid>
+                            <Divider label="Consumo y Arrastre" labelPosition="center" />
+                            <SimpleGrid cols={2}>
+                                <NumberInput label="Capacidad Arrastre (tons)" {...form.getInputProps('capacidadArrastre')} />
+                                <NumberInput label="Peso Máx. Combinado (tons)" {...form.getInputProps('pesoMaximoCombinado')} />
+                                <NumberInput label="Consumo Lleno (L/km)" {...form.getInputProps('consumoTeoricoLleno')} />
+                                <NumberInput label="Consumo Vacío (L/km)" {...form.getInputProps('consumoTeoricoVacio')} />
+                            </SimpleGrid>
                         </>
                     )}
 
@@ -364,10 +303,11 @@ export default function ModeloActivoForm({
                                 data={['Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Vaccum', 'Tolva']}
                                 {...form.getInputProps('tipoRemolque')}
                             />
-                            <Group grow>
+                            <SimpleGrid cols={2}>
                                 <NumberInput label="Peso (tons)" {...form.getInputProps('peso')} />
                                 <NumberInput label="Capacidad Carga (tons)" {...form.getInputProps('capacidadCarga')} />
-                            </Group>
+                                <NumberInput label="Capacidad Tanque Auxiliar (L)" {...form.getInputProps('capacidadTanqueEstandar')} description="Para motores de equipos como Vaccum" />
+                            </SimpleGrid>
                         </>
                     )}
 
@@ -379,11 +319,14 @@ export default function ModeloActivoForm({
                                 data={['Retroexcavadora', 'Excavadora', 'Payloader', 'Motoniveladora', 'Vibrocompactador', 'Grúa', 'Montacargas', 'Planta Eléctrica', 'Taladro']}
                                 {...form.getInputProps('tipoMaquina')}
                             />
-                            <Select label="Tracción" data={['oruga', 'ruedas']} {...form.getInputProps('traccion')} />
-                            
-                            <NumberInput label="Capacidad Levante (tons)" {...form.getInputProps('capacidadLevante')} />
-                            <NumberInput label="Capacidad Cucharón (m³)" {...form.getInputProps('capacidadCucharon')} />
-                            <Select label="Tipo Combustible" data={['Diesel', 'Gasolina']} {...form.getInputProps('tipoCombustible')} />
+                            <SimpleGrid cols={2}>
+                                <Select label="Tracción" data={['oruga', 'ruedas']} {...form.getInputProps('traccion')} />
+                                <Select label="Tipo Combustible" data={['Diesel', 'Gasolina']} {...form.getInputProps('tipoCombustible')} />
+                                <NumberInput label="Capacidad Levante (tons)" {...form.getInputProps('capacidadLevante')} />
+                                <NumberInput label="Capacidad Cucharón (m³)" {...form.getInputProps('capacidadCucharon')} />
+                                <NumberInput label="Alcance Máximo (m)" {...form.getInputProps('alcanceMaximo')} />
+                                <NumberInput label="Capacidad Tanque Estándar (L)" {...form.getInputProps('capacidadTanqueEstandar')} />
+                            </SimpleGrid>
                         </>
                     )}
 
@@ -412,7 +355,7 @@ export default function ModeloActivoForm({
                                 />
                             </Group>
                             <Group grow mb="md">
-                                <NumberInput label="Habitaciones/Oficinas (Estimado)" min={0} {...form.getInputProps('habitaciones')} />
+                                <NumberInput label="Habitaciones/Oficinas" min={0} {...form.getInputProps('habitaciones')} />
                                 <NumberInput label="Baños" min={0} {...form.getInputProps('banios')} />
                             </Group>
                             <Textarea 
@@ -423,7 +366,7 @@ export default function ModeloActivoForm({
                         </Paper>
                     )}
 
-                    {/* --- SECCIÓN REUTILIZADA: SUBSISTEMAS / HIJOS --- */}
+                    {/* --- SECCIÓN: SUBSISTEMAS --- */}
                     <Divider my="sm" label={getTituloSubsistemas()} labelPosition="center" />
 
                     <Paper withBorder p="md" bg={tipoPreseleccionado === 'Inmueble' ? "orange.0" : "gray.0"}>
@@ -433,19 +376,12 @@ export default function ModeloActivoForm({
                                 <Text fw={600} size="sm">{getTituloSubsistemas()}</Text>
                             </Group>
                             <Button variant="subtle" size="xs" leftSection={<IconPlus size={14} />} onClick={addSubsistema}>
-                                {tipoPreseleccionado === 'Inmueble' ? 'Agregar Espacio/Equipo' : 'Agregar Subsistema'}
+                                {tipoPreseleccionado === 'Inmueble' ? 'Agregar Espacio' : 'Agregar Subsistema'}
                             </Button>
                         </Group>
 
-                        <Text size="xs" c="dimmed" mb="md">
-                            {tipoPreseleccionado === 'Inmueble' 
-                                ? 'Define aquí las oficinas, salas, baños o equipos fijos (Aires, Plantas) que componen este inmueble.'
-                                : 'Define aquí los componentes principales (Motor, Caja) para realizar seguimiento de mantenimiento.'
-                            }
-                        </Text>
-
                         {subsistemas.length === 0 ? (
-                            <Text size="xs" c="dimmed" align="center">No hay elementos definidos.</Text>
+                            <Text size="xs" c="dimmed" ta="center">No hay elementos definidos.</Text>
                         ) : (
                             <Accordion variant="separated" radius="md">
                                 {subsistemas.map((sub, index) => (
@@ -453,26 +389,19 @@ export default function ModeloActivoForm({
                                         <Accordion.Control icon={tipoPreseleccionado === 'Inmueble' ? <IconBuilding size={16}/> : <IconTool size={16} />}>
                                             <Group justify="space-between" w="100%" pr="md">
                                                 <Text fw={500}>{sub.nombre || '(Nuevo Elemento)'}</Text>
-                                                <Group gap="xs">
-                                                    {sub.categoria && <Badge size="sm" variant="outline">{sub.categoria}</Badge>}
-                                                    {sub.recomendaciones.length > 0 && (
-                                                        <Badge size="sm" variant="light">{sub.recomendaciones.length} Partes</Badge>
-                                                    )}
-                                                </Group>
+                                                {sub.categoria && <Badge size="sm" variant="outline">{sub.categoria}</Badge>}
                                             </Group>
                                         </Accordion.Control>
                                         <Accordion.Panel>
                                             <Stack gap="sm">
-                                                <Group bg='lightgray' p={10} grow>
+                                                <Group bg='gray.1' p={10} grow>
                                                     <TextInput
                                                         label={getLabelNombreSubsistema()}
-                                                        placeholder={tipoPreseleccionado === 'Inmueble' ? "ej. Oficina Presidencia" : "ej. Motor"}
                                                         value={sub.nombre}
                                                         onChange={(e) => updateSubsistema(index, 'nombre', e.currentTarget.value)}
                                                     />
                                                     <Select
-                                                        label="Categoría / Tipo"
-                                                        placeholder="Seleccione..."
+                                                        label="Categoría"
                                                         data={getCategoriasSubsistemas()}
                                                         searchable
                                                         value={sub.categoria}
@@ -480,9 +409,8 @@ export default function ModeloActivoForm({
                                                     />
                                                 </Group>
 
-                                                {/* CREACIÓN DE HIJOS/CONSUMIBLES */}
                                                 <ConsumibleRecomendadoCreator
-                                                    label={tipoPreseleccionado === 'Inmueble' ? "Items o Equipos dentro de este espacio" : "Repuestos/Consumibles Asociados"}
+                                                    label={tipoPreseleccionado === 'Inmueble' ? "Items internos" : "Repuestos recomendados"}
                                                     value={sub.recomendaciones}
                                                     onChange={(newRecs) => updateSubsistema(index, 'recomendaciones', newRecs)}
                                                 />
@@ -500,7 +428,7 @@ export default function ModeloActivoForm({
                         )}
                     </Paper>
 
-                    {/* --- PROPAGACION DE CAMBIOS (Solo en edición) --- */}
+                    {/* --- PROPAGACION --- */}
                     {initialValues && (
                         <Paper withBorder p="md" bg="blue.0" mt="md">
                             <Group align="flex-start">
@@ -508,14 +436,12 @@ export default function ModeloActivoForm({
                                 <Stack gap="xs" style={{ flex: 1 }}>
                                     <Text size="sm" fw={700} c="blue">¿Propagar cambios?</Text>
                                     <Text size="xs" c="blue.8">
-                                        Si marcas esto, los nuevos espacios o equipos definidos se crearán automáticamente en todos los inmuebles/activos existentes de este modelo.
+                                        Sincroniza los nuevos espacios o equipos definidos con todos los activos existentes de este modelo.
                                     </Text>
                                     <Checkbox
-                                        label="Sí, sincronizar estructura con activos existentes"
+                                        label="Sincronizar estructura con activos existentes"
                                         checked={propagarCambios}
                                         onChange={(event) => setPropagarCambios(event.currentTarget.checked)}
-                                        mt="xs"
-                                        fw={500}
                                     />
                                 </Stack>
                             </Group>

@@ -1,6 +1,5 @@
-// models/CargaCombustible.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../../sequelize');
+const sequelize = require('../../sequelize'); // Asegúrate de que esta ruta sea la de tu proyecto wr
 
 const CargaCombustible = sequelize.define('CargaCombustible', {
     fecha: {
@@ -13,27 +12,25 @@ const CargaCombustible = sequelize.define('CargaCombustible', {
     },
     origen: {
         type: DataTypes.ENUM('interno', 'externo'),
-        allowNull: true
+        allowNull: false,
     },
     costoTotal: {
         type: DataTypes.FLOAT,
-        allowNull: true
+        allowNull: true,
     },
-    // Capturamos el kilometraje EXACTO al momento de echar gasolina
     kilometrajeAlMomento: {
         type: DataTypes.FLOAT,
         allowNull: false
     },
-    // Campos calculados para facilitar gráficas (se llenan en el backend)
     kilometrosRecorridos: {
         type: DataTypes.FLOAT, 
-        // Diferencia vs carga anterior
+        allowNull: true
     },
     rendimientoCalculado: {
         type: DataTypes.FLOAT, 
-        // KilometrosRecorridos / Litros = Km por Litro
+        allowNull: true
     },
-    fullTanque: { //si no se lleno el tanque, no se puede calcular rendimiento exacto
+    fullTanque: { 
         type: DataTypes.BOOLEAN,
         defaultValue: true, 
     }
@@ -41,8 +38,17 @@ const CargaCombustible = sequelize.define('CargaCombustible', {
 
 // Relaciones
 CargaCombustible.associate = (models) => {
-    CargaCombustible.belongsTo(models.Activo, { foreignKey: 'activoId' });
-    CargaCombustible.belongsTo(models.Kilometraje, { foreignKey: 'kilometrajeId' }); // Vínculo opcional
+    // 1. El equipo al que se le echó gasoil
+    CargaCombustible.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
+    
+    // 2. El registro del odómetro (opcional)
+    CargaCombustible.belongsTo(models.Kilometraje, { foreignKey: 'kilometrajeId', as: 'registroKilometraje' }); 
+    
+    // 3. NUEVO: Si origen es 'interno', ¿de qué tanque del almacén (Consumible) salió el gasoil?
+    CargaCombustible.belongsTo(models.Consumible, { foreignKey: 'consumibleOrigenId', as: 'tanqueOrigen' });
+    
+    // 4. NUEVO: Trazabilidad de quién operó la bomba o registró la factura externa
+    CargaCombustible.belongsTo(models.User, { foreignKey: 'registradoPorId', as: 'registradoPor' });
 };
 
 module.exports = CargaCombustible;
