@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
     Container, Title, Paper, Group, Button, Table, 
     Badge, Text, ActionIcon, LoadingOverlay, SimpleGrid, RingProgress, Center, Tabs,
-    Card, Flex, ThemeIcon, ScrollArea, Modal
+    Card, Flex, ThemeIcon, ScrollArea, Modal, Tooltip
 } from '@mantine/core';
 import { 
     IconGasStation, IconPlus, IconRefresh, IconBarrel, 
@@ -30,13 +30,8 @@ export default function CombustiblePage() {
     const [modalDespachoOpened, setModalDespachoOpened] = useState(false);
     const [modalCompraOpened, setModalCompraOpened] = useState(false);
 
-    // ESTADO PARA EL MODAL DE CONFIRMACIÓN LOCAL (Sin ModalsProvider)
     const [confirmModal, setConfirmModal] = useState({
-        opened: false,
-        title: '',
-        message: '',
-        onConfirm: null,
-        loading: false
+        opened: false, title: '', message: '', onConfirm: null, loading: false
     });
 
     const CAPACIDAD_MAXIMA_TANQUE = 8000;
@@ -128,6 +123,36 @@ export default function CombustiblePage() {
         });
     };
 
+    // ✨ FUNCIONES DE EVALUACIÓN DE RENDIMIENTO ✨
+    const getLimitesConsumo = (activo) => {
+        if (!activo) return null;
+        const plantilla = activo.vehiculoInstancia?.plantilla || activo.maquinaInstancia?.plantilla;
+        if (!plantilla || !plantilla.consumoTeoricoLleno || !plantilla.consumoTeoricoVacio) return null;
+        
+        return {
+            peorEscenario: parseFloat(plantilla.consumoTeoricoLleno), // Ej: 1.5 Km/L (Cargado)
+            mejorEscenario: parseFloat(plantilla.consumoTeoricoVacio)  // Ej: 3.0 Km/L (Vacío)
+        };
+    };
+
+    const getRendimientoColor = (rendimiento, limites) => {
+        if (!limites) return 'gray'; 
+        
+        // Si está en el rango perfecto (entre lleno y vacío)
+        if (rendimiento >= limites.peorEscenario && rendimiento <= limites.mejorEscenario) return 'green';
+        
+        // Si rindió mejor que estando vacío (Raro, pero posible en bajadas)
+        if (rendimiento > limites.mejorEscenario) return 'blue';
+        
+        // Tolerancia del 15% por debajo del peor escenario (Tráfico, subidas, mala conducción)
+        const margenTolerancia = limites.peorEscenario * 0.85; 
+        if (rendimiento >= margenTolerancia && rendimiento < limites.peorEscenario) return 'orange';
+        
+        // Consumo crítico: Fuera de toda proporción lógica
+        return 'red'; 
+    };
+
+    // Cálculos para Dashboard
     const porcentajeStock = (stockGasoil / CAPACIDAD_MAXIMA_TANQUE) * 100;
     let colorTorta = 'teal'; 
     if (porcentajeStock <= 20) colorTorta = 'red';
@@ -145,7 +170,7 @@ export default function CombustiblePage() {
                     </ThemeIcon>
                     <div>
                         <Title order={2} fw={800} c="dark.8" style={{ lineHeight: 1.1 }}>Combustible</Title>
-                        <Text c="dimmed" size="sm">Gestión de inventario y despachos</Text>
+                        <Text c="dimmed" size="sm">Gestión de inventario y trazabilidad</Text>
                     </div>
                 </Group>
 
@@ -232,40 +257,58 @@ export default function CombustiblePage() {
                                         <Table.Th>Equipo (Activo)</Table.Th>
                                         <Table.Th>Origen</Table.Th>
                                         <Table.Th>Litros</Table.Th>
-                                        <Table.Th>Odómetro/Hr</Table.Th>
+                                        <Table.Th>Odómetro</Table.Th>
                                         <Table.Th>Rendimiento</Table.Th>
                                         {isAdmin && <Table.Th ta="center">Acciones</Table.Th>}
                                     </Table.Tr>
                                 </Table.Thead>
                                 <Table.Tbody>
-                                    {cargas.map((carga) => (
-                                        <Table.Tr key={carga.id}>
-                                            <Table.Td fw={600} style={{ whiteSpace: 'nowrap' }}>{new Date(carga.fecha).toLocaleDateString()}</Table.Td>
-                                            <Table.Td>
-                                                <Text fw={800} c="blue.8">{carga.activo?.codigoInterno}</Text>
-                                                <Text size="xs" c="dimmed">{carga.activo?.descripcion} • Placa: {carga.activo?.identificadorExtra}</Text>
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <Badge color={carga.origen === 'interno' ? 'teal' : 'orange'} variant="light" size="sm">{carga.origen.toUpperCase()}</Badge>
-                                            </Table.Td>
-                                            <Table.Td fw={900}>{carga.litros} L</Table.Td>
-                                            <Table.Td>{carga.kilometrajeAlMomento}</Table.Td>
-                                            <Table.Td>
-                                                {carga.rendimientoCalculado ? (
-                                                    <Badge color="green.7" variant="dot">{carga.rendimientoCalculado} Km/L</Badge>
-                                                ) : (
-                                                    <Text size="xs" c="dimmed">N/A</Text>
-                                                )}
-                                            </Table.Td>
-                                            {isAdmin && (
-                                                <Table.Td ta="center">
-                                                    <ActionIcon variant="light" color="red" onClick={() => handleEliminarCarga(carga.id)}>
-                                                        <IconTrash size={18} />
-                                                    </ActionIcon>
+                                    {cargas.map((carga) => {
+                                        // Procesamos los límites y el color aquí mismo, limpio y ordenado
+                                        const limites = getLimitesConsumo(carga.activo);
+                                        const colorRendimiento = getRendimientoColor(carga.rendimientoCalculado, limites);
+                                        const tooltipText = limites 
+                                            ? `Rango Esperado: ${limites.peorEscenario} (Cargado) a ${limites.mejorEscenario} (Vacío) Km/L` 
+                                            : 'Límites teóricos no configurados en la plantilla del equipo.';
+
+                                        return (
+                                            <Table.Tr key={carga.id}>
+                                                <Table.Td fw={600} style={{ whiteSpace: 'nowrap' }}>{new Date(carga.fecha).toLocaleDateString()}</Table.Td>
+                                                <Table.Td>
+                                                    <Text fw={800} c="blue.8">{carga.activo?.codigoInterno}</Text>
+                                                    <Text size="xs" c="dimmed">{carga.activo?.descripcion} • Placa: {carga.activo?.identificadorExtra}</Text>
                                                 </Table.Td>
-                                            )}
-                                        </Table.Tr>
-                                    ))}
+                                                <Table.Td>
+                                                    <Badge color={carga.origen === 'interno' ? 'teal' : 'orange'} variant="light" size="sm">{carga.origen.toUpperCase()}</Badge>
+                                                </Table.Td>
+                                                <Table.Td fw={900}>{carga.litros} L</Table.Td>
+                                                <Table.Td>{carga.kilometrajeAlMomento}</Table.Td>
+                                                <Table.Td>
+                                                    {/* 🔥 SEMÁFORO DE RENDIMIENTO CON TOOLTIP 🔥 */}
+                                                    {carga.rendimientoCalculado ? (
+                                                        <Tooltip label={tooltipText} withArrow position="top">
+                                                            <Badge 
+                                                                color={colorRendimiento} 
+                                                                variant={colorRendimiento === 'red' ? 'filled' : 'light'}
+                                                                style={{ cursor: 'help' }}
+                                                            >
+                                                                {carga.rendimientoCalculado} Km/L
+                                                            </Badge>
+                                                        </Tooltip>
+                                                    ) : (
+                                                        <Badge color="gray" variant="dot">Pte. Full</Badge>
+                                                    )}
+                                                </Table.Td>
+                                                {isAdmin && (
+                                                    <Table.Td ta="center">
+                                                        <ActionIcon variant="light" color="red" onClick={() => handleEliminarCarga(carga.id)}>
+                                                            <IconTrash size={18} />
+                                                        </ActionIcon>
+                                                    </Table.Td>
+                                                )}
+                                            </Table.Tr>
+                                        );
+                                    })}
                                     {cargas.length === 0 && !loading && (
                                         <Table.Tr><Table.Td colSpan={isAdmin ? 7 : 6} ta="center" py="xl" c="dimmed">No hay registros de combustible aún.</Table.Td></Table.Tr>
                                     )}
@@ -317,21 +360,11 @@ export default function CombustiblePage() {
                 </Tabs.Panel>
             </Tabs>
 
-            {/* MODAL DE CONFIRMACIÓN LOCAL PARA ELIMINAR/REVERTIR */}
-            <Modal 
-                opened={confirmModal.opened} 
-                onClose={() => !confirmModal.loading && setConfirmModal(prev => ({ ...prev, opened: false }))} 
-                title={<Group gap="xs"><IconAlertTriangle color="red" /><Text fw={700} c="red">{confirmModal.title}</Text></Group>}
-                centered
-            >
+            <Modal opened={confirmModal.opened} onClose={() => !confirmModal.loading && setConfirmModal(prev => ({ ...prev, opened: false }))} title={<Group gap="xs"><IconAlertTriangle color="red" /><Text fw={700} c="red">{confirmModal.title}</Text></Group>} centered>
                 <Text size="sm" mb="xl">{confirmModal.message}</Text>
                 <Group justify="flex-end">
-                    <Button variant="default" onClick={() => setConfirmModal(prev => ({ ...prev, opened: false }))} disabled={confirmModal.loading}>
-                        Cancelar
-                    </Button>
-                    <Button color="red" onClick={confirmModal.onConfirm} loading={confirmModal.loading}>
-                        Confirmar
-                    </Button>
+                    <Button variant="default" onClick={() => setConfirmModal(prev => ({ ...prev, opened: false }))} disabled={confirmModal.loading}>Cancelar</Button>
+                    <Button color="red" onClick={confirmModal.onConfirm} loading={confirmModal.loading}>Confirmar</Button>
                 </Group>
             </Modal>
 

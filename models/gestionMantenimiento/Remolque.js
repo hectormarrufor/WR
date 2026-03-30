@@ -10,8 +10,30 @@ const Remolque = sequelize.define('Remolque', {
     esDual: { type: DataTypes.BOOLEAN, defaultValue: false }, // Si es Dual, cada eje cuenta con 4 ruedas para efectos de mantenimiento
     capacidadCarga: { type: DataTypes.STRING, allowNull: true },
     peso: { type: DataTypes.STRING, allowNull: true },
+    // ✨ VARIABLES PARA REMOLQUES MOTORIZADOS (Ej: Thermo King) ✨
+    tieneMotorIndependiente: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+    tipoCombustible: { 
+        type: DataTypes.ENUM('Diesel', 'Gasolina', 'Eléctrico'), 
+        allowNull: true 
+    },
     capacidadTanqueEstandar: {
         type: DataTypes.FLOAT,
+        allowNull: true,
+    },
+    consumoTeoricoTrabajo: { 
+        type: DataTypes.FLOAT, 
+        allowNull: true,
+    },
+    consumoTeoricoRalenti: { 
+        type: DataTypes.FLOAT, 
+        allowNull: true,
+    },
+    // ✨ CONFIGURACIÓN GEOMÉTRICA ✨
+    configuracionTanque: {
+        type: DataTypes.JSONB,
         allowNull: true,
     },
     tipoRemolque: { type: DataTypes.ENUM('Batea', 'Plataforma', 'Lowboy', 'Cisterna', 'Vaccum', 'Tolva'), allowNull: true },

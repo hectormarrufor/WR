@@ -17,6 +17,12 @@ export async function POST(request) {
 
         // Actualizamos la propiedad directa del modelo Activo
         activo.capacidadTanque = parseFloat(capacidad);
+        
+        // Prevención de errores matemáticos futuros si el equipo es totalmente nuevo
+        if (activo.nivelCombustible === null || activo.nivelCombustible === undefined) {
+            activo.nivelCombustible = 0;
+        }
+
         await activo.save();
 
         return NextResponse.json({ 

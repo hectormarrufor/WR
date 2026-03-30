@@ -7,7 +7,10 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconDashboard, IconAlertCircle, IconCheck, IconBuildingFactory, IconGasStation, IconTool, IconInfoCircle } from '@tabler/icons-react';
+import { 
+    IconDashboard, IconAlertCircle, IconCheck, IconBuildingFactory, 
+    IconGasStation, IconTool, IconInfoCircle, IconRulerMeasure, IconMathSymbols, IconListNumbers
+} from '@tabler/icons-react';
 
 export default function CargaCombustibleForm({ 
     activos = [], 
@@ -32,13 +35,18 @@ export default function CargaCombustibleForm({
     // 2. Función para obtener datos físicos del equipo
     const getDatosTanqueActivo = (idActivo) => {
         const activo = activosFiltrados.find(a => a.id.toString() === idActivo?.toString());
-        if (!activo) return { capacidad: 0, nivel: 0, espacioLibre: 0 };
+        if (!activo) return { capacidad: 0, nivel: 0, espacioLibre: 0, configTanque: null };
         
         const capacidad = parseFloat(activo.capacidadTanque) || 0;
         const nivel = parseFloat(activo.nivelCombustible) || 0;
         const espacioLibre = capacidad > 0 ? (capacidad - nivel) : 0;
 
-        return { capacidad, nivel, espacioLibre };
+        const configTanque = activo.configuracionTanque 
+                          || activo.vehiculoInstancia?.plantilla?.configuracionTanque
+                          || activo.maquinaInstancia?.plantilla?.configuracionTanque
+                          || activo.remolqueInstancia?.plantilla?.configuracionTanque;
+
+        return { capacidad, nivel, espacioLibre, configTanque };
     };
 
     const form = useForm({
@@ -49,7 +57,9 @@ export default function CargaCombustibleForm({
             litros: '',
             costoTotal: '',
             kilometrajeAlMomento: '',
-            fullTanque: true
+            fullTanque: true,
+            usarAforoVara: false,
+            centimetrosVara: ''
         },
         validate: {
             activoId: (value) => (!value ? 'Debe seleccionar un equipo' : null),
@@ -63,16 +73,24 @@ export default function CargaCombustibleForm({
                 if (values.origen === 'interno' && values.consumibleOrigenId) {
                     const tanque = tanquesInventario.find(t => t.id.toString() === values.consumibleOrigenId);
                     if (tanque && valNum > parseFloat(tanque.stockAlmacen)) {
-                        return 'Excede el inventario disponible.';
+                        return `Excede el inventario. Solo hay ${tanque.stockAlmacen}L disponibles.`;
                     }
                 }
 
                 if (values.activoId) {
                     const { capacidad, espacioLibre } = getDatosTanqueActivo(values.activoId);
-                    if (capacidad <= 0) return 'El equipo no tiene capacidad registrada.';
-                    if (valNum > espacioLibre) return 'Supera el espacio libre del equipo.';
+                    if (capacidad <= 0) {
+                        return 'El equipo no tiene capacidad registrada. Fíjela primero.';
+                    }
+                    if (valNum > espacioLibre) {
+                        return `Solo hay espacio para ${espacioLibre.toFixed(2)} L en este equipo.`;
+                    }
                 }
 
+                return null;
+            },
+            centimetrosVara: (value, values) => {
+                if (values.usarAforoVara && (!value || value <= 0)) return 'Indique los cm marcados en la vara';
                 return null;
             }
         }
@@ -80,8 +98,12 @@ export default function CargaCombustibleForm({
 
     useEffect(() => {
         if (form.values.activoId) {
-            const { capacidad } = getDatosTanqueActivo(form.values.activoId);
-            setCapacidadFaltante(capacidad <= 0);
+            const datos = getDatosTanqueActivo(form.values.activoId);
+            setCapacidadFaltante(!datos || datos.capacidad <= 0);
+            
+            if (!datos?.configTanque) {
+                form.setFieldValue('usarAforoVara', false);
+            }
         } else {
             setCapacidadFaltante(false);
         }
@@ -103,13 +125,13 @@ export default function CargaCombustibleForm({
             if (!response.ok) throw new Error('No se pudo actualizar la capacidad del equipo');
 
             activo.capacidadTanque = nuevaCapacidad;
-            activo.nivelCombustible = 0;
+            activo.nivelCombustible = 0; 
 
             setCapacidadFaltante(false);
             setNuevaCapacidad('');
             form.validateField('litros'); 
             
-            notifications.show({ title: 'Capacidad Fijada', message: `Capacidad de ${nuevaCapacidad}L guardada.`, color: 'green' });
+            notifications.show({ title: 'Capacidad Fijada', message: `Capacidad de ${nuevaCapacidad}L guardada en el equipo.`, color: 'green' });
 
         } catch (error) {
             notifications.show({ title: 'Error', message: error.message, color: 'red' });
@@ -118,15 +140,99 @@ export default function CargaCombustibleForm({
         }
     };
 
+    // ✨ CALCULADORA INTELIGENTE (INTERPOLACIÓN O GEOMETRÍA) ✨
+    const calcularLitrosPorVara = () => {
+        if (!form.values.usarAforoVara || !form.values.centimetrosVara || !form.values.activoId) return { litros: 0, metodo: null };
+        
+        const datos = getDatosTanqueActivo(form.values.activoId);
+        if (!datos || !datos.configTanque) return { litros: 0, metodo: null };
+
+        const h = parseFloat(form.values.centimetrosVara);
+        const { dimensiones, tablaAforo, factorDescuento, tipoForma } = datos.configTanque;
+        const qty = parseInt(dimensiones?.cantidadTanques) || 1;
+        const descuento = parseFloat(factorDescuento) || 0;
+
+        // 🟢 PRIORIDAD 1: AFORO MANUAL (INTERPOLACIÓN LINEAL)
+        if (tablaAforo && tablaAforo.length > 0) {
+            const aforo = [...tablaAforo].sort((a, b) => a.cm - b.cm);
+            let litrosBase = 0;
+
+            if (h <= 0) return { litros: 0, metodo: 'aforo' };
+
+            // Si es menor o igual al primer punto, interpolamos desde cero
+            if (h <= aforo[0].cm) {
+                litrosBase = (h / aforo[0].cm) * aforo[0].litros;
+            } 
+            // Si es mayor al último punto, asumimos el tope del último punto (por seguridad)
+            else if (h >= aforo[aforo.length - 1].cm) {
+                litrosBase = aforo[aforo.length - 1].litros;
+            } 
+            // Interpolación lineal entre dos puntos conocidos
+            else {
+                for (let i = 0; i < aforo.length - 1; i++) {
+                    if (h >= aforo[i].cm && h <= aforo[i+1].cm) {
+                        const h0 = aforo[i].cm;
+                        const l0 = aforo[i].litros;
+                        const h1 = aforo[i+1].cm;
+                        const l1 = aforo[i+1].litros;
+                        litrosBase = l0 + (h - h0) * ((l1 - l0) / (h1 - h0));
+                        break;
+                    }
+                }
+            }
+
+            // Asumimos que la tabla de aforo es por unidad de tanque. Si hay 2 tanques, multiplicamos.
+            const litrosNetos = litrosBase * qty;
+            return { litros: parseFloat(litrosNetos.toFixed(2)), metodo: 'aforo' };
+        }
+
+        // 🔵 PRIORIDAD 2: MATEMÁTICA GEOMÉTRICA (Plan B)
+        if (dimensiones && dimensiones.largo) {
+            let volCm3 = 0;
+            const L = parseFloat(dimensiones.largo);
+
+            if (tipoForma === 'cilindrico') {
+                const D = parseFloat(dimensiones.diametro);
+                const R = D / 2;
+                if (h >= D) {
+                    volCm3 = Math.PI * Math.pow(R, 2) * L;
+                } else {
+                    const part1 = Math.pow(R, 2) * Math.acos((R - h) / R);
+                    const part2 = (R - h) * Math.sqrt(2 * R * h - Math.pow(h, 2));
+                    volCm3 = L * (part1 - part2);
+                    if (isNaN(volCm3)) volCm3 = 0; 
+                }
+            } else {
+                const W = parseFloat(dimensiones.ancho);
+                const maxH = parseFloat(dimensiones.alto);
+                const actualH = h > maxH ? maxH : h;
+                volCm3 = L * W * actualH;
+            }
+
+            const litrosBrutos = (volCm3 / 1000) * qty;
+            const litrosNetos = litrosBrutos * (1 - descuento);
+            return { litros: parseFloat(litrosNetos.toFixed(2)), metodo: 'geometria' };
+        }
+
+        return { litros: 0, metodo: null };
+    };
+
+    const resultadoAforo = calcularLitrosPorVara();
+
     const handleSubmit = async (values) => {
         setLoading(true);
         setErrorMsg(null);
 
         try {
+            const payload = {
+                ...values,
+                nivelAforadoAntesDeSurtir: values.usarAforoVara ? resultadoAforo.litros : null
+            };
+
             const response = await fetch('/api/gestionMantenimiento/combustible/cargar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(values)
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
@@ -178,12 +284,10 @@ export default function CargaCombustibleForm({
     const datosTanqueActual = form.values.activoId ? getDatosTanqueActivo(form.values.activoId) : null;
     const litrosInput = parseFloat(form.values.litros) || 0;
     
-    // Evaluamos si el tanque de la base tiene suficiente gasoil
     const tanqueSeleccionado = form.values.origen === 'interno' && form.values.consumibleOrigenId
         ? tanquesInventario.find(t => t.id.toString() === form.values.consumibleOrigenId)
         : null;
 
-    // Banderas de error para mostrar alertas y bloquear el botón
     const excedeCapacidadEquipo = datosTanqueActual && litrosInput > datosTanqueActual.espacioLibre;
     const excedeInventarioBase = tanqueSeleccionado && litrosInput > parseFloat(tanqueSeleccionado.stockAlmacen);
     const botonBloqueado = capacidadFaltante || excedeCapacidadEquipo || excedeInventarioBase;
@@ -212,32 +316,28 @@ export default function CargaCombustibleForm({
                         {...form.getInputProps('activoId')}
                     />
 
-                    {/* ALERTA INFORMATIVA AZUL (Solo si tiene capacidad) */}
                     {datosTanqueActual && !capacidadFaltante && (
                         <Alert variant="light" color="blue" icon={<IconInfoCircle size={16} />} py="xs">
                             <Group justify="space-between">
                                 <Text size="sm">Capacidad: <b>{datosTanqueActual.capacidad}L</b></Text>
-                                <Text size="sm">Nivel Actual: <b>{datosTanqueActual.nivel}L</b></Text>
-                                <Text size="sm" c="blue.8">Libre: <b>{datosTanqueActual.espacioLibre}L</b></Text>
+                                <Text size="sm">Nivel Actual: <b>{datosTanqueActual.nivel.toFixed(2)}L</b></Text>
+                                <Text size="sm" c="blue.8">Libre: <b>{datosTanqueActual.espacioLibre.toFixed(2)}L</b></Text>
                             </Group>
                         </Alert>
                     )}
 
-                    {/* 🔥 ALERTA ROJA 1: SUPERA CAPACIDAD DEL EQUIPO 🔥 */}
                     {excedeCapacidadEquipo && (
                         <Alert variant="filled" color="red" icon={<IconAlertCircle size={16} />}>
                             No puedes meter {litrosInput} litros. El equipo solo tiene espacio para {datosTanqueActual.espacioLibre.toFixed(2)} L.
                         </Alert>
                     )}
 
-                    {/* 🔥 ALERTA ROJA 2: SUPERA INVENTARIO DE LA BASE 🔥 */}
                     {excedeInventarioBase && (
                         <Alert variant="filled" color="red" icon={<IconAlertCircle size={16} />}>
                             No hay suficiente gasoil en la base. Solo quedan {parseFloat(tanqueSeleccionado.stockAlmacen).toFixed(2)} L disponibles.
                         </Alert>
                     )}
 
-                    {/* FORMULARIO NARANJA PARA FIJAR CAPACIDAD RÁPIDA */}
                     {capacidadFaltante && (
                         <Paper withBorder p="md" bg="orange.0" style={{ borderColor: '#ffe066' }}>
                             <Group align="flex-end">
@@ -262,7 +362,7 @@ export default function CargaCombustibleForm({
                         </Paper>
                     )}
 
-                    <Divider label="Detalles del Origen" labelPosition="center" />
+                    <Divider label="Aforo y Despacho" labelPosition="center" />
 
                     <Group grow align="flex-start">
                         <Select
@@ -300,11 +400,63 @@ export default function CargaCombustibleForm({
                         )}
                     </Group>
 
+                    {/* 🔥 EL SWITCH DE LA VARA (INTELIGENTE) 🔥 */}
+                    <Paper p="md" bg="blue.0" radius="md" style={{ border: '1px solid #a5d8ff' }}>
+                        <Group justify="space-between" align="flex-start">
+                            <div>
+                                <Switch 
+                                    label={<Text fw={600} c="blue.9">Utilizar Aforo por Vara</Text>}
+                                    description="Calcula el consumo real midiendo el tanque antes de surtir"
+                                    checked={form.values.usarAforoVara}
+                                    onChange={(event) => form.setFieldValue('usarAforoVara', event.currentTarget.checked)}
+                                    disabled={!datosTanqueActual?.configTanque}
+                                    color="blue"
+                                    size="sm"
+                                />
+                                {!datosTanqueActual?.configTanque && form.values.activoId && (
+                                    <Text size="xs" c="red" mt="xs">Debe configurar la geometría del tanque en el perfil del activo para usar la vara.</Text>
+                                )}
+                            </div>
+                            
+                            {/* Insignia que muestra qué método está usando por debajo */}
+                            {form.values.usarAforoVara && resultadoAforo.metodo && (
+                                <Alert p="xs" color={resultadoAforo.metodo === 'aforo' ? 'teal' : 'grape'} variant="light" style={{ padding: '4px 8px' }}>
+                                    <Group gap="xs">
+                                        {resultadoAforo.metodo === 'aforo' ? <IconListNumbers size={14} /> : <IconMathSymbols size={14} />}
+                                        <Text size="xs" fw={700}>
+                                            {resultadoAforo.metodo === 'aforo' ? 'Usando Puntos de Ref.' : 'Usando Geometría Pura'}
+                                        </Text>
+                                    </Group>
+                                </Alert>
+                            )}
+                        </Group>
+
+                        {form.values.usarAforoVara && (
+                            <Group mt="md" align="flex-end">
+                                <NumberInput 
+                                    label="Centímetros mojados (Antes de surtir)" 
+                                    placeholder="Ej: 25" 
+                                    suffix=" cm" 
+                                    min={1} 
+                                    style={{ flex: 1 }}
+                                    leftSection={<IconRulerMeasure size={16} />}
+                                    {...form.getInputProps('centimetrosVara')} 
+                                />
+                                <Paper p="xs" px="md" withBorder bg="white" shadow="xs">
+                                    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Litros Restantes (Aforo)</Text>
+                                    <Text fw={900} size="xl" c={resultadoAforo.metodo === 'aforo' ? 'teal.8' : 'grape.8'}>
+                                        {resultadoAforo.litros} L
+                                    </Text>
+                                </Paper>
+                            </Group>
+                        )}
+                    </Paper>
+
                     <Divider label="Datos de Consumo" labelPosition="center" />
 
                     <Group grow align="flex-start">
                         <NumberInput
-                            label="Litros Despachados"
+                            label="Litros Despachados (Surtidor)"
                             placeholder="Ej: 150"
                             suffix=" L"
                             min={1}
@@ -322,25 +474,23 @@ export default function CargaCombustibleForm({
                         />
                     </Group>
 
-                    <Paper p="md" bg="gray.0" radius="md">
-                        <Switch
-                            label="¿Se llenó el tanque a su máxima capacidad? (Full)"
-                            description="Requerido para el cálculo exacto de rendimiento (Km/L)"
-                            checked={form.values.fullTanque}
-                            onChange={(event) => form.setFieldValue('fullTanque', event.currentTarget.checked)}
-                            color="blue"
-                            size="md"
-                        />
-                    </Paper>
+                    {/* Si usa la vara, ocultamos el switch de "Full" porque el aforo ya cierra el ciclo exacto */}
+                    {!form.values.usarAforoVara && (
+                        <Paper p="md" bg="gray.0" radius="md">
+                            <Switch
+                                label="¿Se llenó el tanque a su máxima capacidad? (Full)"
+                                description="Requerido para el cálculo exacto de rendimiento (Km/L)"
+                                checked={form.values.fullTanque}
+                                onChange={(event) => form.setFieldValue('fullTanque', event.currentTarget.checked)}
+                                color="blue"
+                                size="md"
+                            />
+                        </Paper>
+                    )}
 
                     <Group justify="right" mt="md">
                         {onCancel && <Button variant="default" onClick={onCancel}>Cancelar</Button>}
-                        <Button 
-                            type="submit" 
-                            color="blue" 
-                            leftSection={<IconGasStation size={18} />} 
-                            disabled={botonBloqueado}
-                        >
+                        <Button type="submit" color="blue" leftSection={<IconGasStation size={18} />} disabled={botonBloqueado}>
                             Confirmar Despacho
                         </Button>
                     </Group>

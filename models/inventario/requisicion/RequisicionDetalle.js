@@ -10,6 +10,10 @@ const RequisicionDetalle = sequelize.define('RequisicionDetalle', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true
   },
+  descripcionLibre: { // Por si el producto no está en el catálogo de Consumibles, o quieres dar más detalles
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   estado: {
     type: DataTypes.ENUM('Pendiente', 'Ordenada', 'Recibida', 'Cancelada'),
     defaultValue: 'Pendiente'

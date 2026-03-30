@@ -24,7 +24,7 @@ export async function GET() {
                 {
                     model: Activo,
                     as: 'activo',
-                    attributes: ['id', 'codigoInterno', 'tipoActivo'], // Quitamos 'nombre'
+                    attributes: ['id', 'codigoInterno', 'tipoActivo'], 
                     include: [
                         {
                             model: VehiculoInstancia,
@@ -47,7 +47,6 @@ export async function GET() {
             order: [['fecha', 'DESC']]
         });
 
-        // Formatear los datos para que el frontend reciba algo limpio
         const dataFormateada = cargas.map(carga => {
             const cargaJSON = carga.toJSON();
             let descripcionEquipo = 'Equipo Genérico';
@@ -83,13 +82,19 @@ export async function GET() {
     }
 }
 
-
+// ----------------------------------------------------------------------
+// POST: Registrar un nuevo despacho de combustible
+// ----------------------------------------------------------------------
 export async function POST(request) {
     const t = await sequelize.transaction();
 
     try {
         const body = await request.json();
-        const { activoId, origen, consumibleOrigenId, litros, costoTotal, kilometrajeAlMomento, fullTanque, registradoPorId } = body;
+        const { 
+            activoId, origen, consumibleOrigenId, litros, costoTotal, 
+            kilometrajeAlMomento, fullTanque, registradoPorId, 
+            usarAforoVara, centimetrosVara, nivelAforadoAntesDeSurtir 
+        } = body;
 
         const activo = await Activo.findByPk(activoId, { transaction: t });
         if (!activo) throw new Error('El equipo seleccionado no existe.');
@@ -101,7 +106,7 @@ export async function POST(request) {
         const nivelActualActivo = parseFloat(activo.nivelCombustible || 0);
         
         if (capacidadActivo <= 0) {
-            throw new Error('El equipo no tiene capacidad de tanque registrada. Fíjela primero.');
+            throw new Error('El equipo no tiene capacidad de tanque registrada. Fíjela primero en su perfil.');
         }
 
         const espacioDisponibleActivo = capacidadActivo - nivelActualActivo;
@@ -112,6 +117,7 @@ export async function POST(request) {
 
         let costoAlMomentoSalida = 0; 
 
+        // 🔥 DESCUENTO DE INVENTARIO INTERNO 🔥
         if (origen === 'interno') {
             const tanque = await Consumible.findByPk(consumibleOrigenId, { transaction: t });
             
@@ -134,8 +140,10 @@ export async function POST(request) {
             }, { transaction: t });
         }
 
+        // 🔥 CÁLCULO DE RENDIMIENTO (BIFURCACIÓN MATEMÁTICA Y AFORO) 🔥
         let kilometrosRecorridos = null;
         let rendimientoCalculado = null;
+        let esTanqueFull = fullTanque; // Variable dinámica
         
         const cargaAnterior = await CargaCombustible.findOne({
             where: { activoId, fullTanque: true },
@@ -145,7 +153,31 @@ export async function POST(request) {
 
         if (cargaAnterior && parseFloat(kilometrajeAlMomento) > parseFloat(cargaAnterior.kilometrajeAlMomento)) {
             kilometrosRecorridos = parseFloat(kilometrajeAlMomento) - parseFloat(cargaAnterior.kilometrajeAlMomento);
-            rendimientoCalculado = parseFloat((kilometrosRecorridos / litrosDespachados).toFixed(2));
+            
+            if (usarAforoVara && nivelAforadoAntesDeSurtir !== null) {
+                // 🔹 ESCENARIO A: AFORO POR VARA
+                const consumoReal = nivelActualActivo - parseFloat(nivelAforadoAntesDeSurtir);
+                
+                if (consumoReal > 0) {
+                    if (activo.maquinaId || activo.remolqueId) {
+                        rendimientoCalculado = parseFloat((consumoReal / kilometrosRecorridos).toFixed(2)); // L/Hr
+                    } else {
+                        rendimientoCalculado = parseFloat((kilometrosRecorridos / consumoReal).toFixed(2)); // Km/L
+                    }
+                }
+                esTanqueFull = true; // El aforo cierra el ciclo de medición, lo tratamos como "Full" para la próxima vez
+            } 
+            else if (fullTanque && cargaAnterior.fullTanque) {
+                // 🔹 ESCENARIO B: TANQUEO FULL A FULL (Tradicional)
+                if (activo.maquinaId || activo.remolqueId) {
+                    rendimientoCalculado = parseFloat((litrosDespachados / kilometrosRecorridos).toFixed(2)); // L/Hr
+                } else {
+                    rendimientoCalculado = parseFloat((kilometrosRecorridos / litrosDespachados).toFixed(2)); // Km/L
+                }
+            }
+        } else if (usarAforoVara) {
+            // Si es la primera vez pero usa vara, establecemos que cerró ciclo
+            esTanqueFull = true;
         }
 
         const nuevoKilometraje = await Kilometraje.create({
@@ -154,7 +186,8 @@ export async function POST(request) {
             fecha_registro: new Date()
         }, { transaction: t });
 
-        const nuevaCarga = await CargaCombustible.create({
+        // 🔥 GUARDADO DEL REGISTRO HISTÓRICO 🔥
+        await CargaCombustible.create({
             activoId,
             fecha: new Date(),
             origen,
@@ -164,19 +197,28 @@ export async function POST(request) {
             kilometrajeAlMomento: parseFloat(kilometrajeAlMomento),
             kilometrosRecorridos,
             rendimientoCalculado,
-            fullTanque,
+            fullTanque: esTanqueFull,
             kilometrajeId: nuevoKilometraje.id,
-            registradoPorId: registradoPorId || null 
+            registradoPorId: registradoPorId || null,
+            // Guardamos la evidencia de la vara para auditoría futura
+            centimetrosVara: usarAforoVara ? parseFloat(centimetrosVara) : null,
+            litrosAforados: usarAforoVara ? parseFloat(nivelAforadoAntesDeSurtir) : null
         }, { transaction: t });
 
-        // 🔥 ACTUALIZAMOS EL NIVEL DE COMBUSTIBLE DEL EQUIPO 🔥
-        if (fullTanque) {
-            activo.nivelCombustible = capacidadActivo; // Si lo llenó a tope, asumimos el 100%
+        // 🔥 ACTUALIZAMOS EL NIVEL DE COMBUSTIBLE EN EL CAMIÓN 🔥
+        if (usarAforoVara && nivelAforadoAntesDeSurtir !== null) {
+            // Corregimos la realidad del tanque con la vara + lo despachado
+            activo.nivelCombustible = parseFloat(nivelAforadoAntesDeSurtir) + litrosDespachados;
+        } else if (fullTanque) {
+            activo.nivelCombustible = capacidadActivo; 
         } else {
             activo.nivelCombustible = nivelActualActivo + litrosDespachados;
         }
-        await activo.save({ transaction: t });
 
+        // Seguridad para no pasarnos del límite por errores de tipeo
+        if (activo.nivelCombustible > capacidadActivo) activo.nivelCombustible = capacidadActivo;
+
+        await activo.save({ transaction: t });
         await t.commit();
         
         return NextResponse.json({ success: true, message: 'Despacho registrado correctamente.' }, { status: 201 });
@@ -184,6 +226,76 @@ export async function POST(request) {
     } catch (error) {
         await t.rollback();
         console.error("Error procesando carga de combustible:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+}
+
+// ----------------------------------------------------------------------
+// DELETE: Eliminar un registro y revertir inventario
+// ----------------------------------------------------------------------
+export async function DELETE(request, { params }) {
+    const t = await sequelize.transaction();
+
+    try {
+        const { id } = await params;
+
+        const carga = await CargaCombustible.findByPk(id, { transaction: t });
+        
+        if (!carga) {
+            throw new Error('El registro de combustible no existe.');
+        }
+
+        // Reversión de Inventario Interno
+        if (carga.origen === 'interno' && carga.consumibleOrigenId) {
+            const tanque = await Consumible.findByPk(carga.consumibleOrigenId, { transaction: t });
+            
+            if (tanque) {
+                tanque.stockAlmacen = parseFloat(tanque.stockAlmacen) + parseFloat(carga.litros);
+                await tanque.save({ transaction: t });
+
+                const salidaAEliminar = await SalidaInventario.findOne({
+                    where: {
+                        consumibleId: carga.consumibleOrigenId,
+                        activoId: carga.activoId,
+                        cantidad: carga.litros
+                    },
+                    order: [['createdAt', 'DESC']],
+                    transaction: t
+                });
+
+                if (salidaAEliminar) {
+                    await salidaAEliminar.destroy({ transaction: t });
+                }
+            }
+        }
+
+        // 🔥 REVERSIÓN DEL NIVEL DE COMBUSTIBLE EN EL ACTIVO 🔥
+        const activo = await Activo.findByPk(carga.activoId, { transaction: t });
+        if (activo) {
+            const nivelActual = parseFloat(activo.nivelCombustible || 0);
+            activo.nivelCombustible = Math.max(0, nivelActual - parseFloat(carga.litros));
+            await activo.save({ transaction: t });
+        }
+
+        if (carga.kilometrajeId) {
+            await Kilometraje.destroy({ 
+                where: { id: carga.kilometrajeId }, 
+                transaction: t 
+            });
+        }
+
+        await carga.destroy({ transaction: t });
+
+        await t.commit();
+        
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Despacho eliminado. Salida de inventario anulada y gasoil restituido.' 
+        });
+
+    } catch (error) {
+        await t.rollback();
+        console.error("Error eliminando carga de combustible:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

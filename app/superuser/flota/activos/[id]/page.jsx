@@ -17,7 +17,8 @@ import {
     IconGauge, IconX, IconEdit,
     IconFileText, IconRoute, IconCash,
     IconEngine, IconDashboard, IconShieldCheck, IconPhoto,
-    IconDownload, IconPrinter, IconMaximize
+    IconDownload, IconPrinter, IconMaximize,
+    IconGasStation
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,7 @@ import ModalCrearConsumible from '../components/ModalCrearConsumible';
 import ModalDetallarFalla from '../components/ModalDetallarFalla';
 import ModalVistaFalla from '../components/ModalVistaFalla';
 import ModalCargarCombustible from '../../combustible/components/ModalCargarCombustible';
+import TabRendimiento from './components/TabRendimiento';
 
 
 
@@ -860,37 +862,7 @@ export default function DetalleActivoPage({ params }) {
 
                                 {/* 7. TAB: USO */}
                                 <Tabs.Panel value="uso">
-                                    <Group justify="space-between" align="center" mb="xl">
-                                        <Group>
-                                            <ThemeIcon size="lg" radius="md" variant="filled" color="dark.8">
-                                                <IconChartLine size={20} color="#fab005" />
-                                            </ThemeIcon>
-                                            <Title order={3} c="dark.9" tt="uppercase">Telemetría de Rendimiento</Title>
-                                        </Group>
-                                        <Button
-                                            color="blue.7"
-                                            radius="sm"
-                                            leftSection={<IconGasStation size={18} />}
-                                            onClick={() => setModalCombustibleOpened(true)}
-                                        >
-                                            Registrar Carga
-                                        </Button>
-                                    </Group>
-
-                                    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="xl">
-                                        <Paper withBorder p="xl" radius="sm" shadow="sm">
-                                            <Text fw={900} size="md" c="dark.6" tt="uppercase" mb="xl" style={{ borderBottom: '2px solid #228be6', display: 'inline-block', paddingBottom: '4px' }}>
-                                                Curva de Desgaste (Kilometraje)
-                                            </Text>
-                                            <AreaChart h={280} data={dataKilometraje} dataKey="fecha" series={[{ name: 'valor', color: 'blue.6' }]} curveType="monotone" withGradient />
-                                        </Paper>
-                                        <Paper withBorder p="xl" radius="sm" shadow="sm">
-                                            <Text fw={900} size="md" c="dark.6" tt="uppercase" mb="xl" style={{ borderBottom: '2px solid #20c997', display: 'inline-block', paddingBottom: '4px' }}>
-                                                Rendimiento de Combustible (Km/L)
-                                            </Text>
-                                            <BarChart h={280} data={dataEficiencia} dataKey="fecha" series={[{ name: 'rendimiento', color: 'teal.6' }]} radius={4} />
-                                        </Paper>
-                                    </SimpleGrid>
+                                    <TabRendimiento activo={activo} onActualizado={fetchData} />
                                 </Tabs.Panel>
                             </Tabs>
                         </Paper>

@@ -10,18 +10,32 @@ const Maquina = sequelize.define('Maquina', {
   capacidadCucharon: { type: DataTypes.FLOAT, allowNull: true },
   alcanceMaximo: { type: DataTypes.FLOAT, allowNull: true },
   traccion: { type: DataTypes.ENUM('oruga', 'ruedas'), allowNull: true },
+  // ✨ VARIABLES DE RENDIMIENTO POR HORA (HORÓMETRO) ✨
   capacidadTanqueEstandar: {
-        type: DataTypes.FLOAT,
-        allowNull: true,
-    },
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  consumoTeoricoTrabajo: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  consumoTeoricoRalenti: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  // ✨ CONFIGURACIÓN GEOMÉTRICA ✨
+  configuracionTanque: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
   tipo: { type: DataTypes.ENUM('Retroexcavadora', 'Taladro', 'Montacargas', 'Jumbo', 'Grua'), allowNull: false }, // Ej: "soldadora"
   potencia: { type: DataTypes.STRING, allowNull: true }
 });
 
 Maquina.associate = (models) => {
-  Maquina.hasMany(models.MaquinaInstancia, { foreignKey: 'maquinaId', as: 'instancias' , onDelete: 'CASCADE' });
-  Maquina.hasMany(models.Subsistema, { foreignKey: 'maquinaId', as: 'subsistemas' , onDelete: 'CASCADE' });
-  
+  Maquina.hasMany(models.MaquinaInstancia, { foreignKey: 'maquinaId', as: 'instancias', onDelete: 'CASCADE' });
+  Maquina.hasMany(models.Subsistema, { foreignKey: 'maquinaId', as: 'subsistemas', onDelete: 'CASCADE' });
+
 }
 
 module.exports = Maquina;

@@ -33,7 +33,11 @@ const CargaCombustible = sequelize.define('CargaCombustible', {
     fullTanque: { 
         type: DataTypes.BOOLEAN,
         defaultValue: true, 
-    }
+    },
+    centimetrosVara: { type: DataTypes.FLOAT, allowNull: true, 
+    },
+  litrosAforados: { type: DataTypes.FLOAT, allowNull: true, 
+},
 });
 
 // Relaciones

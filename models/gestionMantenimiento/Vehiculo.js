@@ -13,23 +13,27 @@ const Vehiculo = sequelize.define('Vehiculo', {
   capacidadArrastre: { type: DataTypes.FLOAT, allowNull: true },
   potenciaMotor: { type: DataTypes.FLOAT, allowNull: true },
   capacidadTanqueEstandar: {
-        type: DataTypes.FLOAT,
-        allowNull: true,
-    },
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
   pesoMaximoCombinado: { type: DataTypes.FLOAT, allowNull: true },
   tipoCombustible: { type: DataTypes.ENUM('Gasolina', 'Diesel', 'Eléctrico', 'Híbrido', "Gas"), allowNull: true },
   consumoTeoricoLleno: { // Consumo teórico en litros por kilómetro cuando el vehículo está cargado al máximo
-    type: DataTypes.FLOAT, 
+    type: DataTypes.FLOAT,
     allowNull: true,
   },
   consumoTeoricoVacio: { // Consumo teórico en litros por kilómetro cuando el vehículo está vacío
-    type: DataTypes.FLOAT, 
+    type: DataTypes.FLOAT,
     allowNull: true,
   },
+  configuracionTanque: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  }
 });
 
 Vehiculo.associate = (models) => {
-  Vehiculo.hasMany(models.VehiculoInstancia, { foreignKey: 'vehiculoId', as: 'instancias' , onDelete: 'CASCADE' });
+  Vehiculo.hasMany(models.VehiculoInstancia, { foreignKey: 'vehiculoId', as: 'instancias', onDelete: 'CASCADE' });
   Vehiculo.hasMany(models.Subsistema, { foreignKey: 'vehiculoId', as: 'subsistemas', onDelete: 'CASCADE' });
 }
 module.exports = Vehiculo;

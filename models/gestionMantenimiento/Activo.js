@@ -85,7 +85,6 @@ const Activo = sequelize.define('Activo', {
   horasAnuales: {
     type: DataTypes.INTEGER,
     defaultValue: 2400, // Puedes poner 2000 o 2400 como base
-    comment: 'Horas estimadas de trabajo al año exclusivas de este activo'
   },
   matrizCostoId: {
     type: DataTypes.INTEGER,
@@ -100,7 +99,11 @@ const Activo = sequelize.define('Activo', {
         type: DataTypes.FLOAT,
         allowNull: false,
         defaultValue: 0,
-    }
+    },
+    configuracionTanque: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+    },
 }, {
   tableName: 'Activos',
   timestamps: true,
