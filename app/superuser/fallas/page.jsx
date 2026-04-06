@@ -102,7 +102,14 @@ export default function PanelFallas() {
     const iniciarCreacionLote = () => {
         if (seleccionadas.length === 0) return notifications.show({ message: 'Seleccione al menos una falla', color: 'orange' });
         const iniciales = {};
-        seleccionadas.forEach(id => { iniciales[id] = [{ consumibleId: '', cantidad: 1 }]; });
+        seleccionadas.forEach(id => { 
+            iniciales[id] = [{ 
+                modo: 'libre', // 'catalogo' o 'libre'
+                consumibleId: '', 
+                descripcionLibre: '', 
+                cantidad: 1 
+            }]; 
+        });
         setRepuestosAsignados(iniciales);
         setModalBatchOpened(true);
     };
@@ -110,7 +117,7 @@ export default function PanelFallas() {
     const agregarLineaRepuesto = (fallaId) => {
         setRepuestosAsignados(prev => ({ 
             ...prev, 
-            [fallaId]: [...prev[fallaId], { consumibleId: '', cantidad: 1 }] 
+            [fallaId]: [...prev[fallaId], { modo: 'libre', consumibleId: '', descripcionLibre: '', cantidad: 1 }] 
         }));
     };
 
@@ -136,7 +143,12 @@ export default function PanelFallas() {
             const payloads = seleccionadas.map(fallaId => {
                 const falla = fallasOrdenadas.find(f => f.id === fallaId);
                 const lineas = repuestosAsignados[fallaId];
-                lineas.forEach(l => { if (!l.consumibleId) valido = false; });
+                
+                // Validación: Si es catálogo, necesita ID. Si es libre, necesita texto.
+                lineas.forEach(l => { 
+                    if (l.modo === 'catalogo' && !l.consumibleId) valido = false; 
+                    if (l.modo === 'libre' && (!l.descripcionLibre || l.descripcionLibre.trim() === '')) valido = false; 
+                });
 
                 return {
                     solicitadoPorId: userId,
@@ -144,13 +156,15 @@ export default function PanelFallas() {
                     justificacion: `Solución para hallazgo: ${falla.descripcion}`,
                     prioridad: falla.impacto === 'No Operativo' ? 'Critica' : (falla.impacto === 'Advertencia' ? 'Alta' : 'Media'),
                     detalles: lineas.map(l => ({ 
-                        consumibleId: parseInt(l.consumibleId), 
+                        // 🔥 LA MAGIA: Mandamos null si no aplica, y el valor si aplica 🔥
+                        consumibleId: l.modo === 'catalogo' ? parseInt(l.consumibleId) : null, 
+                        descripcionLibre: l.modo === 'libre' ? l.descripcionLibre : null,
                         cantidadSolicitada: l.cantidad 
                     }))
                 };
             });
 
-            if (!valido) throw new Error("Asegúrese de seleccionar un repuesto en todas las líneas creadas.");
+            if (!valido) throw new Error("Asegúrese de llenar la descripción o seleccionar el repuesto en todas las líneas.");
 
             const res = await fetch('/api/compras/requisiciones/lote', {
                 method: 'POST',
@@ -477,35 +491,58 @@ export default function PanelFallas() {
                                         
                                         <Divider my="sm" variant="dashed" />
                                         
+                                        {/* Dentro del modalBatchOpened, en el mapeo de lineas... */}
                                         {lineas.map((linea, idx) => (
-                                            <Group key={idx} align="flex-end" mb="sm" wrap={isMobile ? "wrap" : "nowrap"}>
-                                                <Select 
-                                                    label={idx === 0 ? "Repuesto a Solicitar" : ""} 
-                                                    placeholder="Buscar repuesto..." 
-                                                    data={consumibles} 
-                                                    searchable 
-                                                    w={isMobile ? '100%' : 300} 
-                                                    value={linea.consumibleId} 
-                                                    onChange={(val) => actualizarLinea(fallaId, idx, 'consumibleId', val)}
-                                                />
-                                                <NumberInput 
-                                                    label={idx === 0 ? "Cant." : ""} 
-                                                    min={1} 
-                                                    w={isMobile ? 100 : 80} 
-                                                    value={linea.cantidad} 
-                                                    onChange={(val) => actualizarLinea(fallaId, idx, 'cantidad', val)}
-                                                />
-                                                <ActionIcon 
-                                                    color="red" 
-                                                    variant="subtle" 
-                                                    size="lg" 
-                                                    mb={4} 
-                                                    onClick={() => eliminarLineaRepuesto(fallaId, idx)} 
-                                                    disabled={lineas.length === 1}
-                                                >
-                                                    <IconTrash size={18} />
-                                                </ActionIcon>
-                                            </Group>
+                                            <Paper key={idx} withBorder p="sm" mb="sm" radius="md" bg="white">
+                                                <Group justify="space-between" mb="xs">
+                                                    <Text size="xs" fw={700} c="dimmed" tt="uppercase">Línea de Requisición {idx + 1}</Text>
+                                                    <ActionIcon color="red" variant="subtle" size="sm" onClick={() => eliminarLineaRepuesto(fallaId, idx)} disabled={lineas.length === 1}>
+                                                        <IconTrash size={16} />
+                                                    </ActionIcon>
+                                                </Group>
+                                                
+                                                <Group align="flex-start" wrap={isMobile ? "wrap" : "nowrap"}>
+                                                    <Select 
+                                                        label="Tipo de Solicitud"
+                                                        data={[{ value: 'libre', label: 'Especificación Abierta' }, { value: 'catalogo', label: 'Ítem Específico del Catálogo' }]}
+                                                        value={linea.modo}
+                                                        onChange={(val) => {
+                                                            actualizarLinea(fallaId, idx, 'modo', val);
+                                                            actualizarLinea(fallaId, idx, 'consumibleId', '');
+                                                            actualizarLinea(fallaId, idx, 'descripcionLibre', '');
+                                                        }}
+                                                        w={isMobile ? '100%' : 180}
+                                                    />
+
+                                                    {linea.modo === 'catalogo' ? (
+                                                        <Select 
+                                                            label="Repuesto Específico"
+                                                            placeholder="Buscar en inventario..." 
+                                                            data={consumibles} 
+                                                            searchable 
+                                                            style={{ flex: 1 }}
+                                                            value={linea.consumibleId} 
+                                                            onChange={(val) => actualizarLinea(fallaId, idx, 'consumibleId', val)}
+                                                        />
+                                                    ) : (
+                                                        <TextInput 
+                                                            label="Especificación Técnica"
+                                                            placeholder="Ej: Batería 32MR 1100A 12V (Cualquier marca)" 
+                                                            style={{ flex: 1 }}
+                                                            value={linea.descripcionLibre} 
+                                                            onChange={(e) => actualizarLinea(fallaId, idx, 'descripcionLibre', e.currentTarget.value)}
+                                                        />
+                                                    )}
+
+                                                    <NumberInput 
+                                                        label="Cant." 
+                                                        min={1} 
+                                                        w={isMobile ? 100 : 80} 
+                                                        value={linea.cantidad} 
+                                                        onChange={(val) => actualizarLinea(fallaId, idx, 'cantidad', val)}
+                                                    />
+                                                </Group>
+                                            </Paper>
                                         ))}
                                         
                                         <Button variant="subtle" color="teal" size="xs" leftSection={<IconPlus size={14}/>} onClick={() => agregarLineaRepuesto(fallaId)}>

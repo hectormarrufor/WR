@@ -1,5 +1,5 @@
 // app/api/cron-jobs/services.js
-import { Op } from 'sequelize';
+import { Op, where } from 'sequelize';
 import axios from 'axios';
 import https from 'https';
 import * as cheerio from 'cheerio';
@@ -243,6 +243,7 @@ export async function checkHREvents() {
     // Traemos empleados activos con sus documentos
     const empleados = await Empleado.findAll({
         attributes: ['id', 'nombre', 'apellido', 'fechaNacimiento', 'fechaIngreso'],
+        where: { estado: 'activo' },
         include: [{
             model: DocumentoEmpleado,
             as: 'documentos',
@@ -261,7 +262,7 @@ export async function checkHREvents() {
         if (daysToBday >= 0 && daysToBday <= 4) {
             notifications.push({
                 type: 'CUMPLE',
-                msg: `🎂 ${emp.nombre} ${emp.apellido} cumple ${getYearsDiff(emp.fechaNacimiento, today)+1} años ${daysToBday < 1 ? 'HOY' : 'en ' + Math.ceil(daysToBday) + ' días'}.`,
+                msg: `🎂 ${emp.nombre} ${emp.apellido} cumple ${getYearsDiff(emp.fechaNacimiento, today)+1} años ${daysToBday == 1 ? 'MAÑANA' : daysToBday < 1 ? 'HOY' : 'en ' + (Math.ceil(daysToBday) - 1) + ' días'}.`,
                 id: emp.id
             });
         }

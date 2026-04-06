@@ -143,7 +143,7 @@ export async function POST(request) {
         // 🔥 CÁLCULO DE RENDIMIENTO (BIFURCACIÓN MATEMÁTICA Y AFORO) 🔥
         let kilometrosRecorridos = null;
         let rendimientoCalculado = null;
-        let esTanqueFull = fullTanque; // Variable dinámica
+        let esTanqueFull = fullTanque; 
         
         const cargaAnterior = await CargaCombustible.findOne({
             where: { activoId, fullTanque: true },
@@ -155,67 +155,82 @@ export async function POST(request) {
             kilometrosRecorridos = parseFloat(kilometrajeAlMomento) - parseFloat(cargaAnterior.kilometrajeAlMomento);
             
             if (usarAforoVara && nivelAforadoAntesDeSurtir !== null) {
-                // 🔹 ESCENARIO A: AFORO POR VARA
                 const consumoReal = nivelActualActivo - parseFloat(nivelAforadoAntesDeSurtir);
-                
                 if (consumoReal > 0) {
-                    if (activo.maquinaId || activo.remolqueId) {
-                        rendimientoCalculado = parseFloat((consumoReal / kilometrosRecorridos).toFixed(2)); // L/Hr
-                    } else {
-                        rendimientoCalculado = parseFloat((kilometrosRecorridos / consumoReal).toFixed(2)); // Km/L
-                    }
+                    if (activo.maquinaId || activo.remolqueId) rendimientoCalculado = parseFloat((consumoReal / kilometrosRecorridos).toFixed(2)); 
+                    else rendimientoCalculado = parseFloat((kilometrosRecorridos / consumoReal).toFixed(2)); 
                 }
-                esTanqueFull = true; // El aforo cierra el ciclo de medición, lo tratamos como "Full" para la próxima vez
+                esTanqueFull = true; 
             } 
             else if (fullTanque && cargaAnterior.fullTanque) {
-                // 🔹 ESCENARIO B: TANQUEO FULL A FULL (Tradicional)
-                if (activo.maquinaId || activo.remolqueId) {
-                    rendimientoCalculado = parseFloat((litrosDespachados / kilometrosRecorridos).toFixed(2)); // L/Hr
-                } else {
-                    rendimientoCalculado = parseFloat((kilometrosRecorridos / litrosDespachados).toFixed(2)); // Km/L
-                }
+                if (activo.maquinaId || activo.remolqueId) rendimientoCalculado = parseFloat((litrosDespachados / kilometrosRecorridos).toFixed(2)); 
+                else rendimientoCalculado = parseFloat((kilometrosRecorridos / litrosDespachados).toFixed(2)); 
             }
         } else if (usarAforoVara) {
-            // Si es la primera vez pero usa vara, establecemos que cerró ciclo
             esTanqueFull = true;
         }
 
-        const nuevoKilometraje = await Kilometraje.create({
-            activoId,
-            valor: parseFloat(kilometrajeAlMomento),
-            fecha_registro: new Date()
-        }, { transaction: t });
+        // ✨ MACHINE LEARNING MANUAL: GUARDAR EL PUNTO EMPÍRICO EN LA PLANTILLA ✨
+        const { guardarNuevoPuntoAforo } = body;
+        
+        if (guardarNuevoPuntoAforo && centimetrosVara && nivelAforadoAntesDeSurtir !== null) {
+            // Determinamos dónde vive la configuración (si en la plantilla o en el activo directamente)
+            let modeloDestino = null;
+            let idDestino = null;
+
+            if (activo.vehiculoId) { modeloDestino = Vehiculo; idDestino = activo.vehiculoId; }
+            else if (activo.maquinaId) { modeloDestino = Maquina; idDestino = activo.maquinaId; }
+            else if (activo.remolqueId) { modeloDestino = Remolque; idDestino = activo.remolqueId; }
+            else { modeloDestino = Activo; idDestino = activo.id; } // Aftermarket puro
+
+            const registroConfig = await modeloDestino.findByPk(idDestino, { transaction: t });
+
+            if (registroConfig && registroConfig.configuracionTanque) {
+                let configActual = { ...registroConfig.configuracionTanque };
+                
+                // Si no existía el array, lo creamos
+                if (!configActual.tablaAforo) configActual.tablaAforo = [];
+                
+                // Verificamos si ya existe ese centímetro para sobreescribirlo o lo agregamos
+                const index = configActual.tablaAforo.findIndex(p => p.cm === parseFloat(centimetrosVara));
+                
+                // NOTA IMPORTANTE: Los litros que guardamos aquí deben ser POR TANQUE (unidad), no el total.
+                // Si el chuto tiene 2 tanques, y midió 120L en total, guardamos 60L para la fórmula base.
+                const qtyTanques = parseInt(configActual.dimensiones?.cantidadTanques) || 1;
+                const litrosPorUnidad = parseFloat(nivelAforadoAntesDeSurtir) / qtyTanques;
+
+                if (index >= 0) {
+                    configActual.tablaAforo[index].litros = litrosPorUnidad;
+                } else {
+                    configActual.tablaAforo.push({ cm: parseFloat(centimetrosVara), litros: litrosPorUnidad });
+                }
+
+                // Guardamos el JSONB actualizado
+                registroConfig.configuracionTanque = configActual;
+                // Le decimos a Sequelize explícitamente que el JSON cambió para que lo impacte en DB
+                registroConfig.changed('configuracionTanque', true); 
+                await registroConfig.save({ transaction: t });
+            }
+        }
+
+        const nuevoKilometraje = await Kilometraje.create({ activoId, valor: parseFloat(kilometrajeAlMomento), fecha_registro: new Date() }, { transaction: t });
 
         // 🔥 GUARDADO DEL REGISTRO HISTÓRICO 🔥
         await CargaCombustible.create({
-            activoId,
-            fecha: new Date(),
-            origen,
+            activoId, fecha: new Date(), origen,
             consumibleOrigenId: origen === 'interno' ? consumibleOrigenId : null,
-            litros: litrosDespachados,
-            costoTotal: origen === 'externo' ? parseFloat(costoTotal) : null,
-            kilometrajeAlMomento: parseFloat(kilometrajeAlMomento),
-            kilometrosRecorridos,
-            rendimientoCalculado,
-            fullTanque: esTanqueFull,
-            kilometrajeId: nuevoKilometraje.id,
-            registradoPorId: registradoPorId || null,
-            // Guardamos la evidencia de la vara para auditoría futura
+            litros: litrosDespachados, costoTotal: origen === 'externo' ? parseFloat(costoTotal) : null,
+            kilometrajeAlMomento: parseFloat(kilometrajeAlMomento), kilometrosRecorridos, rendimientoCalculado,
+            fullTanque: esTanqueFull, kilometrajeId: nuevoKilometraje.id, registradoPorId: registradoPorId || null,
             centimetrosVara: usarAforoVara ? parseFloat(centimetrosVara) : null,
             litrosAforados: usarAforoVara ? parseFloat(nivelAforadoAntesDeSurtir) : null
         }, { transaction: t });
 
         // 🔥 ACTUALIZAMOS EL NIVEL DE COMBUSTIBLE EN EL CAMIÓN 🔥
-        if (usarAforoVara && nivelAforadoAntesDeSurtir !== null) {
-            // Corregimos la realidad del tanque con la vara + lo despachado
-            activo.nivelCombustible = parseFloat(nivelAforadoAntesDeSurtir) + litrosDespachados;
-        } else if (fullTanque) {
-            activo.nivelCombustible = capacidadActivo; 
-        } else {
-            activo.nivelCombustible = nivelActualActivo + litrosDespachados;
-        }
+        if (usarAforoVara && nivelAforadoAntesDeSurtir !== null) activo.nivelCombustible = parseFloat(nivelAforadoAntesDeSurtir) + litrosDespachados;
+        else if (fullTanque) activo.nivelCombustible = capacidadActivo; 
+        else activo.nivelCombustible = nivelActualActivo + litrosDespachados;
 
-        // Seguridad para no pasarnos del límite por errores de tipeo
         if (activo.nivelCombustible > capacidadActivo) activo.nivelCombustible = capacidadActivo;
 
         await activo.save({ transaction: t });
