@@ -116,7 +116,7 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
                 activoId: activo.id,
                 configuracionTanque,
                 propagateToTemplate: values.propagateToTemplate,
-                capacidadNeta: parseFloat(capacidadCalculada.neto)
+                capacidadNeta: parseFloat(capacidadCalculada.netoTotal)
             };
 
             const response = await fetch('/api/gestionMantenimiento/activos/guardar-geometria-tanque', {

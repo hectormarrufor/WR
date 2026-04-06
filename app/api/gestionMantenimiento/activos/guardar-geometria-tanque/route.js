@@ -9,8 +9,14 @@ export async function POST(request) {
         const body = await request.json();
         const { activoId, configuracionTanque, propagateToTemplate, capacidadNeta } = body;
 
-        if (!activoId || !configuracionTanque || capacidadNeta === undefined) {
-            throw new Error('Faltan datos obligatorios para calcular la geometría.');
+        // 🔥 ESCUDO VALIDATORIO 🔥
+        const capacidadFinal = parseFloat(capacidadNeta);
+        if (isNaN(capacidadFinal) || capacidadFinal <= 0) {
+            throw new Error('El sistema no recibió una capacidad matemática válida desde el formulario frontal. Verifique las dimensiones.');
+        }
+
+        if (!activoId || !configuracionTanque) {
+            throw new Error('Faltan datos obligatorios para guardar la geometría.');
         }
 
         // Buscamos el activo incluyendo sus instancias para saber a qué plantilla pertenece
@@ -29,8 +35,8 @@ export async function POST(request) {
         activo.configuracionTanque = configuracionTanque;
         activo.changed('configuracionTanque', true);
 
-        // 🔥 2. AUTO-COMPLETAMOS LA CAPACIDAD (Adiós al cuadro naranja) 🔥
-        activo.capacidadTanque = capacidadNeta;
+        // 2. AUTO-COMPLETAMOS LA CAPACIDAD CON EL VALOR VALIDADO
+        activo.capacidadTanque = capacidadFinal;
         
         // Prevención contra errores si el camión es nuevo y no tiene nivel
         if (activo.nivelCombustible === null || activo.nivelCombustible === undefined) {
