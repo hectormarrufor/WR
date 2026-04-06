@@ -12,10 +12,10 @@ import {
     IconSettings, IconCylinder, IconBox, IconPlus, IconTrash, IconListNumbers 
 } from '@tabler/icons-react';
 
-export default function ModalConfigurarTanque({ opened, onClose, activo, onSuccess }) {
+// 🔥 AÑADIMOS modoLocal 🔥
+export default function ModalConfigurarTanque({ opened, onClose, activo, onSuccess, modoLocal = false }) {
     const [loading, setLoading] = useState(false);
 
-    // Si ya tiene una configuración previa (sea heredada o propia), la cargamos
     const configInicial = activo?.configuracionTanque 
                        || activo?.vehiculoInstancia?.plantilla?.configuracionTanque 
                        || activo?.maquinaInstancia?.plantilla?.configuracionTanque 
@@ -30,13 +30,12 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
             tipoForma: configInicial.tipoForma || 'cilindrico',
             cantidadTanques: dimsIniciales.cantidadTanques || 1,
             largo: dimsIniciales.largo || '',
-            diametro: dimsIniciales.diametro || '', // Para cilíndrico
-            ancho: dimsIniciales.ancho || '',       // Para rectangular
-            alto: dimsIniciales.alto || '',         // Para rectangular
+            diametro: dimsIniciales.diametro || '', 
+            ancho: dimsIniciales.ancho || '',       
+            alto: dimsIniciales.alto || '',         
             factorDescuento: configInicial.factorDescuento ? configInicial.factorDescuento * 100 : 0,
             propagateToTemplate: true,
             
-            // TABLA DE AFORO MANUAL
             usarAforoManual: tieneAforoPrevio,
             tablaAforo: tieneAforoPrevio ? configInicial.tablaAforo : [{ cm: '', litros: '' }]
         },
@@ -53,7 +52,6 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
         }
     });
 
-    // CÁLCULO MATEMÁTICO EN TIEMPO REAL
     const calcularCapacidad = () => {
         const { tipoForma, cantidadTanques, largo, diametro, ancho, alto, factorDescuento } = form.values;
         let volumenCm3 = 0;
@@ -71,11 +69,11 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
         }
 
         const qty = parseInt(cantidadTanques) || 1;
-        const litrosUnidad = volumenCm3 / 1000; // Lo que agarra 1 solo tanque
-        const litrosBrutosTotal = litrosUnidad * qty; // Lo que agarran todos los tanques juntos
+        const litrosUnidad = volumenCm3 / 1000; 
+        const litrosBrutosTotal = litrosUnidad * qty; 
         
         const descuento = parseFloat(factorDescuento) || 0;
-        const litrosNetosTotal = litrosBrutosTotal * (1 - (descuento / 100)); // El total final real
+        const litrosNetosTotal = litrosBrutosTotal * (1 - (descuento / 100)); 
 
         return {
             unidad: litrosUnidad.toFixed(2),
@@ -90,12 +88,11 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
     const handleSubmit = async (values) => {
         setLoading(true);
         try {
-            // Limpiamos y mapeamos la tabla de aforo si está activada
             const tablaAforoFinal = values.usarAforoManual 
                 ? values.tablaAforo
-                    .filter(item => item.cm !== '' && item.litros !== '') // Filtramos filas vacías
+                    .filter(item => item.cm !== '' && item.litros !== '') 
                     .map(item => ({ cm: parseFloat(item.cm), litros: parseFloat(item.litros) }))
-                    .sort((a, b) => a.cm - b.cm) // Ordenamos de menor a mayor altura
+                    .sort((a, b) => a.cm - b.cm) 
                 : [];
 
             const configuracionTanque = {
@@ -111,11 +108,23 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
                 tablaAforo: tablaAforoFinal
             };
 
+            // 🔥 MODO LOCAL: SOLO DEVUELVE LA DATA AL FORMULARIO PADRE 🔥
+            if (modoLocal) {
+                if (onSuccess) onSuccess({
+                    configuracionTanque,
+                    capacidadNeta: parseFloat(capacidadCalculada.netoTotal),
+                    propagate: values.propagateToTemplate,
+                    afectados: []
+                });
+                onClose();
+                return;
+            }
+
+            // MODO NORMAL (API)
             const payload = {
                 activoId: activo.id,
                 configuracionTanque,
                 propagateToTemplate: values.propagateToTemplate,
-                // 🔥 AQUÍ ESTÁ LA CORRECCIÓN EXACTA DE LA PROPIEDAD 🔥
                 capacidadNeta: parseFloat(capacidadCalculada.netoTotal)
             };
 
@@ -129,13 +138,13 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
 
             if (!response.ok) throw new Error(data.error || 'Error al guardar la configuración');
 
-            notifications.show({ title: 'Geometría Guardada', message: data.message, color: 'green', icon: <IconCheck size={18} /> });
+            notifications.show({ title: 'Geometría Guardada', message: 'Se ha guardado la configuración exitosamente.', color: 'green', icon: <IconCheck size={18} /> });
             
-            // Le pasamos la data al formulario padre para que refresque su memoria
             if (onSuccess) onSuccess({
                 configuracionTanque: payload.configuracionTanque,
                 capacidadNeta: payload.capacidadNeta,
-                propagate: payload.propagateToTemplate
+                propagate: payload.propagateToTemplate,
+                afectados: data.afectados || [] 
             });
             
             onClose();
@@ -158,19 +167,11 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
             <LoadingOverlay visible={loading} />
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="md">
-                    
-                    {/* SELECTOR VISUAL MEJORADO */}
                     <Group grow>
                         <SegmentedControl
                             data={[
-                                { 
-                                    value: 'cilindrico', 
-                                    label: <Center gap={10}><IconCylinder size={18} /><span>Cilíndrico / D-Tank</span></Center> 
-                                },
-                                { 
-                                    value: 'rectangular', 
-                                    label: <Center gap={10}><IconBox size={18} /><span>Rectangular</span></Center> 
-                                }
+                                { value: 'cilindrico', label: <Center gap={10}><IconCylinder size={18} /><span>Cilíndrico / D-Tank</span></Center> },
+                                { value: 'rectangular', label: <Center gap={10}><IconBox size={18} /><span>Rectangular</span></Center> }
                             ]}
                             color="blue"
                             size="md"
@@ -206,7 +207,7 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
                     <Paper withBorder p="md" bg="orange.0" radius="md" style={{ borderColor: '#ffe066' }}>
                         <NumberInput
                             label="Factor de Irregularidad (Descuento)"
-                            description="Porcentaje a restar por hundimientos de fajas, paredes internas o bordes redondeados (Común en Iveco/Mack)."
+                            description="Porcentaje a restar por hundimientos de fajas, paredes internas o bordes redondeados."
                             placeholder="Ej: 4"
                             suffix=" %"
                             min={0}
@@ -223,11 +224,6 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
                                 <Text size="sm" c="dimmed">
                                     Total bruto ({capacidadCalculada.qty} tanque/s): <b>{capacidadCalculada.brutoTotal} L</b>
                                 </Text>
-                                {form.values.factorDescuento > 0 && (
-                                    <Text size="xs" c="orange.8" mt={4} fw={600}>
-                                        * Descontando {form.values.factorDescuento}% por irregularidades
-                                    </Text>
-                                )}
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <Text size="xs" tt="uppercase" fw={700} c="teal.8">Capacidad Neta Total</Text>
@@ -238,15 +234,11 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
 
                     <Divider />
 
-                    {/* SECCIÓN DE PUNTOS DE REFERENCIA (AFORO) */}
                     <Paper withBorder p="md" bg="blue.0" radius="md" style={{ borderColor: '#a5d8ff' }}>
                         <Group justify="space-between" mb={form.values.usarAforoManual ? "md" : 0}>
                             <div>
                                 <Text fw={700} c="blue.9" size="sm" display="flex" style={{ alignItems: 'center', gap: 6 }}>
                                     <IconListNumbers size={18} /> Puntos de Referencia (Aforo Exacto)
-                                </Text>
-                                <Text size="xs" c="dimmed">
-                                    Ideal para tanques muy irregulares. El sistema usará estos puntos en lugar de la matemática pura.
                                 </Text>
                             </div>
                             <Switch 
@@ -284,34 +276,31 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
                                         ))}
                                     </Table.Tbody>
                                 </Table>
-                                <Button 
-                                    variant="light" 
-                                    color="blue" 
-                                    size="xs" 
-                                    leftSection={<IconPlus size={14} />} 
-                                    onClick={() => form.insertListItem('tablaAforo', { cm: '', litros: '' })}
-                                >
+                                <Button variant="light" color="blue" size="xs" leftSection={<IconPlus size={14} />} onClick={() => form.insertListItem('tablaAforo', { cm: '', litros: '' })}>
                                     Agregar Punto de Medición
                                 </Button>
                             </Stack>
                         )}
                     </Paper>
 
-                    <Divider />
-
-                    <Switch
-                        label={<Text fw={600}>Propagar a la plantilla del modelo</Text>}
-                        description={`Aplicar esta geometría y aforo a todos los equipos modelo '${activo?.vehiculoInstancia?.plantilla?.modelo || activo?.maquinaInstancia?.plantilla?.modelo || activo?.remolqueInstancia?.plantilla?.modelo || 'desconocido'}'. Apágalo si es aftermarket.`}
-                        checked={form.values.propagateToTemplate}
-                        onChange={(event) => form.setFieldValue('propagateToTemplate', event.currentTarget.checked)}
-                        color="blue"
-                        size="md"
-                    />
+                    {!modoLocal && (
+                        <>
+                            <Divider />
+                            <Switch
+                                label={<Text fw={600}>Propagar a la plantilla del modelo</Text>}
+                                description={`Aplicar esta geometría a todos los equipos modelo '${activo?.vehiculoInstancia?.plantilla?.modelo || activo?.maquinaInstancia?.plantilla?.modelo || activo?.remolqueInstancia?.plantilla?.modelo || 'desconocido'}'.`}
+                                checked={form.values.propagateToTemplate}
+                                onChange={(event) => form.setFieldValue('propagateToTemplate', event.currentTarget.checked)}
+                                color="blue"
+                                size="md"
+                            />
+                        </>
+                    )}
 
                     <Group justify="right" mt="md">
                         <Button variant="default" onClick={onClose}>Cancelar</Button>
                         <Button type="submit" color="blue" leftSection={<IconSettings size={18} />}>
-                            Guardar Configuración
+                            {modoLocal ? 'Guardar Borrador' : 'Guardar Configuración'}
                         </Button>
                     </Group>
                 </Stack>

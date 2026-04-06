@@ -2,9 +2,9 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from '@react-google-maps/api';
-import { Loader, Center, Box, Button, Text, Group, Badge, Paper, Tooltip, Alert } from '@mantine/core';
+import { Loader, Center, Box, Button, Text, Group, Badge, Paper, Alert } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconMountain, IconClock, IconAlertTriangle } from '@tabler/icons-react';
+import { IconTrash, IconMountain, IconClock, IconAlertTriangle, IconReceipt2 } from '@tabler/icons-react';
 
 const containerStyle = {
     width: '100%',
@@ -13,10 +13,18 @@ const containerStyle = {
 };
 
 const center = { lat: 10.257083, lng: -71.343111 };
-const LIBRARIES = [];
+// 🔥 LIBRERÍA GEOMETRY AÑADIDA PARA CÁLCULO DE INTERSECCIONES 🔥
+const LIBRARIES = ['geometry'];
 
-// 🔥 1. Agregamos initialWaypoints a los props
-export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tramosFormulario = [], taraBase = 13, capacidadMax = 30, initialWaypoints = [] }) {
+export default function GoogleRouteMap({ 
+    onRouteCalculated, 
+    vehiculoAsignado, 
+    tramosFormulario = [], 
+    taraBase = 13, 
+    capacidadMax = 30, 
+    initialWaypoints = [],
+    peajes = [] 
+}) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY,
@@ -32,6 +40,7 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
     const [desnivelTotalVisual, setDesnivelTotalVisual] = useState(0);
     
     const [penalidadVisual, setPenalidadVisual] = useState(null);
+    const [peajesCruzados, setPeajesCruzados] = useState([]);
     
     const [perfilElevacion, setPerfilElevacion] = useState([]); 
     const [perfilCoords, setPerfilCoords] = useState([]); 
@@ -41,19 +50,19 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
     const elevationServiceRef = useRef(null); 
     const onRouteCalculatedRef = useRef(onRouteCalculated);
 
-    // 🔥 2. Referencia para recordar los tramos guardados y no sobreescribirlos con ceros
     const tramosGuardadosRef = useRef(tramosFormulario);
+    
+    // 🚨 BLOQUEO DE BILLETERA: Referencia para evitar llamadas infinitas a la API
+    const prevWaypointsStr = useRef("[]");
 
     useEffect(() => {
         onRouteCalculatedRef.current = onRouteCalculated;
     }, [onRouteCalculated]);
 
-    // Actualizamos la referencia secreta solo si llegan tramos externos, para no causar re-renders
     useEffect(() => {
         tramosGuardadosRef.current = tramosFormulario;
     }, [tramosFormulario]);
 
-    // 🔥 3. EFECTO DE HIDRATACIÓN: Si nos pasan waypoints iniciales y el mapa está vacío, los cargamos
     useEffect(() => {
         if (initialWaypoints && initialWaypoints.length > 0 && waypoints.length === 0) {
             setWaypoints(initialWaypoints);
@@ -73,6 +82,7 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
         setPerfilCoords([]);
         setHoverIndex(null);
         setPenalidadVisual(null);
+        setPeajesCruzados([]); 
     };
 
     const getElevationForLeg = (path) => {
@@ -105,98 +115,135 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
     };
 
     useEffect(() => {
-        if (isLoaded && map) {
-            if (waypoints.length === 0) {
-                setDirectionsResponse(null);
-                setDistanciaVisual(0);
-                setDesnivelTotalVisual(0);
-                setTiempoVisual("");
-                setPerfilElevacion([]);
-                setPerfilCoords([]);
-                setPenalidadVisual(null);
-                if (onRouteCalculatedRef.current) onRouteCalculatedRef.current({ distanciaTotal: 0, waypoints: [], tramos: [] });
-                return;
+        if (!isLoaded || !map) return;
+
+        const currentWpStr = JSON.stringify(waypoints);
+
+        if (waypoints.length === 0) {
+            setDirectionsResponse(null);
+            setDistanciaVisual(0);
+            setDesnivelTotalVisual(0);
+            setTiempoVisual("");
+            setPerfilElevacion([]);
+            setPerfilCoords([]);
+            setPenalidadVisual(null);
+            setPeajesCruzados([]);
+            prevWaypointsStr.current = currentWpStr;
+            
+            if (onRouteCalculatedRef.current) {
+                onRouteCalculatedRef.current({ distanciaTotal: 0, waypoints: [], tramos: [], peajesEnRuta: [] });
             }
-
-            if (!directionsServiceRef.current) directionsServiceRef.current = new window.google.maps.DirectionsService();
-            const googleWaypoints = waypoints.map(wp => ({ location: wp, stopover: true }));
-
-            const calcularRutaCompleta = async () => {
-                directionsServiceRef.current.route(
-                    { origin: center, destination: center, waypoints: googleWaypoints, travelMode: window.google.maps.TravelMode.DRIVING },
-                    async (result, status) => {
-                        if (status === window.google.maps.DirectionsStatus.OK) {
-                            setDirectionsResponse(result);
-                            let totalMeters = 0;
-                            const route = result.routes[0];
-
-                            const tramosPromises = route.legs.map(async (leg, index) => {
-                                totalMeters += leg.distance.value;
-                                const legPath = leg.steps.flatMap(step => step.path);
-                                
-                                const elevacionData = await getElevationForLeg(legPath);
-                                
-                                const isFirst = index === 0;
-                                const isLast = index === route.legs.length - 1;
-                                const origenNombre = isFirst ? "Base DADICA" : leg.start_address.split(',')[0];
-                                const destinoNombre = isLast ? "Base DADICA" : leg.end_address.split(',')[0];
-
-                                // 🔥 4. Rescatamos los valores de tonelaje y espera si venían de la BD
-                                const tonelajeGuardado = tramosGuardadosRef.current[index]?.tonelaje || 0;
-                                const tiempoEsperaGuardado = tramosGuardadosRef.current[index]?.tiempoEspera || 0;
-
-                                return {
-                                    tramoId: index + 1,
-                                    origen: origenNombre,
-                                    destino: destinoNombre,
-                                    distanciaKm: parseFloat((leg.distance.value / 1000).toFixed(2)),
-                                    desnivelMetros: elevacionData.desnivel,
-                                    tiempoBaseSegundos: leg.duration.value, 
-                                    tonelaje: tonelajeGuardado, // <-- Mantiene el valor editado/guardado
-                                    tiempoEspera: tiempoEsperaGuardado, // <-- Mantiene el valor editado/guardado
-                                    puntosPerfil: elevacionData.puntosPerfil,
-                                    puntosCoordenadas: elevacionData.puntosCoordenadas
-                                };
-                            });
-
-                            const tramosProcesados = await Promise.all(tramosPromises);
-                            
-                            let perfilCompletoOrdenado = []; 
-                            let coordsCompletasOrdenadas = [];
-                            let desnivelTotal = 0;
-
-                            tramosProcesados.forEach(tramo => {
-                                perfilCompletoOrdenado = [...perfilCompletoOrdenado, ...tramo.puntosPerfil];
-                                coordsCompletasOrdenadas = [...coordsCompletasOrdenadas, ...tramo.puntosCoordenadas];
-                                desnivelTotal += tramo.desnivelMetros;
-                            });
-
-                            const kmTotal = (totalMeters / 1000).toFixed(2);
-
-                            setDistanciaVisual(kmTotal);
-                            setDesnivelTotalVisual(desnivelTotal);
-                            
-                            setPerfilElevacion(perfilCompletoOrdenado); 
-                            setPerfilCoords(coordsCompletasOrdenadas); 
-
-                            if (onRouteCalculatedRef.current) {
-                                onRouteCalculatedRef.current({
-                                    distanciaTotal: kmTotal,
-                                    desnivelTotal: desnivelTotal, 
-                                    waypoints: waypoints,
-                                    direccionDestino: "Circuito DADICA",
-                                    tramos: tramosProcesados 
-                                });
-                            }
-                        } else {
-                            notifications.show({ title: 'Error', message: 'No se pudo calcular la ruta.', color: 'red' });
-                            setWaypoints(prev => prev.slice(0, -1)); 
-                        }
-                    }
-                );
-            };
-            calcularRutaCompleta();
+            return;
         }
+
+        // 🚨 AQUÍ ESTÁ EL FIX CRÍTICO: 
+        // Si el formulario padre se re-renderiza pero los waypoints en el mapa son exactamente los mismos,
+        // cortamos la ejecución. No se llama a Google, no se gasta cuota de API.
+        if (prevWaypointsStr.current === currentWpStr) {
+            return; 
+        }
+        
+        prevWaypointsStr.current = currentWpStr;
+
+        if (!directionsServiceRef.current) directionsServiceRef.current = new window.google.maps.DirectionsService();
+        const googleWaypoints = waypoints.map(wp => ({ location: wp, stopover: true }));
+
+        const calcularRutaCompleta = async () => {
+            directionsServiceRef.current.route(
+                { origin: center, destination: center, waypoints: googleWaypoints, travelMode: window.google.maps.TravelMode.DRIVING },
+                async (result, status) => {
+                    if (status === window.google.maps.DirectionsStatus.OK) {
+                        setDirectionsResponse(result);
+                        let totalMeters = 0;
+                        const route = result.routes[0];
+
+                        // 🔥 MAGIA MATEMÁTICA: CRUZANDO LA LÍNEA AZUL CON TUS PEAJES 🔥
+                        // Esto se hace con la librería Geometry del cliente, no gasta cuota extra de Google.
+                        let peajesDetectados = [];
+                        if (window.google.maps.geometry && peajes.length > 0) {
+                            const polylineRuta = new window.google.maps.Polyline({ path: route.overview_path });
+                            
+                            peajes.forEach(peaje => {
+                                if (peaje.latitud && peaje.longitud) {
+                                    const loc = new window.google.maps.LatLng(parseFloat(peaje.latitud), parseFloat(peaje.longitud));
+                                    // 0.005 grados de tolerancia equivale a unos ~500 metros a la redonda de la carretera
+                                    if (window.google.maps.geometry.poly.isLocationOnEdge(loc, polylineRuta, 0.005)) {
+                                        peajesDetectados.push(peaje);
+                                    }
+                                }
+                            });
+                        }
+                        setPeajesCruzados(peajesDetectados);
+
+                        const tramosPromises = route.legs.map(async (leg, index) => {
+                            totalMeters += leg.distance.value;
+                            const legPath = leg.steps.flatMap(step => step.path);
+                            
+                            const elevacionData = await getElevationForLeg(legPath);
+                            
+                            const isFirst = index === 0;
+                            const isLast = index === route.legs.length - 1;
+                            const origenNombre = isFirst ? "Base DADICA" : leg.start_address.split(',')[0];
+                            const destinoNombre = isLast ? "Base DADICA" : leg.end_address.split(',')[0];
+
+                            const tonelajeGuardado = tramosGuardadosRef.current[index]?.tonelaje || 0;
+                            const tiempoEsperaGuardado = tramosGuardadosRef.current[index]?.tiempoEspera || 0;
+
+                            return {
+                                tramoId: index + 1,
+                                origen: origenNombre,
+                                destino: destinoNombre,
+                                distanciaKm: parseFloat((leg.distance.value / 1000).toFixed(2)),
+                                desnivelMetros: elevacionData.desnivel,
+                                tiempoBaseSegundos: leg.duration.value, 
+                                tonelaje: tonelajeGuardado, 
+                                tiempoEspera: tiempoEsperaGuardado, 
+                                puntosPerfil: elevacionData.puntosPerfil,
+                                puntosCoordenadas: elevacionData.puntosCoordenadas
+                            };
+                        });
+
+                        const tramosProcesados = await Promise.all(tramosPromises);
+                        
+                        let perfilCompletoOrdenado = []; 
+                        let coordsCompletasOrdenadas = [];
+                        let desnivelTotal = 0;
+
+                        tramosProcesados.forEach(tramo => {
+                            perfilCompletoOrdenado = [...perfilCompletoOrdenado, ...tramo.puntosPerfil];
+                            coordsCompletasOrdenadas = [...coordsCompletasOrdenadas, ...tramo.puntosCoordenadas];
+                            desnivelTotal += tramo.desnivelMetros;
+                        });
+
+                        const kmTotal = (totalMeters / 1000).toFixed(2);
+
+                        setDistanciaVisual(kmTotal);
+                        setDesnivelTotalVisual(desnivelTotal);
+                        
+                        setPerfilElevacion(perfilCompletoOrdenado); 
+                        setPerfilCoords(coordsCompletasOrdenadas); 
+
+                        if (onRouteCalculatedRef.current) {
+                            onRouteCalculatedRef.current({
+                                distanciaTotal: kmTotal,
+                                desnivelTotal: desnivelTotal, 
+                                waypoints: waypoints,
+                                direccionDestino: "Circuito DADICA",
+                                tramos: tramosProcesados,
+                                peajesEnRuta: peajesDetectados
+                            });
+                        }
+                    } else {
+                        notifications.show({ title: 'Error', message: 'No se pudo calcular la ruta.', color: 'red' });
+                        setWaypoints(prev => prev.slice(0, -1)); 
+                    }
+                }
+            );
+        };
+        calcularRutaCompleta();
+        
+    // Quitamos 'peajes' de este array de dependencias. 
+    // Ahora solo reacciona si el mapa carga o si los waypoints realmente mutan (verificado por el useRef arriba).
     }, [isLoaded, waypoints]); 
 
     useEffect(() => {
@@ -286,8 +333,27 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
 
                 <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={10} onLoad={onLoad} onUnmount={onUnmount} onClick={handleMapClick} options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}>
                     <Marker position={center} label={{ text: "BASE", color: "white", fontWeight: "bold", fontSize: "10px" }} />
+                    
+                    {/* Renderizamos las paradas del usuario */}
                     {waypoints.map((wp, i) => (!directionsResponse && <Marker key={i} position={wp} label={`${i + 1}`} />))}
+                    
+                    {/* 🔥 RENDERIZAMOS TODOS LOS PEAJES DISPONIBLES EN EL MAPA 🔥 */}
+                    {peajes.map(p => {
+                        if(p.latitud && p.longitud) {
+                            return (
+                                <Marker 
+                                    key={`peaje-${p.id}`} 
+                                    position={{ lat: parseFloat(p.latitud), lng: parseFloat(p.longitud) }} 
+                                    icon={{ url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png" }}
+                                    title={`Peaje: ${p.nombre}`}
+                                />
+                            )
+                        }
+                        return null;
+                    })}
+
                     {directionsResponse && <DirectionsRenderer directions={directionsResponse} options={{ suppressMarkers: false, polylineOptions: { strokeColor: "#1971C2", strokeWeight: 5 } }} />}
+                    
                     {hoverIndex !== null && perfilCoords[hoverIndex] && (
                         <Marker position={perfilCoords[hoverIndex]} icon={{ path: window.google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: "#4dabf7", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 }} zIndex={999} />
                     )}
@@ -327,6 +393,10 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                         <Group gap="xs">
                             <Badge color="blue" variant="light">{distanciaVisual} Km</Badge>
                             <Badge color="violet" variant="light">⛰️ +{desnivelTotalVisual}m</Badge>
+                            {/* 🔥 NUEVO BADGE VISUAL DE PEAJES SEGURO 🔥 */}
+                            <Badge color="yellow" variant="filled">
+                                <Group gap={3}><IconReceipt2 size={12}/> {peajesCruzados.length} Peajes</Group>
+                            </Badge>
                             <Badge color="orange" variant="light">
                                 <Group gap={3}><IconClock size={12}/> {tiempoVisual}</Group>
                             </Badge>
@@ -334,7 +404,7 @@ export default function GoogleRouteMap({ onRouteCalculated, vehiculoAsignado, tr
                     </Group>
                     
                     {penalidadVisual && (
-                        <Alert variant="light" color="red" p="xs" icon={<IconAlertTriangle size={16} />}>
+                        <Alert variant="light" color="red" p="xs" mt="xs" icon={<IconAlertTriangle size={16} />}>
                             <Text size="xs" fw={500}>
                                 Dinámica de vehículo pesado activa. Se han añadido <b>+{penalidadVisual.tiempoExtra}</b> al tiempo ideal por inercia de la carga{penalidadVisual.txtMontaña}.
                             </Text>

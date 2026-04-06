@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
 import { 
-    CargaCombustible, 
-    Activo, 
-    Consumible, 
-    Kilometraje,
-    VehiculoInstancia,
-    Vehiculo,
-    RemolqueInstancia,
-    Remolque,
-    MaquinaInstancia,
-    Maquina,
-    SalidaInventario
+    CargaCombustible, Activo, Consumible, Kilometraje,
+    VehiculoInstancia, Vehiculo, RemolqueInstancia, Remolque,
+    MaquinaInstancia, Maquina, SalidaInventario
 } from '@/models';
 
-// ----------------------------------------------------------------------
-// GET: Obtener historial de todas las cargas de combustible
-// ----------------------------------------------------------------------
+// GET se mantiene intacto...
 export async function GET() {
     try {
         const cargas = await CargaCombustible.findAll({
@@ -82,9 +72,7 @@ export async function GET() {
     }
 }
 
-// ----------------------------------------------------------------------
-// POST: Registrar un nuevo despacho de combustible
-// ----------------------------------------------------------------------
+// POST: Registrar despacho de combustible (CON APRENDIZAJE SEPARADO)
 export async function POST(request) {
     const t = await sequelize.transaction();
 
@@ -93,15 +81,22 @@ export async function POST(request) {
         const { 
             activoId, origen, consumibleOrigenId, litros, costoTotal, 
             kilometrajeAlMomento, fullTanque, registradoPorId, 
-            usarAforoVara, centimetrosVara, nivelAforadoAntesDeSurtir 
+            usarAforoVara, centimetrosVara, nivelAforadoAntesDeSurtir,
+            guardarNuevoPuntoAforo, propagarPuntoModelo // NUEVAS VARIABLES
         } = body;
 
-        const activo = await Activo.findByPk(activoId, { transaction: t });
+        const activo = await Activo.findByPk(activoId, { 
+            include: [
+                { model: VehiculoInstancia, as: 'vehiculoInstancia' },
+                { model: MaquinaInstancia, as: 'maquinaInstancia' },
+                { model: RemolqueInstancia, as: 'remolqueInstancia' }
+            ],
+            transaction: t 
+        });
+        
         if (!activo) throw new Error('El equipo seleccionado no existe.');
 
         const litrosDespachados = parseFloat(litros);
-
-        // 🔥 VALIDACIÓN: ESPACIO DISPONIBLE EN EL TANQUE DEL EQUIPO 🔥
         const capacidadActivo = parseFloat(activo.capacidadTanque || 0);
         const nivelActualActivo = parseFloat(activo.nivelCombustible || 0);
         
@@ -117,7 +112,6 @@ export async function POST(request) {
 
         let costoAlMomentoSalida = 0; 
 
-        // 🔥 DESCUENTO DE INVENTARIO INTERNO 🔥
         if (origen === 'interno') {
             const tanque = await Consumible.findByPk(consumibleOrigenId, { transaction: t });
             
@@ -140,7 +134,6 @@ export async function POST(request) {
             }, { transaction: t });
         }
 
-        // 🔥 CÁLCULO DE RENDIMIENTO (BIFURCACIÓN MATEMÁTICA Y AFORO) 🔥
         let kilometrosRecorridos = null;
         let rendimientoCalculado = null;
         let esTanqueFull = fullTanque; 
@@ -157,65 +150,89 @@ export async function POST(request) {
             if (usarAforoVara && nivelAforadoAntesDeSurtir !== null) {
                 const consumoReal = nivelActualActivo - parseFloat(nivelAforadoAntesDeSurtir);
                 if (consumoReal > 0) {
-                    if (activo.maquinaId || activo.remolqueId) rendimientoCalculado = parseFloat((consumoReal / kilometrosRecorridos).toFixed(2)); 
+                    if (activo.maquinaInstancia || activo.remolqueInstancia) rendimientoCalculado = parseFloat((consumoReal / kilometrosRecorridos).toFixed(2)); 
                     else rendimientoCalculado = parseFloat((kilometrosRecorridos / consumoReal).toFixed(2)); 
                 }
                 esTanqueFull = true; 
             } 
             else if (fullTanque && cargaAnterior.fullTanque) {
-                if (activo.maquinaId || activo.remolqueId) rendimientoCalculado = parseFloat((litrosDespachados / kilometrosRecorridos).toFixed(2)); 
+                if (activo.maquinaInstancia || activo.remolqueInstancia) rendimientoCalculado = parseFloat((litrosDespachados / kilometrosRecorridos).toFixed(2)); 
                 else rendimientoCalculado = parseFloat((kilometrosRecorridos / litrosDespachados).toFixed(2)); 
             }
         } else if (usarAforoVara) {
             esTanqueFull = true;
         }
 
-        // ✨ MACHINE LEARNING MANUAL: GUARDAR EL PUNTO EMPÍRICO EN LA PLANTILLA ✨
-        const { guardarNuevoPuntoAforo } = body;
-        
+        // ✨ MACHINE LEARNING MANUAL MEJORADO Y SEGURO ✨
         if (guardarNuevoPuntoAforo && centimetrosVara && nivelAforadoAntesDeSurtir !== null) {
-            // Determinamos dónde vive la configuración (si en la plantilla o en el activo directamente)
-            let modeloDestino = null;
-            let idDestino = null;
-
-            if (activo.vehiculoId) { modeloDestino = Vehiculo; idDestino = activo.vehiculoId; }
-            else if (activo.maquinaId) { modeloDestino = Maquina; idDestino = activo.maquinaId; }
-            else if (activo.remolqueId) { modeloDestino = Remolque; idDestino = activo.remolqueId; }
-            else { modeloDestino = Activo; idDestino = activo.id; } // Aftermarket puro
-
-            const registroConfig = await modeloDestino.findByPk(idDestino, { transaction: t });
-
-            if (registroConfig && registroConfig.configuracionTanque) {
-                let configActual = { ...registroConfig.configuracionTanque };
+            
+            // Función auxiliar para insertar/actualizar el punto en un JSONB
+            const inyectarPuntoAforo = (configActualJSON) => {
+                let config = configActualJSON ? JSON.parse(JSON.stringify(configActualJSON)) : { tablaAforo: [] };
+                if (!config.tablaAforo) config.tablaAforo = [];
                 
-                // Si no existía el array, lo creamos
-                if (!configActual.tablaAforo) configActual.tablaAforo = [];
-                
-                // Verificamos si ya existe ese centímetro para sobreescribirlo o lo agregamos
-                const index = configActual.tablaAforo.findIndex(p => p.cm === parseFloat(centimetrosVara));
-                
-                // NOTA IMPORTANTE: Los litros que guardamos aquí deben ser POR TANQUE (unidad), no el total.
-                // Si el chuto tiene 2 tanques, y midió 120L en total, guardamos 60L para la fórmula base.
-                const qtyTanques = parseInt(configActual.dimensiones?.cantidadTanques) || 1;
+                const qtyTanques = parseInt(config.dimensiones?.cantidadTanques) || 1;
                 const litrosPorUnidad = parseFloat(nivelAforadoAntesDeSurtir) / qtyTanques;
+                const index = config.tablaAforo.findIndex(p => p.cm === parseFloat(centimetrosVara));
+                
+                if (index >= 0) config.tablaAforo[index].litros = litrosPorUnidad;
+                else config.tablaAforo.push({ cm: parseFloat(centimetrosVara), litros: litrosPorUnidad });
+                
+                return config;
+            };
 
-                if (index >= 0) {
-                    configActual.tablaAforo[index].litros = litrosPorUnidad;
-                } else {
-                    configActual.tablaAforo.push({ cm: parseFloat(centimetrosVara), litros: litrosPorUnidad });
+            // 1. SIEMPRE APRENDE EL ACTIVO ACTUAL (Sea Aftermarket o no)
+            activo.configuracionTanque = inyectarPuntoAforo(activo.configuracionTanque);
+            activo.changed('configuracionTanque', true);
+            await activo.save({ transaction: t });
+
+            // 2. SI EL DESPACHADOR LO CONFIRMA COMO ORIGINAL, PROPAGAMOS AL MODELO MAESTRO
+            if (propagarPuntoModelo) {
+                let modeloDestino = null;
+                let idPlantilla = null;
+                let includeModel = null;
+                let includeAs = null;
+                let fkName = null;
+
+                if (activo.vehiculoInstancia?.vehiculoId) {
+                    modeloDestino = Vehiculo; idPlantilla = activo.vehiculoInstancia.vehiculoId; 
+                    includeModel = VehiculoInstancia; includeAs = 'vehiculoInstancia'; fkName = 'vehiculoId';
+                } else if (activo.remolqueInstancia?.remolqueId) {
+                    modeloDestino = Remolque; idPlantilla = activo.remolqueInstancia.remolqueId;
+                    includeModel = RemolqueInstancia; includeAs = 'remolqueInstancia'; fkName = 'remolqueId';
+                } else if (activo.maquinaInstancia?.maquinaId) {
+                    modeloDestino = Maquina; idPlantilla = activo.maquinaInstancia.maquinaId;
+                    includeModel = MaquinaInstancia; includeAs = 'maquinaInstancia'; fkName = 'maquinaId';
                 }
 
-                // Guardamos el JSONB actualizado
-                registroConfig.configuracionTanque = configActual;
-                // Le decimos a Sequelize explícitamente que el JSON cambió para que lo impacte en DB
-                registroConfig.changed('configuracionTanque', true); 
-                await registroConfig.save({ transaction: t });
+                if (modeloDestino && idPlantilla) {
+                    const plantilla = await modeloDestino.findByPk(idPlantilla, { transaction: t });
+                    if (plantilla) {
+                        // Actualizar la plantilla
+                        plantilla.configuracionTanque = inyectarPuntoAforo(plantilla.configuracionTanque);
+                        plantilla.changed('configuracionTanque', true);
+                        await plantilla.save({ transaction: t });
+
+                        // Propagar a hermanos que usen la plantilla
+                        const hermanos = await Activo.findAll({
+                            include: [{ model: includeModel, as: includeAs, where: { [fkName]: idPlantilla }, required: true }],
+                            transaction: t
+                        });
+
+                        for (const hermano of hermanos) {
+                            if (hermano.id !== activo.id) {
+                                hermano.configuracionTanque = inyectarPuntoAforo(hermano.configuracionTanque);
+                                hermano.changed('configuracionTanque', true);
+                                await hermano.save({ transaction: t });
+                            }
+                        }
+                    }
+                }
             }
         }
 
         const nuevoKilometraje = await Kilometraje.create({ activoId, valor: parseFloat(kilometrajeAlMomento), fecha_registro: new Date() }, { transaction: t });
 
-        // 🔥 GUARDADO DEL REGISTRO HISTÓRICO 🔥
         await CargaCombustible.create({
             activoId, fecha: new Date(), origen,
             consumibleOrigenId: origen === 'interno' ? consumibleOrigenId : null,
@@ -226,17 +243,17 @@ export async function POST(request) {
             litrosAforados: usarAforoVara ? parseFloat(nivelAforadoAntesDeSurtir) : null
         }, { transaction: t });
 
-        // 🔥 ACTUALIZAMOS EL NIVEL DE COMBUSTIBLE EN EL CAMIÓN 🔥
         if (usarAforoVara && nivelAforadoAntesDeSurtir !== null) activo.nivelCombustible = parseFloat(nivelAforadoAntesDeSurtir) + litrosDespachados;
         else if (fullTanque) activo.nivelCombustible = capacidadActivo; 
         else activo.nivelCombustible = nivelActualActivo + litrosDespachados;
 
         if (activo.nivelCombustible > capacidadActivo) activo.nivelCombustible = capacidadActivo;
 
+        // Doble validación de guardado por si no entró al Machine Learning
         await activo.save({ transaction: t });
         await t.commit();
         
-        return NextResponse.json({ success: true, message: 'Despacho registrado correctamente.' }, { status: 201 });
+        return NextResponse.json({ success: true, message: 'Despacho registrado y curva de aforo actualizada.' }, { status: 201 });
 
     } catch (error) {
         await t.rollback();
@@ -245,22 +262,16 @@ export async function POST(request) {
     }
 }
 
-// ----------------------------------------------------------------------
-// DELETE: Eliminar un registro y revertir inventario
-// ----------------------------------------------------------------------
+// DELETE: Eliminar un registro y revertir inventario (Se mantiene intacto...)
 export async function DELETE(request, { params }) {
     const t = await sequelize.transaction();
 
     try {
         const { id } = await params;
-
         const carga = await CargaCombustible.findByPk(id, { transaction: t });
         
-        if (!carga) {
-            throw new Error('El registro de combustible no existe.');
-        }
+        if (!carga) throw new Error('El registro de combustible no existe.');
 
-        // Reversión de Inventario Interno
         if (carga.origen === 'interno' && carga.consumibleOrigenId) {
             const tanque = await Consumible.findByPk(carga.consumibleOrigenId, { transaction: t });
             
@@ -269,22 +280,15 @@ export async function DELETE(request, { params }) {
                 await tanque.save({ transaction: t });
 
                 const salidaAEliminar = await SalidaInventario.findOne({
-                    where: {
-                        consumibleId: carga.consumibleOrigenId,
-                        activoId: carga.activoId,
-                        cantidad: carga.litros
-                    },
+                    where: { consumibleId: carga.consumibleOrigenId, activoId: carga.activoId, cantidad: carga.litros },
                     order: [['createdAt', 'DESC']],
                     transaction: t
                 });
 
-                if (salidaAEliminar) {
-                    await salidaAEliminar.destroy({ transaction: t });
-                }
+                if (salidaAEliminar) await salidaAEliminar.destroy({ transaction: t });
             }
         }
 
-        // 🔥 REVERSIÓN DEL NIVEL DE COMBUSTIBLE EN EL ACTIVO 🔥
         const activo = await Activo.findByPk(carga.activoId, { transaction: t });
         if (activo) {
             const nivelActual = parseFloat(activo.nivelCombustible || 0);
@@ -293,20 +297,13 @@ export async function DELETE(request, { params }) {
         }
 
         if (carga.kilometrajeId) {
-            await Kilometraje.destroy({ 
-                where: { id: carga.kilometrajeId }, 
-                transaction: t 
-            });
+            await Kilometraje.destroy({ where: { id: carga.kilometrajeId }, transaction: t });
         }
 
         await carga.destroy({ transaction: t });
-
         await t.commit();
         
-        return NextResponse.json({ 
-            success: true, 
-            message: 'Despacho eliminado. Salida de inventario anulada y gasoil restituido.' 
-        });
+        return NextResponse.json({ success: true, message: 'Despacho eliminado. Salida de inventario anulada y gasoil restituido.' });
 
     } catch (error) {
         await t.rollback();

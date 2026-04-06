@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
     TextInput, NumberInput, Button, Paper, Title, Center,
     SimpleGrid, Box, Divider, Grid, Text, Loader, Group, Badge, Select, Tooltip, Alert, Slider,
@@ -9,7 +9,9 @@ import {
     Timeline,
     Switch,
     Stack,
-    ThemeIcon
+    ThemeIcon,
+    ActionIcon,
+    Card
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -17,7 +19,7 @@ import { notifications } from "@mantine/notifications";
 import {
     IconCalculator, IconCoin, IconTruck, IconRoute, IconInfoCircle,
     IconMapPin, IconChartLine, IconSettings, IconSteeringWheel, IconAlertTriangle, IconDashboard,
-    IconFileInvoice
+    IconFileInvoice, IconPlus, IconTrash
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,7 +29,7 @@ import GoogleRouteMap from "./GoogleRouteMap";
 import ODTSelectableGrid from "../../odt/ODTSelectableGrid";
 import { SelectClienteConCreacion } from "../../contratos/SelectClienteConCreacion";
 
-// 🔥 PIEZA 1 (MEJORADA): Función robusta para imágenes en PDF. 
+// 🔥 PIEZA 1: Función robusta para imágenes en PDF. 
 // Convierte cualquier formato a JPEG plano para que jsPDF no lo deje en blanco.
 const getBase64ImageFromUrl = (url) => {
     return new Promise((resolve) => {
@@ -36,13 +38,12 @@ const getBase64ImageFromUrl = (url) => {
             return;
         }
         const img = new Image();
-        img.crossOrigin = "Anonymous"; // Evita bloqueos de CORS si están en otro dominio
+        img.crossOrigin = "Anonymous"; 
         img.onload = () => {
             const canvas = document.createElement("canvas");
             canvas.width = img.width;
             canvas.height = img.height;
             const ctx = canvas.getContext("2d");
-            // Fondo blanco forzado para evitar errores con PNGs transparentes
             ctx.fillStyle = "#FFFFFF";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
@@ -95,13 +96,14 @@ export default function FleteCreator() {
             viaticosManuales: 0,
             horaSalida: "06:00",
             comidaPrimerDia: false,
-            choferId: null,
-            ayudanteId: null,
-            activoPrincipalId: null,
-            remolqueId: null,
+            
+            // 🔥 ESTRUCTURA ROBUSTA DE CONVOY 🔥
+            chutos: [{ id: Date.now().toString(), activoId: "", choferId: "", ayudanteId: "" }],
+            remolques: [], // Ej: { id: "123", tipo: "dadica", activoId: "", pesoTercero: 0, retorna: true }
+            
             origen: "Base DADICA - Tía Juana",
             destino: "Circuito Logístico",
-            distanciaKm: 0, // 🔥 Este es el campo que ahora vas a poder editar a mano
+            distanciaKm: 0, 
             waypoints: [],
             tramos: [],
             cantidadPeajes: 0,
@@ -112,8 +114,6 @@ export default function FleteCreator() {
         validate: {
             clienteId: (val) => (val ? null : "Seleccione un cliente"),
             fechaSalida: (val) => (val ? null : "Fecha requerida"),
-            choferId: (val) => (val ? null : "Debe asignar un chofer"),
-            activoPrincipalId: (val) => (val ? null : "Debe asignar un vehículo principal"),
             distanciaKm: (val) => (val > 0 ? null : "Debe tener una distancia válida"),
         },
     });
@@ -135,10 +135,8 @@ export default function FleteCreator() {
 
                 setEmpleados(resEmp || []);
                 setActivos(resAct.success ? resAct.data : []);
-                setBcv(parseFloat(resBcv?.precio || 1));
+                setBcv(parseFloat(resBcv?.precio || resBcv?.valor || resBcv?.tasa || 1));
                 setConfigGlobal(resConfig);
-
-                console.log(resAct.data);
 
                 if (resConfig) {
                     setConfigPrecios({
@@ -175,7 +173,7 @@ export default function FleteCreator() {
             let placa = v.vehiculoInstancia?.placa || v.remolqueInstancia?.placa || "";
 
             return {
-                id: v.id,
+                id: v.id.toString(), // Forzado a String para compatibilidad exacta con ODTSelectableGrid
                 nombre: `${nombreDisplay} (${placa})`,
                 subtitulo: `Rendimiento BD: ${v.consumoCombustibleLPorKm || 0.35} L/Km`,
                 imagen: v.imagen,
@@ -190,15 +188,13 @@ export default function FleteCreator() {
     const { data: estimacion, isLoading: calcLoading } = useQuery({
         queryKey: [
             "calcular-flete-puro",
-            form.values.activoPrincipalId,
-            form.values.remolqueId,
+            JSON.stringify(form.values.chutos),
+            JSON.stringify(form.values.remolques),
             rutaData?.distanciaTotal,
             JSON.stringify(form.values.tramos),
             form.values.cantidadPeajes,
-            form.values.choferId,
-            form.values.ayudanteId,
             form.values.calidadRepuestos,
-            form.values.fechaSalida,
+            form.values.fechaSalida instanceof Date ? form.values.fechaSalida.toISOString() : form.values.fechaSalida,
             form.values.jornadaMaxima,
             form.values.horaSalida,
             form.values.comidaPrimerDia,
@@ -207,13 +203,7 @@ export default function FleteCreator() {
             form.values.tipoCarga
         ],
         queryFn: async () => {
-            if (!form.values.activoPrincipalId || !rutaData?.distanciaTotal || !configGlobal) return null;
-
-            const choferObj = empleados.find(e => e.id === form.values.choferId);
-            const ayudanteObj = empleados.find(e => e.id === form.values.ayudanteId);
-
-            const sueldoChofer = parseFloat(choferObj?.sueldoDiario || configGlobal.sueldoDiarioChofer || 25);
-            const sueldoAyudante = parseFloat(ayudanteObj?.sueldoDiario || configGlobal.sueldoDiarioAyudante || 15);
+            if (!form.values.chutos.length || !form.values.chutos[0].activoId || !rutaData?.distanciaTotal || !configGlobal) return null;
 
             const tonelajePromedio = form.values.tramos.length > 0
                 ? form.values.tramos.reduce((acc, t) => acc + t.tonelaje, 0) / form.values.tramos.length
@@ -224,12 +214,12 @@ export default function FleteCreator() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     tipoCotizacion: 'flete',
-                    activoPrincipalId: form.values.activoPrincipalId,
-                    remolqueId: form.values.remolqueId,
+                    chutos: form.values.chutos,
+                    remolques: form.values.remolques,
                     distanciaKm: rutaData.distanciaTotal,
                     fechaSalida: form.values.fechaSalida,
                     jornadaMaxima: parseInt(form.values.jornadaMaxima),
-                    tonelaje: tonelajePromedio,
+                    tonelaje: tonelajePromedio, // Variable corregida para evitar error de scope estricto
                     horaSalida: form.values.horaSalida,
                     comidaPrimerDia: form.values.comidaPrimerDia,
                     viaticosManuales: form.values.viaticosManuales,
@@ -238,12 +228,11 @@ export default function FleteCreator() {
                     precioPeajeBs: configPrecios.peaje,
                     bcv: bcv || 1,
                     precioGasoilUsd: configPrecios.gasoil,
-                    tieneAyudante: !!form.values.ayudanteId,
                     calidadRepuestos: form.values.calidadRepuestos,
                     porcentajeGanancia: parseFloat(form.values.margenGanancia) / 100,
 
-                    sueldoDiarioChofer: sueldoChofer,
-                    sueldoDiarioAyudante: sueldoAyudante,
+                    sueldoDiarioChofer: parseFloat(configGlobal.sueldoDiarioChofer || 25),
+                    sueldoDiarioAyudante: parseFloat(configGlobal.sueldoDiarioAyudante || 15),
                     viaticoAlimentacionDia: parseFloat(configGlobal.viaticoAlimentacionDia || 15),
                     viaticoHotelNoche: parseFloat(configGlobal.viaticoHotelNoche || 20),
 
@@ -255,38 +244,57 @@ export default function FleteCreator() {
                 }),
             });
 
-            if (!response.ok) throw new Error('Error calculando la estimación');
+            if (!response.ok) throw new Error('Error calculando la estimación del Convoy');
             return response.json();
         },
-        enabled: !!form.values.activoPrincipalId && !!rutaData?.distanciaTotal,
+        enabled: !!form.values.chutos[0]?.activoId && !!rutaData?.distanciaTotal,
     });
 
+    // 🔥 PREVENCIÓN DE BUCLE INFINITO 🔥
+    // Se extrae la reactividad directa de form.values para evitar que el render loop destruya la pila de llamadas
     const handleRouteCalculated = useCallback((data) => {
-        setRutaData(data);
+        const currentValues = form.getValues(); // Leemos el estado SIN atar el callback al render
+
+        setRutaData((prev) => {
+            // Salida temprana estricta
+            if (prev?.distanciaTotal === data.distanciaTotal && JSON.stringify(prev?.waypoints) === JSON.stringify(data.waypoints)) {
+                return prev;
+            }
+            return data;
+        });
+
         const distanciaCalculada = parseFloat(data.distanciaTotal) || 0;
         
-        form.setFieldValue("distanciaKm", distanciaCalculada);
-        form.setFieldValue("waypoints", data.waypoints);
-        form.setFieldValue("tramos", data.tramos || []);
-
-        // Sugerencia automática de Origen/Destino
-        if (data.tramos && data.tramos.length > 0) {
-            form.setFieldValue("origen", data.tramos[0].origen.split(',')[0]);
-            form.setFieldValue("destino", data.tramos[data.tramos.length - 1].destino.split(',')[0]);
+        if (currentValues.distanciaKm !== distanciaCalculada) {
+            form.setFieldValue("distanciaKm", distanciaCalculada);
+        }
+        
+        if (JSON.stringify(currentValues.waypoints) !== JSON.stringify(data.waypoints)) {
+            form.setFieldValue("waypoints", data.waypoints);
+        }
+        
+        if (JSON.stringify(currentValues.tramos) !== JSON.stringify(data.tramos)) {
+            form.setFieldValue("tramos", data.tramos || []);
+            
+            if (data.tramos && data.tramos.length > 0) {
+                const o = data.tramos[0].origen.split(',')[0];
+                const d = data.tramos[data.tramos.length - 1].destino.split(',')[0];
+                if (currentValues.origen !== o) form.setFieldValue("origen", o);
+                if (currentValues.destino !== d) form.setFieldValue("destino", d);
+            }
         }
 
-        // Cálculo dinámico del margen de ganancia basado en la distancia
         if (distanciaCalculada > 0) {
             let nuevoMargen = Math.round((2000 / (distanciaCalculada + 50)) + 28);
-            
-            // Limitamos el margen entre 0 y 1000 para evitar desbordes
             if (nuevoMargen > 1000) nuevoMargen = 1000;
             if (nuevoMargen < 0) nuevoMargen = 0;
 
-            setValorVisualMargen(nuevoMargen);
-            form.setFieldValue("margenGanancia", nuevoMargen);
+            setValorVisualMargen((prev) => prev !== nuevoMargen ? nuevoMargen : prev);
+            if (currentValues.margenGanancia !== nuevoMargen) {
+                form.setFieldValue("margenGanancia", nuevoMargen);
+            }
         }
-    }, [form]); // Asegurado incluir form en las dependencias
+    }, [form]); // Solo depende de la instancia del form (que es inmutable en Mantine v7)
 
     const handleGenerarCotizacionPDF = async () => {
         if (!estimacion) {
@@ -306,40 +314,35 @@ export default function FleteCreator() {
 
             const doc = new jsPDF();
 
-            const cantChutos = form.values.activoPrincipalId ? 1 : 0;
-            const cantRemolques = form.values.remolqueId ? 1 : 0;
-            const cantChoferes = form.values.choferId ? 1 : 0;
-            const cantAyudantes = form.values.ayudanteId ? 1 : 0;
+            const cantChutos = form.values.chutos.length;
+            const cantRemolques = form.values.remolques.length;
+            const cantChoferes = form.values.chutos.filter(c => c.choferId).length;
+            const cantAyudantes = form.values.chutos.filter(c => c.ayudanteId).length;
 
-            // 🔥 CONFIGURACIÓN DE RUTAS DE IMÁGENES 🔥
-            const logoBaseUrl = '/logo.png'; // En la carpeta public
+            const logoBaseUrl = '/logo.png'; 
             const blobBaseUrl = (process.env.NEXT_PUBLIC_BLOB_BASE_URL || "").replace(/\/$/, '');
 
-            // 🔥 CARGA DE LOGO Y CHUTO (Para verificar antes de dibujar) 🔥
             const logoB64 = await getBase64ImageFromUrl(logoBaseUrl);
-            const chutoData = activosMapeados.find(a => a.id === form.values.activoPrincipalId);
+            
+            const primerChutoId = form.values.chutos[0]?.activoId;
+            const chutoData = activosMapeados.find(a => a.id.toString() === primerChutoId);
             const chutoImgUrl = chutoData?.imagen ? `${blobBaseUrl}/${chutoData.imagen}` : null;
             const chutoImgB64 = chutoImgUrl ? await getBase64ImageFromUrl(chutoImgUrl) : null;
 
-            // --- PÁGINA 1: Encabezado Membretado y Mapa Mejorado ---
-
-            // 🔥 1. MEMBRETE FORMAL CON MARCO 🔥
+            // --- PÁGINA 1 ---
             const headerY = 10;
             const headerHeight = 35;
             const xMembreteText = 65;
             const pageWidth = doc.internal.pageSize.getWidth();
 
-            // Dibujar Marco Superior
-            doc.setDrawColor(40, 40, 40); // Color gris oscuro
+            doc.setDrawColor(40, 40, 40); 
             doc.setLineWidth(0.5);
-            doc.rect(14, headerY, pageWidth - 28, headerHeight, 'S'); // 'S' para solo borde
+            doc.rect(14, headerY, pageWidth - 28, headerHeight, 'S'); 
 
-            // Insertar Logo (Izquierda dentro del marco)
             if (logoB64) {
-                doc.addImage(logoB64, 'JPEG', 18, headerY + 5, 40, 25); // Posicionado con margen
+                doc.addImage(logoB64, 'JPEG', 18, headerY + 5, 40, 25); 
             }
 
-            // Insertar Bloque de Texto (Al lado del logo)
             doc.setFontSize(16);
             doc.setTextColor(40, 40, 40);
             doc.setFont("helvetica", "bold");
@@ -351,13 +354,10 @@ export default function FleteCreator() {
             doc.text("RIF: J-29553660-7", xMembreteText, headerY + 18);
             doc.text("Carrt. F con AV. 32, Tia Juana, Estado Zulia", xMembreteText, headerY + 23);
 
-            // Título Prominente (COTIZACION DE FLETE)
             doc.setFontSize(14);
-            doc.setTextColor(250, 176, 5); // Dorado Dadica
+            doc.setTextColor(250, 176, 5); 
             doc.setFont("helvetica", "bold");
-            doc.text("COTIZACION DE FLETE", xMembreteText, headerY + 31);
-
-            // --- FIN MEMBRETE ---
+            doc.text("COTIZACION DE FLETE CONVOY", xMembreteText, headerY + 31);
 
             doc.setFontSize(11);
             doc.setTextColor(100, 100, 100);
@@ -367,7 +367,7 @@ export default function FleteCreator() {
             doc.setFontSize(14);
             doc.setTextColor(250, 176, 5);
             doc.setFont("helvetica", "bold");
-            doc.text("1. Itinerario Logístico", 14, headerY + headerHeight + 25);
+            doc.text("1. Itinerario Logístico del Convoy", 14, headerY + headerHeight + 25);
 
             doc.setFontSize(11);
             doc.setTextColor(40, 40, 40);
@@ -377,27 +377,23 @@ export default function FleteCreator() {
             doc.text(`Distancia Total: ${form.values.distanciaKm} Km`, 14, headerY + headerHeight + 47);
             doc.text(`Tiempo Operativo Estimado: ${estimacion.breakdown.rutinaViaje.tiempoMisionTotal} horas`, 14, headerY + headerHeight + 53);
 
-            // 🔥 MAPA MEJORADO (Más grande y con borde) 🔥
             const mapY = headerY + headerHeight + 60;
-            const mapHeight = 110; // Incrementado sustancialmente para mejor visibilidad
+            const mapHeight = 110; 
 
-            // Dibujar Marco fino para el mapa
-            doc.setDrawColor(180, 180, 180); // Gris claro
+            doc.setDrawColor(180, 180, 180);
             doc.setLineWidth(0.2);
             doc.rect(14, mapY, 180, mapHeight, 'S');
 
-            // Capturar la imagen del mapa
             const mapElement = document.getElementById("mapa-ruta-captura");
             if (mapElement) {
-                const canvas = await html2canvas(mapElement, { useCORS: true, allowTaint: false, scale: 2 }); // Scale 2 mejora calidad
-                const mapImgData = canvas.toDataURL("image/jpeg", 0.9); // Mayor calidad JPEG
-                doc.addImage(mapImgData, 'JPEG', 14.2, mapY + 0.2, 179.6, mapHeight - 0.4); // Insertado dentro del borde
+                const canvas = await html2canvas(mapElement, { useCORS: true, allowTaint: false, scale: 2 }); 
+                const mapImgData = canvas.toDataURL("image/jpeg", 0.9); 
+                doc.addImage(mapImgData, 'JPEG', 14.2, mapY + 0.2, 179.6, mapHeight - 0.4); 
             }
 
-            // --- PÁGINA 2: Flota y Finanzas (Membrete simple) ---
+            // --- PÁGINA 2 ---
             doc.addPage();
 
-            // Membrete simple en segunda página
             if (logoB64) { doc.addImage(logoB64, 'JPEG', 14, 12, 35, 15); }
             doc.setFontSize(12);
             doc.setTextColor(40, 40, 40);
@@ -410,42 +406,46 @@ export default function FleteCreator() {
 
             doc.setFontSize(14);
             doc.setTextColor(250, 176, 5);
-            doc.text("2. Despliegue de Flota y Recursos", 14, 42);
+            doc.text("2. Despliegue de Convoy y Recursos", 14, 42);
 
             doc.setFontSize(11);
             doc.setTextColor(40, 40, 40);
             doc.setFont("helvetica", "normal");
             doc.text(`• Personal Especializado: ${cantChoferes} Chofer(es), ${cantAyudantes} Ayudante(s)`, 14, 52);
+            doc.text(`• Unidades Motrices (Chutos): ${cantChutos}`, 14, 58);
+            doc.text(`• Unidades de Arrastre (Remolques): ${cantRemolques}`, 14, 64);
 
-            let currentYImages = 62;
+            let currentYImages = 74;
 
-            // CARGA DE IMAGENES FLOTA (Ya cargado el chuto arriba)
-            if (chutoImgB64) {
+            if (chutoImgB64 && chutoData) {
                 doc.addImage(chutoImgB64, 'JPEG', 14, currentYImages, 50, 35);
                 doc.setFontSize(10);
                 doc.setTextColor(40, 40, 40);
                 doc.setFont("helvetica", "bold");
-                doc.text(`Vehículo Principal:`, 14, currentYImages + 40);
+                doc.text(`Vehículo Representativo:`, 14, currentYImages + 40);
                 doc.setFontSize(9);
                 doc.setTextColor(100, 100, 100);
                 doc.setFont("helvetica", "normal");
                 doc.text(`${chutoData.nombre}`, 14, currentYImages + 45);
             }
 
-            const remolqueData = activosMapeados.find(a => a.id === form.values.remolqueId);
-            if (remolqueData && remolqueData.imagen) {
-                const remolqueImgUrl = `${blobBaseUrl}/${remolqueData.imagen}`;
-                const remolqueImgB64 = await getBase64ImageFromUrl(remolqueImgUrl);
-                if (remolqueImgB64) {
-                    doc.addImage(remolqueImgB64, 'JPEG', 80, currentYImages, 50, 35);
-                    doc.setFontSize(10);
-                    doc.setTextColor(40, 40, 40);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`Remolque/Batea:`, 80, currentYImages + 40);
-                    doc.setFontSize(9);
-                    doc.setTextColor(100, 100, 100);
-                    doc.setFont("helvetica", "normal");
-                    doc.text(`${remolqueData.nombre}`, 80, currentYImages + 45);
+            const primerRemolquePropio = form.values.remolques.find(r => r.tipo === 'dadica');
+            if (primerRemolquePropio) {
+                const remolqueData = activosMapeados.find(a => a.id.toString() === primerRemolquePropio.activoId);
+                if (remolqueData && remolqueData.imagen) {
+                    const remolqueImgUrl = `${blobBaseUrl}/${remolqueData.imagen}`;
+                    const remolqueImgB64 = await getBase64ImageFromUrl(remolqueImgUrl);
+                    if (remolqueImgB64) {
+                        doc.addImage(remolqueImgB64, 'JPEG', 80, currentYImages, 50, 35);
+                        doc.setFontSize(10);
+                        doc.setTextColor(40, 40, 40);
+                        doc.setFont("helvetica", "bold");
+                        doc.text(`Remolque Representativo:`, 80, currentYImages + 40);
+                        doc.setFontSize(9);
+                        doc.setTextColor(100, 100, 100);
+                        doc.setFont("helvetica", "normal");
+                        doc.text(`${remolqueData.nombre}`, 80, currentYImages + 45);
+                    }
                 }
             }
 
@@ -463,18 +463,18 @@ export default function FleteCreator() {
 
             doc.setFontSize(14);
             doc.setTextColor(250, 176, 5);
-            doc.text("3. Presupuesto Operativo (Breakdown)", 14, startTableY - 5);
+            doc.text("3. Presupuesto Operativo Consolidado (Breakdown)", 14, startTableY - 5);
 
             autoTable(doc, {
                 startY: startTableY,
                 headStyles: { fillColor: [52, 58, 64] },
-                head: [['Concepto Operativo', 'Subtotal (USD)']],
+                head: [['Concepto Operativo Convoy', 'Subtotal (USD)']],
                 body: [
-                    ['Abastecimiento de Combustible', `$${costoCombustible.toFixed(2)}`],
-                    ['Nómina Operativa de Ruta', `$${costoNomina.toFixed(2)}`],
-                    ['Viáticos y Subsistencia', `$${costoViaticos.toFixed(2)}`],
-                    ['Peajes y Vialidad', `$${costoPeajes.toFixed(2)}`],
-                    ['Reserva Mantenimiento de Flota', `$${costoMantenimiento.toFixed(2)}`],
+                    ['Abastecimiento de Combustible (Toda la flota)', `$${costoCombustible.toFixed(2)}`],
+                    ['Nómina Operativa de Ruta (Toda la tripulación)', `$${costoNomina.toFixed(2)}`],
+                    ['Viáticos y Subsistencia (Toda la tripulación)', `$${costoViaticos.toFixed(2)}`],
+                    ['Peajes y Vialidad Convoy', `$${costoPeajes.toFixed(2)}`],
+                    ['Reserva Mantenimiento de Flota (Múltiple)', `$${costoMantenimiento.toFixed(2)}`],
                     ['Costo de Capital y Posesión', `$${costoPosesion.toFixed(2)}`],
                     ['Gestión Logística, Riesgo y Seguros', `$${costoGestionYMargen.toFixed(2)}`],
                 ],
@@ -492,7 +492,7 @@ export default function FleteCreator() {
             doc.setTextColor(47, 158, 68);
             doc.text(`$${estimacion.precioSugerido.toFixed(2)}`, 130, finalY + 35);
 
-            doc.save(`Cotizacion_Dadica_${form.values.destino.replace(/\s+/g, '_')}.pdf`);
+            doc.save(`Cotizacion_Dadica_Convoy_${form.values.destino.replace(/\s+/g, '_')}.pdf`);
 
             notifications.update({ id: 'pdf-load', title: "¡Listo!", message: "PDF generado correctamente.", color: "green", icon: <IconFileInvoice /> });
 
@@ -517,6 +517,8 @@ export default function FleteCreator() {
                 precioSugerido: estimacion?.precioSugerido || 0,
                 breakdown: estimacion?.breakdown ? JSON.stringify(estimacion.breakdown) : null,
                 creadoPor: userId,
+                chutos: values.chutos,
+                remolques: values.remolques
             };
 
             const response = await fetch("/api/fletes", {
@@ -527,7 +529,7 @@ export default function FleteCreator() {
 
             if (!response.ok) throw new Error("Error al guardar el flete");
 
-            notifications.show({ title: "Éxito", message: "Flete programado", color: "green" });
+            notifications.show({ title: "Éxito", message: "Convoy programado", color: "green" });
             router.push("/superuser/fletes");
         } catch (error) {
             notifications.show({ title: "Error", message: error.message, color: "red" });
@@ -538,87 +540,94 @@ export default function FleteCreator() {
 
     if (loading) return <Center h="80vh"><Loader size="xl" color="yellow.6" /></Center>;
 
-    const chutoSeleccionado = activosMapeados.find(a => a.id === form.values.activoPrincipalId);
-    const remolqueSeleccionado = activosMapeados.find(a => a.id === form.values.remolqueId);
-
-    const taraChutoFija = chutoSeleccionado ? Number(chutoSeleccionado.tara) || 0 : 0;
-    const taraRemolqueFija = remolqueSeleccionado ? Number(remolqueSeleccionado.tara) || 0 : 0;
-    const taraBaseVisual = taraChutoFija + taraRemolqueFija;
-
-    const capacidadMaxDynamic = estimacion?.breakdown?.auditoriaPesos?.capacidad?.valor || (chutoSeleccionado?.capacidad || 40);
+    // 🔥 CÁLCULOS AGREGADOS PARA EL CONVOY EN EL FRONTEND 🔥
+    const chutosSeleccionados = form.values.chutos.map(c => activosMapeados.find(a => a.id.toString() === c.activoId)).filter(Boolean);
+    const remolquesSeleccionadosPropios = form.values.remolques.filter(r => r.tipo === 'dadica').map(r => activosMapeados.find(a => a.id.toString() === r.activoId)).filter(Boolean);
+    
+    const taraChutosFija = chutosSeleccionados.reduce((sum, curr) => sum + (Number(curr.tara) || 0), 0);
+    const taraRemolquesPropiosFija = remolquesSeleccionadosPropios.reduce((sum, curr) => sum + (Number(curr.tara) || 0), 0);
+    const taraRemolquesTercerosFija = form.values.remolques.filter(r => r.tipo === 'tercero').reduce((sum, curr) => sum + (Number(curr.pesoTercero) || 0), 0);
+    
+    const taraBaseVisual = taraChutosFija + taraRemolquesPropiosFija + taraRemolquesTercerosFija;
+    const capacidadMaxDynamic = estimacion?.breakdown?.auditoriaPesos?.capacidad?.valor || (chutosSeleccionados.reduce((sum, curr) => sum + (Number(curr.capacidad) || 40), 0));
 
     const distanciaViaje = rutaData?.distanciaTotal || 0;
     const litrosTotales = estimacion?.breakdown?.litros || 0;
     const consumoPromedioDinamico = distanciaViaje > 0 ? (litrosTotales / distanciaViaje).toFixed(2) : "0.00";
-    // --- VARIABLES DE DESGLOSE AVANZADO (DADICA) ---
+    
     const tiempoMision = estimacion?.breakdown?.rutinaViaje?.tiempoMisionTotal ? Number(estimacion.breakdown.rutinaViaje.tiempoMisionTotal) : 0;
 
-    // 1. Desglose de Overhead (Corregido a ABC Puro)
-    const chutoValor = chutoSeleccionado ? Number(chutoSeleccionado.raw?.valorReposicion || 0) : 0;
-    const bateaValor = remolqueSeleccionado ? Number(remolqueSeleccionado.raw?.valorReposicion || 0) : 0;
+    // --- RECONSTRUCCIÓN DE MATEMÁTICA VISUAL ABC Y POSESIÓN PARA EL ACORDEÓN ---
     const valorFlota = configGlobal?.valorFlotaActiva ? Number(configGlobal.valorFlotaActiva) : 1;
-
-    const pesoChutoDecimal = chutoValor / valorFlota;
-    const pesoBateaDecimal = bateaValor / valorFlota;
-    const pesoChutoPorc = pesoChutoDecimal * 100;
-    const pesoBateaPorc = pesoBateaDecimal * 100;
-
     const gastosFijosAnuales = Number(configGlobal?.gastosFijosAnualesTotales || 0);
+    const tasaInteres = configGlobal?.tasaInteresAnual ? Number(configGlobal.tasaInteresAnual) : 5.0;
 
-    // 🔥 EL SECRETO: Dividir entre las horas del activo (ej. 200), NO de la flota completa
-    const chutoHorasAnuales = chutoSeleccionado ? Number(chutoSeleccionado.raw?.horasAnuales || 200) : 200;
-    const bateaHorasAnuales = remolqueSeleccionado ? Number(remolqueSeleccionado.raw?.horasAnuales || 200) : 200;
+    // 1. Mapeo Matemático Explicativo de Chutos
+    const chutosMatematica = chutosSeleccionados.map((chuto) => {
+        const valor = Number(chuto.raw?.valorReposicion || 0);
+        const pesoDecimal = valor / valorFlota;
+        const cuotaAnual = gastosFijosAnuales * pesoDecimal;
+        const horasAnuales = Number(chuto.raw?.horasAnuales || 200);
+        const overheadHora = horasAnuales > 0 ? cuotaAnual / horasAnuales : 0;
+        const overheadTotal = overheadHora * tiempoMision;
 
-    const cuotaAnualChuto = gastosFijosAnuales * pesoChutoDecimal;
-    const cuotaAnualBatea = bateaValor > 0 ? (gastosFijosAnuales * pesoBateaDecimal) : 0;
+        const posHora = Number(chuto.raw?.costoPosesionHora || 0);
+        const posTotal = posHora * tiempoMision;
+        const salvamento = Number(chuto.raw?.valorSalvamento || 0);
+        const vida = Number(chuto.raw?.vidaUtilAnios || 1);
+        const depHora = (vida * horasAnuales) > 0 ? (valor - salvamento) / (vida * horasAnuales) : 0;
+        const intHora = horasAnuales > 0 ? (valor * (tasaInteres / 100)) / horasAnuales : 0;
 
-    const overheadChutoHora = chutoHorasAnuales > 0 ? cuotaAnualChuto / chutoHorasAnuales : 0;
-    const overheadBateaHora = bateaHorasAnuales > 0 ? cuotaAnualBatea / bateaHorasAnuales : 0;
+        return {
+            nombre: chuto.nombre,
+            valor, pesoPorc: pesoDecimal * 100, cuotaAnual, horasAnuales, overheadHora, overheadTotal,
+            posHora, posTotal, salvamento, vida, depHora, intHora,
+            cuotaMensual: cuotaAnual / 12,
+            viajesMes: overheadTotal > 0 ? (cuotaAnual / 12) / overheadTotal : 0
+        };
+    });
 
-    const overheadChutoTotal = overheadChutoHora * tiempoMision;
-    const overheadBateaTotal = overheadBateaHora * tiempoMision;
+    // 2. Mapeo Matemático Explicativo de Bateas Propias
+    const bateasMatematica = remolquesSeleccionadosPropios.map((batea) => {
+        const valor = Number(batea.raw?.valorReposicion || 0);
+        const pesoDecimal = valor / valorFlota;
+        const cuotaAnual = gastosFijosAnuales * pesoDecimal;
+        const horasAnuales = Number(batea.raw?.horasAnuales || 200);
+        const overheadHora = horasAnuales > 0 ? cuotaAnual / horasAnuales : 0;
+        const overheadTotal = overheadHora * tiempoMision;
 
-    // --- METAS DE SUPERVIVENCIA (VIAJES AL MES) ---
-    // Individuales (Lo que le toca pagar a cada equipo)
-    const cuotaMensualChuto = cuotaAnualChuto / 12;
-    const viajesMesChuto = overheadChutoTotal > 0 ? cuotaMensualChuto / overheadChutoTotal : 0;
+        const posHora = Number(batea.raw?.costoPosesionHora || 0);
+        const posTotal = posHora * tiempoMision;
+        const salvamento = Number(batea.raw?.valorSalvamento || 0);
+        const vida = Number(batea.raw?.vidaUtilAnios || 1);
+        const depHora = (vida * horasAnuales) > 0 ? (valor - salvamento) / (vida * horasAnuales) : 0;
+        const intHora = horasAnuales > 0 ? (valor * (tasaInteres / 100)) / horasAnuales : 0;
 
-    const cuotaMensualBatea = bateaValor > 0 ? cuotaAnualBatea / 12 : 0;
-    const viajesMesBatea = overheadBateaTotal > 0 ? cuotaMensualBatea / overheadBateaTotal : 0;
+        return {
+            nombre: batea.nombre,
+            valor, pesoPorc: pesoDecimal * 100, cuotaAnual, horasAnuales, overheadHora, overheadTotal,
+            posHora, posTotal, salvamento, vida, depHora, intHora,
+            cuotaMensual: cuotaAnual / 12,
+            viajesMes: overheadTotal > 0 ? (cuotaAnual / 12) / overheadTotal : 0
+        };
+    });
 
-    // Global (Stress Test: Si este flete mantuviera a TODA la empresa sola)
-    const overheadRecaudadoViaje = overheadChutoTotal + overheadBateaTotal;
-    const gastosFijosMensualesTotales = gastosFijosAnuales / 12;
-    const viajesMesEmpresa = overheadRecaudadoViaje > 0 ? gastosFijosMensualesTotales / overheadRecaudadoViaje : 0;
-    // 2. Desglose de Mantenimiento
+    // --- AGREGACIONES FINANCIERAS GLOBALES VISUALES ---
+    const overheadChutoTotalGlobal = chutosMatematica.reduce((sum, c) => sum + c.overheadTotal, 0);
+    const overheadBateaTotalGlobal = bateasMatematica.reduce((sum, b) => sum + b.overheadTotal, 0);
+    const posChutoTotalGlobal = chutosMatematica.reduce((sum, c) => sum + c.posTotal, 0);
+    const posBateaTotalGlobal = bateasMatematica.reduce((sum, b) => sum + b.posTotal, 0);
+    
+    // Mantenimiento Extraido del Breakdown
     const mttoChutoItems = estimacion?.breakdown?.itemsDetallados?.filter(i => i.descripcion.includes('[Chuto]')) || [];
     const mttoBateaItems = estimacion?.breakdown?.itemsDetallados?.filter(i => i.descripcion.includes('[Batea]')) || [];
+    const mttoChutoTotalGlobal = mttoChutoItems.reduce((acc, curr) => acc + curr.monto, 0);
+    const mttoBateaTotalGlobal = mttoBateaItems.reduce((acc, curr) => acc + curr.monto, 0);
 
-    const mttoChutoTotal = mttoChutoItems.reduce((acc, curr) => acc + curr.monto, 0);
-    const mttoBateaTotal = mttoBateaItems.reduce((acc, curr) => acc + curr.monto, 0);
-
-    // 3. Desglose de Posesión y Financiero (EXPLICATIVO)
-    const tasaInteres = configGlobal?.tasaInteresAnual ? Number(configGlobal.tasaInteresAnual) : 5.0; // 5% por defecto
-
-    // --- VARIABLES CHUTO ---
-    const posChutoHora = chutoSeleccionado ? Number(chutoSeleccionado.raw?.costoPosesionHora || 0) : 0;
-    const posChutoTotal = posChutoHora * tiempoMision;
-
-    const chutoSalvamento = chutoSeleccionado ? Number(chutoSeleccionado.raw?.valorSalvamento || 0) : 0;
-    const chutoVidaAnios = chutoSeleccionado ? Number(chutoSeleccionado.raw?.vidaUtilAnios || 1) : 1;
-
-    const chutoDepHora = (chutoVidaAnios * chutoHorasAnuales) > 0 ? (chutoValor - chutoSalvamento) / (chutoVidaAnios * chutoHorasAnuales) : 0;
-    const chutoIntHora = chutoHorasAnuales > 0 ? (chutoValor * (tasaInteres / 100)) / chutoHorasAnuales : 0;
-
-    // --- VARIABLES BATEA ---
-    const posBateaHora = remolqueSeleccionado ? Number(remolqueSeleccionado.raw?.costoPosesionHora || 0) : 0;
-    const posBateaTotal = posBateaHora * tiempoMision;
-
-    const bateaSalvamento = remolqueSeleccionado ? Number(remolqueSeleccionado.raw?.valorSalvamento || 0) : 0;
-    const bateaVidaAnios = remolqueSeleccionado ? Number(remolqueSeleccionado.raw?.vidaUtilAnios || 1) : 1;
-
-    const bateaDepHora = (bateaVidaAnios * bateaHorasAnuales) > 0 ? (bateaValor - bateaSalvamento) / (bateaVidaAnios * bateaHorasAnuales) : 0;
-    const bateaIntHora = bateaHorasAnuales > 0 ? (bateaValor * (tasaInteres / 100)) / bateaHorasAnuales : 0;
+    // --- METAS DE SUPERVIVENCIA MULTIPLICADAS PARA EL CONVOY ---
+    const overheadRecaudadoViajeConvoy = overheadChutoTotalGlobal + overheadBateaTotalGlobal;
+    const gastosFijosMensualesTotales = gastosFijosAnuales / 12;
+    const viajesMesEmpresaConvoy = overheadRecaudadoViajeConvoy > 0 ? gastosFijosMensualesTotales / overheadRecaudadoViajeConvoy : 0;
 
     return (
         <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -651,7 +660,6 @@ export default function FleteCreator() {
                                         <TextInput label="Nro Control" placeholder="FL-XXXX" {...form.getInputProps("nroFlete")} fw={800} c="blue.9" />
                                     </Group>
 
-                                    {/* 🔥 PIEZA 3: AHORA LA DISTANCIA TAMBIÉN ES EDITABLE PARA EL PDF 🔥 */}
                                     <Paper withBorder p="sm" bg="blue.0" radius="sm" style={{ border: '1px solid #74c0fc' }}>
                                         <Text size="xs" fw={800} c="blue.8" mb="xs" tt="uppercase">Etiquetas Comerciales para PDF</Text>
                                         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
@@ -665,10 +673,10 @@ export default function FleteCreator() {
                                         label="Clasificación de la Carga"
                                         description="Riesgo operativo y permisos."
                                         data={[
-                                            { value: "general", label: "📦 General / No peligrosa (Limpia)" },
-                                            { value: "salmuera", label: "💧 Salmuera (Fluidos de completación)" },
-                                            { value: "hidrocarburos", label: "🛢️ Hidrocarburos (Crudo, gasoil)" },
-                                            { value: "quimicos", label: "🧪 Químicos (Ácidos, reactivos)" },
+                                            { value: "general", label: "📦 General / No peligrosa" },
+                                            { value: "salmuera", label: "💧 Salmuera" },
+                                            { value: "hidrocarburos", label: "🛢️ Hidrocarburos" },
+                                            { value: "quimicos", label: "🧪 Químicos" },
                                             { value: "explosivos", label: "🧨 Materiales Explosivos" }
                                         ]}
                                         {...form.getInputProps("tipoCarga")}
@@ -691,55 +699,149 @@ export default function FleteCreator() {
                                 </Stack>
                             </Grid.Col>
 
-                            {/* COLUMNA 2: Asignación de Flota y Telemetría */}
-                            <Grid.Col span={{ base: 12, lg: 4 }}>
+                            {/* COLUMNA 2 y 3 MERGEADA: CONFIGURACIÓN DE CONVOY CON ODTSelectableGrid RESTAURADO */}
+                            <Grid.Col span={{ base: 12, lg: 8 }}>
                                 <Stack gap="md">
-                                    <Text fw={900} c="dark.5" size="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>Asignación de Flota</Text>
+                                    <Text fw={900} c="dark.5" size="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>
+                                        Estructura del Convoy (Flota Múltiple)
+                                    </Text>
+                                    
+                                    <Grid gutter="md">
+                                        {/* SECCIÓN CHUTOS */}
+                                        <Grid.Col span={{ base: 12, md: 6 }}>
+                                            <Paper withBorder p="md" bg="gray.0">
+                                                <Group justify="space-between" mb="sm">
+                                                    <Text fw={800} c="dark.7"><IconTruck size={18} style={{ verticalAlign: 'middle', marginRight: 4 }}/> Cabezales / Chutos</Text>
+                                                    <Button variant="light" color="blue" size="xs" leftSection={<IconPlus size={14}/>} 
+                                                        onClick={() => form.insertListItem('chutos', { id: Date.now().toString(), activoId: "", choferId: "", ayudanteId: "" })}>
+                                                        Agregar
+                                                    </Button>
+                                                </Group>
+                                                
+                                                <Stack gap="xs">
+                                                    {form.values.chutos.map((chuto, index) => (
+                                                        <Card key={chuto.id} withBorder shadow="sm" radius="md" p="sm" style={{ borderLeft: '4px solid #339af0' }}>
+                                                            <Group justify="space-between" mb="xs">
+                                                                <Badge color="blue">Chuto {index + 1}</Badge>
+                                                                {index > 0 && (
+                                                                    <ActionIcon color="red" variant="subtle" onClick={() => form.removeListItem('chutos', index)}>
+                                                                        <IconTrash size={16} />
+                                                                    </ActionIcon>
+                                                                )}
+                                                            </Group>
+                                                            
+                                                            <Stack gap="xs">
+                                                                <ODTSelectableGrid
+                                                                    label="Vehículo Principal (Chuto)"
+                                                                    data={activosMapeados.filter((a) => a.tipo === "Vehiculo")}
+                                                                    onChange={(val) => form.setFieldValue(`chutos.${index}.activoId`, val)}
+                                                                    value={chuto.activoId}
+                                                                    showMetrics
+                                                                />
 
-                                    <ODTSelectableGrid
-                                        label="Vehículo Principal (Chuto/Camión)"
-                                        data={activosMapeados.filter((a) => a.tipo === "Vehiculo")}
-                                        onChange={(val) => form.setFieldValue("activoPrincipalId", val)}
-                                        value={form.values.activoPrincipalId}
-                                        showMetrics
-                                    />
-                                    <ODTSelectableGrid
-                                        label="Remolque / Batea"
-                                        data={activosMapeados.filter((a) => a.tipo === "Remolque")}
-                                        onChange={(val) => form.setFieldValue("remolqueId", val)}
-                                        value={form.values.remolqueId}
-                                        showMetrics
-                                    />
+                                                                <ODTSelectableGrid
+                                                                    label="Chofer Principal"
+                                                                    data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer"))).map((e) => ({ id: e.id.toString(), nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))}
+                                                                    onChange={(val) => form.setFieldValue(`chutos.${index}.choferId`, val)}
+                                                                    value={chuto.choferId}
+                                                                />
 
-                                    {form.values.activoPrincipalId ? (
+                                                                <ODTSelectableGrid
+                                                                    label="Ayudante / Escolta (Opcional)"
+                                                                    data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante"))).map((e) => ({ id: e.id.toString(), nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))}
+                                                                    onChange={(val) => form.setFieldValue(`chutos.${index}.ayudanteId`, val)}
+                                                                    value={chuto.ayudanteId}
+                                                                />
+                                                            </Stack>
+                                                        </Card>
+                                                    ))}
+                                                </Stack>
+                                            </Paper>
+                                        </Grid.Col>
+
+                                        {/* SECCIÓN REMOLQUES */}
+                                        <Grid.Col span={{ base: 12, md: 6 }}>
+                                            <Paper withBorder p="md" bg="gray.0">
+                                                <Group justify="space-between" mb="sm">
+                                                    <Text fw={800} c="dark.7"><IconTruck size={18} style={{ verticalAlign: 'middle', marginRight: 4 }}/> Remolques / Bateas</Text>
+                                                    <Button variant="light" color="violet" size="xs" leftSection={<IconPlus size={14}/>} 
+                                                        onClick={() => form.insertListItem('remolques', { id: Date.now().toString(), tipo: "dadica", activoId: "", pesoTercero: 0, retorna: true })}>
+                                                        Agregar
+                                                    </Button>
+                                                </Group>
+                                                
+                                                <Stack gap="xs">
+                                                    {form.values.remolques.length === 0 && <Text c="dimmed" size="sm" ta="center">Sin remolques asignados</Text>}
+                                                    {form.values.remolques.map((remolque, index) => (
+                                                        <Card key={remolque.id} withBorder shadow="sm" radius="md" p="sm" style={{ borderLeft: '4px solid #7950f2' }}>
+                                                            <Group justify="space-between" mb="xs">
+                                                                <Select 
+                                                                    data={[{ value: 'dadica', label: 'Propio (Dadica)' }, { value: 'tercero', label: 'Tercero (Alquilado)' }]}
+                                                                    {...form.getInputProps(`remolques.${index}.tipo`)}
+                                                                    style={{ flex: 1 }}
+                                                                />
+                                                                <ActionIcon color="red" variant="subtle" onClick={() => form.removeListItem('remolques', index)}>
+                                                                    <IconTrash size={16} />
+                                                                </ActionIcon>
+                                                            </Group>
+                                                            
+                                                            {remolque.tipo === 'dadica' ? (
+                                                                <ODTSelectableGrid
+                                                                    label="Seleccionar Remolque"
+                                                                    data={activosMapeados.filter((a) => a.tipo === "Remolque")}
+                                                                    onChange={(val) => form.setFieldValue(`remolques.${index}.activoId`, val)}
+                                                                    value={remolque.activoId}
+                                                                    showMetrics
+                                                                />
+                                                            ) : (
+                                                                <NumberInput label="Peso del Remolque (t)" description="Para cálculo de esfuerzo de arrastre" min={0} max={50}
+                                                                    {...form.getInputProps(`remolques.${index}.pesoTercero`)} mb="xs" />
+                                                            )}
+                                                            
+                                                            <Switch 
+                                                                label="El remolque retorna con el convoy" 
+                                                                description="Afecta ejes de peaje y consumo en retorno"
+                                                                checked={remolque.retorna}
+                                                                onChange={(event) => form.setFieldValue(`remolques.${index}.retorna`, event.currentTarget.checked)}
+                                                                color="violet"
+                                                            />
+                                                        </Card>
+                                                    ))}
+                                                </Stack>
+                                            </Paper>
+                                        </Grid.Col>
+                                    </Grid>
+
+                                    {/* TELEMETRÍA AGREGADA */}
+                                    {form.values.chutos.length > 0 && form.values.chutos[0].activoId ? (
                                         <Paper withBorder p="md" radius="sm" bg="dark.8" shadow="sm">
                                             <Group mb="md" gap="xs">
                                                 <IconDashboard size={20} color="#fab005" />
-                                                <Text size="sm" fw={900} c="white" tt="uppercase">Telemetría de Flota Detectada</Text>
+                                                <Text size="sm" fw={900} c="white" tt="uppercase">Telemetría Agregada del Convoy</Text>
                                             </Group>
 
                                             <SimpleGrid cols={2} spacing="md">
                                                 <Box>
-                                                    <Text size="xs" fw={700} c="gray.5" tt="uppercase">Tara Flota (Vacía):</Text>
+                                                    <Text size="xs" fw={700} c="gray.5" tt="uppercase">Tara Convoy (Vacío):</Text>
                                                     <Group gap={5} mt={4}>
                                                         <Text size="xl" fw={900} c="yellow.5">{taraBaseVisual.toFixed(1)} t</Text>
                                                     </Group>
                                                     <Text size="xs" c="gray.4" mt={2}>
-                                                        C: {taraChutoFija.toFixed(1)}t | B: {taraRemolqueFija.toFixed(1)}t
+                                                        Cabezales: {taraChutosFija.toFixed(1)}t | Remolques: {(taraRemolquesPropiosFija + taraRemolquesTercerosFija).toFixed(1)}t
                                                     </Text>
                                                 </Box>
 
                                                 <Box>
-                                                    <Text size="xs" fw={700} c="gray.5" tt="uppercase">Max Arrastre:</Text>
+                                                    <Text size="xs" fw={700} c="gray.5" tt="uppercase">Capacidad Max Conjunta:</Text>
                                                     <Text size="xl" fw={900} c="white" mt={4}>{capacidadMaxDynamic} t</Text>
                                                 </Box>
 
                                                 {estimacion?.breakdown?.auditoriaPesos && (
                                                     <>
                                                         <Box>
-                                                            <Text size="xs" fw={700} c="gray.5" tt="uppercase">Rendimiento Estimado:</Text>
+                                                            <Text size="xs" fw={700} c="gray.5" tt="uppercase">Rendimiento Promedio:</Text>
                                                             <Text size="md" fw={900} c="white" mt={4}>{consumoPromedioDinamico} L/Km</Text>
-                                                            <Text size="xs" c="gray.5" mt={2}>(Ajustado por carga en ruta)</Text>
+                                                            <Text size="xs" c="gray.5" mt={2}>(Consumo de todo el convoy)</Text>
                                                         </Box>
 
                                                         <Box>
@@ -755,28 +857,6 @@ export default function FleteCreator() {
                                             Asigna la flota para visualizar la telemetría base.
                                         </Alert>
                                     )}
-                                </Stack>
-                            </Grid.Col>
-
-                            {/* COLUMNA 3: Tripulación */}
-                            <Grid.Col span={{ base: 12, lg: 4 }}>
-                                <Stack gap="md">
-                                    <Text fw={900} c="dark.5" size="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>Tripulación</Text>
-                                    {/* Para el Chofer */}
-                                    <ODTSelectableGrid
-                                        label="Chofer Principal"
-                                        data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))} // 🔥 Agregado raw: e
-                                        onChange={(val) => form.setFieldValue("choferId", val)}
-                                        value={form.values.choferId}
-                                    />
-
-                                    {/* Para el Ayudante */}
-                                    <ODTSelectableGrid
-                                        label="Ayudante / Escolta (Opcional)"
-                                        data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante"))).map((e) => ({ id: e.id, nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))} // 🔥 Agregado raw: e
-                                        onChange={(val) => form.setFieldValue("ayudanteId", val)}
-                                        value={form.values.ayudanteId}
-                                    />
                                 </Stack>
                             </Grid.Col>
                         </Grid>
@@ -803,7 +883,7 @@ export default function FleteCreator() {
                             <GoogleRouteMap
                                 onRouteCalculated={handleRouteCalculated}
                                 tramosFormulario={form.values.tramos}
-                                vehiculoAsignado={!!form.values.vehiculoPrincipalId}
+                                vehiculoAsignado={form.values.chutos.length > 0 && !!form.values.chutos[0].activoId}
                                 taraBase={0}
                                 capacidadMax={30}
                                 initialWaypoints={form.values.waypoints}
@@ -882,7 +962,7 @@ export default function FleteCreator() {
                                 <IconCalculator size={28} color="#fab005" />
                             </ThemeIcon>
                             <Title order={2} c="dark.9" tt="uppercase" style={{ letterSpacing: '1px' }}>
-                                Presupuesto Inteligente
+                                Presupuesto Inteligente Convoy
                             </Title>
                         </Group>
 
@@ -890,7 +970,7 @@ export default function FleteCreator() {
                             <Center py={100}><Loader size="xl" color="yellow.6" variant="bars" /></Center>
                         ) : !estimacion ? (
                             <Alert color="dark.8" variant="outline" ta="center" mt="xl" style={{ borderStyle: 'dashed' }}>
-                                <Text fw={600} size="lg">Traza la ruta para que el motor financiero procese los costos en tiempo real.</Text>
+                                <Text fw={600} size="lg">Traza la ruta para que el motor financiero procese los costos del convoy en tiempo real.</Text>
                             </Alert>
                         ) : (
                             <Stack gap="xl">
@@ -955,34 +1035,17 @@ export default function FleteCreator() {
                                                     <Table.Tbody>
                                                         {/* --- 1. COMBUSTIBLE --- */}
                                                         <Table.Tr onClick={() => toggleSection('gasoil')} style={{ cursor: 'pointer' }} bg={expandedSections.gasoil ? "gray.1" : undefined}>
-                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.gasoil ? '▼' : '▶'}</Text> ⛽ Combustible Total ({estimacion?.breakdown?.litros || 0} Lts)</Table.Td>
+                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.gasoil ? '▼' : '▶'}</Text> ⛽ Combustible Convoy ({estimacion?.breakdown?.litros || 0} Lts)</Table.Td>
                                                             <Table.Td><Badge color="dark.6" radius="sm" size="lg">Operativo</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.combustible || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
-                                                        {expandedSections.gasoil && estimacion?.breakdown?.combustibleDetalle && (
-                                                            <>
-                                                                <Table.Tr><Table.Td pl={60} c="dimmed" style={{ borderBottom: 'none' }} colSpan={2} fz="md">↳ 🛣️ Por distancia plana base</Table.Td><Table.Td style={{ borderBottom: 'none' }} ta="right" c="dimmed" fw={800} fz="md">${(estimacion.breakdown.combustibleDetalle.baseDistancia * configPrecios.gasoil).toFixed(2)}</Table.Td></Table.Tr>
-                                                                <Table.Tr><Table.Td pl={60} c="dimmed" style={{ borderBottom: 'none' }} colSpan={2} fz="md">↳ ⚖️ Por esfuerzo de tonelaje remolcado</Table.Td><Table.Td style={{ borderBottom: 'none' }} ta="right" c="dimmed" fw={800} fz="md">${(estimacion.breakdown.combustibleDetalle.extraPeso * configPrecios.gasoil).toFixed(2)}</Table.Td></Table.Tr>
-                                                                {estimacion.breakdown.combustibleDetalle.extraElevacion > 0 && (
-                                                                    <Table.Tr><Table.Td pl={60} c="dimmed" style={{ borderBottom: 'none' }} colSpan={2} fz="md">↳ ⛰️ Por esfuerzo de elevación en montaña</Table.Td><Table.Td style={{ borderBottom: 'none' }} ta="right" c="dimmed" fw={800} fz="md">${(estimacion.breakdown.combustibleDetalle.extraElevacion * configPrecios.gasoil).toFixed(2)}</Table.Td></Table.Tr>
-                                                                )}
-                                                            </>
-                                                        )}
 
                                                         {/* --- 2. NÓMINA --- */}
                                                         <Table.Tr onClick={() => toggleSection('nomina')} style={{ cursor: 'pointer' }} bg={expandedSections.nomina ? "gray.1" : undefined}>
-                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.nomina ? '▼' : '▶'}</Text> 👷 Nómina de Ruta</Table.Td>
+                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.nomina ? '▼' : '▶'}</Text> 👷 Nómina de Ruta ({form.values.chutos.length} Choferes)</Table.Td>
                                                             <Table.Td><Badge color="blue.8" radius="sm" size="lg">RRHH</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.nomina || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
-                                                        {expandedSections.nomina && estimacion?.breakdown?.nominaDetalle && (
-                                                            <>
-                                                                <Table.Tr><Table.Td pl={60} c="dimmed" style={{ borderBottom: 'none' }} colSpan={2} fz="md">↳ 👨‍✈️ Chofer Principal</Table.Td><Table.Td style={{ borderBottom: 'none' }} ta="right" c="dimmed" fw={800} fz="md">${estimacion.breakdown.nominaDetalle.pagoChoferRuta.toFixed(2)}</Table.Td></Table.Tr>
-                                                                {estimacion.breakdown.nominaDetalle.pagoAyudanteRuta > 0 && (
-                                                                    <Table.Tr><Table.Td pl={60} c="dimmed" style={{ borderBottom: 'none' }} colSpan={2} fz="md">↳ 🧑‍🔧 Ayudante de Carga</Table.Td><Table.Td style={{ borderBottom: 'none' }} ta="right" c="dimmed" fw={800} fz="md">${estimacion.breakdown.nominaDetalle.pagoAyudanteRuta.toFixed(2)}</Table.Td></Table.Tr>
-                                                                )}
-                                                            </>
-                                                        )}
 
                                                         {/* --- 3. VIÁTICOS --- */}
                                                         <Table.Tr onClick={() => toggleSection('viaticos')} style={{ cursor: 'pointer' }} bg={expandedSections.viaticos ? "gray.1" : undefined}>
@@ -990,39 +1053,17 @@ export default function FleteCreator() {
                                                             <Table.Td><Badge color="indigo.7" radius="sm" size="lg">Operaciones</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.viaticos || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
-                                                        {expandedSections.viaticos && estimacion?.breakdown?.viaticosDetalle && (
-                                                            <>
-                                                                <Table.Tr><Table.Td pl={60} c="dimmed" style={{ borderBottom: 'none' }} colSpan={2} fz="md">↳ 🍽️ Alimentación Completa (Desay/Almuerzo/Cena)</Table.Td><Table.Td style={{ borderBottom: 'none' }} ta="right" c="dimmed" fw={800} fz="md">${estimacion.breakdown.viaticosDetalle.alimentacion.toFixed(2)}</Table.Td></Table.Tr>
-                                                                {estimacion.breakdown.viaticosDetalle.pernocta > 0 && (
-                                                                    <Table.Tr><Table.Td pl={60} c="dimmed" style={{ borderBottom: 'none' }} colSpan={2} fz="md">↳ 🛌 Pernocta / Estancia nocturna en Hotel</Table.Td><Table.Td style={{ borderBottom: 'none' }} ta="right" c="dimmed" fw={800} fz="md">${estimacion.breakdown.viaticosDetalle.pernocta.toFixed(2)}</Table.Td></Table.Tr>
-                                                                )}
-                                                            </>
-                                                        )}
 
-                                                        {/* --- 4. PEAJES Y VIALIDAD (AHORA EXPLICADO CON TASA BCV) --- */}
+                                                        {/* --- 4. PEAJES --- */}
                                                         <Table.Tr onClick={() => toggleSection('peajes')} style={{ cursor: 'pointer' }} bg={expandedSections.peajes ? "gray.1" : undefined}>
-                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.peajes ? '▼' : '▶'}</Text> 🚧 Peajes y Vialidad ({form.values.cantidadPeajes} en ruta)</Table.Td>
+                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.peajes ? '▼' : '▶'}</Text> 🚧 Peajes y Vialidad Convoy ({form.values.cantidadPeajes} en ruta)</Table.Td>
                                                             <Table.Td><Badge color="cyan.7" radius="sm" size="lg">Impuestos</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.peajes || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
-                                                        {expandedSections.peajes && (
-                                                            <>
-                                                                <Table.Tr>
-                                                                    <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 6, paddingTop: 16 }} colSpan={3}>
-                                                                        <Text span fw={900}>Cálculo Cambiario de Peajes:</Text> Los peajes nacionales se pagan en Bolívares (Bs.). El sistema toma la tarifa referencial configurada, la divide entre la tasa oficial del BCV del día para dolarizarla, y la multiplica por los peajes a cruzar.
-                                                                    </Table.Td>
-                                                                </Table.Tr>
-                                                                <Table.Tr>
-                                                                    <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 16, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                        • <Text span fw={700}>Fórmula:</Text> (Tarifa Bs. {configPrecios.peaje.toLocaleString('es-VE')} ÷ Tasa BCV {(bcv || 1).toFixed(2)}) × {form.values.cantidadPeajes} peajes = <Text span fw={900} c="dark.8">${(estimacion?.breakdown?.peajes || 0).toFixed(2)} USD</Text>
-                                                                    </Table.Td>
-                                                                </Table.Tr>
-                                                            </>
-                                                        )}
 
-                                                        {/* --- 5. OVERHEAD (AHORA DETALLADO POR ACTIVO Y HORA) --- */}
+                                                        {/* --- 5. OVERHEAD ABC (AHORA RECONSTRUIDO COMPLETAMENTE ITERANDO SOBRE CONVOY) --- */}
                                                         <Table.Tr onClick={() => toggleSection('overhead')} style={{ cursor: 'pointer' }} bg={expandedSections.overhead ? "gray.2" : "gray.1"}>
-                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.overhead ? '▼' : '▶'}</Text> 🏢 Costo Overhead ABC</Table.Td>
+                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.overhead ? '▼' : '▶'}</Text> 🏢 Costo Overhead ABC Convoy</Table.Td>
                                                             <Table.Td><Badge color="violet.7" radius="sm" size="lg">Administrativo</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.overhead || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
@@ -1030,59 +1071,65 @@ export default function FleteCreator() {
                                                             <>
                                                                 <Table.Tr>
                                                                     <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 6, paddingTop: 16 }} colSpan={3}>
-                                                                        <Text span fw={900}>Matemática ABC (Activity Based Costing):</Text> Asigna un porcentaje del Gasto Administrativo Anual (${gastosFijosAnuales.toLocaleString()}) a cada activo según su valor comercial frente al resto de la empresa.
+                                                                        <Text span fw={900}>Matemática ABC Múltiple:</Text> Asigna un porcentaje del Gasto Administrativo Anual (${gastosFijosAnuales.toLocaleString()}) a CADA ACTIVO del convoy según su valor comercial frente al resto de la empresa.
                                                                     </Table.Td>
                                                                 </Table.Tr>
 
-                                                                {/* CHUTO OVERHEAD */}
-                                                                <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🚛 Chuto (Tarifa Overhead: ${overheadChutoHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${overheadChutoTotal.toFixed(2)}</Table.Td></Table.Tr>
-                                                                <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                    • <Text span fw={700}>Origen del {pesoChutoPorc.toFixed(1)}%:</Text> Es lo que representa este equipo (${chutoValor.toLocaleString()}) frente al valor de toda la flota (${valorFlota.toLocaleString()}).
-                                                                </Table.Td></Table.Tr>
-                                                                <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 8, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                    • <Text span fw={700}>Fórmula:</Text> (${gastosFijosAnuales.toLocaleString()} × {pesoChutoPorc.toFixed(1)}%) ÷ {chutoHorasAnuales} hrs anuales = <Text span fw={800} c="dark.6">${overheadChutoHora.toFixed(2)}/hr</Text> × {tiempoMision.toFixed(1)} hrs de viaje.
-                                                                </Table.Td></Table.Tr>
-
-                                                                {/* BATEA OVERHEAD */}
-                                                                {bateaValor > 0 && (
-                                                                    <>
-                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🛤️ Batea (Tarifa Overhead: ${overheadBateaHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${overheadBateaTotal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                {/* BUCLE DE CHUTOS OVERHEAD */}
+                                                                {chutosMatematica.map((chuto, idx) => (
+                                                                    <React.Fragment key={`ov-chuto-${idx}`}>
+                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🚛 {chuto.nombre} (Tarifa Overhead: ${chuto.overheadHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${chuto.overheadTotal.toFixed(2)}</Table.Td></Table.Tr>
                                                                         <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                            • <Text span fw={700}>Origen del {pesoBateaPorc.toFixed(1)}%:</Text> Es lo que representa este equipo (${bateaValor.toLocaleString()}) frente al valor de toda la flota (${valorFlota.toLocaleString()}).
+                                                                            • <Text span fw={700}>Origen del {chuto.pesoPorc.toFixed(1)}%:</Text> Es lo que representa este equipo (${chuto.valor.toLocaleString()}) frente al valor de toda la flota (${valorFlota.toLocaleString()}).
                                                                         </Table.Td></Table.Tr>
-                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 16, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                            • <Text span fw={700}>Fórmula:</Text> (${gastosFijosAnuales.toLocaleString()} × {pesoBateaPorc.toFixed(1)}%) ÷ {bateaHorasAnuales} hrs anuales = <Text span fw={800} c="dark.6">${overheadBateaHora.toFixed(2)}/hr</Text> × {tiempoMision.toFixed(1)} hrs de viaje.
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 8, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                            • <Text span fw={700}>Fórmula:</Text> (${gastosFijosAnuales.toLocaleString()} × {chuto.pesoPorc.toFixed(1)}%) ÷ {chuto.horasAnuales} hrs anuales = <Text span fw={800} c="dark.6">${chuto.overheadHora.toFixed(2)}/hr</Text> × {tiempoMision.toFixed(1)} hrs de viaje.
                                                                         </Table.Td></Table.Tr>
-                                                                    </>
-                                                                )}
+                                                                    </React.Fragment>
+                                                                ))}
 
-                                                                {/* 🔥 TERMÓMETRO DE SUPERVIVENCIA (PUNTO DE EQUILIBRIO) 🔥 */}
+                                                                {/* BUCLE DE BATEAS OVERHEAD */}
+                                                                {bateasMatematica.map((batea, idx) => (
+                                                                    <React.Fragment key={`ov-batea-${idx}`}>
+                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🛤️ {batea.nombre} (Tarifa Overhead: ${batea.overheadHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${batea.overheadTotal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                            • <Text span fw={700}>Origen del {batea.pesoPorc.toFixed(1)}%:</Text> Es lo que representa este equipo (${batea.valor.toLocaleString()}) frente al valor de toda la flota (${valorFlota.toLocaleString()}).
+                                                                        </Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 8, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                            • <Text span fw={700}>Fórmula:</Text> (${gastosFijosAnuales.toLocaleString()} × {batea.pesoPorc.toFixed(1)}%) ÷ {batea.horasAnuales} hrs anuales = <Text span fw={800} c="dark.6">${batea.overheadHora.toFixed(2)}/hr</Text> × {tiempoMision.toFixed(1)} hrs de viaje.
+                                                                        </Table.Td></Table.Tr>
+                                                                    </React.Fragment>
+                                                                ))}
+
+                                                                {/* 🔥 TERMÓMETRO DE SUPERVIVENCIA CONVOY 🔥 */}
                                                                 <Table.Tr>
                                                                     <Table.Td colSpan={3} style={{ borderBottom: 'none', padding: '16px 60px 30px 60px' }}>
                                                                         <Paper withBorder p="md" radius="sm" bg="blue.0" style={{ borderLeft: '6px solid #339af0' }}>
-                                                                            <Text fw={900} c="blue.9" mb="xs"><IconChartLine size={18} style={{ verticalAlign: 'middle', marginRight: 8 }} />Punto de Equilibrio (Metas de Ocupación Mensual)</Text>
-                                                                            <Text size="sm" c="blue.8" mb="md">Para garantizar que los costos fijos administrativos no generen pérdidas, se deben cumplir estas cuotas de fletes <b>(idénticos a este)</b> al mes:</Text>
+                                                                            <Text fw={900} c="blue.9" mb="xs"><IconChartLine size={18} style={{ verticalAlign: 'middle', marginRight: 8 }} />Punto de Equilibrio Logístico (Metas de Ocupación Mensual)</Text>
+                                                                            <Text size="sm" c="blue.8" mb="md">Para garantizar que los costos fijos administrativos no generen pérdidas, se deben cumplir estas cuotas de fletes <b>(idénticos a este)</b> al mes por cada unidad:</Text>
 
                                                                             <Group gap="xl" align="flex-start">
-                                                                                <Box>
-                                                                                    <Text size="xs" tt="uppercase" fw={700} c="blue.9">🚛 Meta Individual (Chuto):</Text>
-                                                                                    <Text size="xl" fw={900} c="dark.9">{Math.ceil(viajesMesChuto)} <Text span size="sm" fw={600} c="dimmed">viajes/mes</Text></Text>
-                                                                                </Box>
-
-                                                                                {bateaValor > 0 && (
-                                                                                    <Box>
-                                                                                        <Text size="xs" tt="uppercase" fw={700} c="blue.9">🛤️ Meta Individual (Batea):</Text>
-                                                                                        <Text size="xl" fw={900} c="dark.9">{Math.ceil(viajesMesBatea)} <Text span size="sm" fw={600} c="dimmed">viajes/mes</Text></Text>
+                                                                                {chutosMatematica.map((chuto, idx) => (
+                                                                                    <Box key={`meta-chuto-${idx}`}>
+                                                                                        <Text size="xs" tt="uppercase" fw={700} c="blue.9">🚛 Meta Ind. (Chuto {idx+1}):</Text>
+                                                                                        <Text size="xl" fw={900} c="dark.9">{Math.ceil(chuto.viajesMes)} <Text span size="sm" fw={600} c="dimmed">viajes/mes</Text></Text>
                                                                                     </Box>
-                                                                                )}
+                                                                                ))}
+
+                                                                                {bateasMatematica.map((batea, idx) => (
+                                                                                    <Box key={`meta-batea-${idx}`}>
+                                                                                        <Text size="xs" tt="uppercase" fw={700} c="blue.9">🛤️ Meta Ind. (Batea {idx+1}):</Text>
+                                                                                        <Text size="xl" fw={900} c="dark.9">{Math.ceil(batea.viajesMes)} <Text span size="sm" fw={600} c="dimmed">viajes/mes</Text></Text>
+                                                                                    </Box>
+                                                                                ))}
 
                                                                                 <Divider orientation="vertical" color="blue.3" />
 
                                                                                 <Box style={{ backgroundColor: 'rgba(255, 107, 107, 0.1)', padding: '8px 16px', borderRadius: '4px', border: '1px solid #ff8787' }}>
                                                                                     <Text size="xs" tt="uppercase" fw={900} c="red.8">🚨 STRESS TEST (TODA LA EMPRESA):</Text>
-                                                                                    <Text size="xl" fw={900} c="red.9">{Math.ceil(viajesMesEmpresa)} <Text span size="sm" fw={600} c="red.7">viajes/mes</Text></Text>
+                                                                                    <Text size="xl" fw={900} c="red.9">{Math.ceil(viajesMesEmpresaConvoy)} <Text span size="sm" fw={600} c="red.7">viajes de CONVOY/mes</Text></Text>
                                                                                     <Text size="xs" c="red.8" mt={4} style={{ maxWidth: '250px', lineHeight: 1.2 }}>
-                                                                                        (Si la flota entera se paraliza y dependes exclusivamente de repetir este viaje para pagar el 100% de la oficina).
+                                                                                        (Si la flota entera se paraliza y dependes exclusivamente de repetir este despacho de {chutosSeleccionados.length} chuto(s) para pagar el 100% de la oficina).
                                                                                     </Text>
                                                                                 </Box>
                                                                             </Group>
@@ -1092,31 +1139,31 @@ export default function FleteCreator() {
                                                             </>
                                                         )}
 
-                                                        {/* --- 6. MANTENIMIENTO DINÁMICO (SEPARADO) --- */}
+                                                        {/* --- 6. MANTENIMIENTO DINÁMICO --- */}
                                                         <Table.Tr onClick={() => toggleSection('mantenimiento')} style={{ cursor: 'pointer' }} bg={expandedSections.mantenimiento ? "gray.1" : undefined}>
-                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.mantenimiento ? '▼' : '▶'}</Text> 🔧 Reserva Mantenimiento</Table.Td>
+                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.mantenimiento ? '▼' : '▶'}</Text> 🔧 Reserva Mantenimiento Múltiple</Table.Td>
                                                             <Table.Td><Badge color="orange.7" radius="sm" size="lg">Taller</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.mantenimiento || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
                                                         {expandedSections.mantenimiento && (
                                                             <>
-                                                                {/* Bloque Chuto */}
-                                                                <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🚛 Mantenimiento Chuto / Motor</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoChutoTotal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                {/* Bloque Chutos Conjuntos */}
+                                                                <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🚛 Mantenimiento Conjunto Chutos</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoChutoTotalGlobal.toFixed(2)}</Table.Td></Table.Tr>
                                                                 {mttoChutoItems.map((item, index) => (
-                                                                    <Table.Tr key={`chuto-${index}`}>
-                                                                        <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion.replace('[Chuto] ', '')}</Table.Td>
+                                                                    <Table.Tr key={`mtto-chuto-${index}`}>
+                                                                        <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion}</Table.Td>
                                                                         <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }}><Badge color={item.tipo === 'Rodamiento' ? 'orange.8' : 'gray.6'} variant="outline" radius="sm" size="sm">{item.tipo}</Badge></Table.Td>
                                                                         <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} ta="right" c="dimmed" fw={800} fz="sm">${item.monto.toFixed(2)}</Table.Td>
                                                                     </Table.Tr>
                                                                 ))}
 
-                                                                {/* Bloque Batea */}
-                                                                {mttoBateaTotal > 0 && (
+                                                                {/* Bloque Bateas Conjuntas */}
+                                                                {mttoBateaTotalGlobal > 0 && (
                                                                     <>
-                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🛤️ Mantenimiento Batea / Remolque</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoBateaTotal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🛤️ Mantenimiento Conjunto Bateas</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoBateaTotalGlobal.toFixed(2)}</Table.Td></Table.Tr>
                                                                         {mttoBateaItems.map((item, index) => (
-                                                                            <Table.Tr key={`batea-${index}`}>
-                                                                                <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion.replace('[Batea] ', '')}</Table.Td>
+                                                                            <Table.Tr key={`mtto-batea-${index}`}>
+                                                                                <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion}</Table.Td>
                                                                                 <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }}><Badge color={item.tipo === 'Rodamiento' ? 'orange.8' : 'gray.6'} variant="outline" radius="sm" size="sm">{item.tipo}</Badge></Table.Td>
                                                                                 <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} ta="right" c="dimmed" fw={800} fz="sm">${item.monto.toFixed(2)}</Table.Td>
                                                                             </Table.Tr>
@@ -1126,9 +1173,9 @@ export default function FleteCreator() {
                                                             </>
                                                         )}
 
-                                                        {/* --- 7. POSESIÓN FINANCIERA (FÓRMULAS EXPUESTAS) --- */}
+                                                        {/* --- 7. POSESIÓN FINANCIERA (FÓRMULAS EXPUESTAS POR CONVOY) --- */}
                                                         <Table.Tr onClick={() => toggleSection('posesion')} style={{ cursor: 'pointer' }} bg={expandedSections.posesion ? "gray.1" : undefined}>
-                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.posesion ? '▼' : '▶'}</Text> 📈 Costo Posesión y Capital</Table.Td>
+                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.posesion ? '▼' : '▶'}</Text> 📈 Costo Posesión Flota</Table.Td>
                                                             <Table.Td><Badge color="teal.7" radius="sm" size="lg">Financiero</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.posesion || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
@@ -1136,37 +1183,41 @@ export default function FleteCreator() {
                                                             <>
                                                                 <Table.Tr>
                                                                     <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 6, paddingTop: 16 }} colSpan={3}>
-                                                                        <Text span fw={900}>Matemática Financiera ({tiempoMision.toFixed(1)} horas de ruta):</Text> Refleja la pérdida de valor (Depreciación) y el costo de oportunidad del dinero inmovilizado (Interés del {tasaInteres}%) diluido entre las horas de trabajo reales del equipo.
+                                                                        <Text span fw={900}>Matemática Financiera ({tiempoMision.toFixed(1)} horas de ruta):</Text> Refleja la pérdida de valor (Depreciación) y el costo de oportunidad del dinero inmovilizado (Interés del {tasaInteres}%) diluido entre las horas de trabajo reales para CADA EQUIPO del convoy.
                                                                     </Table.Td>
                                                                 </Table.Tr>
 
-                                                                {/* DESGLOSE DEL CHUTO */}
-                                                                <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🚛 Chuto Principal (Tarifa Total: ${posChutoHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${posChutoTotal.toFixed(2)}</Table.Td></Table.Tr>
-                                                                <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                    • <Text span fw={700}>Depreciación:</Text> (${chutoValor.toLocaleString()} - Salvamento ${chutoSalvamento.toLocaleString()}) ÷ ({chutoVidaAnios} años × {chutoHorasAnuales} hrs/año) = <Text span fw={800} c="dark.6">${chutoDepHora.toFixed(2)}/hr</Text>
-                                                                </Table.Td></Table.Tr>
-                                                                <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                    • <Text span fw={700}>Costo Capital:</Text> (${chutoValor.toLocaleString()} × {tasaInteres}% anual) ÷ {chutoHorasAnuales} hrs/año = <Text span fw={800} c="dark.6">${chutoIntHora.toFixed(2)}/hr</Text>
-                                                                </Table.Td></Table.Tr>
-                                                                <Table.Tr><Table.Td pl={80} c="dark.5" style={{ borderBottom: 'none', paddingBottom: 8, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                    <Text span fw={700}>↳ Total Vehículo:</Text> (${chutoDepHora.toFixed(2)} + ${chutoIntHora.toFixed(2)}) × {tiempoMision.toFixed(1)} horas = <Text span fw={900} c="dark.8">${posChutoTotal.toFixed(2)}</Text>
-                                                                </Table.Td></Table.Tr>
-
-                                                                {/* DESGLOSE DE LA BATEA */}
-                                                                {bateaValor > 0 && (
-                                                                    <>
-                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🛤️ Remolque Acoplado (Tarifa Total: ${posBateaHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 16 }}>${posBateaTotal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                {/* DESGLOSE DE CHUTOS */}
+                                                                {chutosMatematica.map((chuto, idx) => (
+                                                                    <React.Fragment key={`pos-chuto-${idx}`}>
+                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🚛 {chuto.nombre} (Tarifa Total: ${chuto.posHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${chuto.posTotal.toFixed(2)}</Table.Td></Table.Tr>
                                                                         <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                            • <Text span fw={700}>Depreciación:</Text> (${bateaValor.toLocaleString()} - Salvamento ${bateaSalvamento.toLocaleString()}) ÷ ({bateaVidaAnios} años × {bateaHorasAnuales} hrs/año) = <Text span fw={800} c="dark.6">${bateaDepHora.toFixed(2)}/hr</Text>
+                                                                            • <Text span fw={700}>Depreciación:</Text> (${chuto.valor.toLocaleString()} - Salvamento ${chuto.salvamento.toLocaleString()}) ÷ ({chuto.vida} años × {chuto.horasAnuales} hrs/año) = <Text span fw={800} c="dark.6">${chuto.depHora.toFixed(2)}/hr</Text>
                                                                         </Table.Td></Table.Tr>
                                                                         <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                            • <Text span fw={700}>Costo Capital:</Text> (${bateaValor.toLocaleString()} × {tasaInteres}% anual) ÷ {bateaHorasAnuales} hrs/año = <Text span fw={800} c="dark.6">${bateaIntHora.toFixed(2)}/hr</Text>
+                                                                            • <Text span fw={700}>Costo Capital:</Text> (${chuto.valor.toLocaleString()} × {tasaInteres}% anual) ÷ {chuto.horasAnuales} hrs/año = <Text span fw={800} c="dark.6">${chuto.intHora.toFixed(2)}/hr</Text>
+                                                                        </Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dark.5" style={{ borderBottom: 'none', paddingBottom: 8, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                            <Text span fw={700}>↳ Total Vehículo:</Text> (${chuto.depHora.toFixed(2)} + ${chuto.intHora.toFixed(2)}) × {tiempoMision.toFixed(1)} horas = <Text span fw={900} c="dark.8">${chuto.posTotal.toFixed(2)}</Text>
+                                                                        </Table.Td></Table.Tr>
+                                                                    </React.Fragment>
+                                                                ))}
+
+                                                                {/* DESGLOSE DE BATEAS */}
+                                                                {bateasMatematica.map((batea, idx) => (
+                                                                    <React.Fragment key={`pos-batea-${idx}`}>
+                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🛤️ {batea.nombre} (Tarifa Total: ${batea.posHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 16 }}>${batea.posTotal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                            • <Text span fw={700}>Depreciación:</Text> (${batea.valor.toLocaleString()} - Salvamento ${batea.salvamento.toLocaleString()}) ÷ ({batea.vida} años × {batea.horasAnuales} hrs/año) = <Text span fw={800} c="dark.6">${batea.depHora.toFixed(2)}/hr</Text>
+                                                                        </Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                            • <Text span fw={700}>Costo Capital:</Text> (${batea.valor.toLocaleString()} × {tasaInteres}% anual) ÷ {batea.horasAnuales} hrs/año = <Text span fw={800} c="dark.6">${batea.intHora.toFixed(2)}/hr</Text>
                                                                         </Table.Td></Table.Tr>
                                                                         <Table.Tr><Table.Td pl={80} c="dark.5" style={{ borderBottom: 'none', paddingBottom: 16, paddingTop: 2 }} colSpan={3} fz="sm">
-                                                                            <Text span fw={700}>↳ Total Remolque:</Text> (${bateaDepHora.toFixed(2)} + ${bateaIntHora.toFixed(2)}) × {tiempoMision.toFixed(1)} horas = <Text span fw={900} c="dark.8">${posBateaTotal.toFixed(2)}</Text>
+                                                                            <Text span fw={700}>↳ Total Remolque:</Text> (${batea.depHora.toFixed(2)} + ${batea.intHora.toFixed(2)}) × {tiempoMision.toFixed(1)} horas = <Text span fw={900} c="dark.8">${batea.posTotal.toFixed(2)}</Text>
                                                                         </Table.Td></Table.Tr>
-                                                                    </>
-                                                                )}
+                                                                    </React.Fragment>
+                                                                ))}
                                                             </>
                                                         )}
 
@@ -1199,11 +1250,7 @@ export default function FleteCreator() {
                                                         value={valorVisualMargen} onChange={setValorVisualMargen}
                                                         onChangeEnd={(val) => form.setFieldValue("margenGanancia", val)}
                                                         step={1} min={0} max={500}
-                                                        marks={[
-                                                            { value: 30, label: <Text fw={800}>30%</Text> },
-                                                            { value: 100, label: <Text fw={800}>100%</Text> },
-                                                            { value: 500, label: <Text fw={800}>500%</Text> },
-                                                        ]}
+                                                        marks={[{ value: 30, label: <Text fw={800}>30%</Text> }, { value: 100, label: <Text fw={800}>100%</Text> }, { value: 500, label: <Text fw={800}>500%</Text> }]}
                                                     />
                                                 </Box>
                                                 <Box mt="xl">
@@ -1226,19 +1273,13 @@ export default function FleteCreator() {
                                         <Paper withBorder p="xl" radius="md" bg="white" shadow="md" style={{ borderLeft: '12px solid #fab005' }}>
                                             <Stack gap="lg">
                                                 <Group justify="space-between" style={{ borderBottom: '2px dashed #adb5bd', paddingBottom: '16px' }}>
-                                                    <Text size="xl" fw={900} c="dark.6" tt="uppercase">Costo Operativo (Break-Even):</Text>
+                                                    <Text size="xl" fw={900} c="dark.6" tt="uppercase">Costo Operativo Convoy:</Text>
                                                     <Text size="xl" fw={900} c="dark.9" style={{ fontSize: '2rem' }}>${estimacion.costoTotal.toFixed(2)}</Text>
                                                 </Group>
                                                 <Group justify="space-between" style={{ borderBottom: '2px dashed #adb5bd', paddingBottom: '16px' }}>
                                                     <Text size="xl" fw={900} c="green.8" tt="uppercase">+ Ganancia Comercial Esperada:</Text>
                                                     <Text size="xl" fw={900} c="green.8" style={{ fontSize: '2rem' }}>${estimacion.gananciaBase.toFixed(2)}</Text>
                                                 </Group>
-                                                {/* {estimacion.ajusteTarifaMinima > 0 && (
-                                                    <Group justify="space-between" style={{ borderBottom: '2px dashed #adb5bd', paddingBottom: '16px' }}>
-                                                        <Text size="xl" fw={900} c="orange.7" tt="uppercase">+ Ajuste Tarifa Mínima de Salida:</Text>
-                                                        <Text size="xl" fw={900} c="orange.7" style={{ fontSize: '2rem' }}>${estimacion.ajusteTarifaMinima.toFixed(2)}</Text>
-                                                    </Group>
-                                                )} */}
 
                                                 <Box ta="right" mt="xl">
                                                     <Text size="xl" tt="uppercase" fw={900} c="dark.4" mb={8} style={{ letterSpacing: '2px' }}>Tarifa Final Sugerida al Cliente</Text>
@@ -1265,12 +1306,8 @@ export default function FleteCreator() {
                         <Grid align="center">
                             <Grid.Col span={{ base: 12, md: 4 }}>
                                 <Button
-                                    fullWidth
-                                    variant="outline"
-                                    color="dark.8"
-                                    onClick={handleGenerarCotizacionPDF}
-                                    loading={generandoPDF}
-                                    leftSection={<IconFileInvoice size={28} />}
+                                    fullWidth variant="outline" color="dark.8"
+                                    onClick={handleGenerarCotizacionPDF} loading={generandoPDF} leftSection={<IconFileInvoice size={28} />}
                                     style={{ height: '100px', fontSize: '1.4rem', fontWeight: 900, border: '2px solid #343a40' }}
                                 >
                                     Descargar PDF Comercial
@@ -1279,17 +1316,11 @@ export default function FleteCreator() {
 
                             <Grid.Col span={{ base: 12, md: 8 }}>
                                 <Button
-                                    fullWidth
-                                    radius="md"
-                                    type="submit"
-                                    loading={submitting}
-                                    disabled={generandoPDF}
-                                    leftSection={<IconSteeringWheel size={36} />}
-                                    color="yellow.6"
-                                    c="dark.9"
+                                    fullWidth radius="md" type="submit" loading={submitting} disabled={generandoPDF}
+                                    leftSection={<IconSteeringWheel size={36} />} color="yellow.6" c="dark.9"
                                     style={{ height: '100px', fontSize: '1.8rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', boxShadow: '0 12px 24px rgba(0,0,0,0.25)' }}
                                 >
-                                    Guardar Flete e Iniciar Operación
+                                    Guardar Convoy e Iniciar Operación
                                 </Button>
                             </Grid.Col>
                         </Grid>

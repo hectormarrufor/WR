@@ -3,6 +3,7 @@ const sequelize = require('../../sequelize');
 
 const Flete = sequelize.define('Flete', {
   nroFlete: { type: DataTypes.STRING, unique: true }, // Frontend envía nroFlete
+  descripcion: { type: DataTypes.STRING, allowNull: true },
   clienteId: { type: DataTypes.INTEGER, allowNull: false },
 
   // Recursos Asignados

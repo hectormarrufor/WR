@@ -38,7 +38,12 @@ const ConfiguracionGlobal = sequelize.define('ConfiguracionGlobal', {
   // --- 4. NUEVOS: PARÁMETROS DE MERCADO Y OPERACIONES ---
   // ==========================================================
   precioGasoil: { type: DataTypes.FLOAT, defaultValue: 0.50 },
-  precioPeajePromedio: { type: DataTypes.FLOAT, defaultValue: 20.00 },
+  precioPeajePromedio: { type: DataTypes.FLOAT, defaultValue: 5.00 },
+  tarifaPeaje2Ejes: { type: DataTypes.FLOAT, defaultValue: 2 },
+  tarifaPeaje3Ejes: { type: DataTypes.FLOAT, defaultValue: 3 },
+  tarifaPeaje4Ejes: { type: DataTypes.FLOAT, defaultValue: 4 },
+  tarifaPeaje5Ejes: { type: DataTypes.FLOAT, defaultValue: 5.00 }, // Tu valor por defecto
+  tarifaPeaje6Ejes: { type: DataTypes.FLOAT, defaultValue: 6 },
   viaticoAlimentacionDia: { type: DataTypes.FLOAT, defaultValue: 15.00 },
   viaticoHotelNoche: { type: DataTypes.FLOAT, defaultValue: 20.00 },
 

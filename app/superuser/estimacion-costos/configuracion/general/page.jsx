@@ -18,7 +18,14 @@ export default function ConfiguracionGlobalPage() {
         initialValues: {
             // Módulo Mercado y Operativos
             precioGasoil: 0.50,
-            precioPeajePromedio: 20.00,
+            
+            // 🔥 Tarifas de Peaje por Eje (En Bolívares) 🔥
+            tarifaPeaje2Ejes: 0,
+            tarifaPeaje3Ejes: 0,
+            tarifaPeaje4Ejes: 0,
+            tarifaPeaje5Ejes: 160.00,
+            tarifaPeaje6Ejes: 0,
+
             viaticoAlimentacionDia: 15.00,
             viaticoHotelNoche: 20.00,
             sueldoDiarioChofer: 25.00,
@@ -37,9 +44,9 @@ export default function ConfiguracionGlobalPage() {
             nominaAdministrativaTotal: 0,
             nominaOperativaFijaTotal: 0,
             valorFlotaTotal: 0,
-            valorFlotaActiva: 0,       // <-- ¡NUEVA!
+            valorFlotaActiva: 0,       
             cantidadTotalUnidades: 0,
-            cantidadUnidadesActivas: 0, // <-- ¡NUEVA!
+            cantidadUnidadesActivas: 0, 
             horasTotalesFlota: 0,
             costoAdministrativoPorHora: 0,
 
@@ -119,7 +126,6 @@ export default function ConfiguracionGlobalPage() {
 
             if (res.ok) {
                 notifications.show({ title: 'Éxito', message: 'Configuración guardada y matrices actualizadas', color: 'green' });
-                // Actualizamos las horas y nómina por si hubo cambios en backend
                 form.setFieldValue('costoAdministrativoPorHora', data.overheadCalculado);
             } else {
                 throw new Error(data.error);
@@ -153,15 +159,23 @@ export default function ConfiguracionGlobalPage() {
 
                         {/* TAB 1: MERCADO Y OPERATIVOS */}
                         <Tabs.Panel value="mercado">
-                            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mb="xl">
+                            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mb="sm">
                                 <NumberInput label="Precio Gasoil (Litro)" prefix="$" decimalScale={3} {...form.getInputProps('precioGasoil')} />
-                                <NumberInput label="Peaje Promedio" prefix="$" decimalScale={2} {...form.getInputProps('precioPeajePromedio')} />
-
                                 <NumberInput label="Sueldo Diario Chofer" description="Tarifa plana por día de viaje" prefix="$" decimalScale={2} {...form.getInputProps('sueldoDiarioChofer')} />
                                 <NumberInput label="Sueldo Diario Ayudante" description="Tarifa plana por día de viaje" prefix="$" decimalScale={2} {...form.getInputProps('sueldoDiarioAyudante')} />
-
                                 <NumberInput label="Viático Comida (Día)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoAlimentacionDia')} />
                                 <NumberInput label="Viático Hotel (Noche)" prefix="$" decimalScale={2} {...form.getInputProps('viaticoHotelNoche')} />
+                            </SimpleGrid>
+
+                            {/* 🔥 PREFIJO CAMBIADO A BS PARA LOS PEAJES 🔥 */}
+                            <Divider my="md" label="Tarifas Nacionales de Peaje (En Bolívares)" labelPosition="center" />
+                            
+                            <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="sm" mb="xl">
+                                <NumberInput label="2 Ejes (350/750)" prefix="Bs. " decimalScale={2} {...form.getInputProps('tarifaPeaje2Ejes')} />
+                                <NumberInput label="3 Ejes" prefix="Bs. " decimalScale={2} {...form.getInputProps('tarifaPeaje3Ejes')} />
+                                <NumberInput label="4 Ejes" prefix="Bs. " decimalScale={2} {...form.getInputProps('tarifaPeaje4Ejes')} />
+                                <NumberInput label="5 Ejes (Estándar)" prefix="Bs. " decimalScale={2} {...form.getInputProps('tarifaPeaje5Ejes')} />
+                                <NumberInput label="6 Ejes" prefix="Bs. " decimalScale={2} {...form.getInputProps('tarifaPeaje6Ejes')} />
                             </SimpleGrid>
 
                             <Divider my="xs" label="Rango de Repuestos (Actualiza todas las Matrices)" labelPosition="center" />
@@ -211,7 +225,6 @@ export default function ConfiguracionGlobalPage() {
                                             <Text size="sm" fw={600}>Nómina Administrativa (Auto)</Text>
                                             <Text size="xs" c="dimmed">Presidencia, IT, Administración</Text>
                                         </div>
-                                        {/* 🔥 AQUÍ ESTABA EL ERROR: Actualizado a nominaAdminMensual 🔥 */}
                                         <Text fw={800} size="lg" c="violet.9">${nominaAdminMensual.toLocaleString('en-US')}</Text>
                                     </Group>
                                 </Paper>
@@ -223,7 +236,6 @@ export default function ConfiguracionGlobalPage() {
                                             <Text size="sm" fw={600}>Nómina Operativa Fija (Auto)</Text>
                                             <Text size="xs" c="dimmed">Mecánicos, Taller, Logística</Text>
                                         </div>
-                                        {/* 🔥 Y AQUÍ: Actualizado a nominaOpeMensual 🔥 */}
                                         <Text fw={800} size="lg" c="teal.9">${nominaOpeMensual.toLocaleString('en-US')}</Text>
                                     </Group>
                                 </Paper>
