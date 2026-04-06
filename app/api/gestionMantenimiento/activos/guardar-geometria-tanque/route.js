@@ -19,7 +19,7 @@ export async function POST(request) {
             throw new Error('Faltan datos obligatorios para guardar la geometría.');
         }
 
-        // Buscamos el activo incluyendo sus instancias para saber a qué plantilla pertenece
+        // Buscamos el activo incluyendo sus instancias para mapear de dónde viene
         const activo = await Activo.findByPk(activoId, {
             include: [
                 { model: VehiculoInstancia, as: 'vehiculoInstancia' },
@@ -31,65 +31,80 @@ export async function POST(request) {
 
         if (!activo) throw new Error('Activo no encontrado');
 
-        // 1. Guardamos el JSON de la geometría en el Activo
+        // 1. Guardamos el JSON de la geometría en el Activo origen
         activo.configuracionTanque = configuracionTanque;
         activo.changed('configuracionTanque', true);
 
-        // 2. AUTO-COMPLETAMOS LA CAPACIDAD CON EL VALOR VALIDADO
+        // 2. AUTO-COMPLETAMOS LA CAPACIDAD CON EL VALOR VALIDADO EN EL ACTIVO
         activo.capacidadTanque = capacidadFinal;
         
-        // Prevención contra errores si el camión es nuevo y no tiene nivel
         if (activo.nivelCombustible === null || activo.nivelCombustible === undefined) {
             activo.nivelCombustible = 0;
         }
 
         await activo.save({ transaction: t });
 
-        // 3. Propagar a la Plantilla (Si el usuario activó el Switch)
+        // 🔥 3. PROPAGACIÓN CORREGIDA A LOS HERMANOS (BASADO EN TUS MODELOS EXACTOS) 🔥
         if (propagateToTemplate) {
             let modeloDestino = null;
             let idPlantilla = null;
+            let includeModel = null;
+            let includeAs = null;
+            let fkName = null;
 
-            if (activo.vehiculoInstancia?.plantillaId) {
+            // Identificamos las relaciones y la llave foránea real
+            if (activo.vehiculoInstancia?.vehiculoId) {
                 modeloDestino = Vehiculo;
-                idPlantilla = activo.vehiculoInstancia.plantillaId;
-            } else if (activo.remolqueInstancia?.plantillaId) {
+                idPlantilla = activo.vehiculoInstancia.vehiculoId; 
+                includeModel = VehiculoInstancia;
+                includeAs = 'vehiculoInstancia';
+                fkName = 'vehiculoId'; // Ahora apuntamos a la columna que sí existe
+            } else if (activo.remolqueInstancia?.remolqueId) {
                 modeloDestino = Remolque;
-                idPlantilla = activo.remolqueInstancia.plantillaId;
-            } else if (activo.maquinaInstancia?.plantillaId) {
+                idPlantilla = activo.remolqueInstancia.remolqueId;
+                includeModel = RemolqueInstancia;
+                includeAs = 'remolqueInstancia';
+                fkName = 'remolqueId';
+            } else if (activo.maquinaInstancia?.maquinaId) {
                 modeloDestino = Maquina;
-                idPlantilla = activo.maquinaInstancia.plantillaId;
+                idPlantilla = activo.maquinaInstancia.maquinaId;
+                includeModel = MaquinaInstancia;
+                includeAs = 'maquinaInstancia';
+                fkName = 'maquinaId';
             }
 
-            if (modeloDestino && idPlantilla) {
+            if (modeloDestino && idPlantilla && includeModel) {
                 const plantilla = await modeloDestino.findByPk(idPlantilla, { transaction: t });
+                
                 if (plantilla) {
-                    // Guardamos la geometría maestra en el modelo (Ej: Mack Granite 2008)
+                    // Guardamos la configuración y la capacidad en la tabla maestra (Vehiculo, Maquina o Remolque)
                     plantilla.configuracionTanque = configuracionTanque;
+                    plantilla.capacidadTanque = capacidadFinal; 
                     plantilla.changed('configuracionTanque', true);
                     await plantilla.save({ transaction: t });
 
-                    // Opcional (pero muy recomendado): Actualizar a todos los "Mack Granite 2008" que tengan capacidad vacía
-                    // para que hereden automáticamente la capacidad matemática que acabas de calcular
-                    const instanciasRelacionadas = await modeloDestino === Vehiculo 
-                        ? await VehiculoInstancia.findAll({ where: { plantillaId: idPlantilla }, attributes: ['activoId'], transaction: t })
-                        : modeloDestino === Maquina 
-                            ? await MaquinaInstancia.findAll({ where: { plantillaId: idPlantilla }, attributes: ['activoId'], transaction: t })
-                            : await RemolqueInstancia.findAll({ where: { plantillaId: idPlantilla }, attributes: ['activoId'], transaction: t });
+                    // Hacemos INNER JOIN desde Activo -> Instancia buscando la FK exacta
+                    const hermanos = await Activo.findAll({
+                        include: [{
+                            model: includeModel,
+                            as: includeAs,
+                            where: { [fkName]: idPlantilla },
+                            required: true 
+                        }],
+                        transaction: t
+                    });
 
-                    const idsRelacionados = instanciasRelacionadas.map(i => i.activoId);
+                    // Inyectamos la data a todos los Activos hermanos que estén vacíos o en 0
+                    for (const hermano of hermanos) {
+                        if (hermano.id === activo.id) continue;
 
-                    if (idsRelacionados.length > 0) {
-                        await Activo.update(
-                            { capacidadTanque: capacidadNeta },
-                            { 
-                                where: { 
-                                    id: idsRelacionados, 
-                                    capacidadTanque: null // Solo pisamos a los que no tienen nada configurado
-                                }, 
-                                transaction: t 
-                            }
-                        );
+                        const cap = parseFloat(hermano.capacidadTanque);
+                        if (isNaN(cap) || cap === 0) {
+                            hermano.capacidadTanque = capacidadFinal;
+                            hermano.configuracionTanque = configuracionTanque;
+                            hermano.changed('configuracionTanque', true);
+                            await hermano.save({ transaction: t });
+                        }
                     }
                 }
             }
@@ -99,7 +114,7 @@ export async function POST(request) {
         
         return NextResponse.json({ 
             success: true, 
-            message: 'Geometría y Capacidad guardadas y calculadas con éxito.' 
+            message: 'Geometría y Capacidad guardadas y propagadas con éxito a todos los modelos vinculados.' 
         });
 
     } catch (error) {

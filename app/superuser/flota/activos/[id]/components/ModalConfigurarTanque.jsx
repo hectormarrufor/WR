@@ -36,7 +36,7 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
             factorDescuento: configInicial.factorDescuento ? configInicial.factorDescuento * 100 : 0,
             propagateToTemplate: true,
             
-            // ✨ NUEVO: TABLA DE AFORO MANUAL ✨
+            // TABLA DE AFORO MANUAL
             usarAforoManual: tieneAforoPrevio,
             tablaAforo: tieneAforoPrevio ? configInicial.tablaAforo : [{ cm: '', litros: '' }]
         },
@@ -53,8 +53,7 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
         }
     });
 
-    // ✨ CÁLCULO MATEMÁTICO EN TIEMPO REAL ✨
-    // ✨ CÁLCULO MATEMÁTICO EN TIEMPO REAL ✨
+    // CÁLCULO MATEMÁTICO EN TIEMPO REAL
     const calcularCapacidad = () => {
         const { tipoForma, cantidadTanques, largo, diametro, ancho, alto, factorDescuento } = form.values;
         let volumenCm3 = 0;
@@ -116,6 +115,7 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
                 activoId: activo.id,
                 configuracionTanque,
                 propagateToTemplate: values.propagateToTemplate,
+                // 🔥 AQUÍ ESTÁ LA CORRECCIÓN EXACTA DE LA PROPIEDAD 🔥
                 capacidadNeta: parseFloat(capacidadCalculada.netoTotal)
             };
 
@@ -130,7 +130,14 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
             if (!response.ok) throw new Error(data.error || 'Error al guardar la configuración');
 
             notifications.show({ title: 'Geometría Guardada', message: data.message, color: 'green', icon: <IconCheck size={18} /> });
-            if (onSuccess) onSuccess();
+            
+            // Le pasamos la data al formulario padre para que refresque su memoria
+            if (onSuccess) onSuccess({
+                configuracionTanque: payload.configuracionTanque,
+                capacidadNeta: payload.capacidadNeta,
+                propagate: payload.propagateToTemplate
+            });
+            
             onClose();
 
         } catch (error) {
@@ -152,7 +159,7 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <Stack gap="md">
                     
-                    {/* 🔥 SELECTOR VISUAL MEJORADO 🔥 */}
+                    {/* SELECTOR VISUAL MEJORADO */}
                     <Group grow>
                         <SegmentedControl
                             data={[
@@ -231,7 +238,7 @@ export default function ModalConfigurarTanque({ opened, onClose, activo, onSucce
 
                     <Divider />
 
-                    {/* ✨ SECCIÓN DE PUNTOS DE REFERENCIA (AFORO) ✨ */}
+                    {/* SECCIÓN DE PUNTOS DE REFERENCIA (AFORO) */}
                     <Paper withBorder p="md" bg="blue.0" radius="md" style={{ borderColor: '#a5d8ff' }}>
                         <Group justify="space-between" mb={form.values.usarAforoManual ? "md" : 0}>
                             <div>
