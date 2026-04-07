@@ -1,10 +1,3 @@
-import { NextResponse } from 'next/server';
-import {
-    sequelize, Activo, RemolqueInstancia, Remolque, Subsistema,
-    SubsistemaInstancia, ConsumibleInstalado, ConsumibleSerializado,
-    EntradaInventario, Kilometraje, SalidaInventario, Consumible, Recauchado
-} from '@/models';
-import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
 
 import { NextResponse } from 'next/server';
 import sequelize from '@/sequelize';
@@ -14,16 +7,8 @@ import {
     SalidaInventario, Consumible, ConsumibleInstalado
 } from '@/models';
 import { notificarAdmins } from '@/app/api/notificar/route';
+import { recalcularOverheadGlobal } from '@/app/ApiFunctions/recalcularOverhead';
 
-// NOTA: Asegúrate de importar e invocar tu función recalcularOverheadGlobal(t) como la tienes en tu backend original.
-
-import { NextResponse } from 'next/server';
-import sequelize from '@/sequelize';
-import {
-    RemolqueInstancia, Activo, Remolque, Subsistema, Kilometraje,
-    SubsistemaInstancia, ConsumibleSerializado, Recauchado, EntradaInventario,
-    SalidaInventario, Consumible, ConsumibleInstalado
-} from '@/models';
 
 export async function POST(request) {
     const t = await sequelize.transaction();
