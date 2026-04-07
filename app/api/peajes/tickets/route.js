@@ -70,6 +70,7 @@ export async function POST(request) {
             fecha: body.fecha,
             monto: parseFloat(body.monto),
             referencia: body.referencia || null,
+            ejes: body.ejes ? parseInt(body.ejes, 10) : null, // 🔥 NUEVO CAMPO ATRAPADO
             fotoTicket: body.fotoTicket || null,
             peajeId: body.peajeId,
             choferId: body.choferId,

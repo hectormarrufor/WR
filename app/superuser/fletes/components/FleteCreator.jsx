@@ -3,15 +3,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
     TextInput, NumberInput, Button, Paper, Title, Center,
-    SimpleGrid, Box, Divider, Grid, Text, Loader, Group, Badge, Select, Tooltip, Alert, Slider,
-    Accordion,
-    Table,
-    Timeline,
-    Switch,
-    Stack,
-    ThemeIcon,
-    ActionIcon,
-    Card
+    SimpleGrid, Box, Divider, Grid, Text, Loader, Group, Badge, Select, Alert, Slider,
+    Accordion, Table, Timeline, Switch, Stack, ThemeIcon, ActionIcon, Card
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -19,7 +12,7 @@ import { notifications } from "@mantine/notifications";
 import {
     IconCalculator, IconCoin, IconTruck, IconRoute, IconInfoCircle,
     IconMapPin, IconChartLine, IconSettings, IconSteeringWheel, IconAlertTriangle, IconDashboard,
-    IconFileInvoice, IconPlus, IconTrash
+    IconFileInvoice, IconPlus, IconTrash, IconGasStation
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,8 +22,6 @@ import GoogleRouteMap from "./GoogleRouteMap";
 import ODTSelectableGrid from "../../odt/ODTSelectableGrid";
 import { SelectClienteConCreacion } from "../../contratos/SelectClienteConCreacion";
 
-// 🔥 PIEZA 1: Función robusta para imágenes en PDF. 
-// Convierte cualquier formato a JPEG plano para que jsPDF no lo deje en blanco.
 const getBase64ImageFromUrl = (url) => {
     return new Promise((resolve) => {
         if (!url) {
@@ -38,7 +29,7 @@ const getBase64ImageFromUrl = (url) => {
             return;
         }
         const img = new Image();
-        img.crossOrigin = "Anonymous"; 
+        img.crossOrigin = "Anonymous";
         img.onload = () => {
             const canvas = document.createElement("canvas");
             canvas.width = img.width;
@@ -73,14 +64,8 @@ export default function FleteCreator() {
     const [rutaData, setRutaData] = useState(null);
 
     const [expandedSections, setExpandedSections] = useState({
-        gasoil: false,
-        nomina: false,
-        viaticos: false,
-        posesion: false,
-        overhead: false,
-        mantenimiento: false,
-        riesgo: false,
-        peajes: false,
+        gasoil: false, nomina: false, viaticos: false, posesion: false,
+        overhead: false, mantenimiento: false, riesgo: false, peajes: false,
     });
 
     const toggleSection = (section) => {
@@ -96,14 +81,23 @@ export default function FleteCreator() {
             viaticosManuales: 0,
             horaSalida: "06:00",
             comidaPrimerDia: false,
-            
-            // 🔥 ESTRUCTURA ROBUSTA DE CONVOY 🔥
-            chutos: [{ id: Date.now().toString(), activoId: "", choferId: "", ayudanteId: "" }],
-            remolques: [], // Ej: { id: "123", tipo: "dadica", activoId: "", pesoTercero: 0, retorna: true }
-            
+            tramoDescarga: "0",
+
+            unidades: [{
+                id: Date.now().toString(),
+                activoId: "",
+                choferId: "",
+                ayudanteId: "",
+                llevaRemolque: false,
+                tipoRemolque: "dadica",
+                remolqueId: "",
+                pesoTercero: 0,
+                retorna: true
+            }],
+
             origen: "Base DADICA - Tía Juana",
             destino: "Circuito Logístico",
-            distanciaKm: 0, 
+            distanciaKm: 0,
             waypoints: [],
             tramos: [],
             cantidadPeajes: 0,
@@ -173,25 +167,52 @@ export default function FleteCreator() {
             let placa = v.vehiculoInstancia?.placa || v.remolqueInstancia?.placa || "";
 
             return {
-                id: v.id.toString(), // Forzado a String para compatibilidad exacta con ODTSelectableGrid
+                id: v.id.toString(),
                 nombre: `${nombreDisplay} (${placa})`,
-                subtitulo: `Rendimiento BD: ${v.consumoCombustibleLPorKm || 0.35} L/Km`,
+                subtitulo: v.tipoActivo === 'Vehiculo' ? `Rendimiento: ${v.consumoCombustibleLPorKm || 0.35} L/Km` : `Tara: ${v.tara || v.remolqueInstancia?.plantilla?.peso || 6}t`,
                 imagen: v.imagen,
                 tipo: v.tipoActivo,
-                tara: v.tara || v.remolqueInstancia?.plantilla?.peso || v.vehiculoInstancia?.plantilla?.peso || null,
+                tara: v.tara || v.remolqueInstancia?.plantilla?.peso || v.vehiculoInstancia?.plantilla?.peso || 0,
                 capacidad: v.capacidadTonelajeMax || v.remolqueInstancia?.plantilla?.capacidadCarga || v.vehiculoInstancia?.plantilla?.capacidadArrastre || null,
                 raw: v
             };
         });
     }, [activos]);
 
+    const chutosParaAPI = useMemo(() => {
+        return form.values.unidades.filter(u => u.activoId).map(u => ({
+            unidadId: u.id, 
+            activoId: u.activoId, choferId: u.choferId, ayudanteId: u.ayudanteId
+        }));
+    }, [form.values.unidades]);
+
+    const remolquesParaAPI = useMemo(() => {
+        return form.values.unidades.filter(u => u.llevaRemolque).map(u => ({
+            unidadId: u.id, 
+            tipo: u.tipoRemolque, activoId: u.remolqueId, pesoTercero: u.pesoTercero, retorna: u.retorna
+        }));
+    }, [form.values.unidades]);
+
+    const tramosParaAPI = useMemo(() => {
+        return form.values.tramos.map(t => {
+            const pesoTotalSegmento = t.pesosCarga ? Object.values(t.pesosCarga).reduce((sum, val) => sum + (Number(val) || 0), 0) : 0;
+            return {
+                ...t,
+                distanciaKm: Number(t.distanciaKm) || 0,
+                desnivelMetros: Number(t.desnivelMetros) || 0,
+                tiempoEspera: Number(t.tiempoEspera) || 0,
+                tonelaje: Number(pesoTotalSegmento)
+            };
+        });
+    }, [form.values.tramos]);
+
     const { data: estimacion, isLoading: calcLoading } = useQuery({
         queryKey: [
             "calcular-flete-puro",
-            JSON.stringify(form.values.chutos),
-            JSON.stringify(form.values.remolques),
+            JSON.stringify(chutosParaAPI),
+            JSON.stringify(remolquesParaAPI),
             rutaData?.distanciaTotal,
-            JSON.stringify(form.values.tramos),
+            JSON.stringify(tramosParaAPI),
             form.values.cantidadPeajes,
             form.values.calidadRepuestos,
             form.values.fechaSalida instanceof Date ? form.values.fechaSalida.toISOString() : form.values.fechaSalida,
@@ -200,13 +221,14 @@ export default function FleteCreator() {
             form.values.comidaPrimerDia,
             form.values.viaticosManuales,
             form.values.margenGanancia,
-            form.values.tipoCarga
+            form.values.tipoCarga,
+            form.values.tramoDescarga
         ],
         queryFn: async () => {
-            if (!form.values.chutos.length || !form.values.chutos[0].activoId || !rutaData?.distanciaTotal || !configGlobal) return null;
+            if (!chutosParaAPI.length || !rutaData?.distanciaTotal || !configGlobal) return null;
 
-            const tonelajePromedio = form.values.tramos.length > 0
-                ? form.values.tramos.reduce((acc, t) => acc + t.tonelaje, 0) / form.values.tramos.length
+            const tonelajePromedio = tramosParaAPI.length > 0
+                ? tramosParaAPI.reduce((acc, t) => acc + Number(t.tonelaje), 0) / tramosParaAPI.length
                 : 0;
 
             const response = await fetch('/api/fletes/estimar', {
@@ -214,32 +236,33 @@ export default function FleteCreator() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     tipoCotizacion: 'flete',
-                    chutos: form.values.chutos,
-                    remolques: form.values.remolques,
-                    distanciaKm: rutaData.distanciaTotal,
+                    chutos: chutosParaAPI,
+                    remolques: remolquesParaAPI,
+                    distanciaKm: Number(rutaData.distanciaTotal) || 0,
                     fechaSalida: form.values.fechaSalida,
-                    jornadaMaxima: parseInt(form.values.jornadaMaxima),
-                    tonelaje: tonelajePromedio, // Variable corregida para evitar error de scope estricto
+                    jornadaMaxima: Number(form.values.jornadaMaxima) || 12,
+                    tonelaje: Number(tonelajePromedio) || 0,
                     horaSalida: form.values.horaSalida,
                     comidaPrimerDia: form.values.comidaPrimerDia,
-                    viaticosManuales: form.values.viaticosManuales,
-                    tramos: form.values.tramos,
-                    cantidadPeajes: form.values.cantidadPeajes,
-                    precioPeajeBs: configPrecios.peaje,
-                    bcv: bcv || 1,
-                    precioGasoilUsd: configPrecios.gasoil,
-                    calidadRepuestos: form.values.calidadRepuestos,
-                    porcentajeGanancia: parseFloat(form.values.margenGanancia) / 100,
+                    viaticosManuales: Number(form.values.viaticosManuales) || 0,
+                    tramos: tramosParaAPI,
+                    tramoDescarga: Number(form.values.tramoDescarga),
+                    cantidadPeajes: Number(form.values.cantidadPeajes) || 0,
+                    precioPeajeBs: Number(configPrecios.peaje) || 0,
+                    bcv: Number(bcv) || 1,
+                    precioGasoilUsd: Number(configPrecios.gasoil) || 0,
+                    calidadRepuestos: Number(form.values.calidadRepuestos) || 0,
+                    porcentajeGanancia: (Number(form.values.margenGanancia) || 0) / 100,
 
-                    sueldoDiarioChofer: parseFloat(configGlobal.sueldoDiarioChofer || 25),
-                    sueldoDiarioAyudante: parseFloat(configGlobal.sueldoDiarioAyudante || 15),
-                    viaticoAlimentacionDia: parseFloat(configGlobal.viaticoAlimentacionDia || 15),
-                    viaticoHotelNoche: parseFloat(configGlobal.viaticoHotelNoche || 20),
+                    sueldoDiarioChofer: Number(configGlobal.sueldoDiarioChofer) || 25,
+                    sueldoDiarioAyudante: Number(configGlobal.sueldoDiarioAyudante) || 15,
+                    viaticoAlimentacionDia: Number(configGlobal.viaticoAlimentacionDia) || 15,
+                    viaticoHotelNoche: Number(configGlobal.viaticoHotelNoche) || 20,
 
-                    valorFlotaActiva: parseFloat(configGlobal.valorFlotaActiva || 1),
-                    gastosFijosAnualesTotales: parseFloat(configGlobal.gastosFijosAnualesTotales || 0),
-                    horasTotalesFlota: parseInt(configGlobal.horasTotalesFlota || 1),
-                    costoAdministrativoPorHora: parseFloat(configGlobal.costoAdministrativoPorHora || 0),
+                    valorFlotaActiva: Number(configGlobal.valorFlotaActiva) || 1,
+                    gastosFijosAnualesTotales: Number(configGlobal.gastosFijosAnualesTotales) || 0,
+                    horasTotalesFlota: Number(configGlobal.horasTotalesFlota) || 1,
+                    costoAdministrativoPorHora: Number(configGlobal.costoAdministrativoPorHora) || 0,
                     tipoCarga: form.values.tipoCarga,
                 }),
             });
@@ -247,16 +270,13 @@ export default function FleteCreator() {
             if (!response.ok) throw new Error('Error calculando la estimación del Convoy');
             return response.json();
         },
-        enabled: !!form.values.chutos[0]?.activoId && !!rutaData?.distanciaTotal,
+        enabled: !!chutosParaAPI.length && !!rutaData?.distanciaTotal,
     });
 
-    // 🔥 PREVENCIÓN DE BUCLE INFINITO 🔥
-    // Se extrae la reactividad directa de form.values para evitar que el render loop destruya la pila de llamadas
     const handleRouteCalculated = useCallback((data) => {
-        const currentValues = form.getValues(); // Leemos el estado SIN atar el callback al render
+        const currentValues = form.getValues();
 
         setRutaData((prev) => {
-            // Salida temprana estricta
             if (prev?.distanciaTotal === data.distanciaTotal && JSON.stringify(prev?.waypoints) === JSON.stringify(data.waypoints)) {
                 return prev;
             }
@@ -264,21 +284,27 @@ export default function FleteCreator() {
         });
 
         const distanciaCalculada = parseFloat(data.distanciaTotal) || 0;
-        
+
         if (currentValues.distanciaKm !== distanciaCalculada) {
             form.setFieldValue("distanciaKm", distanciaCalculada);
         }
-        
+
         if (JSON.stringify(currentValues.waypoints) !== JSON.stringify(data.waypoints)) {
             form.setFieldValue("waypoints", data.waypoints);
         }
-        
-        if (JSON.stringify(currentValues.tramos) !== JSON.stringify(data.tramos)) {
-            form.setFieldValue("tramos", data.tramos || []);
-            
-            if (data.tramos && data.tramos.length > 0) {
-                const o = data.tramos[0].origen.split(',')[0];
-                const d = data.tramos[data.tramos.length - 1].destino.split(',')[0];
+
+        const tramosMapeados = (data.tramos || []).map((t, idx) => {
+            const tramoAnterior = currentValues.tramos[idx] || {};
+            return { ...t, pesosCarga: tramoAnterior.pesosCarga || {} };
+        });
+
+        if (JSON.stringify(currentValues.tramos) !== JSON.stringify(tramosMapeados)) {
+            form.setFieldValue("tramos", tramosMapeados);
+            form.setFieldValue("tramoDescarga", "0"); 
+
+            if (tramosMapeados && tramosMapeados.length > 0) {
+                const o = tramosMapeados[0].origen.split(',')[0];
+                const d = tramosMapeados[tramosMapeados.length - 1].destino.split(',')[0];
                 if (currentValues.origen !== o) form.setFieldValue("origen", o);
                 if (currentValues.destino !== d) form.setFieldValue("destino", d);
             }
@@ -294,7 +320,8 @@ export default function FleteCreator() {
                 form.setFieldValue("margenGanancia", nuevoMargen);
             }
         }
-    }, [form]); // Solo depende de la instancia del form (que es inmutable en Mantine v7)
+    }, [form]);
+
 
     const handleGenerarCotizacionPDF = async () => {
         if (!estimacion) {
@@ -307,24 +334,22 @@ export default function FleteCreator() {
 
         try {
             const [{ default: jsPDF }, { default: autoTable }, { default: html2canvas }] = await Promise.all([
-                import("jspdf"),
-                import("jspdf-autotable"),
-                import("html2canvas")
+                import("jspdf"), import("jspdf-autotable"), import("html2canvas")
             ]);
 
             const doc = new jsPDF();
 
-            const cantChutos = form.values.chutos.length;
-            const cantRemolques = form.values.remolques.length;
-            const cantChoferes = form.values.chutos.filter(c => c.choferId).length;
-            const cantAyudantes = form.values.chutos.filter(c => c.ayudanteId).length;
+            const cantChutos = form.values.unidades.length;
+            const cantRemolques = form.values.unidades.filter(u => u.llevaRemolque).length;
+            const cantChoferes = form.values.unidades.filter(u => u.choferId).length;
+            const cantAyudantes = form.values.unidades.filter(u => u.ayudanteId).length;
 
-            const logoBaseUrl = '/logo.png'; 
+            const logoBaseUrl = '/logo.png';
             const blobBaseUrl = (process.env.NEXT_PUBLIC_BLOB_BASE_URL || "").replace(/\/$/, '');
 
             const logoB64 = await getBase64ImageFromUrl(logoBaseUrl);
-            
-            const primerChutoId = form.values.chutos[0]?.activoId;
+
+            const primerChutoId = form.values.unidades[0]?.activoId;
             const chutoData = activosMapeados.find(a => a.id.toString() === primerChutoId);
             const chutoImgUrl = chutoData?.imagen ? `${blobBaseUrl}/${chutoData.imagen}` : null;
             const chutoImgB64 = chutoImgUrl ? await getBase64ImageFromUrl(chutoImgUrl) : null;
@@ -335,13 +360,11 @@ export default function FleteCreator() {
             const xMembreteText = 65;
             const pageWidth = doc.internal.pageSize.getWidth();
 
-            doc.setDrawColor(40, 40, 40); 
+            doc.setDrawColor(40, 40, 40);
             doc.setLineWidth(0.5);
-            doc.rect(14, headerY, pageWidth - 28, headerHeight, 'S'); 
+            doc.rect(14, headerY, pageWidth - 28, headerHeight, 'S');
 
-            if (logoB64) {
-                doc.addImage(logoB64, 'JPEG', 18, headerY + 5, 40, 25); 
-            }
+            if (logoB64) doc.addImage(logoB64, 'JPEG', 18, headerY + 5, 40, 25);
 
             doc.setFontSize(16);
             doc.setTextColor(40, 40, 40);
@@ -355,7 +378,7 @@ export default function FleteCreator() {
             doc.text("Carrt. F con AV. 32, Tia Juana, Estado Zulia", xMembreteText, headerY + 23);
 
             doc.setFontSize(14);
-            doc.setTextColor(250, 176, 5); 
+            doc.setTextColor(250, 176, 5);
             doc.setFont("helvetica", "bold");
             doc.text("COTIZACION DE FLETE CONVOY", xMembreteText, headerY + 31);
 
@@ -378,7 +401,7 @@ export default function FleteCreator() {
             doc.text(`Tiempo Operativo Estimado: ${estimacion.breakdown.rutinaViaje.tiempoMisionTotal} horas`, 14, headerY + headerHeight + 53);
 
             const mapY = headerY + headerHeight + 60;
-            const mapHeight = 110; 
+            const mapHeight = 110;
 
             doc.setDrawColor(180, 180, 180);
             doc.setLineWidth(0.2);
@@ -386,9 +409,9 @@ export default function FleteCreator() {
 
             const mapElement = document.getElementById("mapa-ruta-captura");
             if (mapElement) {
-                const canvas = await html2canvas(mapElement, { useCORS: true, allowTaint: false, scale: 2 }); 
-                const mapImgData = canvas.toDataURL("image/jpeg", 0.9); 
-                doc.addImage(mapImgData, 'JPEG', 14.2, mapY + 0.2, 179.6, mapHeight - 0.4); 
+                const canvas = await html2canvas(mapElement, { useCORS: true, allowTaint: false, scale: 2 });
+                const mapImgData = canvas.toDataURL("image/jpeg", 0.9);
+                doc.addImage(mapImgData, 'JPEG', 14.2, mapY + 0.2, 179.6, mapHeight - 0.4);
             }
 
             // --- PÁGINA 2 ---
@@ -402,7 +425,6 @@ export default function FleteCreator() {
             doc.setDrawColor(200, 200, 200);
             doc.setLineWidth(0.1);
             doc.line(14, 28, 196, 28);
-
 
             doc.setFontSize(14);
             doc.setTextColor(250, 176, 5);
@@ -429,9 +451,9 @@ export default function FleteCreator() {
                 doc.text(`${chutoData.nombre}`, 14, currentYImages + 45);
             }
 
-            const primerRemolquePropio = form.values.remolques.find(r => r.tipo === 'dadica');
+            const primerRemolquePropio = form.values.unidades.find(u => u.llevaRemolque && u.tipoRemolque === 'dadica');
             if (primerRemolquePropio) {
-                const remolqueData = activosMapeados.find(a => a.id.toString() === primerRemolquePropio.activoId);
+                const remolqueData = activosMapeados.find(a => a.id.toString() === primerRemolquePropio.remolqueId);
                 if (remolqueData && remolqueData.imagen) {
                     const remolqueImgUrl = `${blobBaseUrl}/${remolqueData.imagen}`;
                     const remolqueImgB64 = await getBase64ImageFromUrl(remolqueImgUrl);
@@ -492,8 +514,131 @@ export default function FleteCreator() {
             doc.setTextColor(47, 158, 68);
             doc.text(`$${estimacion.precioSugerido.toFixed(2)}`, 130, finalY + 35);
 
-            doc.save(`Cotizacion_Dadica_Convoy_${form.values.destino.replace(/\s+/g, '_')}.pdf`);
 
+            // --- PÁGINA 3: DESGLOSE ANALÍTICO DETALLADO ---
+            doc.addPage();
+            if (logoB64) { doc.addImage(logoB64, 'JPEG', 14, 12, 35, 15); }
+            doc.setFontSize(12);
+            doc.setTextColor(40, 40, 40);
+            doc.setFont("helvetica", "bold");
+            doc.text("Transporte Dadica - ANEXO: DESGLOSE ANALÍTICO", 55, 20);
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.1);
+            doc.line(14, 28, 196, 28);
+
+            let currentYDesglose = 35;
+
+            // 1. Cronograma de Ruta
+            if (estimacion?.breakdown?.itinerario?.length > 0) {
+                const itinerarioBody = estimacion.breakdown.itinerario.map(evento => [
+                    `Día ${evento.dia}`,
+                    `${evento.inicio} - ${evento.fin}`,
+                    evento.accion + (evento.detalleViatico ? `\n(${evento.detalleViatico})` : '')
+                ]);
+
+                autoTable(doc, {
+                    startY: currentYDesglose,
+                    headStyles: { fillColor: [52, 58, 64] },
+                    head: [['Día', 'Horario', 'Acción en Ruta']],
+                    body: itinerarioBody,
+                    theme: 'grid'
+                });
+                currentYDesglose = doc.lastAutoTable.finalY + 15;
+            }
+
+            // 2. Desglose de Combustible
+            if (estimacion?.breakdown?.desgloseGasoil?.length > 0) {
+                if (currentYDesglose > 240) { doc.addPage(); currentYDesglose = 20; }
+                const gasoilBody = estimacion.breakdown.desgloseGasoil.flatMap((info) => [
+                    [{ content: `🚛 ${info.nombre} (Total: $${info.costoUsd.toFixed(2)})`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+                    ['Rodamiento Base (Vacío)', `${info.ltsBase.toFixed(1)} Lts`],
+                    ['Esfuerzo Arrastre (Remolque + Carga)', `${info.ltsPeso.toFixed(1)} Lts`],
+                    ['Compensación Montaña (Elevación)', `${info.ltsElevacion.toFixed(1)} Lts`]
+                ]);
+
+                autoTable(doc, {
+                    startY: currentYDesglose,
+                    headStyles: { fillColor: [52, 58, 64] },
+                    head: [['Desglose de Combustible (Gasoil)', 'Litros / Valor']],
+                    body: gasoilBody,
+                    theme: 'grid'
+                });
+                currentYDesglose = doc.lastAutoTable.finalY + 15;
+            }
+
+            // 3. Mantenimiento por Activo
+            const mttoBody = [];
+            if (mttoChutoTotalGlobal > 0) {
+                mttoBody.push([{ content: `🚛 Mantenimiento Conjunto Chutos`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }]);
+                mttoChutoItems.forEach(item => {
+                    mttoBody.push([`↳ ${item.descripcion} (${item.tipo})`, `$${item.monto.toFixed(2)}`]);
+                });
+            }
+            if (mttoBateaTotalGlobal > 0) {
+                mttoBody.push([{ content: `🛤️ Mantenimiento Conjunto Bateas`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }]);
+                mttoBateaItems.forEach(item => {
+                    mttoBody.push([`↳ ${item.descripcion} (${item.tipo})`, `$${item.monto.toFixed(2)}`]);
+                });
+            }
+
+            if (mttoBody.length > 0) {
+                if (currentYDesglose > 240) { doc.addPage(); currentYDesglose = 20; }
+                autoTable(doc, {
+                    startY: currentYDesglose,
+                    headStyles: { fillColor: [52, 58, 64] },
+                    head: [['Reserva de Mantenimiento por Activo', 'Costo USD']],
+                    body: mttoBody,
+                    theme: 'grid'
+                });
+                currentYDesglose = doc.lastAutoTable.finalY + 15;
+            }
+
+            // 4. Overhead ABC
+            const overheadBody = [];
+            chutosMatematica.forEach(c => {
+                overheadBody.push([{ content: `🚛 ${c.nombre} (Tarifa: $${c.overheadHora.toFixed(2)}/hr)`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }]);
+                overheadBody.push(['Total Asignado (Misión)', `$${c.overheadTotal.toFixed(2)}`]);
+            });
+            bateasMatematica.forEach(b => {
+                overheadBody.push([{ content: `🛤️ ${b.nombre} (Tarifa: $${b.overheadHora.toFixed(2)}/hr)`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }]);
+                overheadBody.push(['Total Asignado (Misión)', `$${b.overheadTotal.toFixed(2)}`]);
+            });
+
+            if (overheadBody.length > 0) {
+                if (currentYDesglose > 240) { doc.addPage(); currentYDesglose = 20; }
+                autoTable(doc, {
+                    startY: currentYDesglose,
+                    headStyles: { fillColor: [52, 58, 64] },
+                    head: [['Costo Overhead ABC Convoy', 'Costo USD']],
+                    body: overheadBody,
+                    theme: 'grid'
+                });
+                currentYDesglose = doc.lastAutoTable.finalY + 15;
+            }
+
+            // 5. Posesión Financiera
+            const posesionBody = [];
+            chutosMatematica.forEach(c => {
+                posesionBody.push([{ content: `🚛 ${c.nombre} (Tarifa Total: $${c.posHora.toFixed(2)}/hr)`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }]);
+                posesionBody.push(['Total Asignado (Misión)', `$${c.posTotal.toFixed(2)}`]);
+            });
+            bateasMatematica.forEach(b => {
+                posesionBody.push([{ content: `🛤️ ${b.nombre} (Tarifa Total: $${b.posHora.toFixed(2)}/hr)`, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }]);
+                posesionBody.push(['Total Asignado (Misión)', `$${b.posTotal.toFixed(2)}`]);
+            });
+
+            if (posesionBody.length > 0) {
+                if (currentYDesglose > 240) { doc.addPage(); currentYDesglose = 20; }
+                autoTable(doc, {
+                    startY: currentYDesglose,
+                    headStyles: { fillColor: [52, 58, 64] },
+                    head: [['Costo Posesión Financiera', 'Costo USD']],
+                    body: posesionBody,
+                    theme: 'grid'
+                });
+            }
+
+            doc.save(`Cotizacion_Dadica_Convoy_${form.values.destino.replace(/\s+/g, '_')}.pdf`);
             notifications.update({ id: 'pdf-load', title: "¡Listo!", message: "PDF generado correctamente.", color: "green", icon: <IconFileInvoice /> });
 
         } catch (error) {
@@ -505,21 +650,25 @@ export default function FleteCreator() {
     };
 
     const handleSubmit = async (values) => {
+        console.log("Valores a enviar:", values);   
         setSubmitting(true);
         try {
             const payload = {
                 ...values,
                 waypoints: JSON.stringify(values.waypoints),
-                tramos: JSON.stringify(values.tramos),
+                tramos: JSON.stringify(tramosParaAPI),
+                tramoDescarga: Number(values.tramoDescarga),
                 costoPeajesTotal: estimacion?.breakdown?.peajes || 0,
                 montoFleteTotal: estimacion?.precioSugerido || 0,
                 costoEstimado: estimacion?.costoTotal || 0,
                 precioSugerido: estimacion?.precioSugerido || 0,
                 breakdown: estimacion?.breakdown ? JSON.stringify(estimacion.breakdown) : null,
                 creadoPor: userId,
-                chutos: values.chutos,
-                remolques: values.remolques
+                chutos: chutosParaAPI,
+                remolques: remolquesParaAPI
             };
+
+            console.log("Payload final a enviar:", payload);
 
             const response = await fetch("/api/fletes", {
                 method: "POST",
@@ -540,29 +689,26 @@ export default function FleteCreator() {
 
     if (loading) return <Center h="80vh"><Loader size="xl" color="yellow.6" /></Center>;
 
-    // 🔥 CÁLCULOS AGREGADOS PARA EL CONVOY EN EL FRONTEND 🔥
-    const chutosSeleccionados = form.values.chutos.map(c => activosMapeados.find(a => a.id.toString() === c.activoId)).filter(Boolean);
-    const remolquesSeleccionadosPropios = form.values.remolques.filter(r => r.tipo === 'dadica').map(r => activosMapeados.find(a => a.id.toString() === r.activoId)).filter(Boolean);
-    
+    const chutosSeleccionados = form.values.unidades.map(u => activosMapeados.find(a => a.id.toString() === u.activoId)).filter(Boolean);
+    const remolquesSeleccionadosPropios = form.values.unidades.filter(u => u.llevaRemolque && u.tipoRemolque === 'dadica').map(u => activosMapeados.find(a => a.id.toString() === u.remolqueId)).filter(Boolean);
+
     const taraChutosFija = chutosSeleccionados.reduce((sum, curr) => sum + (Number(curr.tara) || 0), 0);
     const taraRemolquesPropiosFija = remolquesSeleccionadosPropios.reduce((sum, curr) => sum + (Number(curr.tara) || 0), 0);
-    const taraRemolquesTercerosFija = form.values.remolques.filter(r => r.tipo === 'tercero').reduce((sum, curr) => sum + (Number(curr.pesoTercero) || 0), 0);
-    
+    const taraRemolquesTercerosFija = form.values.unidades.filter(u => u.llevaRemolque && u.tipoRemolque === 'tercero').reduce((sum, curr) => sum + (Number(curr.pesoTercero) || 0), 0);
+
     const taraBaseVisual = taraChutosFija + taraRemolquesPropiosFija + taraRemolquesTercerosFija;
     const capacidadMaxDynamic = estimacion?.breakdown?.auditoriaPesos?.capacidad?.valor || (chutosSeleccionados.reduce((sum, curr) => sum + (Number(curr.capacidad) || 40), 0));
 
     const distanciaViaje = rutaData?.distanciaTotal || 0;
     const litrosTotales = estimacion?.breakdown?.litros || 0;
     const consumoPromedioDinamico = distanciaViaje > 0 ? (litrosTotales / distanciaViaje).toFixed(2) : "0.00";
-    
+
     const tiempoMision = estimacion?.breakdown?.rutinaViaje?.tiempoMisionTotal ? Number(estimacion.breakdown.rutinaViaje.tiempoMisionTotal) : 0;
 
-    // --- RECONSTRUCCIÓN DE MATEMÁTICA VISUAL ABC Y POSESIÓN PARA EL ACORDEÓN ---
     const valorFlota = configGlobal?.valorFlotaActiva ? Number(configGlobal.valorFlotaActiva) : 1;
     const gastosFijosAnuales = Number(configGlobal?.gastosFijosAnualesTotales || 0);
     const tasaInteres = configGlobal?.tasaInteresAnual ? Number(configGlobal.tasaInteresAnual) : 5.0;
 
-    // 1. Mapeo Matemático Explicativo de Chutos
     const chutosMatematica = chutosSeleccionados.map((chuto) => {
         const valor = Number(chuto.raw?.valorReposicion || 0);
         const pesoDecimal = valor / valorFlota;
@@ -579,15 +725,12 @@ export default function FleteCreator() {
         const intHora = horasAnuales > 0 ? (valor * (tasaInteres / 100)) / horasAnuales : 0;
 
         return {
-            nombre: chuto.nombre,
-            valor, pesoPorc: pesoDecimal * 100, cuotaAnual, horasAnuales, overheadHora, overheadTotal,
+            nombre: chuto.nombre, valor, pesoPorc: pesoDecimal * 100, cuotaAnual, horasAnuales, overheadHora, overheadTotal,
             posHora, posTotal, salvamento, vida, depHora, intHora,
-            cuotaMensual: cuotaAnual / 12,
-            viajesMes: overheadTotal > 0 ? (cuotaAnual / 12) / overheadTotal : 0
+            cuotaMensual: cuotaAnual / 12, viajesMes: overheadTotal > 0 ? (cuotaAnual / 12) / overheadTotal : 0
         };
     });
 
-    // 2. Mapeo Matemático Explicativo de Bateas Propias
     const bateasMatematica = remolquesSeleccionadosPropios.map((batea) => {
         const valor = Number(batea.raw?.valorReposicion || 0);
         const pesoDecimal = valor / valorFlota;
@@ -604,27 +747,22 @@ export default function FleteCreator() {
         const intHora = horasAnuales > 0 ? (valor * (tasaInteres / 100)) / horasAnuales : 0;
 
         return {
-            nombre: batea.nombre,
-            valor, pesoPorc: pesoDecimal * 100, cuotaAnual, horasAnuales, overheadHora, overheadTotal,
+            nombre: batea.nombre, valor, pesoPorc: pesoDecimal * 100, cuotaAnual, horasAnuales, overheadHora, overheadTotal,
             posHora, posTotal, salvamento, vida, depHora, intHora,
-            cuotaMensual: cuotaAnual / 12,
-            viajesMes: overheadTotal > 0 ? (cuotaAnual / 12) / overheadTotal : 0
+            cuotaMensual: cuotaAnual / 12, viajesMes: overheadTotal > 0 ? (cuotaAnual / 12) / overheadTotal : 0
         };
     });
 
-    // --- AGREGACIONES FINANCIERAS GLOBALES VISUALES ---
     const overheadChutoTotalGlobal = chutosMatematica.reduce((sum, c) => sum + c.overheadTotal, 0);
     const overheadBateaTotalGlobal = bateasMatematica.reduce((sum, b) => sum + b.overheadTotal, 0);
     const posChutoTotalGlobal = chutosMatematica.reduce((sum, c) => sum + c.posTotal, 0);
     const posBateaTotalGlobal = bateasMatematica.reduce((sum, b) => sum + b.posTotal, 0);
-    
-    // Mantenimiento Extraido del Breakdown
+
     const mttoChutoItems = estimacion?.breakdown?.itemsDetallados?.filter(i => i.descripcion.includes('[Chuto]')) || [];
     const mttoBateaItems = estimacion?.breakdown?.itemsDetallados?.filter(i => i.descripcion.includes('[Batea]')) || [];
     const mttoChutoTotalGlobal = mttoChutoItems.reduce((acc, curr) => acc + curr.monto, 0);
     const mttoBateaTotalGlobal = mttoBateaItems.reduce((acc, curr) => acc + curr.monto, 0);
 
-    // --- METAS DE SUPERVIVENCIA MULTIPLICADAS PARA EL CONVOY ---
     const overheadRecaudadoViajeConvoy = overheadChutoTotalGlobal + overheadBateaTotalGlobal;
     const gastosFijosMensualesTotales = gastosFijosAnuales / 12;
     const viajesMesEmpresaConvoy = overheadRecaudadoViajeConvoy > 0 ? gastosFijosMensualesTotales / overheadRecaudadoViajeConvoy : 0;
@@ -634,9 +772,6 @@ export default function FleteCreator() {
             <Box w="100%" p={0} m={0} bg="#e9ecef" style={{ minHeight: '100vh', paddingBottom: '40px' }}>
                 <Stack gap="xl">
 
-                    {/* ======================================================= */}
-                    {/* SECCIÓN 1: CONFIGURACIÓN OPERATIVA */}
-                    {/* ======================================================= */}
                     <Paper shadow="sm" p="xl" radius={0} bg="white" style={{ borderBottom: '4px solid #fab005' }}>
                         <Group mb="lg" align="center">
                             <ThemeIcon size="xl" radius="md" variant="filled" color="dark.8">
@@ -648,7 +783,6 @@ export default function FleteCreator() {
                         </Group>
 
                         <Grid gutter="xl">
-                            {/* COLUMNA 1: Comerciales y Variables */}
                             <Grid.Col span={{ base: 12, lg: 4 }}>
                                 <Stack gap="md">
                                     <Text fw={900} c="dark.5" size="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>Datos Comerciales</Text>
@@ -699,125 +833,126 @@ export default function FleteCreator() {
                                 </Stack>
                             </Grid.Col>
 
-                            {/* COLUMNA 2 y 3 MERGEADA: CONFIGURACIÓN DE CONVOY CON ODTSelectableGrid RESTAURADO */}
                             <Grid.Col span={{ base: 12, lg: 8 }}>
                                 <Stack gap="md">
                                     <Text fw={900} c="dark.5" size="sm" tt="uppercase" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>
-                                        Estructura del Convoy (Flota Múltiple)
+                                        Estructura del Convoy (Flota Unificada)
                                     </Text>
-                                    
-                                    <Grid gutter="md">
-                                        {/* SECCIÓN CHUTOS */}
-                                        <Grid.Col span={{ base: 12, md: 6 }}>
-                                            <Paper withBorder p="md" bg="gray.0">
-                                                <Group justify="space-between" mb="sm">
-                                                    <Text fw={800} c="dark.7"><IconTruck size={18} style={{ verticalAlign: 'middle', marginRight: 4 }}/> Cabezales / Chutos</Text>
-                                                    <Button variant="light" color="blue" size="xs" leftSection={<IconPlus size={14}/>} 
-                                                        onClick={() => form.insertListItem('chutos', { id: Date.now().toString(), activoId: "", choferId: "", ayudanteId: "" })}>
-                                                        Agregar
-                                                    </Button>
-                                                </Group>
-                                                
-                                                <Stack gap="xs">
-                                                    {form.values.chutos.map((chuto, index) => (
-                                                        <Card key={chuto.id} withBorder shadow="sm" radius="md" p="sm" style={{ borderLeft: '4px solid #339af0' }}>
-                                                            <Group justify="space-between" mb="xs">
-                                                                <Badge color="blue">Chuto {index + 1}</Badge>
-                                                                {index > 0 && (
-                                                                    <ActionIcon color="red" variant="subtle" onClick={() => form.removeListItem('chutos', index)}>
-                                                                        <IconTrash size={16} />
-                                                                    </ActionIcon>
-                                                                )}
-                                                            </Group>
-                                                            
-                                                            <Stack gap="xs">
-                                                                <ODTSelectableGrid
-                                                                    label="Vehículo Principal (Chuto)"
-                                                                    data={activosMapeados.filter((a) => a.tipo === "Vehiculo")}
-                                                                    onChange={(val) => form.setFieldValue(`chutos.${index}.activoId`, val)}
-                                                                    value={chuto.activoId}
-                                                                    showMetrics
-                                                                />
 
-                                                                <ODTSelectableGrid
-                                                                    label="Chofer Principal"
-                                                                    data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("chofer"))).map((e) => ({ id: e.id.toString(), nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))}
-                                                                    onChange={(val) => form.setFieldValue(`chutos.${index}.choferId`, val)}
-                                                                    value={chuto.choferId}
-                                                                />
+                                    <Group justify="flex-end" mb="sm">
+                                        <Button variant="light" color="blue" size="sm" leftSection={<IconPlus size={16} />}
+                                            onClick={() => form.insertListItem('unidades', {
+                                                id: Date.now().toString(), activoId: "", choferId: "", ayudanteId: "",
+                                                llevaRemolque: false, tipoRemolque: "dadica", remolqueId: "", pesoTercero: 0, retorna: true
+                                            })}>
+                                            Agregar Unidad al Convoy
+                                        </Button>
+                                    </Group>
 
-                                                                <ODTSelectableGrid
-                                                                    label="Ayudante / Escolta (Opcional)"
-                                                                    data={empleados.filter((e) => e.puestos?.some((p) => p.nombre.toLowerCase().includes("ayudante"))).map((e) => ({ id: e.id.toString(), nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }))}
-                                                                    onChange={(val) => form.setFieldValue(`chutos.${index}.ayudanteId`, val)}
-                                                                    value={chuto.ayudanteId}
-                                                                />
-                                                            </Stack>
-                                                        </Card>
-                                                    ))}
-                                                </Stack>
-                                            </Paper>
-                                        </Grid.Col>
+                                    <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+                                        {form.values.unidades.map((unidad, index) => {
 
-                                        {/* SECCIÓN REMOLQUES */}
-                                        <Grid.Col span={{ base: 12, md: 6 }}>
-                                            <Paper withBorder p="md" bg="gray.0">
-                                                <Group justify="space-between" mb="sm">
-                                                    <Text fw={800} c="dark.7"><IconTruck size={18} style={{ verticalAlign: 'middle', marginRight: 4 }}/> Remolques / Bateas</Text>
-                                                    <Button variant="light" color="violet" size="xs" leftSection={<IconPlus size={14}/>} 
-                                                        onClick={() => form.insertListItem('remolques', { id: Date.now().toString(), tipo: "dadica", activoId: "", pesoTercero: 0, retorna: true })}>
-                                                        Agregar
-                                                    </Button>
-                                                </Group>
-                                                
-                                                <Stack gap="xs">
-                                                    {form.values.remolques.length === 0 && <Text c="dimmed" size="sm" ta="center">Sin remolques asignados</Text>}
-                                                    {form.values.remolques.map((remolque, index) => (
-                                                        <Card key={remolque.id} withBorder shadow="sm" radius="md" p="sm" style={{ borderLeft: '4px solid #7950f2' }}>
-                                                            <Group justify="space-between" mb="xs">
-                                                                <Select 
-                                                                    data={[{ value: 'dadica', label: 'Propio (Dadica)' }, { value: 'tercero', label: 'Tercero (Alquilado)' }]}
-                                                                    {...form.getInputProps(`remolques.${index}.tipo`)}
-                                                                    style={{ flex: 1 }}
-                                                                />
-                                                                <ActionIcon color="red" variant="subtle" onClick={() => form.removeListItem('remolques', index)}>
-                                                                    <IconTrash size={16} />
-                                                                </ActionIcon>
-                                                            </Group>
-                                                            
-                                                            {remolque.tipo === 'dadica' ? (
-                                                                <ODTSelectableGrid
-                                                                    label="Seleccionar Remolque"
-                                                                    data={activosMapeados.filter((a) => a.tipo === "Remolque")}
-                                                                    onChange={(val) => form.setFieldValue(`remolques.${index}.activoId`, val)}
-                                                                    value={remolque.activoId}
-                                                                    showMetrics
-                                                                />
-                                                            ) : (
-                                                                <NumberInput label="Peso del Remolque (t)" description="Para cálculo de esfuerzo de arrastre" min={0} max={50}
-                                                                    {...form.getInputProps(`remolques.${index}.pesoTercero`)} mb="xs" />
-                                                            )}
-                                                            
-                                                            <Switch 
-                                                                label="El remolque retorna con el convoy" 
-                                                                description="Afecta ejes de peaje y consumo en retorno"
-                                                                checked={remolque.retorna}
-                                                                onChange={(event) => form.setFieldValue(`remolques.${index}.retorna`, event.currentTarget.checked)}
-                                                                color="violet"
+                                            const chutosDisponibles = activosMapeados.filter(a =>
+                                                a.tipo === "Vehiculo" && !form.values.unidades.some(u => u.activoId === a.id && u.id !== unidad.id)
+                                            );
+
+                                            const choferesDisponibles = empleados.filter(e =>
+                                                e.puestos?.some(p => p.nombre.toLowerCase().includes("chofer")) &&
+                                                !form.values.unidades.some(u => u.choferId === e.id.toString() && u.id !== unidad.id)
+                                            ).map((e) => ({ id: e.id.toString(), nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }));
+
+                                            const ayudantesDisponibles = empleados.filter(e =>
+                                                e.puestos?.some(p => p.nombre.toLowerCase().includes("ayudante")) &&
+                                                !form.values.unidades.some(u => u.ayudanteId === e.id.toString() && u.id !== unidad.id)
+                                            ).map((e) => ({ id: e.id.toString(), nombre: `${e.nombre} ${e.apellido}`, imagen: e.imagen, raw: e }));
+
+                                            const remolquesDisponibles = activosMapeados.filter(a =>
+                                                a.tipo === "Remolque" && !form.values.unidades.some(u => u.remolqueId === a.id && u.id !== unidad.id)
+                                            );
+
+                                            return (
+                                                <Card key={unidad.id} withBorder shadow="sm" radius="md" p="md" style={{ borderLeft: '5px solid #339af0', display: 'flex', flexDirection: 'column' }}>
+                                                    <Group justify="space-between" mb="md" style={{ borderBottom: '1px solid #e9ecef', paddingBottom: '8px' }}>
+                                                        <Badge color="blue" size="lg" radius="sm">Unidad {index + 1}</Badge>
+                                                        {index > 0 && (
+                                                            <ActionIcon color="red" variant="subtle" onClick={() => form.removeListItem('unidades', index)}>
+                                                                <IconTrash size={18} />
+                                                            </ActionIcon>
+                                                        )}
+                                                    </Group>
+
+                                                    <Stack gap="md" style={{ flex: 1 }}>
+                                                        <ODTSelectableGrid
+                                                            label="Cabezal / Chuto"
+                                                            data={chutosDisponibles}
+                                                            onChange={(val) => form.setFieldValue(`unidades.${index}.activoId`, val)}
+                                                            value={unidad.activoId}
+                                                            showMetrics
+                                                        />
+
+                                                        <SimpleGrid cols={2} spacing="xs">
+                                                            <ODTSelectableGrid
+                                                                label="Chofer"
+                                                                data={choferesDisponibles}
+                                                                onChange={(val) => form.setFieldValue(`unidades.${index}.choferId`, val)}
+                                                                value={unidad.choferId}
                                                             />
-                                                        </Card>
-                                                    ))}
-                                                </Stack>
-                                            </Paper>
-                                        </Grid.Col>
-                                    </Grid>
+                                                            <ODTSelectableGrid
+                                                                label="Ayudante (Opc)"
+                                                                data={ayudantesDisponibles}
+                                                                onChange={(val) => form.setFieldValue(`unidades.${index}.ayudanteId`, val)}
+                                                                value={unidad.ayudanteId}
+                                                            />
+                                                        </SimpleGrid>
 
-                                    {/* TELEMETRÍA AGREGADA */}
-                                    {form.values.chutos.length > 0 && form.values.chutos[0].activoId ? (
-                                        <Paper withBorder p="md" radius="sm" bg="dark.8" shadow="sm">
+                                                        <Box mt="sm" p="sm" bg="gray.0" style={{ borderRadius: '6px', border: '1px dashed #ced4da' }}>
+                                                            <Switch
+                                                                label={<Text fw={700} c="dark.7"><IconTruck size={16} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Esta unidad lleva remolque</Text>}
+                                                                checked={unidad.llevaRemolque}
+                                                                onChange={(event) => form.setFieldValue(`unidades.${index}.llevaRemolque`, event.currentTarget.checked)}
+                                                                color="violet.6" size="md" mb={unidad.llevaRemolque ? "md" : 0}
+                                                            />
+
+                                                            {unidad.llevaRemolque && (
+                                                                <Stack gap="xs" mt="xs">
+                                                                    <Select
+                                                                        data={[{ value: 'dadica', label: 'Propio (Dadica)' }, { value: 'tercero', label: 'Tercero (Alquilado/Cliente)' }]}
+                                                                        {...form.getInputProps(`unidades.${index}.tipoRemolque`)}
+                                                                    />
+
+                                                                    {unidad.tipoRemolque === 'dadica' ? (
+                                                                        <ODTSelectableGrid
+                                                                            label="Seleccionar Remolque"
+                                                                            data={remolquesDisponibles}
+                                                                            onChange={(val) => form.setFieldValue(`unidades.${index}.remolqueId`, val)}
+                                                                            value={unidad.remolqueId}
+                                                                            showMetrics
+                                                                        />
+                                                                    ) : (
+                                                                        <NumberInput label="Peso del Remolque Vacío (t)" min={0} max={50} {...form.getInputProps(`unidades.${index}.pesoTercero`)} />
+                                                                    )}
+
+                                                                    <Switch
+                                                                        label="El remolque retorna con la unidad"
+                                                                        description="Desactiva si la batea se queda en locación."
+                                                                        checked={unidad.retorna}
+                                                                        onChange={(event) => form.setFieldValue(`unidades.${index}.retorna`, event.currentTarget.checked)}
+                                                                        color="violet" mt="xs"
+                                                                    />
+                                                                </Stack>
+                                                            )}
+                                                        </Box>
+                                                    </Stack>
+                                                </Card>
+                                            );
+                                        })}
+                                    </SimpleGrid>
+
+                                    {form.values.unidades.length > 0 && form.values.unidades[0].activoId ? (
+                                        <Paper withBorder p="md" radius="sm" bg="dark.8" shadow="sm" mt="md">
                                             <Group mb="md" gap="xs">
                                                 <IconDashboard size={20} color="#fab005" />
-                                                <Text size="sm" fw={900} c="white" tt="uppercase">Telemetría Agregada del Convoy</Text>
+                                                <Text size="sm" fw={900} c="white" tt="uppercase">Telemetría Base del Convoy</Text>
                                             </Group>
 
                                             <SimpleGrid cols={2} spacing="md">
@@ -853,7 +988,7 @@ export default function FleteCreator() {
                                             </SimpleGrid>
                                         </Paper>
                                     ) : (
-                                        <Alert color="dark.8" variant="outline" style={{ borderStyle: 'dashed' }}>
+                                        <Alert color="dark.8" variant="outline" style={{ borderStyle: 'dashed' }} mt="md">
                                             Asigna la flota para visualizar la telemetría base.
                                         </Alert>
                                     )}
@@ -862,9 +997,6 @@ export default function FleteCreator() {
                         </Grid>
                     </Paper>
 
-                    {/* ======================================================= */}
-                    {/* SECCIÓN 2: LOGÍSTICA Y RUTA */}
-                    {/* ======================================================= */}
                     <Paper shadow="sm" p="xl" radius={0} bg="white" style={{ borderBottom: '4px solid #fab005' }}>
                         <Group mb="md" align="center">
                             <ThemeIcon size="xl" radius="md" variant="filled" color="dark.8">
@@ -883,7 +1015,7 @@ export default function FleteCreator() {
                             <GoogleRouteMap
                                 onRouteCalculated={handleRouteCalculated}
                                 tramosFormulario={form.values.tramos}
-                                vehiculoAsignado={form.values.chutos.length > 0 && !!form.values.chutos[0].activoId}
+                                vehiculoAsignado={form.values.unidades.length > 0 && !!form.values.unidades[0].activoId}
                                 taraBase={0}
                                 capacidadMax={30}
                                 initialWaypoints={form.values.waypoints}
@@ -892,9 +1024,18 @@ export default function FleteCreator() {
 
                         {form.values.tramos.length > 0 && (
                             <Box mt="xl" p="xl" bg="gray.1" style={{ borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                <Text fw={900} c="dark.8" size="lg" tt="uppercase" mb="xl" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>
-                                    Distribución de Carga por Tramos
+                                <Text fw={900} c="dark.8" size="lg" tt="uppercase" mb="md" style={{ borderBottom: '2px solid #fab005', display: 'inline-block', paddingBottom: '4px' }}>
+                                    Distribución de Carga Remolcada por Tramos
                                 </Text>
+
+                                <Select
+                                    label="Punto de Descarga / Fin de Misión"
+                                    description="¿En qué lugar se entrega la carga (y se deja la batea si aplica)?"
+                                    data={form.values.tramos.map((t, i) => ({ value: String(i), label: `Al llegar a ${t.destino.split(',')[0]} (Fin del Tramo ${i + 1})` }))}
+                                    {...form.getInputProps("tramoDescarga")}
+                                    mb="xl"
+                                    style={{ border: '1px solid #fab005', borderRadius: '4px', padding: '10px', backgroundColor: 'white' }}
+                                />
 
                                 <Timeline active={form.values.tramos.length} bulletSize={32} lineWidth={4} color="yellow.6">
                                     {form.values.tramos.map((tramo, index) => (
@@ -908,38 +1049,49 @@ export default function FleteCreator() {
                                                 {tramo.desnivelMetros > 0 && <Badge size="lg" color="orange.6" variant="filled" radius="sm">⛰️ +{tramo.desnivelMetros}m subida</Badge>}
                                             </Group>
 
-                                            <Paper withBorder p="xl" radius="md" bg="white" shadow="sm" style={{ borderLeft: '8px solid #fab005' }}>
-                                                <Grid align="center" gutter="xl">
-                                                    <Grid.Col span={{ base: 12, md: 3 }}>
-                                                        <Stack gap={4}>
-                                                            <Text size="sm" fw={800} c="gray.6" tt="uppercase">Peso Neto (Carga):</Text>
-                                                            <Badge size="xl" radius="sm" color={tramo.tonelaje === 0 ? 'gray.6' : tramo.tonelaje > (capacidadMaxDynamic * 0.8) ? 'red.7' : 'dark.8'} variant="filled">
-                                                                {tramo.tonelaje} t
-                                                            </Badge>
-                                                            <Text size="sm" mt="xs" fw={600}>Peso Bruto: <Text span c="dark.9" fw={900}>{((Number(taraBaseVisual) || 0) + (Number(tramo.tonelaje) || 0)).toFixed(1)}t</Text></Text>
-                                                        </Stack>
-                                                    </Grid.Col>
+                                            <Paper withBorder p="md" radius="md" bg="white" shadow="sm" style={{ borderLeft: '8px solid #fab005' }}>
+                                                <Grid align="center" gutter="lg">
+                                                    <Grid.Col span={{ base: 12, md: 9 }}>
+                                                        <Text size="sm" fw={800} mb={10} c="dark.7" tt="uppercase">Asignar Carga (Peso Neto) a los Remolques:</Text>
 
-                                                    <Grid.Col span={{ base: 12, md: 6 }}>
-                                                        <Text size="md" fw={800} mb={10} c="dark.7">Ajustar Peso a Mover en este Tramo:</Text>
-                                                        <Slider
-                                                            color="yellow.6" size="xl" radius="sm"
-                                                            defaultValue={tramo.tonelaje}
-                                                            onChangeEnd={(val) => form.setFieldValue(`tramos.${index}.tonelaje`, val)}
-                                                            step={0.5} min={0} max={capacidadMaxDynamic}
-                                                            label={(val) => `${val}t`}
-                                                            marks={[
-                                                                { value: 0, label: <Text fw={800}>Vacío</Text> },
-                                                                { value: Math.round(capacidadMaxDynamic), label: <Text fw={800}>Full</Text> }
-                                                            ]}
-                                                        />
+                                                        {form.values.unidades.filter(u => u.llevaRemolque).length === 0 ? (
+                                                            <Alert color="gray" variant="light" p="xs">Ninguna unidad lleva remolque asignado.</Alert>
+                                                        ) : (
+                                                            <SimpleGrid cols={{ base: 1, sm: 2, lg: form.values.unidades.length > 2 ? 3 : 2 }} spacing="md">
+                                                                {form.values.unidades.filter(u => u.llevaRemolque && u.activoId).map((unidad, uIdx) => {
+                                                                    const chutoData = activosMapeados.find(a => a.id === unidad.activoId);
+                                                                    const capMaxIndividual = Number(chutoData?.capacidad) || 30;
+                                                                    const valorCarga = tramo.pesosCarga?.[unidad.id] || 0;
+
+                                                                    return (
+                                                                        <Box key={unidad.id} p="xs" style={{ border: '1px solid #dee2e6', borderRadius: '6px', backgroundColor: '#f8f9fa' }}>
+                                                                            <Group justify="space-between" mb={4}>
+                                                                                <Text size="xs" fw={800} c="dark.8" truncate>🚛 {chutoData?.nombre}</Text>
+                                                                                <Text size="xs" fw={900} c={valorCarga > 0 ? "blue.7" : "gray.6"}>{valorCarga} t</Text>
+                                                                            </Group>
+                                                                            <Slider
+                                                                                color="blue.6" size="sm" radius="sm"
+                                                                                value={valorCarga}
+                                                                                onChangeEnd={(val) => form.setFieldValue(`tramos.${index}.pesosCarga.${unidad.id}`, val)}
+                                                                                step={0.5} min={0} max={capMaxIndividual}
+                                                                                label={(val) => `${val}t`}
+                                                                                marks={[
+                                                                                    { value: 0, label: <Text size="0.6rem" fw={800} c="gray.6">0</Text> },
+                                                                                    { value: capMaxIndividual, label: <Text size="0.6rem" fw={800}>{capMaxIndividual}t</Text> }
+                                                                                ]}
+                                                                            />
+                                                                        </Box>
+                                                                    );
+                                                                })}
+                                                            </SimpleGrid>
+                                                        )}
                                                     </Grid.Col>
 
                                                     <Grid.Col span={{ base: 12, md: 3 }}>
                                                         <NumberInput
                                                             label={<Text fw={700}>Espera en parada (Hrs)</Text>}
                                                             description="Carga/Descarga"
-                                                            size="lg" min={0} step={0.5}
+                                                            size="md" min={0} step={0.5}
                                                             value={tramo.tiempoEspera || 0}
                                                             onChange={(val) => form.setFieldValue(`tramos.${index}.tiempoEspera`, val)}
                                                         />
@@ -953,9 +1105,6 @@ export default function FleteCreator() {
                         )}
                     </Paper>
 
-                    {/* ======================================================= */}
-                    {/* SECCIÓN 3: INTELIGENCIA FINANCIERA */}
-                    {/* ======================================================= */}
                     <Paper shadow="sm" p="xl" radius={0} bg="white" style={{ borderBottom: '4px solid #fab005' }}>
                         <Group mb="md" align="center">
                             <ThemeIcon size="xl" radius="md" variant="filled" color="dark.8">
@@ -1039,13 +1188,44 @@ export default function FleteCreator() {
                                                             <Table.Td><Badge color="dark.6" radius="sm" size="lg">Operativo</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.combustible || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
+                                                        {expandedSections.gasoil && 
+                                                            <>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 16, paddingTop: 16 }} colSpan={3}>
+                                                                        <Text span fw={700} c="dark.7">Cálculo basado en:</Text> consumo promedio del convoy, kilometraje total, perfil altimétrico de la ruta y desglose de litros por rodamiento base, esfuerzo de arrastre y compensación montaña.
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                                {(estimacion?.breakdown?.desgloseGasoil || []).map((info, idx) => (
+                                                                    <React.Fragment key={`gasoil-${idx}`}>
+                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 8, paddingBottom: 4 }} colSpan={2}>🚛 {info.nombre}</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 8, paddingBottom: 4 }}>${info.costoUsd.toFixed(2)}</Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">• Rodamiento Base (Vacío): <Text span fw={700} c="dark.6">{info.ltsBase.toFixed(1)} Lts</Text></Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 2, paddingTop: 2 }} colSpan={3} fz="sm">• Esfuerzo Arrastre (Remolque + Carga): <Text span fw={700} c="dark.6">{info.ltsPeso.toFixed(1)} Lts</Text></Table.Td></Table.Tr>
+                                                                        <Table.Tr><Table.Td pl={80} c="dimmed" style={{ borderBottom: '1px solid #f1f3f5', paddingBottom: 12, paddingTop: 2 }} colSpan={3} fz="sm">• Compensación Montaña (Elevación): <Text span fw={700} c="dark.6">{info.ltsElevacion.toFixed(1)} Lts</Text></Table.Td></Table.Tr>
+                                                                    </React.Fragment>
+                                                                ))}
+                                                            </>
+                                                        }
 
                                                         {/* --- 2. NÓMINA --- */}
                                                         <Table.Tr onClick={() => toggleSection('nomina')} style={{ cursor: 'pointer' }} bg={expandedSections.nomina ? "gray.1" : undefined}>
-                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.nomina ? '▼' : '▶'}</Text> 👷 Nómina de Ruta ({form.values.chutos.length} Choferes)</Table.Td>
+                                                            <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.nomina ? '▼' : '▶'}</Text> 👷 Nómina de Ruta ({form.values.unidades.length} Choferes)</Table.Td>
                                                             <Table.Td><Badge color="blue.8" radius="sm" size="lg">RRHH</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.nomina || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
+                                                        {expandedSections.nomina && (
+                                                            <>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 16, paddingTop: 16 }} colSpan={3}>
+                                                                        <Text span fw={700}>Cálculo basado en:</Text> Sueldos configurados multiplicados por la duración de la misión ({estimacion?.breakdown?.rutinaViaje?.tiempoMisionTotal || 0} hrs).
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={80} c="dimmed" style={{ borderBottom: '1px solid #f1f3f5', paddingBottom: 12, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                        • Tripulación: {form.values.unidades.filter(u => u.choferId).length} Chofer(es) y {form.values.unidades.filter(u => u.ayudanteId).length} Ayudante(s).
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                            </>
+                                                        )}
 
                                                         {/* --- 3. VIÁTICOS --- */}
                                                         <Table.Tr onClick={() => toggleSection('viaticos')} style={{ cursor: 'pointer' }} bg={expandedSections.viaticos ? "gray.1" : undefined}>
@@ -1053,6 +1233,20 @@ export default function FleteCreator() {
                                                             <Table.Td><Badge color="indigo.7" radius="sm" size="lg">Operaciones</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.viaticos || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
+                                                        {expandedSections.viaticos && (
+                                                            <>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 16, paddingTop: 16 }} colSpan={3}>
+                                                                        <Text span fw={700}>Cálculo basado en:</Text> Viáticos de alimentación y pernocta proyectados para los días de ruta de toda la tripulación.
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={80} c="dimmed" style={{ borderBottom: '1px solid #f1f3f5', paddingBottom: 12, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                        • Incluye viáticos manuales adicionales por: <Text span fw={700} c="dark.6">${form.values.viaticosManuales}</Text>
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                            </>
+                                                        )}
 
                                                         {/* --- 4. PEAJES --- */}
                                                         <Table.Tr onClick={() => toggleSection('peajes')} style={{ cursor: 'pointer' }} bg={expandedSections.peajes ? "gray.1" : undefined}>
@@ -1060,8 +1254,22 @@ export default function FleteCreator() {
                                                             <Table.Td><Badge color="cyan.7" radius="sm" size="lg">Impuestos</Badge></Table.Td>
                                                             <Table.Td fw={900} ta="right" fz="xl" c="dark.9">${(estimacion?.breakdown?.peajes || 0).toFixed(2)}</Table.Td>
                                                         </Table.Tr>
+                                                        {expandedSections.peajes && (
+                                                            <>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 16, paddingTop: 16 }} colSpan={3}>
+                                                                        <Text span fw={700}>Cálculo basado en:</Text> Cantidad de estaciones de peaje cruzadas por el convoy.
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={80} c="dimmed" style={{ borderBottom: '1px solid #f1f3f5', paddingBottom: 12, paddingTop: 2 }} colSpan={3} fz="sm">
+                                                                        • {form.values.cantidadPeajes} Peajes × Tarifa Promedio ({configPrecios.peaje} Bs) / Tasa BCV ({bcv}).
+                                                                    </Table.Td>
+                                                                </Table.Tr>
+                                                            </>
+                                                        )}
 
-                                                        {/* --- 5. OVERHEAD ABC (AHORA RECONSTRUIDO COMPLETAMENTE ITERANDO SOBRE CONVOY) --- */}
+                                                        {/* --- 5. OVERHEAD ABC --- */}
                                                         <Table.Tr onClick={() => toggleSection('overhead')} style={{ cursor: 'pointer' }} bg={expandedSections.overhead ? "gray.2" : "gray.1"}>
                                                             <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.overhead ? '▼' : '▶'}</Text> 🏢 Costo Overhead ABC Convoy</Table.Td>
                                                             <Table.Td><Badge color="violet.7" radius="sm" size="lg">Administrativo</Badge></Table.Td>
@@ -1075,7 +1283,6 @@ export default function FleteCreator() {
                                                                     </Table.Td>
                                                                 </Table.Tr>
 
-                                                                {/* BUCLE DE CHUTOS OVERHEAD */}
                                                                 {chutosMatematica.map((chuto, idx) => (
                                                                     <React.Fragment key={`ov-chuto-${idx}`}>
                                                                         <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🚛 {chuto.nombre} (Tarifa Overhead: ${chuto.overheadHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${chuto.overheadTotal.toFixed(2)}</Table.Td></Table.Tr>
@@ -1088,7 +1295,6 @@ export default function FleteCreator() {
                                                                     </React.Fragment>
                                                                 ))}
 
-                                                                {/* BUCLE DE BATEAS OVERHEAD */}
                                                                 {bateasMatematica.map((batea, idx) => (
                                                                     <React.Fragment key={`ov-batea-${idx}`}>
                                                                         <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🛤️ {batea.nombre} (Tarifa Overhead: ${batea.overheadHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${batea.overheadTotal.toFixed(2)}</Table.Td></Table.Tr>
@@ -1101,7 +1307,6 @@ export default function FleteCreator() {
                                                                     </React.Fragment>
                                                                 ))}
 
-                                                                {/* 🔥 TERMÓMETRO DE SUPERVIVENCIA CONVOY 🔥 */}
                                                                 <Table.Tr>
                                                                     <Table.Td colSpan={3} style={{ borderBottom: 'none', padding: '16px 60px 30px 60px' }}>
                                                                         <Paper withBorder p="md" radius="sm" bg="blue.0" style={{ borderLeft: '6px solid #339af0' }}>
@@ -1111,14 +1316,14 @@ export default function FleteCreator() {
                                                                             <Group gap="xl" align="flex-start">
                                                                                 {chutosMatematica.map((chuto, idx) => (
                                                                                     <Box key={`meta-chuto-${idx}`}>
-                                                                                        <Text size="xs" tt="uppercase" fw={700} c="blue.9">🚛 Meta Ind. (Chuto {idx+1}):</Text>
+                                                                                        <Text size="xs" tt="uppercase" fw={700} c="blue.9">🚛 Meta Ind. (Chuto {idx + 1}):</Text>
                                                                                         <Text size="xl" fw={900} c="dark.9">{Math.ceil(chuto.viajesMes)} <Text span size="sm" fw={600} c="dimmed">viajes/mes</Text></Text>
                                                                                     </Box>
                                                                                 ))}
 
                                                                                 {bateasMatematica.map((batea, idx) => (
                                                                                     <Box key={`meta-batea-${idx}`}>
-                                                                                        <Text size="xs" tt="uppercase" fw={700} c="blue.9">🛤️ Meta Ind. (Batea {idx+1}):</Text>
+                                                                                        <Text size="xs" tt="uppercase" fw={700} c="blue.9">🛤️ Meta Ind. (Batea {idx + 1}):</Text>
                                                                                         <Text size="xl" fw={900} c="dark.9">{Math.ceil(batea.viajesMes)} <Text span size="sm" fw={600} c="dimmed">viajes/mes</Text></Text>
                                                                                     </Box>
                                                                                 ))}
@@ -1147,33 +1352,53 @@ export default function FleteCreator() {
                                                         </Table.Tr>
                                                         {expandedSections.mantenimiento && (
                                                             <>
-                                                                {/* Bloque Chutos Conjuntos */}
-                                                                <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🚛 Mantenimiento Conjunto Chutos</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoChutoTotalGlobal.toFixed(2)}</Table.Td></Table.Tr>
-                                                                {mttoChutoItems.map((item, index) => (
-                                                                    <Table.Tr key={`mtto-chuto-${index}`}>
-                                                                        <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion}</Table.Td>
-                                                                        <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }}><Badge color={item.tipo === 'Rodamiento' ? 'orange.8' : 'gray.6'} variant="outline" radius="sm" size="sm">{item.tipo}</Badge></Table.Td>
-                                                                        <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} ta="right" c="dimmed" fw={800} fz="sm">${item.monto.toFixed(2)}</Table.Td>
-                                                                    </Table.Tr>
-                                                                ))}
+                                                                <Table.Tr>
+                                                                    <Table.Td pl={60} c="dark.7" style={{ fontSize: '0.95rem', borderBottom: 'none', paddingBottom: 6, paddingTop: 16 }} colSpan={3}>
+                                                                        <Text span fw={700}>Desglose de Reserva:</Text> Provisión por desgaste de neumáticos, lubricantes y correctivos durante {distanciaViaje} Km.
+                                                                    </Table.Td>
+                                                                </Table.Tr>
 
-                                                                {/* Bloque Bateas Conjuntas */}
-                                                                {mttoBateaTotalGlobal > 0 && (
+                                                                {(mttoChutoItems.length > 0 || mttoBateaItems.length > 0) ? (
                                                                     <>
-                                                                        <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🛤️ Mantenimiento Conjunto Bateas</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoBateaTotalGlobal.toFixed(2)}</Table.Td></Table.Tr>
-                                                                        {mttoBateaItems.map((item, index) => (
-                                                                            <Table.Tr key={`mtto-batea-${index}`}>
-                                                                                <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion}</Table.Td>
-                                                                                <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }}><Badge color={item.tipo === 'Rodamiento' ? 'orange.8' : 'gray.6'} variant="outline" radius="sm" size="sm">{item.tipo}</Badge></Table.Td>
-                                                                                <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} ta="right" c="dimmed" fw={800} fz="sm">${item.monto.toFixed(2)}</Table.Td>
-                                                                            </Table.Tr>
-                                                                        ))}
+                                                                        {mttoChutoTotalGlobal > 0 && (
+                                                                            <>
+                                                                                <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🚛 Mantenimiento Conjunto Chutos</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoChutoTotalGlobal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                                {mttoChutoItems.map((item, index) => (
+                                                                                    <Table.Tr key={`mtto-chuto-${index}`}>
+                                                                                        <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion}</Table.Td>
+                                                                                        <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }}><Badge color={item.tipo === 'Rodamiento' ? 'orange.8' : 'gray.6'} variant="outline" radius="sm" size="sm">{item.tipo}</Badge></Table.Td>
+                                                                                        <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} ta="right" c="dimmed" fw={800} fz="sm">${item.monto.toFixed(2)}</Table.Td>
+                                                                                    </Table.Tr>
+                                                                                ))}
+                                                                            </>
+                                                                        )}
+                                                                        {mttoBateaTotalGlobal > 0 && (
+                                                                            <>
+                                                                                <Table.Tr><Table.Td pl={60} fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🛤️ Mantenimiento Conjunto Bateas</Table.Td><Table.Td ta="right" fw={900} c="dark.7" style={{ borderBottom: 'none', paddingTop: 16 }}>${mttoBateaTotalGlobal.toFixed(2)}</Table.Td></Table.Tr>
+                                                                                {mttoBateaItems.map((item, index) => (
+                                                                                    <Table.Tr key={`mtto-batea-${index}`}>
+                                                                                        <Table.Td pl={80} c="dimmed" style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} fz="sm">↳ {item.descripcion}</Table.Td>
+                                                                                        <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }}><Badge color={item.tipo === 'Rodamiento' ? 'orange.8' : 'gray.6'} variant="outline" radius="sm" size="sm">{item.tipo}</Badge></Table.Td>
+                                                                                        <Table.Td style={{ borderBottom: 'none', paddingBottom: 4, paddingTop: 4 }} ta="right" c="dimmed" fw={800} fz="sm">${item.monto.toFixed(2)}</Table.Td>
+                                                                                    </Table.Tr>
+                                                                                ))}
+                                                                            </>
+                                                                        )}
                                                                     </>
+                                                                ) : (
+                                                                    <Table.Tr>
+                                                                        <Table.Td pl={80} c="dark.6" style={{ borderBottom: '1px solid #f1f3f5', paddingBottom: 16, paddingTop: 4 }} colSpan={2} fz="sm">
+                                                                            ↳ Provisión Operativa General (Toda la flota)
+                                                                        </Table.Td>
+                                                                        <Table.Td style={{ borderBottom: '1px solid #f1f3f5', paddingBottom: 16, paddingTop: 4 }} ta="right" c="dark.8" fw={800} fz="sm">
+                                                                            ${(estimacion?.breakdown?.mantenimiento || 0).toFixed(2)}
+                                                                        </Table.Td>
+                                                                    </Table.Tr>
                                                                 )}
                                                             </>
                                                         )}
 
-                                                        {/* --- 7. POSESIÓN FINANCIERA (FÓRMULAS EXPUESTAS POR CONVOY) --- */}
+                                                        {/* --- 7. POSESIÓN FINANCIERA --- */}
                                                         <Table.Tr onClick={() => toggleSection('posesion')} style={{ cursor: 'pointer' }} bg={expandedSections.posesion ? "gray.1" : undefined}>
                                                             <Table.Td fw={900} c="dark.8" fz="lg"><Text span mr={8} c="yellow.6">{expandedSections.posesion ? '▼' : '▶'}</Text> 📈 Costo Posesión Flota</Table.Td>
                                                             <Table.Td><Badge color="teal.7" radius="sm" size="lg">Financiero</Badge></Table.Td>
@@ -1187,7 +1412,6 @@ export default function FleteCreator() {
                                                                     </Table.Td>
                                                                 </Table.Tr>
 
-                                                                {/* DESGLOSE DE CHUTOS */}
                                                                 {chutosMatematica.map((chuto, idx) => (
                                                                     <React.Fragment key={`pos-chuto-${idx}`}>
                                                                         <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }} colSpan={2}>🚛 {chuto.nombre} (Tarifa Total: ${chuto.posHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 12 }}>${chuto.posTotal.toFixed(2)}</Table.Td></Table.Tr>
@@ -1203,7 +1427,6 @@ export default function FleteCreator() {
                                                                     </React.Fragment>
                                                                 ))}
 
-                                                                {/* DESGLOSE DE BATEAS */}
                                                                 {bateasMatematica.map((batea, idx) => (
                                                                     <React.Fragment key={`pos-batea-${idx}`}>
                                                                         <Table.Tr><Table.Td pl={60} fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 16 }} colSpan={2}>🛤️ {batea.nombre} (Tarifa Total: ${batea.posHora.toFixed(2)}/hr)</Table.Td><Table.Td ta="right" fw={900} c="dark.8" style={{ borderBottom: 'none', paddingTop: 16 }}>${batea.posTotal.toFixed(2)}</Table.Td></Table.Tr>

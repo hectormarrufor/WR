@@ -61,6 +61,10 @@ Flete.associate = (models) => {
   // Relaciones extra (Mantenlas si las usas en otros lados)
   if (models.GastoVariable) Flete.hasMany(models.GastoVariable, { foreignKey: 'fleteId' });
   if (models.CostEstimate) Flete.hasOne(models.CostEstimate, { foreignKey: 'fleteId' });
+
+  // Relaciones con los gastos operativos del viaje
+  if (models.TicketPeaje) Flete.hasMany(models.TicketPeaje, { foreignKey: 'fleteId', as: 'peajes' });
+  if (models.CargaCombustible) Flete.hasMany(models.CargaCombustible, { foreignKey: 'fleteId', as: 'cargasCombustible' });
 };
 
 module.exports = Flete;

@@ -16,10 +16,12 @@ const TicketPeaje = sequelize.define('TicketPeaje', {
         allowNull: true,
         comment: 'Número de ticket o factura del peaje'
     },
-    fotoTicket: {
-        type: DataTypes.STRING,
+    ejes: {
+        type: DataTypes.INTEGER,
         allowNull: true,
-    }
+        comment: 'Número de ejes del vehículo para calcular el costo del peaje'
+    },
+    
 }, {
     tableName: 'TicketsPeajes',
     timestamps: true,

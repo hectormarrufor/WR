@@ -53,6 +53,11 @@ CargaCombustible.associate = (models) => {
     
     // 4. NUEVO: Trazabilidad de quién operó la bomba o registró la factura externa
     CargaCombustible.belongsTo(models.User, { foreignKey: 'registradoPorId', as: 'registradoPor' });
+    // NUEVO: Enlace operativo al viaje
+    CargaCombustible.belongsTo(models.Flete, { foreignKey: 'fleteId', as: 'flete', constraints: false });
+    
+    // NUEVO: Enlace directo al gasto financiero de tesorería
+    CargaCombustible.belongsTo(models.GastoVariable, { foreignKey: 'gastoVariableId', as: 'gasto' });
 };
 
 module.exports = CargaCombustible;

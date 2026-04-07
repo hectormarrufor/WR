@@ -1,3 +1,4 @@
+// app/api/fletes/route.js
 import { Flete, Cliente, Empleado, Activo } from '@/models';
 import { NextResponse } from 'next/server';
 import { Op } from 'sequelize';
@@ -12,11 +13,7 @@ export async function GET() {
     finMes.setDate(0);
 
     const fletes = await Flete.findAll({
-      where: {
-        fechaSalida: { // Corrección: Era fechaSalida, no fecha
-          [Op.between]: [inicioMes, finMes]
-        }
-      },
+      
       include: [
         { model: Cliente },
         { model: Empleado, as: 'chofer' },
@@ -37,16 +34,31 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
-    // 🛠️ Limpieza de datos: El frontend envía los JSON como strings. 
-    // Sequelize prefiere que sean objetos reales para guardarlos en columnas JSON nativas.
-    if (typeof body.tramos === 'string') {
-        try { body.tramos = JSON.parse(body.tramos); } catch (e) { body.tramos = []; }
+    // 🛠️ Limpieza de datos JSON stringificados desde el frontend
+    const parseJSON = (field) => {
+        if (typeof field === 'string') {
+            try { return JSON.parse(field); } catch (e) { return null; }
+        }
+        return field;
+    };
+
+    body.waypoints = parseJSON(body.waypoints);
+    body.tramos = parseJSON(body.tramos);
+    body.breakdown = parseJSON(body.breakdown);
+
+    // 🔥 CORRECCIÓN: Extracción de variables anidadas.
+    // El frontend agrupa los recursos en 'chutos' y 'remolques', pero el modelo
+    // Flete de Sequelize exige 'choferId' y 'activoPrincipalId' en la raíz.
+    if (body.chutos && body.chutos.length > 0) {
+        const chutoPrincipal = body.chutos[0];
+        body.activoPrincipalId = chutoPrincipal.activoId;
+        body.choferId = chutoPrincipal.choferId;
+        body.ayudanteId = chutoPrincipal.ayudanteId ? chutoPrincipal.ayudanteId : null;
     }
-    if (typeof body.waypoints === 'string') {
-        try { body.waypoints = JSON.parse(body.waypoints); } catch (e) { body.waypoints = []; }
-    }
-    if (typeof body.breakdown === 'string') {
-        try { body.breakdown = JSON.parse(body.breakdown); } catch (e) { body.breakdown = null; }
+    
+    if (body.remolques && body.remolques.length > 0) {
+        const remolquePrincipal = body.remolques[0];
+        body.remolqueId = remolquePrincipal.activoId;
     }
 
     const nuevoFlete = await Flete.create(body);

@@ -47,7 +47,7 @@ export default function PeajesPage() {
                 fetch('/api/peajes/tickets'),
                 fetch('/api/peajes'),
                 fetch('/api/rrhh/empleados'), 
-                fetch('/api/fletes?estado=activo'),
+                fetch('/api/fletes'),
                 fetch('/api/configuracion/general'),
                 fetch('/api/bcv').catch(() => ({ json: () => ({}) })) 
             ]);
@@ -61,13 +61,15 @@ export default function PeajesPage() {
                 resBcv.json()
             ]);
 
+            console.log(dataFletes)
+
             if (dataTickets.success) setTickets(dataTickets.data || []);
             if (dataPeajes.success) setPeajes(dataPeajes.data || []);
             
             const listaEmpleados = dataEmpleados || dataEmpleados.items || [];
             setEmpleados(listaEmpleados.filter(e => e.puestos?.some(p => p.nombre.toLowerCase().includes('chofer')) || true));
             
-            if (dataFletes.success) setFletes(dataFletes.data || []);
+            setFletes(dataFletes || []);
 
             if (dataConfig && typeof dataConfig === 'object') {
                 setTarifasPeajeBs({

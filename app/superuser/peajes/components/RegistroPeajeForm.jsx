@@ -8,7 +8,7 @@ import {
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconAlertCircle, IconMapPin, IconPlus, IconReceipt2, IconCalendar } from '@tabler/icons-react';
+import { IconCheck, IconAlertCircle, IconMapPin, IconPlus, IconReceipt2, IconCalendar, IconTractor } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import ODTSelectableGrid from '../../odt/ODTSelectableGrid';
 
@@ -19,6 +19,8 @@ export default function RegistroPeajeForm({
     fletesDisponibles = [], 
     onSuccess 
 }) {
+
+    console.log("Fletes dosponibles en RegistroPeajeForm:", fletesDisponibles); // Debug: Ver qué fletes llegan al formulario
     const [loading, setLoading] = useState(false);
     
     const [listaPeajes, setListaPeajes] = useState(peajesIniciales);
@@ -38,8 +40,6 @@ export default function RegistroPeajeForm({
         }));
     }, [empleados]);
 
-    
-
     const form = useForm({
         initialValues: {
             fecha: new Date(),
@@ -47,13 +47,15 @@ export default function RegistroPeajeForm({
             choferId: '',
             monto: '',
             referencia: '',
-            fleteId: '' 
+            fleteId: '',
+            ejes: '5' // <-- NUEVO: Valor por defecto
         },
         validate: {
             fecha: (value) => (!value ? 'Debe indicar la fecha' : null),
             peajeId: (value) => (!value ? 'Seleccione el peaje' : null),
             choferId: (value) => (!value ? 'Seleccione el chofer' : null),
             monto: (value) => (!value || value <= 0 ? 'Ingrese un monto válido' : null),
+            ejes: (value) => (!value ? 'Seleccione la cantidad de ejes' : null) // <-- NUEVO: Validación
         }
     });
 
@@ -99,7 +101,8 @@ export default function RegistroPeajeForm({
             const payload = {
                 ...values,
                 fecha: dayjs(values.fecha).format('YYYY-MM-DD'),
-                fleteId: values.fleteId || null
+                fleteId: values.fleteId || null,
+                ejes: parseInt(values.ejes, 10) // <-- NUEVO: Aseguramos que se envíe como número entero
             };
 
             const response = await fetch('/api/peajes/tickets', {
@@ -188,6 +191,21 @@ export default function RegistroPeajeForm({
                     <Divider label="Datos del Pago" labelPosition="center" />
 
                     <Group grow align="flex-start">
+                        {/* <-- NUEVO CAMPO: Selector de Ejes --> */}
+                        <Select
+                            label="Número de Ejes"
+                            placeholder="Seleccione"
+                            data={[
+                                { value: '2', label: '2 Ejes' },
+                                { value: '3', label: '3 Ejes' },
+                                { value: '4', label: '4 Ejes' },
+                                { value: '5', label: '5 Ejes' },
+                                { value: '6', label: '6 Ejes' },
+                            ]}
+                            required
+                            leftSection={<IconTractor size={16} />}
+                            {...form.getInputProps('ejes')}
+                        />
                         <NumberInput
                             label="Monto Pagado"
                             placeholder="0.00"
