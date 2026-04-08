@@ -18,9 +18,8 @@ const Peaje = sequelize.define('Peaje', {
         comment: 'Para futura integración con Google Maps'
     },
     estado: {
-        type: DataTypes.ENUM('Activo', 'Inactivo'),
-        defaultValue: 'Activo',
-        allowNull: false
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     tableName: 'Peajes',

@@ -8,14 +8,17 @@ const GastoVariable = sequelize.define('GastoVariable', {
     defaultValue: DataTypes.NOW,
     allowNull: false,
   },
-  monto: {
+  montoBs: {
     type: DataTypes.DECIMAL(18, 2),
-    allowNull: false,
+    allowNull: true,
   },
-  moneda: {
-    type: DataTypes.STRING(5),
-    defaultValue: 'USD',
-    allowNull: false,
+  montoUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
+  },
+  tasaBcv: {
+    type: DataTypes.DECIMAL(18, 4),
+    allowNull: true,
   },
   // ESTADO: Clave para tu requerimiento de "quizás no tengo la cuenta bancaria aún"
   estado: {

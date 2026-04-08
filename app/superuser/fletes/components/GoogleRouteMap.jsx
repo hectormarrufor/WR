@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow } from '@react-google-maps/api';
 import { Loader, Center, Box, Button, Text, Group, Badge, Paper, Alert } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconMountain, IconClock, IconAlertTriangle, IconReceipt2 } from '@tabler/icons-react';
+import dayjs from 'dayjs';
 
 const containerStyle = {
     width: '100%',
-    height: '400px', 
+    height: '100%', 
+    minHeight: '400px',
     borderRadius: '12px 12px 0 0', 
 };
 
 const center = { lat: 10.257083, lng: -71.343111 };
-// 🔥 LIBRERÍA GEOMETRY AÑADIDA PARA CÁLCULO DE INTERSECCIONES 🔥
 const LIBRARIES = ['geometry'];
 
 export default function GoogleRouteMap({ 
@@ -23,7 +24,10 @@ export default function GoogleRouteMap({
     taraBase = 13, 
     capacidadMax = 30, 
     initialWaypoints = [],
-    peajes = [] 
+    peajes = [],
+    currentPosition, 
+    onMapClick,      
+    puntosDeControl  
 }) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -35,6 +39,8 @@ export default function GoogleRouteMap({
     const [waypoints, setWaypoints] = useState([]); 
     const [directionsResponse, setDirectionsResponse] = useState(null);
     
+    const [mapHoverInfo, setMapHoverInfo] = useState(null);
+
     const [distanciaVisual, setDistanciaVisual] = useState(0);
     const [tiempoVisual, setTiempoVisual] = useState("");
     const [desnivelTotalVisual, setDesnivelTotalVisual] = useState(0);
@@ -51,8 +57,6 @@ export default function GoogleRouteMap({
     const onRouteCalculatedRef = useRef(onRouteCalculated);
 
     const tramosGuardadosRef = useRef(tramosFormulario);
-    
-    // 🚨 BLOQUEO DE BILLETERA: Referencia para evitar llamadas infinitas a la API
     const prevWaypointsStr = useRef("[]");
 
     useEffect(() => {
@@ -72,8 +76,71 @@ export default function GoogleRouteMap({
     const onLoad = useCallback(function callback(map) { setMap(map); }, []);
     const onUnmount = useCallback(function callback(map) { setMap(null); }, []);
 
-    const handleMapClick = (e) => {
-        setWaypoints(prev => [...prev, { lat: e.latLng.lat(), lng: e.latLng.lng() }]);
+    const handleMapClickInner = (e) => {
+        if (onMapClick) {
+            onMapClick(e);
+        } else {
+            setWaypoints(prev => [...prev, { lat: e.latLng.lat(), lng: e.latLng.lng() }]);
+        }
+    };
+
+    // 🔥 DETECCIÓN DUAL DE IDA Y RETORNO MEJORADA 🔥
+    const handleMapMouseMove = (e) => {
+        if (!puntosDeControl || puntosDeControl.length === 0) return;
+
+        const mouseLat = e.latLng.lat();
+        const mouseLng = e.latLng.lng();
+
+        const destIdx = puntosDeControl.findIndex(p => p.tipo === 'destino');
+        const reversedPuntos = [...puntosDeControl].reverse();
+        const lastDestIdxRev = reversedPuntos.findIndex(p => p.tipo === 'destino');
+        const lastDestIdx = lastDestIdxRev !== -1 ? puntosDeControl.length - 1 - lastDestIdxRev : -1;
+
+        const idaNodes = destIdx > 0 ? puntosDeControl.slice(0, destIdx + 1) : puntosDeControl;
+        const vueltaNodes = lastDestIdx > 0 ? puntosDeControl.slice(lastDestIdx) : [];
+
+        const calcTime = (nodes) => {
+            let bestTime = null;
+            let minDist = Infinity;
+            for (let i = 0; i < nodes.length - 1; i++) {
+                const A = nodes[i];
+                const B = nodes[i+1];
+                if (A.lat === B.lat && A.lng === B.lng) continue; 
+
+                const dAB = Math.hypot(B.lat - A.lat, B.lng - A.lng);
+                let t = 0;
+                if (dAB > 0) {
+                    const dot = ((mouseLat - A.lat) * (B.lat - A.lat) + (mouseLng - A.lng) * (B.lng - A.lng)) / (dAB * dAB);
+                    t = Math.max(0, Math.min(1, dot));
+                }
+                const projLat = A.lat + t * (B.lat - A.lat);
+                const projLng = A.lng + t * (B.lng - A.lng);
+                const dist = Math.hypot(mouseLat - projLat, mouseLng - projLng);
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestTime = A.timestamp + t * (B.timestamp - A.timestamp);
+                }
+            }
+            return { time: bestTime, dist: minDist };
+        };
+
+        const resIda = calcTime(idaNodes);
+        const resVuelta = calcTime(vueltaNodes);
+        
+        // Threshold ajustado para mayor comodidad al pasar el ratón
+        const threshold = 0.08; 
+
+        if (resIda.dist < threshold || (resVuelta && resVuelta.dist < threshold)) {
+            setMapHoverInfo({
+                lat: mouseLat,
+                lng: mouseLng,
+                timeIda: resIda.dist < threshold ? resIda.time : null,
+                timeVuelta: resVuelta && resVuelta.dist < threshold ? resVuelta.time : null
+            });
+        } else {
+            setMapHoverInfo(null);
+        }
     };
 
     const limpiarRuta = () => {
@@ -136,9 +203,6 @@ export default function GoogleRouteMap({
             return;
         }
 
-        // 🚨 AQUÍ ESTÁ EL FIX CRÍTICO: 
-        // Si el formulario padre se re-renderiza pero los waypoints en el mapa son exactamente los mismos,
-        // cortamos la ejecución. No se llama a Google, no se gasta cuota de API.
         if (prevWaypointsStr.current === currentWpStr) {
             return; 
         }
@@ -157,8 +221,6 @@ export default function GoogleRouteMap({
                         let totalMeters = 0;
                         const route = result.routes[0];
 
-                        // 🔥 MAGIA MATEMÁTICA: CRUZANDO LA LÍNEA AZUL CON TUS PEAJES 🔥
-                        // Esto se hace con la librería Geometry del cliente, no gasta cuota extra de Google.
                         let peajesDetectados = [];
                         if (window.google.maps.geometry && peajes.length > 0) {
                             const polylineRuta = new window.google.maps.Polyline({ path: route.overview_path });
@@ -166,7 +228,6 @@ export default function GoogleRouteMap({
                             peajes.forEach(peaje => {
                                 if (peaje.latitud && peaje.longitud) {
                                     const loc = new window.google.maps.LatLng(parseFloat(peaje.latitud), parseFloat(peaje.longitud));
-                                    // 0.005 grados de tolerancia equivale a unos ~500 metros a la redonda de la carretera
                                     if (window.google.maps.geometry.poly.isLocationOnEdge(loc, polylineRuta, 0.005)) {
                                         peajesDetectados.push(peaje);
                                     }
@@ -241,16 +302,12 @@ export default function GoogleRouteMap({
             );
         };
         calcularRutaCompleta();
-        
-    // Quitamos 'peajes' de este array de dependencias. 
-    // Ahora solo reacciona si el mapa carga o si los waypoints realmente mutan (verificado por el useRef arriba).
     }, [isLoaded, waypoints]); 
 
     useEffect(() => {
         if (!directionsResponse || tramosFormulario.length === 0) return;
 
         let tiempoFinalTotal = 0;
-        let tiempoBaseGoogleTotal = 0;
         let demoraVerticalTotalSegundos = 0;
         let demoraPorRegulacionYPeso = 0;
 
@@ -258,8 +315,6 @@ export default function GoogleRouteMap({
 
         tramosFormulario.forEach(tramo => {
             const tiempoBaseRealista = (tramo.tiempoBaseSegundos * 1.4); 
-            tiempoBaseGoogleTotal += tiempoBaseRealista;
-
             let segundosTramo = tiempoBaseRealista;
 
             if (vehiculoAsignado) {
@@ -307,7 +362,6 @@ export default function GoogleRouteMap({
         }
     }, [directionsResponse, tramosFormulario, taraBase, capacidadMax, vehiculoAsignado]);
 
-
     const handleSvgMouseMove = (e) => {
         if (perfilCoords.length === 0) return;
         const svgRect = e.currentTarget.getBoundingClientRect();
@@ -321,9 +375,9 @@ export default function GoogleRouteMap({
     const svgPolygonPoints = perfilElevacion.length > 0 ? `0,100 ` + perfilElevacion.map((elev, i) => `${(i / (perfilElevacion.length - 1)) * 100},${100 - ((elev / maxElev) * 100)}`).join(' ') + ` 100,100` : '';
 
     return (
-        <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
-            <Box style={{ position: 'relative' }}>
-                {waypoints.length > 0 && (
+        <Paper withBorder radius="md" style={{ overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box style={{ position: 'relative', flexGrow: 1 }}>
+                {waypoints.length > 0 && !onMapClick && (
                     <Box style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
                         <Button color="red" size="xs" onClick={limpiarRuta} leftSection={<IconTrash size={14}/>}>
                             Limpiar ({waypoints.length}) Paradas
@@ -331,21 +385,76 @@ export default function GoogleRouteMap({
                     </Box>
                 )}
 
-                <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={10} onLoad={onLoad} onUnmount={onUnmount} onClick={handleMapClick} options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}>
+                <GoogleMap 
+                    mapContainerStyle={containerStyle} 
+                    center={center} 
+                    zoom={10} 
+                    onLoad={onLoad} 
+                    onUnmount={onUnmount} 
+                    onClick={handleMapClickInner} 
+                    onMouseMove={handleMapMouseMove} 
+                    onMouseOut={() => setMapHoverInfo(null)} 
+                    options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
+                >
                     <Marker position={center} label={{ text: "BASE", color: "white", fontWeight: "bold", fontSize: "10px" }} />
                     
-                    {/* Renderizamos las paradas del usuario */}
-                    {waypoints.map((wp, i) => (!directionsResponse && <Marker key={i} position={wp} label={`${i + 1}`} />))}
+                    {!onMapClick && waypoints.map((wp, i) => (!directionsResponse && <Marker key={i} position={wp} label={`${i + 1}`} />))}
                     
-                    {/* 🔥 RENDERIZAMOS TODOS LOS PEAJES DISPONIBLES EN EL MAPA 🔥 */}
+                    {currentPosition && (
+                        <Marker 
+                            position={{ lat: currentPosition.lat, lng: currentPosition.lng }}
+                            zIndex={9999}
+                            icon={{
+                                path: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z",
+                                fillColor: "#e03131", 
+                                fillOpacity: 1,
+                                strokeColor: "#ffffff",
+                                strokeWeight: 2,
+                                scale: 1.5,
+                                anchor: new window.google.maps.Point(12, 12)
+                            }}
+                        />
+                    )}
+
+                    {mapHoverInfo && (
+                        <InfoWindow position={{ lat: mapHoverInfo.lat, lng: mapHoverInfo.lng }} options={{ disableAutoPan: true }}>
+                            <Box p={4} ta="center" miw={180}>
+                                <Text size="xs" fw={900} c="dark.8" mb={6} display="flex" style={{ justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+                                    <IconClock size={14} /> Tiempo Estimado
+                                </Text>
+                                {mapHoverInfo.timeIda && (
+                                    <Badge color="blue" variant="light" size="md" w="100%" mb={mapHoverInfo.timeVuelta ? 4 : 0} radius="sm">
+                                        IDA: {dayjs(mapHoverInfo.timeIda).format('DD/MM HH:mm')}
+                                    </Badge>
+                                )}
+                                {mapHoverInfo.timeVuelta && (
+                                    <Badge color="teal" variant="light" size="md" w="100%" radius="sm">
+                                        RETORNO: {dayjs(mapHoverInfo.timeVuelta).format('DD/MM HH:mm')}
+                                    </Badge>
+                                )}
+                                {(!mapHoverInfo.timeIda && !mapHoverInfo.timeVuelta) && (
+                                    <Text size="xs" c="dimmed">Buscando coincidencia...</Text>
+                                )}
+                            </Box>
+                        </InfoWindow>
+                    )}
+
+                    {initialWaypoints.length > 0 && initialWaypoints.some(wp => wp.isDestino) && (
+                        <Marker 
+                            position={{ lat: initialWaypoints.find(wp => wp.isDestino).lat, lng: initialWaypoints.find(wp => wp.isDestino).lng }}
+                            icon={{ url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png" }}
+                        />
+                    )}
+                    
                     {peajes.map(p => {
                         if(p.latitud && p.longitud) {
+                            const nombreLimpio = p.nombre ? p.nombre.replace(/peaje\s*/i, '').trim() : 'Punto de Control';
                             return (
                                 <Marker 
                                     key={`peaje-${p.id}`} 
                                     position={{ lat: parseFloat(p.latitud), lng: parseFloat(p.longitud) }} 
                                     icon={{ url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png" }}
-                                    title={`Peaje: ${p.nombre}`}
+                                    title={nombreLimpio}
                                 />
                             )
                         }
@@ -358,42 +467,41 @@ export default function GoogleRouteMap({
                         <Marker position={perfilCoords[hoverIndex]} icon={{ path: window.google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: "#4dabf7", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 }} zIndex={999} />
                     )}
                 </GoogleMap>
-
-                {perfilElevacion.length > 0 && (
-                    <Box bg="gray.1" style={{ height: '60px', position: 'relative', borderTop: '2px solid #e9ecef', cursor: 'crosshair' }}>
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }} onMouseMove={handleSvgMouseMove} onMouseLeave={() => setHoverIndex(null)}>
-                            <defs>
-                                <linearGradient id="montanaGradiente" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stopColor="#845ef7" stopOpacity="0.4" />
-                                    <stop offset="100%" stopColor="#845ef7" stopOpacity="0.05" />
-                                </linearGradient>
-                            </defs>
-                            <polygon points={svgPolygonPoints} fill="url(#montanaGradiente)" stroke="#845ef7" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                            {hoverIndex !== null && <line x1={`${(hoverIndex / (perfilElevacion.length - 1)) * 100}%`} y1="0" x2={`${(hoverIndex / (perfilElevacion.length - 1)) * 100}%`} y2="100%" stroke="#4dabf7" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
-                        </svg>
-                        {hoverIndex !== null && (
-                            <Box style={{ position: 'absolute', top: -25, left: `${(hoverIndex / (perfilElevacion.length - 1)) * 100}%`, transform: 'translateX(-50%)', background: '#343a40', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', pointerEvents: 'none' }}>
-                                {Math.round(perfilElevacion[hoverIndex])}m
-                            </Box>
-                        )}
-                        <Box style={{ position: 'absolute', top: 5, left: 10, pointerEvents: 'none' }}>
-                            <Group gap={4}>
-                                <IconMountain size={14} color="#845ef7" />
-                                <Text size="xs" fw={700} c="violet.9">Perfil de Elevación (Max: {Math.round(maxElev)}m)</Text>
-                            </Group>
-                        </Box>
-                    </Box>
-                )}
             </Box>
 
-            {distanciaVisual > 0 && (
-                <Box p="xs" bg="white">
+            {perfilElevacion.length > 0 && (
+                <Box bg="gray.1" style={{ height: '60px', position: 'relative', borderTop: '2px solid #e9ecef', cursor: 'crosshair', flexShrink: 0 }}>
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }} onMouseMove={handleSvgMouseMove} onMouseLeave={() => setHoverIndex(null)}>
+                        <defs>
+                            <linearGradient id="montanaGradiente" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stopColor="#845ef7" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#845ef7" stopOpacity="0.05" />
+                            </linearGradient>
+                        </defs>
+                        <polygon points={svgPolygonPoints} fill="url(#montanaGradiente)" stroke="#845ef7" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                        {hoverIndex !== null && <line x1={`${(hoverIndex / (perfilElevacion.length - 1)) * 100}%`} y1="0" x2={`${(hoverIndex / (perfilElevacion.length - 1)) * 100}%`} y2="100%" stroke="#4dabf7" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
+                    </svg>
+                    {hoverIndex !== null && (
+                        <Box style={{ position: 'absolute', top: -25, left: `${(hoverIndex / (perfilElevacion.length - 1)) * 100}%`, transform: 'translateX(-50%)', background: '#343a40', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', pointerEvents: 'none' }}>
+                            {Math.round(perfilElevacion[hoverIndex])}m
+                        </Box>
+                    )}
+                    <Box style={{ position: 'absolute', top: 5, left: 10, pointerEvents: 'none' }}>
+                        <Group gap={4}>
+                            <IconMountain size={14} color="#845ef7" />
+                            <Text size="xs" fw={700} c="violet.9">Perfil de Elevación (Max: {Math.round(maxElev)}m)</Text>
+                        </Group>
+                    </Box>
+                </Box>
+            )}
+
+            {distanciaVisual > 0 && !onMapClick && (
+                <Box p="xs" bg="white" style={{ flexShrink: 0 }}>
                     <Group justify="space-between" mb={penalidadVisual ? 'xs' : 0}>
                         <Text size="xs" fw={700}>Circuito Cerrado ({waypoints.length + 1} tramos)</Text>
                         <Group gap="xs">
                             <Badge color="blue" variant="light">{distanciaVisual} Km</Badge>
                             <Badge color="violet" variant="light">⛰️ +{desnivelTotalVisual}m</Badge>
-                            {/* 🔥 NUEVO BADGE VISUAL DE PEAJES SEGURO 🔥 */}
                             <Badge color="yellow" variant="filled">
                                 <Group gap={3}><IconReceipt2 size={12}/> {peajesCruzados.length} Peajes</Group>
                             </Badge>

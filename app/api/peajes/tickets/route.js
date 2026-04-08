@@ -11,10 +11,9 @@ export async function GET() {
             include: [
                 { model: Peaje, as: 'peaje', attributes: ['id', 'nombre'] },
                 { model: Empleado, as: 'chofer', attributes: ['id', 'nombre', 'apellido', 'imagen'] },
-                // 🔥 Reincorporamos Flete con sus campos reales 🔥
                 { model: Flete, as: 'flete', attributes: ['id', 'nroFlete', 'descripcion'] }
             ],
-            order: [['fecha', 'DESC'], ['createdAt', 'DESC']]
+            order: [['fecha', 'DESC'], ['hora', 'DESC']]
         });
         
         const baseUrl = process.env.NEXT_PUBLIC_BLOB_BASE_URL || '';
@@ -24,7 +23,7 @@ export async function GET() {
             
             if (ticket.chofer && ticket.chofer.imagen) {
                 if (!ticket.chofer.imagen.startsWith('http')) {
-                    ticket.chofer.imagen = `${baseUrl}${ticket.chofer.imagen}`;
+                    ticket.chofer.imagen = `${baseUrl}/${ticket.chofer.imagen}`;
                 }
             }
             
@@ -47,31 +46,32 @@ export async function POST(request) {
     try {
         const body = await request.json();
 
-        // 1. Validaciones
-        if (!body.peajeId || !body.choferId || !body.monto || !body.fecha) {
-            throw new Error("Faltan campos obligatorios (Peaje, Chofer, Monto o Fecha)");
+        // Validación de hora incluida
+        if (!body.peajeId || !body.choferId || !body.monto || !body.fecha || !body.hora || !body.tasaBcv) {
+            throw new Error("Faltan campos obligatorios incluyendo la hora.");
         }
 
         // 2. Crear el Gasto Financiero (Tesorería)
         const nuevoGasto = await GastoVariable.create({
             fechaGasto: body.fecha,
-            monto: parseFloat(body.monto),
-            moneda: 'USD',
-            estado: 'Pendiente', 
+            montoBs: parseFloat(body.monto),
+            montoUsd: parseFloat(body.montoUsd),
+            tasaBcv: parseFloat(body.tasaBcv),
+            estado: 'Pagado', 
             tipoOrigen: 'Peajes',
-            descripcion: `Pago de peaje - Ref: ${body.referencia || 'S/N'}`,
+            descripcion: `Pago de peaje (${body.hora}) - Ref: ${body.referencia || 'S/N'} (Tasa: ${body.tasaBcv} BS)`,
             referenciaExterna: body.referencia || null,
-            empleadoId: body.choferId,
             fleteId: body.fleteId || null 
         }, { transaction: t });
 
-        // 3. Crear el Registro Operativo (Ticket físico)
         const nuevoTicket = await TicketPeaje.create({
             fecha: body.fecha,
+            hora: body.hora, // 🔥 PERSISTENCIA DE HORA
             monto: parseFloat(body.monto),
+            tasaBcv: parseFloat(body.tasaBcv),
+            montoUsd: parseFloat(body.montoUsd),
             referencia: body.referencia || null,
-            ejes: body.ejes ? parseInt(body.ejes, 10) : null, // 🔥 NUEVO CAMPO ATRAPADO
-            fotoTicket: body.fotoTicket || null,
+            ejes: body.ejes ? parseInt(body.ejes, 10) : null,
             peajeId: body.peajeId,
             choferId: body.choferId,
             fleteId: body.fleteId || null,

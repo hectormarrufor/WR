@@ -4,7 +4,6 @@ import { Peaje } from '@/models';
 export async function GET() {
     try {
         const peajes = await Peaje.findAll({
-            where: { estado: 'Activo' },
             order: [['nombre', 'ASC']]
         });
         
@@ -27,7 +26,7 @@ export async function POST(request) {
             nombre: body.nombre.trim(),
             latitud: body.latitud || null,
             longitud: body.longitud || null,
-            estado: 'Activo'
+            estado: body.estado || null
         });
 
         return NextResponse.json({ success: true, data: nuevoPeaje }, { status: 201 });

@@ -9,7 +9,8 @@ import {
     IconClipboardText, IconBuildingBank, IconChartBar, IconExchange, IconShoppingCart, IconFileInvoice,
     IconAlertTriangle,
     IconGasStation,
-    IconMapPin
+    IconMapPin,
+    IconEyeDollar
 } from '@tabler/icons-react';
 import './superuser.css'; // Asegúrate de que este archivo no tenga estilos que choquen
 import { useAuth } from '@/hooks/useAuth';
@@ -144,6 +145,7 @@ export default function SuperUserHome() {
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'ODTs', href: '/superuser/odt', description: 'Órdenes de Trabajo.', icon: IconClock2, color: 'blue' },
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Fletes', href: '/superuser/fletes', description: 'Registro de viajes.', icon: IconTruck, color: 'red' },
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Peajes', href: '/superuser/peajes', description: 'Registro de peajes.', icon: IconMapPin, color: 'yellow' },
+        { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Balance', href: '/superuser/balance', description: 'Registro de balance financiero.', icon: IconEyeDollar, color: 'green' },
         { disabled: false, visible: (userId != 5) && isAdmin || departamentos.includes("Operaciones") || departamentos.includes("Administracion") || departamentos.includes("Presidencia"), title: 'Pizarra', href: '/superuser/pizarra', description: 'Visualización de actividades.', icon: IconClipboardText, color: 'grape' },
     ];
 

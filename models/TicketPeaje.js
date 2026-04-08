@@ -10,16 +10,31 @@ const TicketPeaje = sequelize.define('TicketPeaje', {
     monto: {
         type: DataTypes.DECIMAL(18, 2),
         allowNull: false,
+        comment: 'Monto en Bolívares (BS)'
     },
+    // --- NUEVAS COLUMNAS PARA TRAZABILIDAD ---
+    tasaBcv: {
+        type: DataTypes.DECIMAL(18, 4),
+        allowNull: false,
+        defaultValue: 1,
+    },
+    montoUsd: {
+        type: DataTypes.DECIMAL(18, 2),
+        allowNull: false,
+        defaultValue: 0,
+        comment: 'Monto convertido a USD al momento del registro'
+    },
+    // -----------------------------------------
     referencia: {
         type: DataTypes.STRING,
         allowNull: true,
-        comment: 'Número de ticket o factura del peaje'
+    },
+    hora: {
+        type: DataTypes.TIME,
     },
     ejes: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        comment: 'Número de ejes del vehículo para calcular el costo del peaje'
     },
     
 }, {
@@ -31,7 +46,6 @@ TicketPeaje.associate = (models) => {
     TicketPeaje.belongsTo(models.Peaje, { foreignKey: 'peajeId', as: 'peaje' });
     TicketPeaje.belongsTo(models.Empleado, { foreignKey: 'choferId', as: 'chofer' });
     TicketPeaje.belongsTo(models.Flete, { foreignKey: 'fleteId', as: 'flete', constraints: false });
-    // Enlace directo al gasto financiero
     TicketPeaje.belongsTo(models.GastoVariable, { foreignKey: 'gastoVariableId', as: 'gasto' });
 };
 
