@@ -28,7 +28,7 @@ export default function RegistroPeajeForm({
     const [listaPeajes, setListaPeajes] = useState(peajesIniciales);
     const [modalPeajeOpened, setModalPeajeOpened] = useState(false);
     const [tasaManual, setTasaManual] = useState(false);
-    
+
     // Ref para evitar bucles infinitos o peticiones duplicadas por la misma fecha
     const lastDateRef = useRef('');
 
@@ -50,13 +50,14 @@ export default function RegistroPeajeForm({
         initialValues: {
             fecha: new Date(),
             peajeId: '',
+            tipoVehiculo: 'Pesado',
             choferId: '',
             hora: dayjs().format('HH:mm'),
             monto: '',
             tasaBcv: '', // Iniciamos vacío para que el placeholder funcione
             referencia: '',
             fleteId: '',
-            ejes: '5'
+            ejes: ''
         },
         validate: {
             fecha: (value) => (!value ? 'Debe indicar la fecha' : null),
@@ -65,18 +66,24 @@ export default function RegistroPeajeForm({
             choferId: (value) => (!value ? 'Seleccione el chofer' : null),
             monto: (value) => (!value || value <= 0 ? 'Ingrese un monto válido' : null),
             tasaBcv: (value) => (!value || value <= 0 ? 'La tasa es obligatoria' : null),
-            ejes: (value) => (!value ? 'Seleccione la cantidad de ejes' : null)
+            tipoVehiculo: (value) => (!value ? 'Seleccione el tipo de vehículo' : null),
+            ejes: (value, values) => {
+                if (values.tipoVehiculo === 'Liviano') return null;
+                if (!value) return 'Seleccione el número de ejes';
+                if (isNaN(value) || value < 2) return 'Número de ejes inválido';
+                return null;
+            }
         }
     });
 
     const fetchTasa = async (fechaSeleccionada) => {
         if (!fechaSeleccionada) return;
-        
+
         const formattedDate = dayjs(fechaSeleccionada).format('YYYY-MM-DD');
-        
+
         // Si ya consultamos esta fecha, no hagamos nada
         if (lastDateRef.current === formattedDate) return;
-        
+
         lastDateRef.current = formattedDate;
         setFetchingTasa(true);
 
@@ -112,7 +119,7 @@ export default function RegistroPeajeForm({
 
     useEffect(() => {
         fetchTasa(form.values.fecha);
-    }, [fechaString]); 
+    }, [fechaString]);
 
     const montoUSD = useMemo(() => {
         const m = parseFloat(form.values.monto);
@@ -171,7 +178,7 @@ export default function RegistroPeajeForm({
                 ejes: parseInt(values.ejes, 10),
                 monto: m,
                 tasaBcv: t,
-                montoUsd: parseFloat(calculadoUsd.toFixed(2))
+                montoUsd: parseFloat(calculadoUsd.toFixed(2)),
             };
 
             const response = await fetch('/api/peajes/tickets', {
@@ -273,7 +280,7 @@ export default function RegistroPeajeForm({
                             placeholder="Ej: 36.45"
                             decimalScale={4}
                             required
-                            disabled={!tasaManual && fetchingTasa} 
+                            disabled={!tasaManual && fetchingTasa}
                             leftSection={<IconCoin size={16} />}
                             {...form.getInputProps('tasaBcv')}
                         />
@@ -297,10 +304,24 @@ export default function RegistroPeajeForm({
 
                     <Group grow align="flex-start">
                         <Select
+                            label="Tipo de Vehículo"
+                            placeholder="Seleccione"
+                            data={[
+                                { value: 'Liviano', label: 'Liviano' },
+                                { value: 'Pesado', label: 'Pesado' },
+                                { value: 'Otro', label: 'Otro' }
+                            ]}
+                            required
+                            leftSection={<IconTractor size={16} />}
+                            {...form.getInputProps('tipoVehiculo')}
+                        />
+
+                        <Select
                             label="Número de Ejes"
                             placeholder="Seleccione"
                             data={['2', '3', '4', '5', '6'].map(v => ({ value: v, label: `${v} Ejes` }))}
                             required
+                            disabled={form.values.tipoVehiculo === 'Liviano'} // Solo habilitar para Pesado u Otro
                             leftSection={<IconTractor size={16} />}
                             {...form.getInputProps('ejes')}
                         />

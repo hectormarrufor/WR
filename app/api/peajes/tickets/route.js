@@ -47,7 +47,7 @@ export async function POST(request) {
         const body = await request.json();
 
         // Validación de hora incluida
-        if (!body.peajeId || !body.choferId || !body.monto || !body.fecha || !body.hora || !body.tasaBcv) {
+        if (!body.peajeId || !body.tipoVehiculo || !body.choferId || !body.monto || !body.fecha || !body.hora || !body.tasaBcv) {
             throw new Error("Faltan campos obligatorios incluyendo la hora.");
         }
 
@@ -74,6 +74,7 @@ export async function POST(request) {
             ejes: body.ejes ? parseInt(body.ejes, 10) : null,
             peajeId: body.peajeId,
             choferId: body.choferId,
+            tipoVehiculo: body.tipoVehiculo,
             fleteId: body.fleteId || null,
             gastoVariableId: nuevoGasto.id
         }, { transaction: t });

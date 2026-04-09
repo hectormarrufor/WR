@@ -15,11 +15,10 @@ import {
     IconPlus, IconReceipt2, IconMapPin, IconUser, IconTrash,
     IconTruckReturn, IconMapRoute, IconCalculator, IconCurrencyDollar,
     IconTrendingUp, IconInfoCircle, IconCalendar, IconTractor,
-    IconClock
+    IconClock, IconCar // <-- Añadido IconCar para los vehículos livianos
 } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
-
 
 // Activar plugin para el rango de fechas
 dayjs.extend(minMax);
@@ -55,6 +54,7 @@ export default function PeajesPage() {
     const abrirSimuladorFlete = (ticketsGrupo) => {
         setSimuladorFleteData({ opened: true, tickets: ticketsGrupo });
     };
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -231,7 +231,7 @@ export default function PeajesPage() {
                             <Table.Th>Fecha / Hora</Table.Th>
                             <Table.Th>Estación de Peaje</Table.Th>
                             <Table.Th>Chofer</Table.Th>
-                            <Table.Th>Ref / Ejes</Table.Th>
+                            <Table.Th>Ref / Vehículo</Table.Th> {/* <-- Cambiado a Vehículo */}
                             <Table.Th ta="right">Monto (BS)</Table.Th>
                             <Table.Th ta="center">Tasa BCV</Table.Th>
                             <Table.Th ta="right">Monto ($)</Table.Th>
@@ -327,10 +327,24 @@ export default function PeajesPage() {
                                             <Table.Td>
                                                 <Stack gap={2}>
                                                     <Text size="xs" fw={700} c="dimmed">{ticket.referencia || 'S/N'}</Text>
-                                                    <Group gap={4}>
-                                                        <IconTractor size={12} color="gray" />
-                                                        <Text size="xs" fw={600}>{ticket.ejes || '?'} Ejes</Text>
-                                                    </Group>
+                                                    
+                                                    {/* --- LÓGICA DE VEHÍCULO PESADO/LIVIANO/OTRO --- */}
+                                                    {ticket.tipoVehiculo === 'Liviano' ? (
+                                                        <Group gap={4}>
+                                                            <IconCar size={12} color="gray" />
+                                                            <Text size="xs" fw={600}>Vehículo Liviano</Text>
+                                                        </Group>
+                                                    ) : ticket.tipoVehiculo === 'Otro' ? (
+                                                        <Group gap={4}>
+                                                            <IconInfoCircle size={12} color="gray" />
+                                                            <Text size="xs" fw={600}>Otro</Text>
+                                                        </Group>
+                                                    ) : (
+                                                        <Group gap={4}>
+                                                            <IconTractor size={12} color="gray" />
+                                                            <Text size="xs" fw={600}>{ticket.ejes || '?'} Ejes</Text>
+                                                        </Group>
+                                                    )}
                                                 </Stack>
                                             </Table.Td>
                                             <Table.Td ta="right">

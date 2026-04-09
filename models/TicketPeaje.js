@@ -36,6 +36,10 @@ const TicketPeaje = sequelize.define('TicketPeaje', {
         type: DataTypes.INTEGER,
         allowNull: true,
     },
+    tipoVehiculo: {
+        type: DataTypes.ENUM('Liviano', 'Pesado', 'Otro'),
+        allowNull: true,
+    },
     
 }, {
     tableName: 'TicketsPeajes',
