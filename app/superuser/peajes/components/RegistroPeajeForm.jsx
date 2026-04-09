@@ -36,6 +36,9 @@ export default function RegistroPeajeForm({
     const [nuevoPeajeLat, setNuevoPeajeLat] = useState('');
     const [nuevoPeajeLng, setNuevoPeajeLng] = useState('');
     const [nuevoPeajeEstado, setNuevoPeajeEstado] = useState('');
+    
+    // Estado para el input unificado de coordenadas
+    const [coordenadasRaw, setCoordenadasRaw] = useState('');
 
     const choferesParaGrid = useMemo(() => {
         return empleados.map(e => ({
@@ -155,6 +158,7 @@ export default function RegistroPeajeForm({
                 setNuevoPeajeLat('');
                 setNuevoPeajeLng('');
                 setNuevoPeajeEstado('');
+                setCoordenadasRaw(''); // Limpiamos el nuevo input unificado
                 notifications.show({ title: 'Peaje Registrado', message: 'Añadido con éxito.', color: 'green' });
             } else throw new Error(res.error);
         } catch (error) {
@@ -365,24 +369,35 @@ export default function RegistroPeajeForm({
                         value={nuevoPeajeEstado}
                         onChange={(e) => setNuevoPeajeEstado(e.currentTarget.value)}
                     />
-                    <Group grow>
-                        <NumberInput
-                            label="Latitud"
-                            placeholder="10.257"
-                            decimalScale={8}
-                            hideControls
-                            value={nuevoPeajeLat}
-                            onChange={setNuevoPeajeLat}
-                        />
-                        <NumberInput
-                            label="Longitud"
-                            placeholder="-71.343"
-                            decimalScale={8}
-                            hideControls
-                            value={nuevoPeajeLng}
-                            onChange={setNuevoPeajeLng}
-                        />
-                    </Group>
+                    
+                    {/* Input unificado para pegar las coordenadas */}
+                    <TextInput
+                        label="Coordenadas (Latitud, Longitud)"
+                        placeholder="Ej: 9.2233107, -70.6112128"
+                        value={coordenadasRaw}
+                        onChange={(e) => {
+                            const val = e.currentTarget.value;
+                            setCoordenadasRaw(val);
+                            
+                            if (val.includes(',')) {
+                                const [latStr, lngStr] = val.split(',');
+                                const lat = parseFloat(latStr.trim());
+                                const lng = parseFloat(lngStr.trim());
+                                
+                                setNuevoPeajeLat(isNaN(lat) ? '' : lat);
+                                setNuevoPeajeLng(isNaN(lng) ? '' : lng);
+                            } else {
+                                setNuevoPeajeLat('');
+                                setNuevoPeajeLng('');
+                            }
+                        }}
+                        description={
+                            nuevoPeajeLat !== '' && nuevoPeajeLng !== ''
+                                ? `Capturado -> Lat: ${nuevoPeajeLat} | Lng: ${nuevoPeajeLng}`
+                                : "Pegue aquí las coordenadas separadas por coma"
+                        }
+                    />
+
                     <Button onClick={handleCrearPeaje} color="blue" fullWidth mt="md">Guardar y Seleccionar</Button>
                 </Stack>
             </Modal>
