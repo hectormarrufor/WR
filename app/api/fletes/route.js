@@ -13,7 +13,6 @@ export async function GET() {
     finMes.setDate(0);
 
     const fletes = await Flete.findAll({
-      
       include: [
         { model: Cliente },
         { model: Empleado, as: 'chofer' },
@@ -46,19 +45,19 @@ export async function POST(req) {
     body.tramos = parseJSON(body.tramos);
     body.breakdown = parseJSON(body.breakdown);
 
-    // 🔥 CORRECCIÓN: Extracción de variables anidadas.
+    // 🔥 CORRECCIÓN: Extracción de variables anidadas y saneamiento de strings vacíos a null
     // El frontend agrupa los recursos en 'chutos' y 'remolques', pero el modelo
     // Flete de Sequelize exige 'choferId' y 'activoPrincipalId' en la raíz.
     if (body.chutos && body.chutos.length > 0) {
         const chutoPrincipal = body.chutos[0];
-        body.activoPrincipalId = chutoPrincipal.activoId;
-        body.choferId = chutoPrincipal.choferId;
-        body.ayudanteId = chutoPrincipal.ayudanteId ? chutoPrincipal.ayudanteId : null;
+        body.activoPrincipalId = chutoPrincipal.activoId || null;
+        body.choferId = chutoPrincipal.choferId || null;
+        body.ayudanteId = chutoPrincipal.ayudanteId || null;
     }
     
     if (body.remolques && body.remolques.length > 0) {
         const remolquePrincipal = body.remolques[0];
-        body.remolqueId = remolquePrincipal.activoId;
+        body.remolqueId = remolquePrincipal.activoId || null;
     }
 
     const nuevoFlete = await Flete.create(body);

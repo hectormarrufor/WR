@@ -81,11 +81,15 @@ export default function RegistroPeajeForm({
         setFetchingTasa(true);
 
         try {
-            const response = await fetch('/api/bcv');
-            const data = await response.json();
+            // Cambiamos el fetch para apuntar a la nueva API con la fecha específica
+            const response = await fetch(`/api/bcv/obtener-por-fecha?fecha=${formattedDate}`);
+            const resData = await response.json();
 
-            if (data.precio && data.fecha === formattedDate) {
-                form.setFieldValue('tasaBcv', data.precio);
+            // Verificamos si la respuesta fue exitosa y trajo data
+            if (resData.success && resData.data && resData.data.length > 0) {
+                // Tomamos la última tasa del arreglo (en caso de que hayan varias el mismo día)
+                const ultimaTasa = resData.data[resData.data.length - 1];
+                form.setFieldValue('tasaBcv', parseFloat(ultimaTasa.monto));
                 setTasaManual(false);
             } else {
                 // SOLO limpiamos si el campo está vacío o tiene el valor de una fecha anterior
