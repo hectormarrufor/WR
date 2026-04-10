@@ -21,3 +21,25 @@ export async function GET() {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export async function POST(req) {
+    try {
+        // Obtenemos los datos enviados desde el formulario
+        const body = await req.json();
+
+        // Creamos el registro en el libro diario (GastoVariable)
+        const nuevoGasto = await db.GastoVariable.create({
+            fechaGasto: body.fechaGasto,
+            tipoOrigen: body.tipoOrigen, // 'Obligación Fija' o 'Gasto Variable'
+            descripcion: body.descripcion,
+            montoUsd: body.montoUsd,
+            referenciaExterna: body.referenciaExterna || null,
+            estado: body.estado || 'Pagado'
+        });
+
+        return NextResponse.json({ success: true, data: nuevoGasto }, { status: 201 });
+    } catch (error) {
+        console.error("Error registrando egreso:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+}

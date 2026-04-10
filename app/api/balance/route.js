@@ -6,76 +6,62 @@ export async function GET(req) {
     try {
         const currentYear = new Date().getFullYear();
 
-        // 1. Obtener Ingresos REALES cobrados (Tabla Ingresos)
+        // 1. Ingresos REALES (Cobrados)
         const ingresosMensuales = await db.Ingreso.findAll({
             attributes: [
                 [db.sequelize.fn('EXTRACT', db.sequelize.literal('MONTH FROM "fechaIngreso"')), 'mes'],
                 [db.sequelize.fn('SUM', db.sequelize.col('montoUsd')), 'totalIngresos']
             ],
             where: {
-                [Op.and]: [
-                    { estado: 'Cobrado' },
-                    db.sequelize.where(db.sequelize.fn('EXTRACT', db.sequelize.literal('YEAR FROM "fechaIngreso"')), currentYear)
-                ]
+                estado: 'Cobrado',
+                [Op.and]: [db.sequelize.where(db.sequelize.fn('EXTRACT', db.sequelize.literal('YEAR FROM "fechaIngreso"')), currentYear)]
             },
             group: [db.sequelize.fn('EXTRACT', db.sequelize.literal('MONTH FROM "fechaIngreso"'))],
             raw: true
         });
 
-        // 2. Obtener Gastos Variables agrupados por mes
-        const gastosVariablesMensuales = await db.GastoVariable.findAll({
+        // 2. Gastos REALES (Pagados) -> Aquí ya va a estar el pago del RACDA si lo registraste
+        const gastosMensuales = await db.GastoVariable.findAll({
             attributes: [
                 [db.sequelize.fn('EXTRACT', db.sequelize.literal('MONTH FROM "fechaGasto"')), 'mes'],
-                [db.sequelize.fn('SUM', db.sequelize.col('montoUsd')), 'totalVariables']
+                [db.sequelize.fn('SUM', db.sequelize.col('montoUsd')), 'totalGastos']
             ],
             where: {
-                [Op.and]: [
-                    { estado: 'Pagado' }, // Solo contamos lo que realmente salió del banco
-                    db.sequelize.where(db.sequelize.fn('EXTRACT', db.sequelize.literal('YEAR FROM "fechaGasto"')), currentYear)
-                ]
+                estado: 'Pagado',
+                [Op.and]: [db.sequelize.where(db.sequelize.fn('EXTRACT', db.sequelize.literal('YEAR FROM "fechaGasto"')), currentYear)]
             },
             group: [db.sequelize.fn('EXTRACT', db.sequelize.literal('MONTH FROM "fechaGasto"'))],
             raw: true
         });
 
-        // 3. Obtener Gastos Fijos (Plana mensual)
-        const totalFijoMensual = await db.GastoFijo.sum('montoMensual', { where: { activo: true } }) || 0;
-
-        // 4. Obtener Gastos Fijos Globales (Anual prorrateado a mes)
-        const totalFijoGlobalAnual = await db.GastoFijoGlobal.sum('montoAnual') || 0;
-        const prorrateoGlobalMensual = totalFijoGlobalAnual / 12;
-
-        const totalGastoFijoEstatico = totalFijoMensual + prorrateoGlobalMensual;
-
-        // 5. Construir el arreglo de 12 meses para el frontend
+        // 3. Construir el arreglo de 12 meses
         const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
         const dataAnual = [];
+        let totalIngresosAnual = 0;
+        let totalGastosAnual = 0;
 
         for (let i = 1; i <= 12; i++) {
-            // Buscar el ingreso del mes
-            const ingresoFlete = ingresosMensuales.find(f => parseInt(f.mes) === i);
-            const ingresos = ingresoFlete ? parseFloat(ingresoFlete.totalIngresos) : 0;
+            const ingresoMes = ingresosMensuales.find(f => parseInt(f.mes) === i);
+            const ingresos = ingresoMes ? parseFloat(ingresoMes.totalIngresos) : 0;
 
-            // Buscar el gasto variable del mes
-            const gastoVar = gastosVariablesMensuales.find(g => parseInt(g.mes) === i);
-            const variables = gastoVar ? parseFloat(gastoVar.totalVariables) : 0;
+            const gastoMes = gastosMensuales.find(g => parseInt(g.mes) === i);
+            const gastos = gastoMes ? parseFloat(gastoMes.totalGastos) : 0;
 
-            const gastosTotales = variables + totalGastoFijoEstatico;
-            const balance = ingresos - gastosTotales;
+            const balance = ingresos - gastos;
+
+            totalIngresosAnual += ingresos;
+            totalGastosAnual += gastos;
 
             dataAnual.push({
                 mes: mesesNombres[i - 1],
                 Ingresos: parseFloat(ingresos.toFixed(2)),
-                Gastos: parseFloat(gastosTotales.toFixed(2)),
+                Gastos: parseFloat(gastos.toFixed(2)),
                 Balance: parseFloat(balance.toFixed(2))
             });
         }
 
-        // Totales globales para las KPIs
-        const totalIngresosAnual = dataAnual.reduce((acc, curr) => acc + curr.Ingresos, 0);
-        const totalGastosAnual = dataAnual.reduce((acc, curr) => acc + curr.Gastos, 0);
-        const rentabilidadBruta = totalIngresosAnual > 0
-            ? ((totalIngresosAnual - totalGastosAnual) / totalIngresosAnual) * 100
+        const rentabilidadBruta = totalIngresosAnual > 0 
+            ? ((totalIngresosAnual - totalGastosAnual) / totalIngresosAnual) * 100 
             : 0;
 
         return NextResponse.json({
