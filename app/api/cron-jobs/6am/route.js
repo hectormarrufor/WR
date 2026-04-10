@@ -62,6 +62,8 @@ export async function GET(request) {
     if (rrhh.status === 'fulfilled' && rrhh.value.length > 0) {
         const events = rrhh.value;
 
+        console.log('Eventos RRHH encontrados:', events);
+
         // Aquí te sugiero hacer un bucle si quieres notificaciones individuales
         // o agruparlas por tipo. Ejemplo individual:
         for (const ev of events) {
