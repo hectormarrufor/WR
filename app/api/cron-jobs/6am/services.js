@@ -239,7 +239,7 @@ export async function checkConsumableWarranties() {
 export async function checkHREvents() {
     const today = getCaracasDate();
     const notifications = [];
-
+    console.log('Fecha actual en Caracas:', today);
     // Traemos empleados activos con sus documentos
     const empleados = await Empleado.findAll({
         attributes: ['id', 'nombre', 'apellido', 'fechaNacimiento', 'fechaIngreso'],

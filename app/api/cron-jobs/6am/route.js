@@ -30,6 +30,8 @@ export async function GET(request) {
             checkAssetDocs()
         ]);
 
+        console.log('Resultados de los servicios:', { finanzas, consumibles, rrhh, activos });
+
         const report = [];
 
         // 3. Procesar FINANZAS
