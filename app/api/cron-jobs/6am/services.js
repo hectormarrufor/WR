@@ -62,7 +62,6 @@ export async function syncExchangeRates() {
         const fechaActual = fechaCaracas;
         const horaActual = horaCaracas;
 
-        console.log(BcvPrecioHistorico);
 
         // 1. Verificar si existe registro en BD
         const existingPrice = await BcvPrecioHistorico.findOne({
@@ -239,7 +238,6 @@ export async function checkConsumableWarranties() {
 export async function checkHREvents() {
     const today = getCaracasDate();
     const notifications = [];
-    console.log('Fecha actual en Caracas:', today);
     // Traemos empleados activos con sus documentos
     const empleados = await Empleado.findAll({
         attributes: ['id', 'nombre', 'apellido', 'fechaNacimiento', 'fechaIngreso'],
@@ -280,7 +278,7 @@ export async function checkHREvents() {
             });
         }
 
-        console.log(`Empleado: ${emp.nombre} ${emp.apellido}, Días para Cumpleaños: ${daysToBday}, Días para Aniversario: ${daysToAnni}, Docs por vencer: ${emp.documentos.length}`);
+        console.log(`Empleado: ${emp.nombre} ${emp.apellido}, Días para Cumpleaños: ${parseInt(daysToBday)}`);
         
 
         // C. Documentos Empleado (Ya filtrados por la query)
@@ -314,7 +312,7 @@ export async function checkAssetDocs() {
             }
         },
         include: [{ 
-            model: Activo, as: 'activo', attributes: ['id', 'tipoActivo', 'codigoInterno'],
+            model: Activo, as: 'Activo', attributes: ['id', 'tipoActivo', 'codigoInterno'],
             include: [
                 {
                     association: 'vehiculoInstancia', attributes: ['placa'],

@@ -39,7 +39,7 @@ const DocumentoActivo = sequelize.define("DocumentoActivo", {
 
 // Definir Relaciones
 DocumentoActivo.associate = (models) => {
-    DocumentoActivo.belongsTo(models.Activo, { foreignKey: "activoId" });
+    DocumentoActivo.belongsTo(models.Activo, { foreignKey: "activoId", as: "activo" });
 };
 
 module.exports = DocumentoActivo;
