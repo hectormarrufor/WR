@@ -312,7 +312,7 @@ export async function checkAssetDocs() {
             }
         },
         include: [{ 
-            model: Activo, as: 'Activo', attributes: ['id', 'tipoActivo', 'codigoInterno'],
+            model: Activo, as: 'activo', attributes: ['id', 'tipoActivo', 'codigoInterno'],
             include: [
                 {
                     association: 'vehiculoInstancia', attributes: ['placa'],
