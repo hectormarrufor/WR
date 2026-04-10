@@ -243,7 +243,7 @@ export async function checkHREvents() {
     // Traemos empleados activos con sus documentos
     const empleados = await Empleado.findAll({
         attributes: ['id', 'nombre', 'apellido', 'fechaNacimiento', 'fechaIngreso'],
-        where: { estado: 'activo' },
+        where: { estado: 'Activo' },
         include: [{
             model: DocumentoEmpleado,
             as: 'documentos',
