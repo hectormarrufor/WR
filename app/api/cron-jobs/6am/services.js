@@ -280,6 +280,9 @@ export async function checkHREvents() {
             });
         }
 
+        console.log(`Empleado: ${emp.nombre} ${emp.apellido}, Días para Cumpleaños: ${daysToBday}, Días para Aniversario: ${daysToAnni}, Docs por vencer: ${emp.documentos.length}`);
+        
+
         // C. Documentos Empleado (Ya filtrados por la query)
         if (emp.documentos && emp.documentos.length > 0) {
             emp.documentos.forEach(doc => {
