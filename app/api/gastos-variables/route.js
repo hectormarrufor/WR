@@ -1,4 +1,3 @@
-// app/api/gastos-variables/route.js
 import { NextResponse } from 'next/server';
 import db from '@/models';
 
@@ -9,7 +8,8 @@ export async function GET() {
             include: [
                 { model: db.Empleado, as: 'empleado', attributes: ['nombre', 'apellido'] },
                 { model: db.Flete, as: 'flete', attributes: ['nroFlete'] },
-                // Puedes incluir ordenCompra o activo si las necesitas
+                // 🔥 Añadimos el Proveedor para tener el dato en la tabla del Dashboard 🔥
+                { model: db.Proveedor, as: 'proveedor', attributes: ['nombre', 'rif'] }
             ],
             order: [['fechaGasto', 'DESC']],
             limit: 100 // Límite por rendimiento, luego le puedes meter paginación
@@ -30,11 +30,15 @@ export async function POST(req) {
         // Creamos el registro en el libro diario (GastoVariable)
         const nuevoGasto = await db.GastoVariable.create({
             fechaGasto: body.fechaGasto,
-            tipoOrigen: body.tipoOrigen, // 'Obligación Fija' o 'Gasto Variable'
+            tipoOrigen: body.tipoOrigen, 
             descripcion: body.descripcion,
             montoUsd: body.montoUsd,
+            // 🔥 AHORA SÍ RECIBE LA MAGIA MULTIDIVISA 🔥
+            montoBs: body.montoBs ? parseFloat(body.montoBs) : null,
+            tasaBcv: body.tasaBcv ? parseFloat(body.tasaBcv) : null,
             referenciaExterna: body.referenciaExterna || null,
-            estado: body.estado || 'Pagado'
+            estado: body.estado || 'Pagado',
+            proveedorId: body.proveedorId ? parseInt(body.proveedorId, 10) : null
         });
 
         return NextResponse.json({ success: true, data: nuevoGasto }, { status: 201 });

@@ -72,6 +72,7 @@ GastoVariable.associate = (models) => {
     foreignKey: 'movimientoTesoreriaId', 
     as: 'pagoAsociado' 
   });
+  GastoVariable.belongsTo(models.Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
   GastoVariable.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
 
   // 5. RELACIÓN CON FLETE: Si el gasto es parte de un flete específico
