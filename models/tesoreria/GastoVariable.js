@@ -1,32 +1,76 @@
-// models/tesoreria/GastoVariable.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../sequelize');
 
 const GastoVariable = sequelize.define('GastoVariable', {
   fechaGasto: {
-    type: DataTypes.DATEONLY, // Usamos DATEONLY si solo importa el día del gasto
+    type: DataTypes.DATEONLY,
     defaultValue: DataTypes.NOW,
     allowNull: false,
   },
-  montoBs: {
-    type: DataTypes.DECIMAL(18, 2),
-    allowNull: true,
+  
+  // ==========================================
+  // CONFIGURACIÓN MULTIMONEDA
+  // ==========================================
+  monedaOperacion: {
+    type: DataTypes.ENUM('USD', 'VES'),
+    allowNull: false,
+    defaultValue: 'USD',
   },
-  montoUsd: {
-    type: DataTypes.DECIMAL(18, 2),
-    allowNull: true,
-  },
-  tasaBcv: {
+  tasaCambio: {
     type: DataTypes.DECIMAL(18, 4),
     allowNull: true,
   },
-  // ESTADO: Clave para tu requerimiento de "quizás no tengo la cuenta bancaria aún"
+  fuenteTasa: {
+    type: DataTypes.ENUM('BCV', 'Binance', 'Manual'),
+    defaultValue: 'BCV'
+  },
+
+  // ==========================================
+  // DESGLOSE FISCAL (Si somos Contribuyentes Especiales)
+  // ==========================================
+  esFacturado: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  montoBaseUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
+  },
+  montoIvaUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+  },
+  retencionIvaUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+    comment: 'Pasivo a pagar al SENIAT'
+  },
+  retencionIslrUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+    comment: 'Pasivo a pagar al SENIAT'
+  },
+
+  // ==========================================
+  // TOTALES NETOS (Lo que sale de la cuenta)
+  // ==========================================
+  montoPagadoUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
+  },
+  montoPagadoBs: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
+  },
+
+  // ==========================================
+  // DATOS OPERATIVOS
+  // ==========================================
   estado: {
     type: DataTypes.ENUM('Pendiente', 'Pagado', 'Anulado'),
     defaultValue: 'Pendiente', 
     allowNull: false,
   },
-  // TIPO DE GASTO (Origen)
   tipoOrigen: {
     type: DataTypes.ENUM(
       'Nomina',           // Relacionado a Empleado
@@ -37,7 +81,7 @@ const GastoVariable = sequelize.define('GastoVariable', {
       'Impuestos', 
       'Gastos Adm',       // Papelería, oficina
       'Otros',
-      'Peajes'           // Peajes en rutas
+      'Peajes'            // Peajes en rutas
     ),
     allowNull: false,
   },
@@ -45,7 +89,6 @@ const GastoVariable = sequelize.define('GastoVariable', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  // Referencia externa (nro factura del proveedor, nro de recibo, etc)
   referenciaExterna: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -56,27 +99,16 @@ const GastoVariable = sequelize.define('GastoVariable', {
 });
 
 GastoVariable.associate = (models) => {
-  // 1. RELACIÓN NOMINA: Si el gasto es un pago de salario
+  // Asociaciones originales de WR restauradas:
   GastoVariable.belongsTo(models.Empleado, { foreignKey: 'empleadoId', as: 'empleado' });
-
-  // 2. RELACIÓN COMPRAS: Si el gasto viene de una orden de compra (repuestos)
   GastoVariable.belongsTo(models.OrdenCompra, { foreignKey: 'ordenCompraId', as: 'ordenCompra' });
-
-  // 3. RELACIÓN TRANSPORTE (OPCIONAL PERO RECOMENDADA): Saber qué camión generó el gasto
-  // Si tienes un modelo Vehiculo o Activo, descomenta esto:
-  // GastoVariable.belongsTo(models.Vehiculo, { foreignKey: 'vehiculoId', as: 'vehiculo' });
-
-  // 4. RELACIÓN TESORERÍA: Con qué dinero se pagó este gasto
-  // Un gasto puede tener un movimiento asociado (el pago)
+  GastoVariable.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
+  GastoVariable.belongsTo(models.Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+  GastoVariable.belongsTo(models.Flete, { foreignKey: 'fleteId', as: 'flete', constraints: false });
   GastoVariable.belongsTo(models.MovimientoTesoreria, { 
     foreignKey: 'movimientoTesoreriaId', 
     as: 'pagoAsociado' 
   });
-  GastoVariable.belongsTo(models.Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
-  GastoVariable.belongsTo(models.Activo, { foreignKey: 'activoId', as: 'activo' });
-
-  // 5. RELACIÓN CON FLETE: Si el gasto es parte de un flete específico
-  GastoVariable.belongsTo(models.Flete, { foreignKey: 'fleteId', as: 'flete', constraints: false });
 };
 
 module.exports = GastoVariable;

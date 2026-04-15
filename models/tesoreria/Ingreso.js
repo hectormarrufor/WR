@@ -7,18 +7,71 @@ const Ingreso = sequelize.define('Ingreso', {
     defaultValue: DataTypes.NOW,
     allowNull: false,
   },
-  montoBs: {
-    type: DataTypes.DECIMAL(18, 2),
-    allowNull: true,
+  
+  // ==========================================
+  // CONFIGURACIÓN MULTIMONEDA Y TASA
+  // ==========================================
+  monedaOperacion: {
+    type: DataTypes.ENUM('USD', 'VES'),
+    allowNull: false,
+    defaultValue: 'USD',
   },
-  montoUsd: {
-    type: DataTypes.DECIMAL(18, 2),
-    allowNull: true,
-  },
-  tasaBcv: {
+  tasaCambio: {
     type: DataTypes.DECIMAL(18, 4),
     allowNull: true,
   },
+  fuenteTasa: {
+    type: DataTypes.ENUM('BCV', 'Binance', 'Manual'),
+    defaultValue: 'BCV'
+  },
+
+  // ==========================================
+  // DESGLOSE FISCAL
+  // ==========================================
+  esFacturado: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  montoBaseUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
+  },
+  montoIvaUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+  },
+  montoIgtfUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+  },
+  retencionIvaUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+  },
+  retencionIslrUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+  },
+  impuestoMunicipalProvisionUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    defaultValue: 0,
+  },
+
+  // ==========================================
+  // TOTALES NETOS (Lo que entra a la cuenta)
+  // ==========================================
+  montoNetoUsd: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
+  },
+  montoNetoBs: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
+  },
+
+  // ==========================================
+  // DATOS OPERATIVOS
+  // ==========================================
   estado: {
     type: DataTypes.ENUM('Pendiente', 'Cobrado', 'Anulado'),
     defaultValue: 'Pendiente',
@@ -47,16 +100,10 @@ const Ingreso = sequelize.define('Ingreso', {
 });
 
 Ingreso.associate = (models) => {
-  // 1. Relación con Flete (Ingreso por viaje)
+  // Asociaciones originales de WR restauradas:
   Ingreso.belongsTo(models.Flete, { foreignKey: 'fleteId', as: 'flete', constraints: false });
-
-  // 2. Relación con ODT (Ingreso por servicios de taller a terceros)
   Ingreso.belongsTo(models.ODT, { foreignKey: 'odtId', as: 'odt', constraints: false });
-
-  // 3. Relación con el cliente (Quién paga)
   Ingreso.belongsTo(models.Cliente, { foreignKey: 'clienteId', as: 'cliente' });
-
-  // 4. Relación con Tesorería (A qué cuenta entró el dinero)
   Ingreso.belongsTo(models.MovimientoTesoreria, { 
     foreignKey: 'movimientoTesoreriaId', 
     as: 'movimientoAsociado' 

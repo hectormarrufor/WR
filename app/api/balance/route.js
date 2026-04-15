@@ -6,11 +6,13 @@ export async function GET(req) {
     try {
         const currentYear = new Date().getFullYear();
 
-        // 1. Ingresos REALES (Cobrados)
+        // 1. Ingresos REALES (Desglosados)
         const ingresosMensuales = await db.Ingreso.findAll({
             attributes: [
                 [db.sequelize.fn('EXTRACT', db.sequelize.literal('MONTH FROM "fechaIngreso"')), 'mes'],
-                [db.sequelize.fn('SUM', db.sequelize.col('montoUsd')), 'totalIngresos']
+                [db.sequelize.fn('SUM', db.sequelize.col('montoBaseUsd')), 'totalBase'],
+                [db.sequelize.fn('SUM', db.sequelize.col('montoNetoUsd')), 'totalRecibido'],
+                [db.sequelize.fn('SUM', db.sequelize.col('impuestoMunicipalProvisionUsd')), 'totalMunicipal']
             ],
             where: {
                 estado: 'Cobrado',
@@ -20,11 +22,12 @@ export async function GET(req) {
             raw: true
         });
 
-        // 2. Gastos REALES (Pagados) -> Aquí ya va a estar el pago del RACDA si lo registraste
+        // 2. Gastos REALES
         const gastosMensuales = await db.GastoVariable.findAll({
             attributes: [
                 [db.sequelize.fn('EXTRACT', db.sequelize.literal('MONTH FROM "fechaGasto"')), 'mes'],
-                [db.sequelize.fn('SUM', db.sequelize.col('montoUsd')), 'totalGastos']
+                [db.sequelize.fn('SUM', db.sequelize.col('montoBaseUsd')), 'totalBase'],
+                [db.sequelize.fn('SUM', db.sequelize.col('montoPagadoUsd')), 'totalPagado']
             ],
             where: {
                 estado: 'Pagado',
@@ -34,45 +37,52 @@ export async function GET(req) {
             raw: true
         });
 
-        // 3. Construir el arreglo de 12 meses
         const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
         const dataAnual = [];
-        let totalIngresosAnual = 0;
-        let totalGastosAnual = 0;
+        let acumuladoKPI = {
+            ingresosBrutos: 0,
+            egresosBrutos: 0,
+            impuestosMunicipales: 0,
+            disponibilidadCaja: 0
+        };
 
         for (let i = 1; i <= 12; i++) {
-            const ingresoMes = ingresosMensuales.find(f => parseInt(f.mes) === i);
-            const ingresos = ingresoMes ? parseFloat(ingresoMes.totalIngresos) : 0;
+            const ingMes = ingresosMensuales.find(f => parseInt(f.mes) === i) || { totalBase: 0, totalRecibido: 0, totalMunicipal: 0 };
+            const gasMes = gastosMensuales.find(g => parseInt(g.mes) === i) || { totalBase: 0, totalPagado: 0 };
 
-            const gastoMes = gastosMensuales.find(g => parseInt(g.mes) === i);
-            const gastos = gastoMes ? parseFloat(gastoMes.totalGastos) : 0;
+            // La utilidad operativa real para Dadica es: 
+            // Lo facturado (Base) - Lo gastado (Base) - Lo que le debo a la alcaldía
+            const ingresosBase = parseFloat(ingMes.totalBase);
+            const gastosBase = parseFloat(gasMes.totalBase);
+            const municipal = parseFloat(ingMes.totalMunicipal);
+            const balanceNeto = ingresosBase - gastosBase - municipal;
 
-            const balance = ingresos - gastos;
-
-            totalIngresosAnual += ingresos;
-            totalGastosAnual += gastos;
+            acumuladoKPI.ingresosBrutos += ingresosBase;
+            acumuladoKPI.egresosBrutos += gastosBase;
+            acumuladoKPI.impuestosMunicipales += municipal;
+            acumuladoKPI.disponibilidadCaja += (parseFloat(ingMes.totalRecibido) - parseFloat(gasMes.totalPagado));
 
             dataAnual.push({
                 mes: mesesNombres[i - 1],
-                Ingresos: parseFloat(ingresos.toFixed(2)),
-                Gastos: parseFloat(gastos.toFixed(2)),
-                Balance: parseFloat(balance.toFixed(2))
+                Ingresos: parseFloat(ingresosBase.toFixed(2)),
+                Gastos: parseFloat(gastosBase.toFixed(2)),
+                Balance: parseFloat(balanceNeto.toFixed(2))
             });
         }
 
-        const rentabilidadBruta = totalIngresosAnual > 0 
-            ? ((totalIngresosAnual - totalGastosAnual) / totalIngresosAnual) * 100 
-            : 0;
+        const utilidadNetaFinal = acumuladoKPI.ingresosBrutos - acumuladoKPI.egresosBrutos - acumuladoKPI.impuestosMunicipales;
 
         return NextResponse.json({
             success: true,
             data: {
                 grafico: dataAnual,
                 kpis: {
-                    totalIngresos: totalIngresosAnual,
-                    totalGastos: totalGastosAnual,
-                    utilidadNeta: totalIngresosAnual - totalGastosAnual,
-                    rentabilidad: rentabilidadBruta
+                    totalIngresos: acumuladoKPI.ingresosBrutos,
+                    totalGastos: acumuladoKPI.egresosBrutos,
+                    utilidadNeta: utilidadNetaFinal,
+                    rentabilidad: acumuladoKPI.ingresosBrutos > 0 ? (utilidadNetaFinal / acumuladoKPI.ingresosBrutos) * 100 : 0,
+                    provisionMunicipal: acumuladoKPI.impuestosMunicipales,
+                    cajaReal: acumuladoKPI.disponibilidadCaja // Dinero físico en cuentas
                 }
             }
         });
