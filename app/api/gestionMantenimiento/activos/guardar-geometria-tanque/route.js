@@ -41,6 +41,7 @@ export async function POST(request) {
         if (activo.nivelCombustible === null || activo.nivelCombustible === undefined) {
             activo.nivelCombustible = 0;
         }
+        else activo.nivelCombustible = body.nivelCombustible
 
         await activo.save({ transaction: t });
 

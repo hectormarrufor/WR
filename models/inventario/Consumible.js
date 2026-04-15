@@ -12,23 +12,11 @@ const Consumible = sequelize.define('Consumible', {
         allowNull: false
 
     },
-    categoria: { type: DataTypes.ENUM(
-        'aceite', 
-        'gasoil', 
-        'filtro de aceite', 
-        'filtro de aire', 
-        'filtro de combustible', 
-        'filtro de cabina', 
-        'neumatico', 
-        'bateria', 
-        'sensor', 
-        'correa',
-        'capacitador',
-        'bombillo',
-        "manguera", // 🔥 NUEVO ENUM
-        "otros",
-        "repuesto general",
-    ), allowNull: false },
+    categoria: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }
+    ,
     stockAlmacen: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -64,17 +52,17 @@ const Consumible = sequelize.define('Consumible', {
 });
 
 Consumible.associate = (models) => {
-    Consumible.hasMany(models.ConsumibleSerializado, { foreignKey: 'consumibleId', as: 'serializados' , onDelete: 'CASCADE' });
+    Consumible.hasMany(models.ConsumibleSerializado, { foreignKey: 'consumibleId', as: 'serializados', onDelete: 'CASCADE' });
     Consumible.hasMany(models.SalidaInventario, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
     Consumible.hasMany(models.EntradaInventario, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
-    Consumible.hasOne(models.Aceite, { foreignKey: 'consumibleId' , onDelete: 'CASCADE' });
-    Consumible.hasOne(models.Neumatico, { foreignKey: 'consumibleId' , onDelete: 'CASCADE' });
+    Consumible.hasOne(models.Aceite, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
+    Consumible.hasOne(models.Neumatico, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
     Consumible.hasOne(models.Bateria, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
     Consumible.hasOne(models.Filtro, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
-    Consumible.hasOne(models.Sensor, { foreignKey: 'consumibleId' , onDelete: 'CASCADE' });
-    Consumible.hasOne(models.Correa, { foreignKey: 'consumibleId' , onDelete: 'CASCADE' });
+    Consumible.hasOne(models.Sensor, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
+    Consumible.hasOne(models.Correa, { foreignKey: 'consumibleId', onDelete: 'CASCADE' });
     Consumible.hasMany(models.ConsumibleRecomendado, { foreignKey: 'consumibleId', as: 'recomendaciones', onDelete: 'CASCADE' });
-    Consumible.hasMany(models.ConsumibleInstalado, { foreignKey: 'consumibleId', as: 'instalaciones',    onDelete: 'CASCADE' });
+    Consumible.hasMany(models.ConsumibleInstalado, { foreignKey: 'consumibleId', as: 'instalaciones', onDelete: 'CASCADE' });
 };
 
 module.exports = Consumible;

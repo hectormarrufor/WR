@@ -3,10 +3,10 @@ import { useState, useEffect } from 'react';
 import {
     Modal, Button, Select, NumberInput, Stack, Text, Group,
     Loader, Alert, TextInput, Divider, MultiSelect, ScrollArea, Paper,
-    SimpleGrid
+    SimpleGrid, Switch // 🔥 1. AÑADIMOS SWITCH
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconPackage, IconBarcode, IconCheck, IconPlus, IconMapPin, IconCalendar, IconCalendarTime } from '@tabler/icons-react';
+import { IconPackage, IconBarcode, IconCheck, IconPlus, IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { DatePickerInput } from '@mantine/dates';
 import 'dayjs/locale/es';
@@ -14,12 +14,12 @@ import 'dayjs/locale/es';
 export default function ModalInstalarPieza({ 
     opened, 
     onClose, 
-    slotSeleccionado, // Cambiado para que coincida con lo que manda la página
-    subsistemaInstanciaId, // Cambiado para que coincida con lo que manda la página
+    slotSeleccionado,
+    subsistemaInstanciaId,
     activo, 
     onSuccess, 
-    onSolicitarCrearConsumible, // Recibimos la prop mágica del padre
-    reloadTrigger // Recibimos el disparador del padre
+    onSolicitarCrearConsumible,
+    reloadTrigger
 }) {
     const [loading, setLoading] = useState(false);
     const [searchingStock, setSearchingStock] = useState(false);
@@ -33,14 +33,14 @@ export default function ModalInstalarPieza({
     const [serialDetails, setSerialDetails] = useState({});
 
     const form = useForm({
-        initialValues: { inventarioId: '', cantidad: 1, ubicacionFisicaGlobal: '' },
+        // 🔥 2. AÑADIMOS esAsentamiento AL ESTADO INICIAL 🔥
+        initialValues: { inventarioId: '', cantidad: 1, ubicacionFisicaGlobal: '', esAsentamiento: false },
         validate: {
             inventarioId: (val) => !val ? 'Seleccione un producto' : null,
             cantidad: (val) => val <= 0 ? 'Cantidad inválida' : null,
         }
     });
 
-    // 1. Limpieza inicial al abrir el modal
     useEffect(() => {
         if (opened && slotSeleccionado) {
             fetchStockCompatible();
@@ -54,8 +54,6 @@ export default function ModalInstalarPieza({
         }
     }, [opened, slotSeleccionado]);
 
-    // 🔥 2. EL EFECTO MÁGICO QUE ESCUCHA A LA PÁGINA PADRE 🔥
-    // Cuando el padre crea un consumible y cambia el reloadTrigger, volvemos a buscar el stock
     useEffect(() => {
         if (opened && reloadTrigger > 0) {
             fetchStockCompatible();
@@ -147,6 +145,8 @@ export default function ModalInstalarPieza({
                 inventarioId: values.inventarioId,
                 cantidad: values.cantidad,
                 ubicacionFisica: values.ubicacionFisicaGlobal,
+                // 🔥 3. ENVIAMOS EL FLAG AL BACKEND 🔥
+                esAsentamiento: values.esAsentamiento, 
                 serialesSeleccionados: serialesValues.map(val => {
                     const esExistente = selectedItemInfo.serialesDisponibles?.some(s => s.id.toString() === val);
                     const details = serialDetails[val] || {};
@@ -205,7 +205,6 @@ export default function ModalInstalarPieza({
                                 onChange={handleSelectChange}
                             />
                         )}
-                        {/* 🔥 AQUÍ LLAMAMOS A LA FUNCIÓN DEL PADRE 🔥 */}
                         <Button 
                             variant="light" color="teal" leftSection={<IconPlus size={16} />} 
                             onClick={onSolicitarCrearConsumible} 
@@ -215,7 +214,24 @@ export default function ModalInstalarPieza({
                         </Button>
                     </Group>
 
-                    {/* Todo tu código excelente del MultiSelect para seriales sigue aquí abajo sin cambios */}
+                    {/* 🔥 4. BLOQUE DE ADVERTENCIA Y SWITCH DE ASENTAMIENTO 🔥 */}
+                    {selectedItemInfo && (
+                        <Paper p="sm" withBorder bg="orange.0" style={{ borderColor: '#ffc078' }}>
+                            <Group wrap="nowrap">
+                                <IconAlertCircle size={32} color="#fd7e14" style={{ flexShrink: 0 }} />
+                                <div>
+                                    <Switch
+                                        label={<Text fw={700} c="orange.9">Modo Asentamiento (Pieza ya pre-instalada)</Text>}
+                                        description="Active esto si la pieza ya forma parte del equipo físico y NO se tomará del almacén (ideal para carga inicial del sistema)."
+                                        color="orange"
+                                        size="md"
+                                        {...form.getInputProps('esAsentamiento', { type: 'checkbox' })}
+                                    />
+                                </div>
+                            </Group>
+                        </Paper>
+                    )}
+
                     {selectedItemInfo && (
                         <>
                             {esSerializado ? (
@@ -283,7 +299,13 @@ export default function ModalInstalarPieza({
                                 </>
                             ) : (
                                 <>
-                                    <NumberInput label="Cantidad a Instalar" min={0.1} max={selectedItemInfo.stockActual > 0 ? selectedItemInfo.stockActual : 999} {...form.getInputProps('cantidad')} />
+                                    {/* 🔥 5. DESBLOQUEO DEL LÍMITE MAX SI ES ASENTAMIENTO 🔥 */}
+                                    <NumberInput 
+                                        label="Cantidad a Instalar" 
+                                        min={0.1} 
+                                        max={form.values.esAsentamiento ? 99999 : (selectedItemInfo.stockActual > 0 ? selectedItemInfo.stockActual : 999)} 
+                                        {...form.getInputProps('cantidad')} 
+                                    />
                                     <TextInput label="Ubicación Física" placeholder="Ej: Motor" {...form.getInputProps('ubicacionFisicaGlobal')} />
                                 </>
                             )}

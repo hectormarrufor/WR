@@ -12,15 +12,39 @@ export async function POST(request) {
             recomendacionId,
             inventarioId,
             cantidad,
-            ubicacionFisica, // Variable global
-            serialesSeleccionados // Array: [{ value: '...', type: '...', ubicacion: '...' }]
+            ubicacionFisica, 
+            serialesSeleccionados,
+            esAsentamiento // 🔥 LA VARIABLE MÁGICA RECIBIDA DEL FRONTEND 🔥
         } = body;
 
         const articulo = await db.Consumible.findByPk(inventarioId, { transaction: t });
         if (!articulo) throw new Error("Artículo no encontrado");
 
-        // Helper para Salidas
-        const registrarSalida = async (cant, costoUnitario) => {
+        // ==========================================
+        // HELPER INTELIGENTE: REGISTRAR SALIDA Y MOVER STOCK
+        // ==========================================
+        const registrarSalida = async (cant, costoUnitario, serialValue = null) => {
+            if (esAsentamiento) {
+                // MODO ASENTAMIENTO: NO tocamos el almacén, porque la pieza nunca estuvo ahí.
+                // Pero SÍ aumentamos el patrimonio rodante de la empresa.
+                await articulo.increment('stockAsignado', { by: cant, transaction: t });
+                
+                // Dejamos un rastro contable para auditorías
+                await db.SalidaInventario.create({
+                    consumibleId: inventarioId,
+                    activoId: activoId,
+                    cantidad: cant,
+                    fecha: new Date(),
+                    justificacion: serialValue 
+                        ? `Asentamiento Inicial de Inventario (Pre-instalado) - Serial: ${serialValue}`
+                        : 'Asentamiento Inicial de Inventario (Pre-instalado)',
+                    costoAlMomento: costoUnitario || 0
+                }, { transaction: t });
+
+                return; // Cortamos la ejecución aquí
+            }
+
+            // FLUJO NORMAL: Mantenimiento del día a día
             await db.SalidaInventario.create({
                 consumibleId: inventarioId,
                 activoId: activoId,
@@ -38,7 +62,6 @@ export async function POST(request) {
         // CASO A: ARTÍCULO SERIALIZADO
         // ==========================================
         if (articulo.tipo === 'serializado') {
-
             if (!serialesSeleccionados || serialesSeleccionados.length === 0) {
                 throw new Error("Debe seleccionar los seriales para este componente");
             }
@@ -47,11 +70,14 @@ export async function POST(request) {
                 let serialObj;
 
                 if (item.type === 'existing') {
-                    // --- SERIAL EXISTENTE ---
+                    // --- SERIAL EXISTENTE EN ALMACÉN ---
+                    if (esAsentamiento) {
+                         // Lógica dura: Si está en el almacén físico, no puedes decir que "ya estaba en el camión" de la nada.
+                         throw new Error(`El serial ${item.value} ya existe en el almacén. Desactive el Modo Asentamiento para instalarlo normalmente.`);
+                    }
+
                     serialObj = await db.ConsumibleSerializado.findByPk(item.value, { transaction: t });
                     if (!serialObj) throw new Error(`Serial ID ${item.value} no encontrado`);
-
-                    // Validación estricta: solo si está en almacén
                     if (serialObj.estado !== 'almacen') {
                         throw new Error(`El serial ${serialObj.serial} no está disponible (Estado: ${serialObj.estado})`);
                     }
@@ -61,58 +87,50 @@ export async function POST(request) {
                         activoId: activoId,
                         subsistemaInstanciaId: subsistemaInstanciaId,
                         fechaAsignacion: new Date(),
-
-                        // Opcional: ¿Quieres actualizar la fecha de compra si era existente? 
-                        // Si estaba null o quieres corregirla, descomenta:
                         fechaCompra: item.fechaCompra || serialObj.fechaCompra,
-
-                        // Actualizar garantía siempre es útil
                         fechaVencimientoGarantia: item.fechaGarantia
                     }, { transaction: t });
 
-                    await registrarSalida(1, articulo.precioPromedio);
+                    await registrarSalida(1, articulo.precioPromedio, serialObj.serial);
 
                 } else {
-                    // --- NUEVO ---
+                    // --- SERIAL NUEVO (Ideal para Asentamientos) ---
                     serialObj = await db.ConsumibleSerializado.create({
                         consumibleId: inventarioId,
                         serial: item.value,
-                        estado: 'asignado',
+                        estado: 'asignado', // Nace directamente en el chuto
                         activoId: activoId,
                         subsistemaInstanciaId: subsistemaInstanciaId,
                         fechaAsignacion: new Date(),
-
-                        // GUARDAMOS LAS FECHAS NUEVAS
                         fechaCompra: item.fechaCompra || new Date(),
-                        fechaVencimientoGarantia: item.fechaGarantia // Puede ser null
+                        fechaVencimientoGarantia: item.fechaGarantia 
                     }, { transaction: t });
 
-                    // IMPORTANTE: Crear la trazabilidad de entrada (Auditoría ERP)
-                    await db.EntradaInventario.create({
-                        consumibleId: inventarioId,
-                        cantidad: 1,
-                        costoUnitario: articulo.precioPromedio || 0,
-                        tipo: 'Otro',
-                        observacion: `Ingreso Rápido (Instalación) - Serial: ${item.value}`,
-                        fecha: new Date()
-                    }, { transaction: t });
+                    // Si NO es asentamiento, significa que compraron el caucho y lo montaron directo sin meterlo al almacén.
+                    // Si SÍ es asentamiento, esta entrada inicializamos el stock.
+                    if (!esAsentamiento) {
+                        await db.EntradaInventario.create({
+                            consumibleId: inventarioId,
+                            cantidad: 1,
+                            costoUnitario: articulo.precioPromedio || 0,
+                            tipo: 'Otro',
+                            observacion: `Ingreso Rápido y Montaje Directo - Serial: ${item.value}`,
+                            fecha: new Date()
+                        }, { transaction: t });
+                    }
 
-                    // Solo aumentamos el patrimonio total (Asignado)
-                    await articulo.increment('stockAsignado', { by: 1, transaction: t });
+                    await registrarSalida(1, articulo.precioPromedio, item.value);
                 }
 
-                // Registro de Instalación
+                // Registro de Instalación Histórica
                 await db.ConsumibleInstalado.create({
                     subsistemaInstanciaId,
                     consumibleId: inventarioId,
                     recomendacionId,
                     serialActual: serialObj.serial,
-                    serialId: serialObj.id, // Usamos serialId como acordamos
+                    serialId: serialObj.id, 
                     cantidad: 1,
-
-                    // Prioridad: Ubicación específica > Ubicación global
                     ubicacion: item.ubicacion || ubicacionFisica,
-
                     fechaInstalacion: new Date(),
                     vidaUtilRestante: articulo.vidaUtilEstimada || 100,
                     estado: 'instalado',
@@ -121,11 +139,14 @@ export async function POST(request) {
 
         } else {
             // ==========================================
-            // CASO B: FUNGIBLE (Aceite, etc)
+            // CASO B: FUNGIBLE (Pastillas, Aceite, Filtros)
             // ==========================================
-            if (parseFloat(articulo.stockAlmacen) < parseFloat(cantidad)) {
-                throw new Error(`Stock insuficiente. Disponible: ${articulo.stockAlmacen}`);
+            if (!esAsentamiento && parseFloat(articulo.stockAlmacen) < parseFloat(cantidad)) {
+                // Solo detenemos la operación por falta de stock si es un mantenimiento normal
+                throw new Error(`Stock insuficiente. Disponible en Almacén: ${articulo.stockAlmacen}`);
             }
+
+            await registrarSalida(cantidad, articulo.precioPromedio);
 
             await db.ConsumibleInstalado.create({
                 subsistemaInstanciaId,
@@ -135,13 +156,8 @@ export async function POST(request) {
                 fechaInstalacion: new Date(),
                 vidaUtilRestante: 100,
                 estado: 'instalado',
-
-                // CORREGIDO AQUÍ:
                 ubicacion: ubicacionFisica,
-
             }, { transaction: t });
-
-            await registrarSalida(cantidad, articulo.precioPromedio);
         }
 
         await t.commit();

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, use, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { modals } from '@mantine/modals'; // Para la confirmación de eliminación
+import ModalRenombrarSubsistema from '../components/ModalRenombrarSubsistema';
 import {
     Container, Grid, Paper, Image, Title, Text, Badge, Group, Button,
     Tabs, ThemeIcon, Stack, Divider, LoadingOverlay, Modal, SimpleGrid,
@@ -18,7 +20,7 @@ import {
     IconFileText, IconRoute, IconCash,
     IconEngine, IconDashboard, IconShieldCheck, IconPhoto,
     IconDownload, IconPrinter, IconMaximize,
-    IconGasStation
+    IconGasStation, IconTrash
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -55,6 +57,8 @@ export default function DetalleActivoPage({ params }) {
     const [modalOrdenOpened, setModalOrdenOpened] = useState(false);
     const [modalLecturaOpened, setModalLecturaOpened] = useState(false);
     const [modalDocOpened, setModalDocOpened] = useState(false);
+    const [modalRenombrarOpened, setModalRenombrarOpened] = useState(false);
+    const [subsistemaParaRenombrar, setSubsistemaParaRenombrar] = useState(null);
     const [selectedItem, setSelectedItem] = useState(null);
     const [selectedHallazgo, setSelectedHallazgo] = useState(null);
     const [modalUninstallOpened, setModalUninstallOpened] = useState(false);
@@ -181,6 +185,35 @@ export default function DetalleActivoPage({ params }) {
         if (activo.tara) return `${activo.tara} Tons`;
         if (plantilla.peso) return `${plantilla.peso} Tons (Fábrica)`;
         return 'N/D';
+    };
+
+    const handleEliminarSubsistema = (subsistemaId, nombre) => {
+        modals.openConfirmModal({
+            title: <Text fw={900} c="red.7" tt="uppercase">Eliminar Subsistema</Text>,
+            centered: true,
+            children: (
+                <Text size="sm">
+                    ¿Estás seguro de que deseas desvincular <b>{nombre}</b> de este activo? Esta acción eliminará todas las instalaciones asociadas a este subsistema en este camión. No afectará la plantilla original.
+                </Text>
+            ),
+            labels: { confirm: 'Sí, Eliminar', cancel: 'Cancelar' },
+            confirmProps: { color: 'red.7' },
+            onConfirm: async () => {
+                try {
+                    // Asume que crearás este endpoint DELETE
+                    const res = await fetch(`/api/gestionMantenimiento/subsistemas/instancias/${subsistemaId}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (result.success) {
+                        notifications.show({ title: 'Éxito', message: 'Subsistema eliminado', color: 'green' });
+                        fetchData(); // Refrescar vista
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (error) {
+                    notifications.show({ title: 'Error', message: error.message, color: 'red' });
+                }
+            }
+        });
     };
 
     const handleDownloadDoc = async (url, filename) => {
@@ -324,6 +357,10 @@ export default function DetalleActivoPage({ params }) {
                                     <InfoLine label="S/N Motor" value={instance.serialMotor} />
                                     <InfoLine label="S/N Chasis" value={instance.serialChasis} />
                                     <InfoLine label="Combustible" value={plantilla.tipoCombustible} highlight />
+                                    <MedidorCombustibleLine
+                                        nivel={activo.nivelCombustible}
+                                        capacidad={activo.capacidadTanque}
+                                    />
                                     <InfoLine label="Cap. Carga" value={getCapacidadCarga()} />
                                     <InfoLine label="Tara (Vacío)" value={getTara()} />
 
@@ -770,10 +807,38 @@ export default function DetalleActivoPage({ params }) {
                                                     <Accordion.Item value="open" style={{ backgroundColor: '#ffffff', border: '1px solid #ced4da', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                                                         <Accordion.Control p="md">
                                                             <Group justify="space-between" pr="md">
-                                                                <Group>
+                                                                <Group align="center">
                                                                     <Text fw={900} size="lg" c="dark.8" tt="uppercase">{sub.nombre}</Text>
                                                                     <Badge size="lg" variant="filled" color="dark.8" radius="sm">{recomendaciones.length} Elementos Auditables</Badge>
+
+                                                                    {/* 🔥 BOTONES DE ADMIN 🔥 */}
+                                                                    {userId === 1 && (
+                                                                        <Group gap="xs" ml="md">
+                                                                            <ActionIcon
+                                                                                variant="light" color="blue" size="sm"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault(); // Evita que el acordeón se cierre
+                                                                                    setSubsistemaParaRenombrar(sub);
+                                                                                    setModalRenombrarOpened(true);
+                                                                                }}
+                                                                                title="Renombrar Instancia (Alias)"
+                                                                            >
+                                                                                <IconEdit size={16} />
+                                                                            </ActionIcon>
+                                                                            <ActionIcon
+                                                                                variant="light" color="red" size="sm"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    handleEliminarSubsistema(sub.id, sub.nombre);
+                                                                                }}
+                                                                                title="Eliminar Instancia"
+                                                                            >
+                                                                                <IconTrash size={16} />
+                                                                            </ActionIcon>
+                                                                        </Group>
+                                                                    )}
                                                                 </Group>
+
                                                                 <Button
                                                                     size="xs"
                                                                     variant="light"
@@ -789,6 +854,8 @@ export default function DetalleActivoPage({ params }) {
                                                                 </Button>
                                                             </Group>
                                                         </Accordion.Control>
+
+                                                        {/* ... El resto de tu Accordion.Panel se mantiene igual ... */}
                                                         <Accordion.Panel p="sm">
                                                             <Table verticalSpacing="sm" withTableBorder striped>
                                                                 <Table.Thead bg="gray.2">
@@ -823,29 +890,25 @@ export default function DetalleActivoPage({ params }) {
                                                                                 </Table.Td>
 
                                                                                 <Table.Td>
-                                                                                    <Table.Td>
-                                                                                        <Table.Td>
-                                                                                            <Group gap="xs">
-                                                                                                <Button
-                                                                                                    size="xs" variant="light" color="blue"
-                                                                                                    leftSection={<IconPlus size={14} />}
-                                                                                                    onClick={() => {
-                                                                                                        setDatosInstalacion({ slot: rec, subsistemaInstanciaId: sub.id });
-                                                                                                        setModalInstalarOpened(true);
-                                                                                                    }}
-                                                                                                >
-                                                                                                    Instalar Parte
-                                                                                                </Button>
-                                                                                                <ActionIcon
-                                                                                                    variant="light" color="gray" size="sm"
-                                                                                                    onClick={() => setModalCrearConsumibleOpened(true)}
-                                                                                                    title="Registrar Consumible Nuevo en Inventario"
-                                                                                                >
-                                                                                                    <IconPlus size={16} />
-                                                                                                </ActionIcon>
-                                                                                            </Group>
-                                                                                        </Table.Td>
-                                                                                    </Table.Td>
+                                                                                    <Group gap="xs" justify="flex-end">
+                                                                                        <Button
+                                                                                            size="xs" variant="light" color="blue"
+                                                                                            leftSection={<IconPlus size={14} />}
+                                                                                            onClick={() => {
+                                                                                                setDatosInstalacion({ slot: rec, subsistemaInstanciaId: sub.id });
+                                                                                                setModalInstalarOpened(true);
+                                                                                            }}
+                                                                                        >
+                                                                                            Instalar Parte
+                                                                                        </Button>
+                                                                                        <ActionIcon
+                                                                                            variant="light" color="gray" size="sm"
+                                                                                            onClick={() => setModalCrearConsumibleOpened(true)}
+                                                                                            title="Registrar Consumible Nuevo en Inventario"
+                                                                                        >
+                                                                                            <IconPlus size={16} />
+                                                                                        </ActionIcon>
+                                                                                    </Group>
                                                                                 </Table.Td>
                                                                             </Table.Tr>
                                                                         );
@@ -853,6 +916,7 @@ export default function DetalleActivoPage({ params }) {
                                                                 </Table.Tbody>
                                                             </Table>
                                                         </Accordion.Panel>
+
                                                     </Accordion.Item>
                                                 </Accordion>
                                             );
@@ -862,7 +926,9 @@ export default function DetalleActivoPage({ params }) {
 
                                 {/* 7. TAB: USO */}
                                 <Tabs.Panel value="uso">
+
                                     <TabRendimiento activo={activo} onActualizado={fetchData} />
+
                                 </Tabs.Panel>
                             </Tabs>
                         </Paper>
@@ -902,7 +968,7 @@ export default function DetalleActivoPage({ params }) {
             <ModalActualizarLectura opened={modalLecturaOpened} onClose={() => setModalLecturaOpened(false)} activo={activo} userId={userId} onSuccess={fetchData} />
             <ModalInstallComponente opened={modalInstallOpened} onClose={() => { setModalInstallOpened(false); setSelectedItem(null); }} target={selectedItem} activoId={activo.id} onSuccess={fetchData} />
             <ModalDesinstalarComponente opened={modalUninstallOpened} onClose={() => setModalUninstallOpened(false)} item={itemToUninstall} onSuccess={fetchData} />
-                <ModalCargarCombustible
+            <ModalCargarCombustible
                 opened={modalCombustibleOpened}
                 onClose={() => setModalCombustibleOpened(false)}
                 activoPredeterminadoId={activo.id.toString()} // Le pasamos el ID actual
@@ -938,6 +1004,13 @@ export default function DetalleActivoPage({ params }) {
                 onClose={() => setModalDetallarOpened(false)}
                 hallazgo={hallazgoParaDetallar}
                 activo={activo}
+                onSuccess={fetchData}
+            />
+            {/* 🔥 Modal de Renombrar Subsistema 🔥 */}
+            <ModalRenombrarSubsistema
+                opened={modalRenombrarOpened}
+                onClose={() => { setModalRenombrarOpened(false); setSubsistemaParaRenombrar(null); }}
+                subsistema={subsistemaParaRenombrar}
                 onSuccess={fetchData}
             />
 
@@ -1009,3 +1082,61 @@ const InfoLine = ({ label, value, highlight }) => (
         <Text size="md" fw={900} c={highlight ? "yellow.6" : "dark.8"}>{value || '---'}</Text>
     </Group>
 );
+
+const MedidorCombustibleLine = ({ nivel, capacidad }) => {
+    // Si no hay capacidad configurada, mostramos un estado neutro
+    if (!capacidad || capacidad <= 0) {
+        return <InfoLine label="Nivel Tanque" value="No Configurado" />;
+    }
+
+    const nivelActual = parseFloat(nivel) || 0;
+    const porcentaje = Math.min(100, Math.max(0, (nivelActual / capacidad) * 100));
+    const bloquesActivos = Math.ceil((porcentaje / 100) * 8); // 8 recuadros en total
+
+    // Gradiente de colores de Rojo (E) a Verde oscuro (F)
+    const colores = [
+        '#fa5252', // Rojo
+        '#ff8787', // Salmón
+        '#fd7e14', // Naranja
+        '#fab005', // Naranja-Amarillo
+        '#fcc419', // Amarillo
+        '#a9e34b', // Verde claro
+        '#40c057', // Verde
+        '#2b8a3e'  // Verde oscuro
+    ];
+
+    return (
+        <Group justify="space-between" style={{ borderBottom: '1px solid #dee2e6', paddingBottom: '4px' }}>
+            <Text size="sm" c="gray.6" fw={700} tt="uppercase">Nivel Tanque</Text>
+
+            {/* Contenedor alineado a la derecha que ocupa el espacio restante */}
+            <Group gap="lg" align="center" style={{ flex: 1, justifyContent: 'flex-end' }}>
+                <Group gap={4} align="center">
+                    <Text size="xs" fw={900} c="red.7" mr={2}>E</Text>
+                    {[...Array(8)].map((_, i) => {
+                        const activo = i < bloquesActivos;
+                        return (
+                            <Box
+                                key={i}
+                                w={16} // Bloques más anchos
+                                h={16}
+                                style={{
+                                    backgroundColor: activo ? colores[i] : '#f8f9fa', // Lleno vs Fondo casi blanco
+                                    border: activo ? `1px solid ${colores[i]}` : '1px solid #adb5bd', // Borde sólido gris si está inactivo
+                                    borderRadius: '3px',
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: activo ? `0 0 4px ${colores[i]}40` : 'none' // Pequeño resplandor a los encendidos
+                                }}
+                            />
+                        );
+                    })}
+                    <Text size="xs" fw={900} c="green.8" ml={2}>F</Text>
+                </Group>
+
+                <Text size="md" fw={900} c="dark.8" style={{ minWidth: '85px', textAlign: 'right' }}>
+                    {nivelActual.toFixed(0)} <Text span size="xs" c="dimmed">/ {capacidad} L</Text>
+                </Text>
+            </Group>
+        </Group>
+    );
+};

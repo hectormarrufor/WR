@@ -9,6 +9,9 @@ import { AreaChart } from '@mantine/charts';
 import { IconDashboard, IconGasStation, IconGeometry, IconTruck, IconAlertCircle, IconChartAreaLine, IconEngine, IconRulerMeasure } from '@tabler/icons-react';
 import ModalConfigurarTanque from './ModalConfigurarTanque';
 
+// 🔥 Importamos la nueva tarjeta de gráfica
+import CardGraficaTanque from './CardGraficaTanque';
+
 export default function TabRendimiento({ activo, onActualizado }) {
     const [modalConfigOpened, setModalConfigOpened] = useState(false);
 
@@ -48,7 +51,7 @@ export default function TabRendimiento({ activo, onActualizado }) {
 
     const limites = getLimitesConsumo(activo, esLHr);
 
-    // 4. DATOS DE LA GRÁFICA
+    // 4. DATOS DE LA GRÁFICA HISTÓRICA
     const datosGrafica = (activo?.cargasCombustible || [])
         .filter(carga => carga.rendimientoCalculado != null)
         .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
@@ -59,7 +62,7 @@ export default function TabRendimiento({ activo, onActualizado }) {
 
     return (
         <Stack gap="lg">
-            {/* PANEL 1: GEOMETRÍA DEL TANQUE */}
+            {/* PANEL 1: GEOMETRÍA DEL TANQUE (Resumen Numérico) */}
             <Paper shadow="sm" p="xl" radius="md" withBorder>
                 <Group justify="space-between" mb="md">
                     <Group>
@@ -114,6 +117,11 @@ export default function TabRendimiento({ activo, onActualizado }) {
                     </Paper>
                 )}
             </Paper>
+
+            {/* 🔥 PANEL 1.5: GRÁFICA TEÓRICA DEL TANQUE (Inyectada Aquí) 🔥 */}
+            {configActiva && (
+                <CardGraficaTanque activo={activo} />
+            )}
 
             {/* PANEL 2: GRÁFICA DE RENDIMIENTO HISTÓRICO */}
             <Paper shadow="sm" p="xl" radius="md" withBorder>
