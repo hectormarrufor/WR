@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { modals } from '@mantine/modals'; // Para la confirmación de eliminación
-import ModalRenombrarSubsistema from '../components/ModalRenombrarSubsistema';
+import ModalRenombrarSubsistema from './components/ModalRenombrarSubsistema';
 import {
     Container, Grid, Paper, Image, Title, Text, Badge, Group, Button,
     Tabs, ThemeIcon, Stack, Divider, LoadingOverlay, Modal, SimpleGrid,
